@@ -25,14 +25,22 @@ import {
   Strikethrough,
   Undo2,
 } from "lucide-react";
-import { useEffect, useRef, type ReactNode } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
+
 import { Button } from "@/components/ui/button";
 import { BOOK_HEX_COLOR_PRESETS } from "@/lib/book-color-presets";
-import { richHtmlToPlainText, sanitizeBookRichHtml } from "@/lib/book-text-widget";
+import {
+  richHtmlToPlainText,
+  sanitizeBookRichHtml,
+} from "@/lib/book-text-widget";
 import { cn } from "@/lib/utils";
 
 /** 위젯 기본 글자 크기(`fontSize`) 대비. `em`이라 슬라이드 배율과 맞습니다. */
-const BOOK_RICH_FONT_SIZE_PRESETS: { value: string; label: string; title: string }[] = [
+const BOOK_RICH_FONT_SIZE_PRESETS: {
+  value: string;
+  label: string;
+  title: string;
+}[] = [
   { value: "0.7em", label: "70%", title: "선택 영역 글자 크기 70%" },
   { value: "0.85em", label: "85%", title: "선택 영역 글자 크기 85%" },
   { value: "1.25em", label: "125%", title: "선택 영역 글자 크기 125%" },
@@ -127,7 +135,9 @@ export function BookTextRichEditor({
     if (!editor) return;
     const clean = sanitizeBookRichHtml(html || "<p></p>");
     if (clean === lastEmitted.current) return;
-    editor.commands.setContent(html?.trim() ? html : "<p></p>", { emitUpdate: false });
+    editor.commands.setContent(html?.trim() ? html : "<p></p>", {
+      emitUpdate: false,
+    });
     lastEmitted.current = clean;
   }, [html, editor, widgetKey]);
 
@@ -190,7 +200,9 @@ export function BookTextRichEditor({
               aria-hidden
               tabIndex={-1}
               defaultValue="#111827"
-              onChange={(e) => editor.chain().focus().setColor(e.target.value).run()}
+              onChange={(e) =>
+                editor.chain().focus().setColor(e.target.value).run()
+              }
             />
             <Btn
               title="색 직접 선택 (먼저 글자를 선택하세요)"
@@ -205,7 +217,9 @@ export function BookTextRichEditor({
               disabled={!currentTextColor}
               onClick={() => editor.chain().focus().unsetColor().run()}
             >
-              <span className="text-[10px] font-semibold text-muted-foreground">A</span>
+              <span className="text-[10px] font-semibold text-muted-foreground">
+                A
+              </span>
             </Btn>
             <span className="mx-0.5 w-px self-stretch bg-border" aria-hidden />
             <span className="sr-only">선택 영역 글자 크기</span>
@@ -214,7 +228,9 @@ export function BookTextRichEditor({
               active={!currentFontSize}
               onClick={() => editor.chain().focus().unsetFontSize().run()}
             >
-              <span className="text-[10px] font-semibold tabular-nums">기본</span>
+              <span className="text-[10px] font-semibold tabular-nums">
+                기본
+              </span>
             </Btn>
             {BOOK_RICH_FONT_SIZE_PRESETS.map(({ value, label, title }) => (
               <Btn
@@ -232,14 +248,18 @@ export function BookTextRichEditor({
             <Btn
               title="소제목 2"
               active={editor.isActive("heading", { level: 2 })}
-              onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+              onClick={() =>
+                editor.chain().focus().toggleHeading({ level: 2 }).run()
+              }
             >
               <Heading2 className="size-3.5" />
             </Btn>
             <Btn
               title="소제목 3"
               active={editor.isActive("heading", { level: 3 })}
-              onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+              onClick={() =>
+                editor.chain().focus().toggleHeading({ level: 3 }).run()
+              }
             >
               <Heading3 className="size-3.5" />
             </Btn>
@@ -260,7 +280,9 @@ export function BookTextRichEditor({
             <Btn
               title="가운데 맞춤"
               active={editor.isActive({ textAlign: "center" })}
-              onClick={() => editor.chain().focus().setTextAlign("center").run()}
+              onClick={() =>
+                editor.chain().focus().setTextAlign("center").run()
+              }
             >
               <AlignCenter className="size-3.5" />
             </Btn>
@@ -274,13 +296,18 @@ export function BookTextRichEditor({
             <Btn
               title="양쪽 맞춤"
               active={editor.isActive({ textAlign: "justify" })}
-              onClick={() => editor.chain().focus().setTextAlign("justify").run()}
+              onClick={() =>
+                editor.chain().focus().setTextAlign("justify").run()
+              }
             >
               <AlignJustify className="size-3.5" />
             </Btn>
             {onVerticalAlignChange ? (
               <>
-                <span className="mx-0.5 w-px self-stretch bg-border" aria-hidden />
+                <span
+                  className="mx-0.5 w-px self-stretch bg-border"
+                  aria-hidden
+                />
                 <span className="sr-only">위젯 박스 안 세로 맞춤</span>
                 <Btn
                   title="위젯 박스 안 세로: 위쪽 (글 블록을 박스 위에 붙임)"
@@ -327,17 +354,30 @@ export function BookTextRichEditor({
             >
               <Quote className="size-3.5" />
             </Btn>
-            <Btn title="구분선" onClick={() => editor.chain().focus().setHorizontalRule().run()}>
+            <Btn
+              title="구분선"
+              onClick={() => editor.chain().focus().setHorizontalRule().run()}
+            >
               <Minus className="size-3.5" />
             </Btn>
-            <Btn title="링크" active={editor.isActive("link")} onClick={setLink}>
+            <Btn
+              title="링크"
+              active={editor.isActive("link")}
+              onClick={setLink}
+            >
               <Link2 className="size-3.5" />
             </Btn>
             <span className="mx-0.5 w-px self-stretch bg-border" aria-hidden />
-            <Btn title="실행 취소" onClick={() => editor.chain().focus().undo().run()}>
+            <Btn
+              title="실행 취소"
+              onClick={() => editor.chain().focus().undo().run()}
+            >
               <Undo2 className="size-3.5" />
             </Btn>
-            <Btn title="다시 실행" onClick={() => editor.chain().focus().redo().run()}>
+            <Btn
+              title="다시 실행"
+              onClick={() => editor.chain().focus().redo().run()}
+            >
               <Redo2 className="size-3.5" />
             </Btn>
           </>

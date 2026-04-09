@@ -20,7 +20,12 @@ export const BOOK_TEMPLATE_STOCK_IMAGE_PATHS: readonly string[] = [
 ];
 
 /** 디지털 사이니지·키오스크용 템플릿 묶음 */
-export type BookSlideTemplateCategoryId = "menu" | "notice" | "life" | "news" | "visual";
+export type BookSlideTemplateCategoryId =
+  | "menu"
+  | "notice"
+  | "life"
+  | "news"
+  | "visual";
 
 export type BookSlideTemplateCategoryDef = {
   id: BookSlideTemplateCategoryId;
@@ -134,20 +139,78 @@ export function getBookSlideTemplatePreviewLayers(
   switch (templateId) {
     case "menuBoard":
       return [
-        { kind: "text", leftPct: 8, topPct: 4, widthPct: 84, heightPct: 11, tone: "title" },
-        { kind: "text", leftPct: 5, topPct: 17, widthPct: 43, heightPct: 76, tone: "body" },
-        { kind: "text", leftPct: 52, topPct: 17, widthPct: 43, heightPct: 76, tone: "body" },
+        {
+          kind: "text",
+          leftPct: 8,
+          topPct: 4,
+          widthPct: 84,
+          heightPct: 11,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 5,
+          topPct: 17,
+          widthPct: 43,
+          heightPct: 76,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 52,
+          topPct: 17,
+          widthPct: 43,
+          heightPct: 76,
+          tone: "body",
+        },
       ];
     case "menuCafeBoard":
       return [
-        { kind: "image", leftPct: 4, topPct: 8, widthPct: 38, heightPct: 84, stockIndex: 2, radiusPx: 4 },
-        { kind: "text", leftPct: 46, topPct: 6, widthPct: 50, heightPct: 9, tone: "title" },
-        { kind: "text", leftPct: 46, topPct: 17, widthPct: 50, heightPct: 11, tone: "title" },
-        { kind: "text", leftPct: 46, topPct: 30, widthPct: 50, heightPct: 66, tone: "body" },
+        {
+          kind: "image",
+          leftPct: 4,
+          topPct: 8,
+          widthPct: 38,
+          heightPct: 84,
+          stockIndex: 2,
+          radiusPx: 4,
+        },
+        {
+          kind: "text",
+          leftPct: 46,
+          topPct: 6,
+          widthPct: 50,
+          heightPct: 9,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 46,
+          topPct: 17,
+          widthPct: 50,
+          heightPct: 11,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 46,
+          topPct: 30,
+          widthPct: 50,
+          heightPct: 66,
+          tone: "body",
+        },
       ];
     case "menuRowPhotos":
       return [
-        { kind: "image", leftPct: 5, topPct: 9, widthPct: 28.67, heightPct: 38, stockIndex: 3, radiusPx: 2 },
+        {
+          kind: "image",
+          leftPct: 5,
+          topPct: 9,
+          widthPct: 28.67,
+          heightPct: 38,
+          stockIndex: 3,
+          radiusPx: 2,
+        },
         {
           kind: "image",
           leftPct: 35.67,
@@ -166,222 +229,1109 @@ export function getBookSlideTemplatePreviewLayers(
           stockIndex: 5,
           radiusPx: 2,
         },
-        { kind: "text", leftPct: 5, topPct: 51, widthPct: 90, heightPct: 12, tone: "body" },
-        { kind: "text", leftPct: 5, topPct: 66, widthPct: 90, heightPct: 22, tone: "caption" },
+        {
+          kind: "text",
+          leftPct: 5,
+          topPct: 51,
+          widthPct: 90,
+          heightPct: 12,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 5,
+          topPct: 66,
+          widthPct: 90,
+          heightPct: 22,
+          tone: "caption",
+        },
       ];
     case "promoCombo":
       return [
-        { kind: "image", leftPct: 4, topPct: 6, widthPct: 48, heightPct: 88, stockIndex: 7, radiusPx: 3 },
-        { kind: "text", leftPct: 56, topPct: 10, widthPct: 40, heightPct: 12, tone: "title" },
-        { kind: "text", leftPct: 56, topPct: 26, widthPct: 40, heightPct: 16, tone: "title" },
-        { kind: "text", leftPct: 56, topPct: 46, widthPct: 40, heightPct: 44, tone: "body" },
+        {
+          kind: "image",
+          leftPct: 4,
+          topPct: 6,
+          widthPct: 48,
+          heightPct: 88,
+          stockIndex: 7,
+          radiusPx: 3,
+        },
+        {
+          kind: "text",
+          leftPct: 56,
+          topPct: 10,
+          widthPct: 40,
+          heightPct: 12,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 56,
+          topPct: 26,
+          widthPct: 40,
+          heightPct: 16,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 56,
+          topPct: 46,
+          widthPct: 40,
+          heightPct: 44,
+          tone: "body",
+        },
       ];
     case "menuPriceBoard":
       return [
-        { kind: "text", leftPct: 10, topPct: 6, widthPct: 80, heightPct: 10, tone: "title" },
-        { kind: "text", leftPct: 18, topPct: 20, widthPct: 64, heightPct: 62, tone: "body" },
-        { kind: "text", leftPct: 10, topPct: 86, widthPct: 80, heightPct: 8, tone: "caption" },
+        {
+          kind: "text",
+          leftPct: 10,
+          topPct: 6,
+          widthPct: 80,
+          heightPct: 10,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 18,
+          topPct: 20,
+          widthPct: 64,
+          heightPct: 62,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 10,
+          topPct: 86,
+          widthPct: 80,
+          heightPct: 8,
+          tone: "caption",
+        },
       ];
     case "menuQuadGrid":
       return [
-        { kind: "text", leftPct: 5, topPct: 3, widthPct: 90, heightPct: 8, tone: "title" },
-        { kind: "image", leftPct: 6, topPct: 13, widthPct: 43, heightPct: 32, stockIndex: 0, radiusPx: 4 },
-        { kind: "image", leftPct: 51, topPct: 13, widthPct: 43, heightPct: 32, stockIndex: 1, radiusPx: 4 },
-        { kind: "image", leftPct: 6, topPct: 47, widthPct: 43, heightPct: 32, stockIndex: 2, radiusPx: 4 },
-        { kind: "image", leftPct: 51, topPct: 47, widthPct: 43, heightPct: 32, stockIndex: 3, radiusPx: 4 },
-        { kind: "text", leftPct: 5, topPct: 82, widthPct: 90, heightPct: 14, tone: "caption" },
+        {
+          kind: "text",
+          leftPct: 5,
+          topPct: 3,
+          widthPct: 90,
+          heightPct: 8,
+          tone: "title",
+        },
+        {
+          kind: "image",
+          leftPct: 6,
+          topPct: 13,
+          widthPct: 43,
+          heightPct: 32,
+          stockIndex: 0,
+          radiusPx: 4,
+        },
+        {
+          kind: "image",
+          leftPct: 51,
+          topPct: 13,
+          widthPct: 43,
+          heightPct: 32,
+          stockIndex: 1,
+          radiusPx: 4,
+        },
+        {
+          kind: "image",
+          leftPct: 6,
+          topPct: 47,
+          widthPct: 43,
+          heightPct: 32,
+          stockIndex: 2,
+          radiusPx: 4,
+        },
+        {
+          kind: "image",
+          leftPct: 51,
+          topPct: 47,
+          widthPct: 43,
+          heightPct: 32,
+          stockIndex: 3,
+          radiusPx: 4,
+        },
+        {
+          kind: "text",
+          leftPct: 5,
+          topPct: 82,
+          widthPct: 90,
+          heightPct: 14,
+          tone: "caption",
+        },
       ];
     case "menuStackedPhotos":
       return [
-        { kind: "text", leftPct: 38, topPct: 5, widthPct: 57, heightPct: 10, tone: "title" },
-        { kind: "image", leftPct: 5, topPct: 5, widthPct: 30, heightPct: 26, stockIndex: 4, radiusPx: 4 },
-        { kind: "image", leftPct: 5, topPct: 34, widthPct: 30, heightPct: 26, stockIndex: 5, radiusPx: 4 },
-        { kind: "image", leftPct: 5, topPct: 63, widthPct: 30, heightPct: 26, stockIndex: 6, radiusPx: 4 },
-        { kind: "text", leftPct: 38, topPct: 17, widthPct: 57, heightPct: 72, tone: "body" },
+        {
+          kind: "text",
+          leftPct: 38,
+          topPct: 5,
+          widthPct: 57,
+          heightPct: 10,
+          tone: "title",
+        },
+        {
+          kind: "image",
+          leftPct: 5,
+          topPct: 5,
+          widthPct: 30,
+          heightPct: 26,
+          stockIndex: 4,
+          radiusPx: 4,
+        },
+        {
+          kind: "image",
+          leftPct: 5,
+          topPct: 34,
+          widthPct: 30,
+          heightPct: 26,
+          stockIndex: 5,
+          radiusPx: 4,
+        },
+        {
+          kind: "image",
+          leftPct: 5,
+          topPct: 63,
+          widthPct: 30,
+          heightPct: 26,
+          stockIndex: 6,
+          radiusPx: 4,
+        },
+        {
+          kind: "text",
+          leftPct: 38,
+          topPct: 17,
+          widthPct: 57,
+          heightPct: 72,
+          tone: "body",
+        },
       ];
     case "noticeBoard":
       return [
-        { kind: "accent", leftPct: 0, topPct: 0, widthPct: 100, heightPct: 12, variant: "alert" },
-        { kind: "text", leftPct: 4, topPct: 3, widthPct: 92, heightPct: 7, tone: "title" },
-        { kind: "text", leftPct: 5, topPct: 16, widthPct: 90, heightPct: 58, tone: "body" },
-        { kind: "text", leftPct: 5, topPct: 78, widthPct: 90, heightPct: 12, tone: "caption" },
+        {
+          kind: "accent",
+          leftPct: 0,
+          topPct: 0,
+          widthPct: 100,
+          heightPct: 12,
+          variant: "alert",
+        },
+        {
+          kind: "text",
+          leftPct: 4,
+          topPct: 3,
+          widthPct: 92,
+          heightPct: 7,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 5,
+          topPct: 16,
+          widthPct: 90,
+          heightPct: 58,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 5,
+          topPct: 78,
+          widthPct: 90,
+          heightPct: 12,
+          tone: "caption",
+        },
       ];
     case "noticeWeeklyHours":
       return [
-        { kind: "text", leftPct: 6, topPct: 6, widthPct: 88, heightPct: 10, tone: "title" },
-        { kind: "text", leftPct: 8, topPct: 20, widthPct: 84, heightPct: 68, tone: "body" },
-        { kind: "text", leftPct: 6, topPct: 90, widthPct: 88, heightPct: 7, tone: "caption" },
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 6,
+          widthPct: 88,
+          heightPct: 10,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 8,
+          topPct: 20,
+          widthPct: 84,
+          heightPct: 68,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 90,
+          widthPct: 88,
+          heightPct: 7,
+          tone: "caption",
+        },
       ];
     case "noticeEmergency":
       return [
-        { kind: "accent", leftPct: 0, topPct: 0, widthPct: 100, heightPct: 11, variant: "alert" },
-        { kind: "text", leftPct: 5, topPct: 3, widthPct: 90, heightPct: 7, tone: "title" },
-        { kind: "text", leftPct: 6, topPct: 15, widthPct: 88, heightPct: 55, tone: "body" },
-        { kind: "text", leftPct: 6, topPct: 74, widthPct: 88, heightPct: 20, tone: "caption" },
+        {
+          kind: "accent",
+          leftPct: 0,
+          topPct: 0,
+          widthPct: 100,
+          heightPct: 11,
+          variant: "alert",
+        },
+        {
+          kind: "text",
+          leftPct: 5,
+          topPct: 3,
+          widthPct: 90,
+          heightPct: 7,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 15,
+          widthPct: 88,
+          heightPct: 55,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 74,
+          widthPct: 88,
+          heightPct: 20,
+          tone: "caption",
+        },
       ];
     case "noticeParkingInfo":
       return [
-        { kind: "text", leftPct: 6, topPct: 5, widthPct: 88, heightPct: 11, tone: "title" },
-        { kind: "text", leftPct: 8, topPct: 19, widthPct: 84, heightPct: 52, tone: "body" },
-        { kind: "text", leftPct: 6, topPct: 76, widthPct: 88, heightPct: 18, tone: "caption" },
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 5,
+          widthPct: 88,
+          heightPct: 11,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 8,
+          topPct: 19,
+          widthPct: 84,
+          heightPct: 52,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 76,
+          widthPct: 88,
+          heightPct: 18,
+          tone: "caption",
+        },
       ];
     case "lifeWifiGuest":
       return [
-        { kind: "text", leftPct: 8, topPct: 8, widthPct: 84, heightPct: 12, tone: "title" },
-        { kind: "text", leftPct: 10, topPct: 24, widthPct: 80, heightPct: 48, tone: "body" },
-        { kind: "text", leftPct: 8, topPct: 76, widthPct: 84, heightPct: 16, tone: "caption" },
+        {
+          kind: "text",
+          leftPct: 8,
+          topPct: 8,
+          widthPct: 84,
+          heightPct: 12,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 10,
+          topPct: 24,
+          widthPct: 80,
+          heightPct: 48,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 8,
+          topPct: 76,
+          widthPct: 84,
+          heightPct: 16,
+          tone: "caption",
+        },
       ];
     case "lifeRestroom":
       return [
-        { kind: "text", leftPct: 8, topPct: 6, widthPct: 84, heightPct: 11, tone: "title" },
-        { kind: "text", leftPct: 10, topPct: 20, widthPct: 80, heightPct: 58, tone: "body" },
-        { kind: "text", leftPct: 8, topPct: 82, widthPct: 84, heightPct: 12, tone: "caption" },
+        {
+          kind: "text",
+          leftPct: 8,
+          topPct: 6,
+          widthPct: 84,
+          heightPct: 11,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 10,
+          topPct: 20,
+          widthPct: 80,
+          heightPct: 58,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 8,
+          topPct: 82,
+          widthPct: 84,
+          heightPct: 12,
+          tone: "caption",
+        },
       ];
     case "lifeFloorDirectory":
       return [
-        { kind: "text", leftPct: 6, topPct: 5, widthPct: 88, heightPct: 10, tone: "title" },
-        { kind: "text", leftPct: 5, topPct: 18, widthPct: 28, heightPct: 72, tone: "body" },
-        { kind: "text", leftPct: 36, topPct: 18, widthPct: 28, heightPct: 72, tone: "body" },
-        { kind: "text", leftPct: 67, topPct: 18, widthPct: 28, heightPct: 72, tone: "body" },
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 5,
+          widthPct: 88,
+          heightPct: 10,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 5,
+          topPct: 18,
+          widthPct: 28,
+          heightPct: 72,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 36,
+          topPct: 18,
+          widthPct: 28,
+          heightPct: 72,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 67,
+          topPct: 18,
+          widthPct: 28,
+          heightPct: 72,
+          tone: "body",
+        },
       ];
     case "lifeSafetyHygiene":
       return [
-        { kind: "accent", leftPct: 0, topPct: 0, widthPct: 100, heightPct: 10, variant: "alert" },
-        { kind: "text", leftPct: 5, topPct: 3, widthPct: 90, heightPct: 6, tone: "title" },
-        { kind: "text", leftPct: 7, topPct: 14, widthPct: 86, heightPct: 68, tone: "body" },
-        { kind: "text", leftPct: 6, topPct: 86, widthPct: 88, heightPct: 10, tone: "caption" },
+        {
+          kind: "accent",
+          leftPct: 0,
+          topPct: 0,
+          widthPct: 100,
+          heightPct: 10,
+          variant: "alert",
+        },
+        {
+          kind: "text",
+          leftPct: 5,
+          topPct: 3,
+          widthPct: 90,
+          heightPct: 6,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 7,
+          topPct: 14,
+          widthPct: 86,
+          heightPct: 68,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 86,
+          widthPct: 88,
+          heightPct: 10,
+          tone: "caption",
+        },
       ];
     case "lifeLostFound":
       return [
-        { kind: "text", leftPct: 8, topPct: 7, widthPct: 84, heightPct: 11, tone: "title" },
-        { kind: "text", leftPct: 10, topPct: 22, widthPct: 80, heightPct: 52, tone: "body" },
-        { kind: "text", leftPct: 8, topPct: 78, widthPct: 84, heightPct: 16, tone: "caption" },
+        {
+          kind: "text",
+          leftPct: 8,
+          topPct: 7,
+          widthPct: 84,
+          heightPct: 11,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 10,
+          topPct: 22,
+          widthPct: 80,
+          heightPct: 52,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 8,
+          topPct: 78,
+          widthPct: 84,
+          heightPct: 16,
+          tone: "caption",
+        },
       ];
     case "lifeTodaySchedule":
       return [
-        { kind: "text", leftPct: 6, topPct: 5, widthPct: 88, heightPct: 10, tone: "title" },
-        { kind: "text", leftPct: 8, topPct: 18, widthPct: 84, heightPct: 72, tone: "body" },
-        { kind: "text", leftPct: 6, topPct: 92, widthPct: 88, heightPct: 6, tone: "caption" },
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 5,
+          widthPct: 88,
+          heightPct: 10,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 8,
+          topPct: 18,
+          widthPct: 84,
+          heightPct: 72,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 92,
+          widthPct: 88,
+          heightPct: 6,
+          tone: "caption",
+        },
       ];
     case "lifeWelcomeDesk":
       return [
-        { kind: "image", leftPct: 6, topPct: 10, widthPct: 32, heightPct: 55, stockIndex: 0, radiusPx: 4 },
-        { kind: "text", leftPct: 42, topPct: 10, widthPct: 52, heightPct: 14, tone: "title" },
-        { kind: "text", leftPct: 42, topPct: 26, widthPct: 52, heightPct: 52, tone: "body" },
-        { kind: "text", leftPct: 6, topPct: 82, widthPct: 88, heightPct: 12, tone: "caption" },
+        {
+          kind: "image",
+          leftPct: 6,
+          topPct: 10,
+          widthPct: 32,
+          heightPct: 55,
+          stockIndex: 0,
+          radiusPx: 4,
+        },
+        {
+          kind: "text",
+          leftPct: 42,
+          topPct: 10,
+          widthPct: 52,
+          heightPct: 14,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 42,
+          topPct: 26,
+          widthPct: 52,
+          heightPct: 52,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 82,
+          widthPct: 88,
+          heightPct: 12,
+          tone: "caption",
+        },
       ];
     case "lifeMeetingRoom":
       return [
-        { kind: "accent", leftPct: 15, topPct: 8, widthPct: 70, heightPct: 3, variant: "alert" },
-        { kind: "text", leftPct: 10, topPct: 14, widthPct: 80, heightPct: 16, tone: "title" },
-        { kind: "text", leftPct: 12, topPct: 34, widthPct: 76, heightPct: 22, tone: "body" },
-        { kind: "text", leftPct: 12, topPct: 60, widthPct: 76, heightPct: 30, tone: "body" },
+        {
+          kind: "accent",
+          leftPct: 15,
+          topPct: 8,
+          widthPct: 70,
+          heightPct: 3,
+          variant: "alert",
+        },
+        {
+          kind: "text",
+          leftPct: 10,
+          topPct: 14,
+          widthPct: 80,
+          heightPct: 16,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 12,
+          topPct: 34,
+          widthPct: 76,
+          heightPct: 22,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 12,
+          topPct: 60,
+          widthPct: 76,
+          heightPct: 30,
+          tone: "body",
+        },
       ];
     case "lifeStorefront":
       return [
-        { kind: "accent", leftPct: 0, topPct: 0, widthPct: 100, heightPct: 8, variant: "alert" },
-        { kind: "text", leftPct: 8, topPct: 12, widthPct: 84, heightPct: 14, tone: "title" },
-        { kind: "text", leftPct: 10, topPct: 30, widthPct: 80, heightPct: 50, tone: "body" },
-        { kind: "text", leftPct: 8, topPct: 84, widthPct: 84, heightPct: 12, tone: "caption" },
+        {
+          kind: "accent",
+          leftPct: 0,
+          topPct: 0,
+          widthPct: 100,
+          heightPct: 8,
+          variant: "alert",
+        },
+        {
+          kind: "text",
+          leftPct: 8,
+          topPct: 12,
+          widthPct: 84,
+          heightPct: 14,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 10,
+          topPct: 30,
+          widthPct: 80,
+          heightPct: 50,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 8,
+          topPct: 84,
+          widthPct: 84,
+          heightPct: 12,
+          tone: "caption",
+        },
       ];
     case "lifeEventGate":
       return [
-        { kind: "text", leftPct: 6, topPct: 6, widthPct: 88, heightPct: 14, tone: "title" },
-        { kind: "text", leftPct: 8, topPct: 24, widthPct: 84, heightPct: 56, tone: "body" },
-        { kind: "text", leftPct: 6, topPct: 84, widthPct: 88, heightPct: 10, tone: "caption" },
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 6,
+          widthPct: 88,
+          heightPct: 14,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 8,
+          topPct: 24,
+          widthPct: 84,
+          heightPct: 56,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 84,
+          widthPct: 88,
+          heightPct: 10,
+          tone: "caption",
+        },
       ];
     case "newsFlash":
       return [
-        { kind: "image", leftPct: 5, topPct: 5, widthPct: 90, heightPct: 34, stockIndex: 8, radiusPx: 2 },
-        { kind: "text", leftPct: 5, topPct: 42, widthPct: 90, heightPct: 6, tone: "caption" },
-        { kind: "text", leftPct: 5, topPct: 50, widthPct: 90, heightPct: 12, tone: "title" },
-        { kind: "text", leftPct: 5, topPct: 64, widthPct: 90, heightPct: 28, tone: "body" },
+        {
+          kind: "image",
+          leftPct: 5,
+          topPct: 5,
+          widthPct: 90,
+          heightPct: 34,
+          stockIndex: 8,
+          radiusPx: 2,
+        },
+        {
+          kind: "text",
+          leftPct: 5,
+          topPct: 42,
+          widthPct: 90,
+          heightPct: 6,
+          tone: "caption",
+        },
+        {
+          kind: "text",
+          leftPct: 5,
+          topPct: 50,
+          widthPct: 90,
+          heightPct: 12,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 5,
+          topPct: 64,
+          widthPct: 90,
+          heightPct: 28,
+          tone: "body",
+        },
       ];
     case "newsFeature":
       return [
-        { kind: "image", leftPct: 5, topPct: 5, widthPct: 90, heightPct: 36, stockIndex: 2, radiusPx: 2 },
-        { kind: "text", leftPct: 7, topPct: 44, widthPct: 86, heightPct: 10, tone: "title" },
-        { kind: "text", leftPct: 7, topPct: 56, widthPct: 86, heightPct: 14, tone: "body" },
-        { kind: "text", leftPct: 7, topPct: 73, widthPct: 86, heightPct: 22, tone: "body" },
+        {
+          kind: "image",
+          leftPct: 5,
+          topPct: 5,
+          widthPct: 90,
+          heightPct: 36,
+          stockIndex: 2,
+          radiusPx: 2,
+        },
+        {
+          kind: "text",
+          leftPct: 7,
+          topPct: 44,
+          widthPct: 86,
+          heightPct: 10,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 7,
+          topPct: 56,
+          widthPct: 86,
+          heightPct: 14,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 7,
+          topPct: 73,
+          widthPct: 86,
+          heightPct: 22,
+          tone: "body",
+        },
       ];
     case "newsDual":
       return [
-        { kind: "text", leftPct: 5, topPct: 8, widthPct: 43, heightPct: 10, tone: "title" },
-        { kind: "text", leftPct: 5, topPct: 20, widthPct: 43, heightPct: 68, tone: "body" },
-        { kind: "text", leftPct: 52, topPct: 8, widthPct: 43, heightPct: 10, tone: "title" },
-        { kind: "text", leftPct: 52, topPct: 20, widthPct: 43, heightPct: 68, tone: "body" },
+        {
+          kind: "text",
+          leftPct: 5,
+          topPct: 8,
+          widthPct: 43,
+          heightPct: 10,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 5,
+          topPct: 20,
+          widthPct: 43,
+          heightPct: 68,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 52,
+          topPct: 8,
+          widthPct: 43,
+          heightPct: 10,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 52,
+          topPct: 20,
+          widthPct: 43,
+          heightPct: 68,
+          tone: "body",
+        },
       ];
     case "newsTriptych":
       return [
-        { kind: "image", leftPct: 4, topPct: 5, widthPct: 29, heightPct: 30, stockIndex: 6, radiusPx: 3 },
-        { kind: "image", leftPct: 35.5, topPct: 5, widthPct: 29, heightPct: 30, stockIndex: 7, radiusPx: 3 },
-        { kind: "image", leftPct: 67, topPct: 5, widthPct: 29, heightPct: 30, stockIndex: 8, radiusPx: 3 },
-        { kind: "text", leftPct: 4, topPct: 38, widthPct: 29, heightPct: 26, tone: "title" },
-        { kind: "text", leftPct: 35.5, topPct: 38, widthPct: 29, heightPct: 26, tone: "body" },
-        { kind: "text", leftPct: 67, topPct: 38, widthPct: 29, heightPct: 26, tone: "body" },
-        { kind: "text", leftPct: 4, topPct: 68, widthPct: 92, heightPct: 28, tone: "caption" },
+        {
+          kind: "image",
+          leftPct: 4,
+          topPct: 5,
+          widthPct: 29,
+          heightPct: 30,
+          stockIndex: 6,
+          radiusPx: 3,
+        },
+        {
+          kind: "image",
+          leftPct: 35.5,
+          topPct: 5,
+          widthPct: 29,
+          heightPct: 30,
+          stockIndex: 7,
+          radiusPx: 3,
+        },
+        {
+          kind: "image",
+          leftPct: 67,
+          topPct: 5,
+          widthPct: 29,
+          heightPct: 30,
+          stockIndex: 8,
+          radiusPx: 3,
+        },
+        {
+          kind: "text",
+          leftPct: 4,
+          topPct: 38,
+          widthPct: 29,
+          heightPct: 26,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 35.5,
+          topPct: 38,
+          widthPct: 29,
+          heightPct: 26,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 67,
+          topPct: 38,
+          widthPct: 29,
+          heightPct: 26,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 4,
+          topPct: 68,
+          widthPct: 92,
+          heightPct: 28,
+          tone: "caption",
+        },
       ];
     case "newsBulletin":
       return [
-        { kind: "text", leftPct: 5, topPct: 5, widthPct: 90, heightPct: 12, tone: "title" },
-        { kind: "text", leftPct: 7, topPct: 20, widthPct: 86, heightPct: 72, tone: "body" },
+        {
+          kind: "text",
+          leftPct: 5,
+          topPct: 5,
+          widthPct: 90,
+          heightPct: 12,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 7,
+          topPct: 20,
+          widthPct: 86,
+          heightPct: 72,
+          tone: "body",
+        },
       ];
     case "newsPhotoSide":
       return [
-        { kind: "image", leftPct: 4, topPct: 6, widthPct: 36, heightPct: 88, stockIndex: 9, radiusPx: 4 },
-        { kind: "text", leftPct: 44, topPct: 8, widthPct: 52, heightPct: 14, tone: "title" },
-        { kind: "text", leftPct: 44, topPct: 25, widthPct: 52, heightPct: 48, tone: "body" },
-        { kind: "text", leftPct: 44, topPct: 78, widthPct: 52, heightPct: 14, tone: "caption" },
+        {
+          kind: "image",
+          leftPct: 4,
+          topPct: 6,
+          widthPct: 36,
+          heightPct: 88,
+          stockIndex: 9,
+          radiusPx: 4,
+        },
+        {
+          kind: "text",
+          leftPct: 44,
+          topPct: 8,
+          widthPct: 52,
+          heightPct: 14,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 44,
+          topPct: 25,
+          widthPct: 52,
+          heightPct: 48,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 44,
+          topPct: 78,
+          widthPct: 52,
+          heightPct: 14,
+          tone: "caption",
+        },
       ];
     case "photoHero":
       return [
-        { kind: "image", leftPct: 0, topPct: 0, widthPct: 100, heightPct: 52, stockIndex: 0, radiusPx: 0 },
-        { kind: "text", leftPct: 6, topPct: 56, widthPct: 88, heightPct: 12, tone: "title" },
-        { kind: "text", leftPct: 12.5, topPct: 70, widthPct: 75, heightPct: 9, tone: "caption" },
+        {
+          kind: "image",
+          leftPct: 0,
+          topPct: 0,
+          widthPct: 100,
+          heightPct: 52,
+          stockIndex: 0,
+          radiusPx: 0,
+        },
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 56,
+          widthPct: 88,
+          heightPct: 12,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 12.5,
+          topPct: 70,
+          widthPct: 75,
+          heightPct: 9,
+          tone: "caption",
+        },
       ];
     case "editorialSplit":
       return [
-        { kind: "image", leftPct: 5, topPct: 5, widthPct: 40, heightPct: 90, stockIndex: 1, radiusPx: 3 },
-        { kind: "text", leftPct: 50, topPct: 7, widthPct: 45, heightPct: 10, tone: "title" },
-        { kind: "text", leftPct: 50, topPct: 19, widthPct: 45, heightPct: 52, tone: "body" },
-        { kind: "text", leftPct: 50, topPct: 78, widthPct: 45, heightPct: 10, tone: "caption" },
+        {
+          kind: "image",
+          leftPct: 5,
+          topPct: 5,
+          widthPct: 40,
+          heightPct: 90,
+          stockIndex: 1,
+          radiusPx: 3,
+        },
+        {
+          kind: "text",
+          leftPct: 50,
+          topPct: 7,
+          widthPct: 45,
+          heightPct: 10,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 50,
+          topPct: 19,
+          widthPct: 45,
+          heightPct: 52,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 50,
+          topPct: 78,
+          widthPct: 45,
+          heightPct: 10,
+          tone: "caption",
+        },
       ];
     case "coverPhoto":
       return [
-        { kind: "image", leftPct: 4, topPct: 4, widthPct: 92, heightPct: 72, stockIndex: 6, radiusPx: 3 },
-        { kind: "text", leftPct: 4, topPct: 78, widthPct: 92, heightPct: 10, tone: "title" },
-        { kind: "text", leftPct: 4, topPct: 90, widthPct: 92, heightPct: 7, tone: "caption" },
+        {
+          kind: "image",
+          leftPct: 4,
+          topPct: 4,
+          widthPct: 92,
+          heightPct: 72,
+          stockIndex: 6,
+          radiusPx: 3,
+        },
+        {
+          kind: "text",
+          leftPct: 4,
+          topPct: 78,
+          widthPct: 92,
+          heightPct: 10,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 4,
+          topPct: 90,
+          widthPct: 92,
+          heightPct: 7,
+          tone: "caption",
+        },
       ];
     case "visualFilmRow":
       return [
-        { kind: "image", leftPct: 3, topPct: 10, widthPct: 22.5, heightPct: 52, stockIndex: 0, radiusPx: 2 },
-        { kind: "image", leftPct: 27, topPct: 10, widthPct: 22.5, heightPct: 52, stockIndex: 1, radiusPx: 2 },
-        { kind: "image", leftPct: 51, topPct: 10, widthPct: 22.5, heightPct: 52, stockIndex: 2, radiusPx: 2 },
-        { kind: "image", leftPct: 75, topPct: 10, widthPct: 22.5, heightPct: 52, stockIndex: 3, radiusPx: 2 },
-        { kind: "text", leftPct: 5, topPct: 68, widthPct: 90, heightPct: 12, tone: "title" },
-        { kind: "text", leftPct: 8, topPct: 84, widthPct: 84, heightPct: 12, tone: "caption" },
+        {
+          kind: "image",
+          leftPct: 3,
+          topPct: 10,
+          widthPct: 22.5,
+          heightPct: 52,
+          stockIndex: 0,
+          radiusPx: 2,
+        },
+        {
+          kind: "image",
+          leftPct: 27,
+          topPct: 10,
+          widthPct: 22.5,
+          heightPct: 52,
+          stockIndex: 1,
+          radiusPx: 2,
+        },
+        {
+          kind: "image",
+          leftPct: 51,
+          topPct: 10,
+          widthPct: 22.5,
+          heightPct: 52,
+          stockIndex: 2,
+          radiusPx: 2,
+        },
+        {
+          kind: "image",
+          leftPct: 75,
+          topPct: 10,
+          widthPct: 22.5,
+          heightPct: 52,
+          stockIndex: 3,
+          radiusPx: 2,
+        },
+        {
+          kind: "text",
+          leftPct: 5,
+          topPct: 68,
+          widthPct: 90,
+          heightPct: 12,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 8,
+          topPct: 84,
+          widthPct: 84,
+          heightPct: 12,
+          tone: "caption",
+        },
       ];
     case "visualMosaicL":
       return [
-        { kind: "image", leftPct: 4, topPct: 5, widthPct: 52, heightPct: 58, stockIndex: 4, radiusPx: 4 },
-        { kind: "image", leftPct: 58, topPct: 5, widthPct: 38, heightPct: 27, stockIndex: 5, radiusPx: 3 },
-        { kind: "image", leftPct: 58, topPct: 35, widthPct: 38, heightPct: 28, stockIndex: 6, radiusPx: 3 },
-        { kind: "text", leftPct: 4, topPct: 68, widthPct: 92, heightPct: 10, tone: "title" },
-        { kind: "text", leftPct: 4, topPct: 82, widthPct: 92, heightPct: 14, tone: "body" },
+        {
+          kind: "image",
+          leftPct: 4,
+          topPct: 5,
+          widthPct: 52,
+          heightPct: 58,
+          stockIndex: 4,
+          radiusPx: 4,
+        },
+        {
+          kind: "image",
+          leftPct: 58,
+          topPct: 5,
+          widthPct: 38,
+          heightPct: 27,
+          stockIndex: 5,
+          radiusPx: 3,
+        },
+        {
+          kind: "image",
+          leftPct: 58,
+          topPct: 35,
+          widthPct: 38,
+          heightPct: 28,
+          stockIndex: 6,
+          radiusPx: 3,
+        },
+        {
+          kind: "text",
+          leftPct: 4,
+          topPct: 68,
+          widthPct: 92,
+          heightPct: 10,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 4,
+          topPct: 82,
+          widthPct: 92,
+          heightPct: 14,
+          tone: "body",
+        },
       ];
     case "visualTypoCenter":
       return [
-        { kind: "text", leftPct: 8, topPct: 32, widthPct: 84, heightPct: 22, tone: "title" },
-        { kind: "text", leftPct: 15, topPct: 58, widthPct: 70, heightPct: 10, tone: "caption" },
-        { kind: "text", leftPct: 12, topPct: 72, widthPct: 76, heightPct: 20, tone: "body" },
+        {
+          kind: "text",
+          leftPct: 8,
+          topPct: 32,
+          widthPct: 84,
+          heightPct: 22,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 15,
+          topPct: 58,
+          widthPct: 70,
+          heightPct: 10,
+          tone: "caption",
+        },
+        {
+          kind: "text",
+          leftPct: 12,
+          topPct: 72,
+          widthPct: 76,
+          heightPct: 20,
+          tone: "body",
+        },
       ];
     case "visualMagazineTop":
       return [
-        { kind: "image", leftPct: 0, topPct: 0, widthPct: 100, heightPct: 38, stockIndex: 7, radiusPx: 0 },
-        { kind: "text", leftPct: 5, topPct: 41, widthPct: 90, heightPct: 11, tone: "title" },
-        { kind: "text", leftPct: 5, topPct: 54, widthPct: 43, heightPct: 38, tone: "body" },
-        { kind: "text", leftPct: 52, topPct: 54, widthPct: 43, heightPct: 38, tone: "body" },
-        { kind: "text", leftPct: 5, topPct: 94, widthPct: 90, heightPct: 5, tone: "caption" },
+        {
+          kind: "image",
+          leftPct: 0,
+          topPct: 0,
+          widthPct: 100,
+          heightPct: 38,
+          stockIndex: 7,
+          radiusPx: 0,
+        },
+        {
+          kind: "text",
+          leftPct: 5,
+          topPct: 41,
+          widthPct: 90,
+          heightPct: 11,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 5,
+          topPct: 54,
+          widthPct: 43,
+          heightPct: 38,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 52,
+          topPct: 54,
+          widthPct: 43,
+          heightPct: 38,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 5,
+          topPct: 94,
+          widthPct: 90,
+          heightPct: 5,
+          tone: "caption",
+        },
       ];
     default:
       return [];
@@ -704,8 +1654,19 @@ export function instantiateBookSlideTemplate(
       const textX = padX + imgW + pw * 0.035;
       const textW = pw - textX - padX;
       return [
-        newImage(padX, padY, imgW, imgH, stockPath(2), { borderRadius: 14, objectFit: "cover" }),
-        newText(textX, padY + ph * 0.02, "CAFE MENU", Math.round(ph * 0.03), "#92400e", textW, ph * 0.07),
+        newImage(padX, padY, imgW, imgH, stockPath(2), {
+          borderRadius: 14,
+          objectFit: "cover",
+        }),
+        newText(
+          textX,
+          padY + ph * 0.02,
+          "CAFE MENU",
+          Math.round(ph * 0.03),
+          "#92400e",
+          textW,
+          ph * 0.07,
+        ),
         newText(
           textX,
           padY + ph * 0.09,
@@ -733,15 +1694,25 @@ export function instantiateBookSlideTemplate(
       const topY = padY + ph * 0.04;
       const capW = pw - padX * 2;
       return [
-        newImage(padX, topY, thumbW, thumbH, stockPath(3), { borderRadius: 6, objectFit: "cover" }),
+        newImage(padX, topY, thumbW, thumbH, stockPath(3), {
+          borderRadius: 6,
+          objectFit: "cover",
+        }),
         newImage(padX + thumbW + gap, topY, thumbW, thumbH, stockPath(4), {
           borderRadius: 6,
           objectFit: "cover",
         }),
-        newImage(padX + (thumbW + gap) * 2, topY, thumbW, thumbH, stockPath(5), {
-          borderRadius: 6,
-          objectFit: "cover",
-        }),
+        newImage(
+          padX + (thumbW + gap) * 2,
+          topY,
+          thumbW,
+          thumbH,
+          stockPath(5),
+          {
+            borderRadius: 6,
+            objectFit: "cover",
+          },
+        ),
         newText(
           padX,
           topY + thumbH + ph * 0.04,
@@ -768,8 +1739,19 @@ export function instantiateBookSlideTemplate(
       const tx = padX + imgW + pw * 0.03;
       const tw = pw - tx - padX;
       return [
-        newImage(padX, padY, imgW, imgH, stockPath(7), { borderRadius: 14, objectFit: "cover" }),
-        newText(tx, padY + ph * 0.05, "런치 콤보", Math.round(ph * 0.045), "#0f172a", tw, ph * 0.11),
+        newImage(padX, padY, imgW, imgH, stockPath(7), {
+          borderRadius: 14,
+          objectFit: "cover",
+        }),
+        newText(
+          tx,
+          padY + ph * 0.05,
+          "런치 콤보",
+          Math.round(ph * 0.045),
+          "#0f172a",
+          tw,
+          ph * 0.11,
+        ),
         newText(
           tx,
           padY + ph * 0.18,
@@ -794,7 +1776,15 @@ export function instantiateBookSlideTemplate(
       const w = pw * 0.7;
       const x0 = mx - w / 2;
       return [
-        newText(x0, ph * 0.05, "스페셜 메뉴", Math.round(ph * 0.05), "#0f172a", w, ph * 0.1),
+        newText(
+          x0,
+          ph * 0.05,
+          "스페셜 메뉴",
+          Math.round(ph * 0.05),
+          "#0f172a",
+          w,
+          ph * 0.1,
+        ),
         newText(
           x0,
           ph * 0.18,
@@ -826,11 +1816,31 @@ export function instantiateBookSlideTemplate(
       const row2Y = topY + cellH + gap;
       const footW = pw - padX * 2;
       return [
-        newText(mx - titleW / 2, ph * 0.035, "오늘의 추천", Math.round(ph * 0.046), "#0f172a", titleW, ph * 0.08),
-        newImage(leftX, topY, cellW, cellH, stockPath(0), { borderRadius: 10, objectFit: "cover" }),
-        newImage(rightX, topY, cellW, cellH, stockPath(1), { borderRadius: 10, objectFit: "cover" }),
-        newImage(leftX, row2Y, cellW, cellH, stockPath(2), { borderRadius: 10, objectFit: "cover" }),
-        newImage(rightX, row2Y, cellW, cellH, stockPath(3), { borderRadius: 10, objectFit: "cover" }),
+        newText(
+          mx - titleW / 2,
+          ph * 0.035,
+          "오늘의 추천",
+          Math.round(ph * 0.046),
+          "#0f172a",
+          titleW,
+          ph * 0.08,
+        ),
+        newImage(leftX, topY, cellW, cellH, stockPath(0), {
+          borderRadius: 10,
+          objectFit: "cover",
+        }),
+        newImage(rightX, topY, cellW, cellH, stockPath(1), {
+          borderRadius: 10,
+          objectFit: "cover",
+        }),
+        newImage(leftX, row2Y, cellW, cellH, stockPath(2), {
+          borderRadius: 10,
+          objectFit: "cover",
+        }),
+        newImage(rightX, row2Y, cellW, cellH, stockPath(3), {
+          borderRadius: 10,
+          objectFit: "cover",
+        }),
         newText(
           padX,
           row2Y + cellH + ph * 0.04,
@@ -851,10 +1861,27 @@ export function instantiateBookSlideTemplate(
       const textX = leftX + imgW + pw * 0.04;
       const textW = pw - textX - padX;
       return [
-        newText(textX, ph * 0.05, "시즌 메뉴", Math.round(ph * 0.044), "#0f172a", textW, ph * 0.09),
-        newImage(leftX, top0, imgW, imgH, stockPath(4), { borderRadius: 8, objectFit: "cover" }),
-        newImage(leftX, top0 + imgH + gapY, imgW, imgH, stockPath(5), { borderRadius: 8, objectFit: "cover" }),
-        newImage(leftX, top0 + (imgH + gapY) * 2, imgW, imgH, stockPath(6), { borderRadius: 8, objectFit: "cover" }),
+        newText(
+          textX,
+          ph * 0.05,
+          "시즌 메뉴",
+          Math.round(ph * 0.044),
+          "#0f172a",
+          textW,
+          ph * 0.09,
+        ),
+        newImage(leftX, top0, imgW, imgH, stockPath(4), {
+          borderRadius: 8,
+          objectFit: "cover",
+        }),
+        newImage(leftX, top0 + imgH + gapY, imgW, imgH, stockPath(5), {
+          borderRadius: 8,
+          objectFit: "cover",
+        }),
+        newImage(leftX, top0 + (imgH + gapY) * 2, imgW, imgH, stockPath(6), {
+          borderRadius: 8,
+          objectFit: "cover",
+        }),
         newText(
           textX,
           ph * 0.16,
@@ -869,7 +1896,15 @@ export function instantiateBookSlideTemplate(
     case "noticeBoard": {
       const w = pw - padX * 2;
       return [
-        newText(padX, padY, "중요 공지", Math.round(ph * 0.048), "#b91c1c", w, ph * 0.1),
+        newText(
+          padX,
+          padY,
+          "중요 공지",
+          Math.round(ph * 0.048),
+          "#b91c1c",
+          w,
+          ph * 0.1,
+        ),
         newText(
           padX,
           padY + ph * 0.13,
@@ -893,7 +1928,15 @@ export function instantiateBookSlideTemplate(
     case "noticeWeeklyHours": {
       const w = pw - padX * 2;
       return [
-        newText(padX, padY, "운영 시간 안내", Math.round(ph * 0.046), "#0f172a", w, ph * 0.1),
+        newText(
+          padX,
+          padY,
+          "운영 시간 안내",
+          Math.round(ph * 0.046),
+          "#0f172a",
+          w,
+          ph * 0.1,
+        ),
         newText(
           padX,
           padY + ph * 0.12,
@@ -917,7 +1960,15 @@ export function instantiateBookSlideTemplate(
     case "noticeEmergency": {
       const w = pw - padX * 2;
       return [
-        newText(padX, padY, "긴급 안내", Math.round(ph * 0.05), "#b91c1c", w, ph * 0.1),
+        newText(
+          padX,
+          padY,
+          "긴급 안내",
+          Math.round(ph * 0.05),
+          "#b91c1c",
+          w,
+          ph * 0.1,
+        ),
         newText(
           padX,
           padY + ph * 0.12,
@@ -950,7 +2001,15 @@ export function instantiateBookSlideTemplate(
     case "noticeParkingInfo": {
       const w = pw - padX * 2;
       return [
-        newText(padX, padY, "방문·주차 안내", Math.round(ph * 0.044), "#0f172a", w, ph * 0.1),
+        newText(
+          padX,
+          padY,
+          "방문·주차 안내",
+          Math.round(ph * 0.044),
+          "#0f172a",
+          w,
+          ph * 0.1,
+        ),
         newText(
           padX,
           padY + ph * 0.12,
@@ -974,7 +2033,15 @@ export function instantiateBookSlideTemplate(
     case "lifeWifiGuest": {
       const w = pw - padX * 2;
       return [
-        newText(padX, padY, "게스트 Wi-Fi", Math.round(ph * 0.048), "#0f172a", w, ph * 0.11),
+        newText(
+          padX,
+          padY,
+          "게스트 Wi-Fi",
+          Math.round(ph * 0.048),
+          "#0f172a",
+          w,
+          ph * 0.11,
+        ),
         newText(
           padX,
           padY + ph * 0.13,
@@ -998,7 +2065,15 @@ export function instantiateBookSlideTemplate(
     case "lifeRestroom": {
       const w = pw - padX * 2;
       return [
-        newText(padX, padY, "화장실 안내", Math.round(ph * 0.046), "#0f172a", w, ph * 0.1),
+        newText(
+          padX,
+          padY,
+          "화장실 안내",
+          Math.round(ph * 0.046),
+          "#0f172a",
+          w,
+          ph * 0.1,
+        ),
         newText(
           padX,
           padY + ph * 0.12,
@@ -1027,7 +2102,15 @@ export function instantiateBookSlideTemplate(
       const x2 = padX + (colW + gap) * 2;
       const y0 = ph * 0.12;
       return [
-        newText(mx - (pw * 0.44) / 2, padY, "층별 안내", Math.round(ph * 0.044), "#0f172a", pw * 0.44, ph * 0.09),
+        newText(
+          mx - (pw * 0.44) / 2,
+          padY,
+          "층별 안내",
+          Math.round(ph * 0.044),
+          "#0f172a",
+          pw * 0.44,
+          ph * 0.09,
+        ),
         newText(
           x0,
           y0,
@@ -1060,7 +2143,15 @@ export function instantiateBookSlideTemplate(
     case "lifeSafetyHygiene": {
       const w = pw - padX * 2;
       return [
-        newText(padX, padY, "안전·위생 수칙", Math.round(ph * 0.048), "#b91c1c", w, ph * 0.1),
+        newText(
+          padX,
+          padY,
+          "안전·위생 수칙",
+          Math.round(ph * 0.048),
+          "#b91c1c",
+          w,
+          ph * 0.1,
+        ),
         newText(
           padX,
           padY + ph * 0.12,
@@ -1084,7 +2175,15 @@ export function instantiateBookSlideTemplate(
     case "lifeLostFound": {
       const w = pw - padX * 2;
       return [
-        newText(padX, padY, "분실물 센터", Math.round(ph * 0.046), "#0f172a", w, ph * 0.1),
+        newText(
+          padX,
+          padY,
+          "분실물 센터",
+          Math.round(ph * 0.046),
+          "#0f172a",
+          w,
+          ph * 0.1,
+        ),
         newText(
           padX,
           padY + ph * 0.12,
@@ -1108,7 +2207,15 @@ export function instantiateBookSlideTemplate(
     case "lifeTodaySchedule": {
       const w = pw - padX * 2;
       return [
-        newText(padX, padY, "오늘의 일정", Math.round(ph * 0.044), "#0f172a", w, ph * 0.09),
+        newText(
+          padX,
+          padY,
+          "오늘의 일정",
+          Math.round(ph * 0.044),
+          "#0f172a",
+          w,
+          ph * 0.09,
+        ),
         newText(
           padX,
           padY + ph * 0.11,
@@ -1135,8 +2242,19 @@ export function instantiateBookSlideTemplate(
       const textX = padX + imgW + pw * 0.04;
       const textW = pw - textX - padX;
       return [
-        newImage(padX, padY + ph * 0.04, imgW, imgH, stockPath(0), { borderRadius: 12, objectFit: "cover" }),
-        newText(textX, padY + ph * 0.04, "방문을 환영합니다", Math.round(ph * 0.042), "#0f172a", textW, ph * 0.12),
+        newImage(padX, padY + ph * 0.04, imgW, imgH, stockPath(0), {
+          borderRadius: 12,
+          objectFit: "cover",
+        }),
+        newText(
+          textX,
+          padY + ph * 0.04,
+          "방문을 환영합니다",
+          Math.round(ph * 0.042),
+          "#0f172a",
+          textW,
+          ph * 0.12,
+        ),
         newText(
           textX,
           padY + ph * 0.16,
@@ -1161,7 +2279,15 @@ export function instantiateBookSlideTemplate(
       const w = pw * 0.84;
       const x0 = mx - w / 2;
       return [
-        newText(x0, ph * 0.08, "회의실 3-A", Math.round(ph * 0.056), "#0f172a", w, ph * 0.13),
+        newText(
+          x0,
+          ph * 0.08,
+          "회의실 3-A",
+          Math.round(ph * 0.056),
+          "#0f172a",
+          w,
+          ph * 0.13,
+        ),
         newText(
           x0,
           ph * 0.24,
@@ -1185,8 +2311,24 @@ export function instantiateBookSlideTemplate(
     case "lifeStorefront": {
       const w = pw - padX * 2;
       return [
-        newText(padX, padY, "SPRING SALE  ~4/15", Math.round(ph * 0.038), "#b91c1c", w, ph * 0.09),
-        newText(padX, padY + ph * 0.11, "OPEN", Math.round(ph * 0.072), "#0f172a", w, ph * 0.14),
+        newText(
+          padX,
+          padY,
+          "SPRING SALE  ~4/15",
+          Math.round(ph * 0.038),
+          "#b91c1c",
+          w,
+          ph * 0.09,
+        ),
+        newText(
+          padX,
+          padY + ph * 0.11,
+          "OPEN",
+          Math.round(ph * 0.072),
+          "#0f172a",
+          w,
+          ph * 0.14,
+        ),
         newText(
           padX,
           padY + ph * 0.27,
@@ -1210,7 +2352,15 @@ export function instantiateBookSlideTemplate(
     case "lifeEventGate": {
       const w = pw - padX * 2;
       return [
-        newText(padX, padY, "2026 도시놀이 페스티벌", Math.round(ph * 0.044), "#0f172a", w, ph * 0.12),
+        newText(
+          padX,
+          padY,
+          "2026 도시놀이 페스티벌",
+          Math.round(ph * 0.044),
+          "#0f172a",
+          w,
+          ph * 0.12,
+        ),
         newText(
           padX,
           padY + ph * 0.14,
@@ -1237,7 +2387,10 @@ export function instantiateBookSlideTemplate(
       const imgX = mx - imgW / 2;
       const bodyW = pw * 0.88;
       return [
-        newImage(imgX, padY, imgW, imgH, stockPath(8), { borderRadius: 8, objectFit: "cover" }),
+        newImage(imgX, padY, imgW, imgH, stockPath(8), {
+          borderRadius: 8,
+          objectFit: "cover",
+        }),
         newText(
           mx - bodyW / 2,
           padY + imgH + ph * 0.025,
@@ -1273,7 +2426,10 @@ export function instantiateBookSlideTemplate(
       const imgX = mx - imgW / 2;
       const bodyW = pw * 0.86;
       return [
-        newImage(imgX, padY, imgW, imgH, stockPath(2), { borderRadius: 8, objectFit: "cover" }),
+        newImage(imgX, padY, imgW, imgH, stockPath(2), {
+          borderRadius: 8,
+          objectFit: "cover",
+        }),
         newText(
           mx - bodyW / 2,
           padY + imgH + ph * 0.03,
@@ -1310,7 +2466,15 @@ export function instantiateBookSlideTemplate(
       const rx = padX + colW + gap;
       const y0 = ph * 0.08;
       return [
-        newText(lx, y0, "단신 A", Math.round(ph * 0.034), "#0f172a", colW, ph * 0.09),
+        newText(
+          lx,
+          y0,
+          "단신 A",
+          Math.round(ph * 0.034),
+          "#0f172a",
+          colW,
+          ph * 0.09,
+        ),
         newText(
           lx,
           y0 + ph * 0.11,
@@ -1320,7 +2484,15 @@ export function instantiateBookSlideTemplate(
           colW,
           ph * 0.68,
         ),
-        newText(rx, y0, "단신 B", Math.round(ph * 0.034), "#0f172a", colW, ph * 0.09),
+        newText(
+          rx,
+          y0,
+          "단신 B",
+          Math.round(ph * 0.034),
+          "#0f172a",
+          colW,
+          ph * 0.09,
+        ),
         newText(
           rx,
           y0 + ph * 0.11,
@@ -1345,10 +2517,27 @@ export function instantiateBookSlideTemplate(
       const capY = yText + ph * 0.09 + textH + ph * 0.02;
       const capW = pw - padX * 2;
       return [
-        newImage(x0, yImg, colW, imgH, stockPath(6), { borderRadius: 6, objectFit: "cover" }),
-        newImage(x1, yImg, colW, imgH, stockPath(7), { borderRadius: 6, objectFit: "cover" }),
-        newImage(x2, yImg, colW, imgH, stockPath(8), { borderRadius: 6, objectFit: "cover" }),
-        newText(x0, yText, "지역 행사", Math.round(ph * 0.028), "#0f172a", colW, ph * 0.08),
+        newImage(x0, yImg, colW, imgH, stockPath(6), {
+          borderRadius: 6,
+          objectFit: "cover",
+        }),
+        newImage(x1, yImg, colW, imgH, stockPath(7), {
+          borderRadius: 6,
+          objectFit: "cover",
+        }),
+        newImage(x2, yImg, colW, imgH, stockPath(8), {
+          borderRadius: 6,
+          objectFit: "cover",
+        }),
+        newText(
+          x0,
+          yText,
+          "지역 행사",
+          Math.round(ph * 0.028),
+          "#0f172a",
+          colW,
+          ph * 0.08,
+        ),
         newText(
           x0,
           yText + ph * 0.09,
@@ -1358,7 +2547,15 @@ export function instantiateBookSlideTemplate(
           colW,
           textH,
         ),
-        newText(x1, yText, "교통 안내", Math.round(ph * 0.028), "#0f172a", colW, ph * 0.08),
+        newText(
+          x1,
+          yText,
+          "교통 안내",
+          Math.round(ph * 0.028),
+          "#0f172a",
+          colW,
+          ph * 0.08,
+        ),
         newText(
           x1,
           yText + ph * 0.09,
@@ -1368,7 +2565,15 @@ export function instantiateBookSlideTemplate(
           colW,
           textH,
         ),
-        newText(x2, yText, "날씨·미세먼지", Math.round(ph * 0.028), "#0f172a", colW, ph * 0.08),
+        newText(
+          x2,
+          yText,
+          "날씨·미세먼지",
+          Math.round(ph * 0.028),
+          "#0f172a",
+          colW,
+          ph * 0.08,
+        ),
         newText(
           x2,
           yText + ph * 0.09,
@@ -1393,7 +2598,15 @@ export function instantiateBookSlideTemplate(
       const w = pw * 0.88;
       const x0 = mx - w / 2;
       return [
-        newText(x0, ph * 0.06, "오늘의 주요 소식", Math.round(ph * 0.042), "#0f172a", w, ph * 0.11),
+        newText(
+          x0,
+          ph * 0.06,
+          "오늘의 주요 소식",
+          Math.round(ph * 0.042),
+          "#0f172a",
+          w,
+          ph * 0.11,
+        ),
         newText(
           x0,
           ph * 0.2,
@@ -1411,8 +2624,19 @@ export function instantiateBookSlideTemplate(
       const textX = padX + imgW + pw * 0.04;
       const textW = pw - textX - padX;
       return [
-        newImage(padX, padY, imgW, imgH, stockPath(9), { borderRadius: 10, objectFit: "cover" }),
-        newText(textX, padY + ph * 0.04, "현장 인터뷰", Math.round(ph * 0.04), "#0f172a", textW, ph * 0.12),
+        newImage(padX, padY, imgW, imgH, stockPath(9), {
+          borderRadius: 10,
+          objectFit: "cover",
+        }),
+        newText(
+          textX,
+          padY + ph * 0.04,
+          "현장 인터뷰",
+          Math.round(ph * 0.04),
+          "#0f172a",
+          textW,
+          ph * 0.12,
+        ),
         newText(
           textX,
           padY + ph * 0.17,
@@ -1438,7 +2662,10 @@ export function instantiateBookSlideTemplate(
       const titleW = pw * 0.88;
       const subW = pw * 0.75;
       return [
-        newImage(0, 0, pw, imgH, stockPath(0), { borderRadius: 0, objectFit: "cover" }),
+        newImage(0, 0, pw, imgH, stockPath(0), {
+          borderRadius: 0,
+          objectFit: "cover",
+        }),
         newText(
           mx - titleW / 2,
           imgH + ph * 0.04,
@@ -1465,7 +2692,10 @@ export function instantiateBookSlideTemplate(
       const textW = pw - padX * 3 - colW;
       const textX = padX * 2 + colW;
       return [
-        newImage(padX, padY, colW, colH, stockPath(1), { borderRadius: 10, objectFit: "cover" }),
+        newImage(padX, padY, colW, colH, stockPath(1), {
+          borderRadius: 10,
+          objectFit: "cover",
+        }),
         newText(
           textX,
           padY + ph * 0.02,
@@ -1501,7 +2731,10 @@ export function instantiateBookSlideTemplate(
       const imgH = ph * 0.72;
       const tw = pw - inset * 2;
       return [
-        newImage(inset, inset, imgW, imgH, stockPath(6), { borderRadius: 14, objectFit: "cover" }),
+        newImage(inset, inset, imgW, imgH, stockPath(6), {
+          borderRadius: 14,
+          objectFit: "cover",
+        }),
         newText(
           inset,
           inset + imgH + ph * 0.028,
@@ -1530,8 +2763,14 @@ export function instantiateBookSlideTemplate(
       const x0 = padX;
       const titleW = pw * 0.88;
       return [
-        newImage(x0, topY, thumbW, thumbH, stockPath(0), { borderRadius: 6, objectFit: "cover" }),
-        newImage(x0 + thumbW + gap, topY, thumbW, thumbH, stockPath(1), { borderRadius: 6, objectFit: "cover" }),
+        newImage(x0, topY, thumbW, thumbH, stockPath(0), {
+          borderRadius: 6,
+          objectFit: "cover",
+        }),
+        newImage(x0 + thumbW + gap, topY, thumbW, thumbH, stockPath(1), {
+          borderRadius: 6,
+          objectFit: "cover",
+        }),
         newImage(x0 + (thumbW + gap) * 2, topY, thumbW, thumbH, stockPath(2), {
           borderRadius: 6,
           objectFit: "cover",
@@ -1571,8 +2810,14 @@ export function instantiateBookSlideTemplate(
       const topY = ph * 0.06;
       const tw = pw - padX * 2;
       return [
-        newImage(leftX, topY, bigW, bigH, stockPath(4), { borderRadius: 12, objectFit: "cover" }),
-        newImage(rightX, topY, smallW, smallH, stockPath(5), { borderRadius: 8, objectFit: "cover" }),
+        newImage(leftX, topY, bigW, bigH, stockPath(4), {
+          borderRadius: 12,
+          objectFit: "cover",
+        }),
+        newImage(rightX, topY, smallW, smallH, stockPath(5), {
+          borderRadius: 8,
+          objectFit: "cover",
+        }),
         newImage(rightX, topY + smallH + gap, smallW, smallH, stockPath(6), {
           borderRadius: 8,
           objectFit: "cover",
@@ -1601,7 +2846,15 @@ export function instantiateBookSlideTemplate(
       const w = pw * 0.84;
       const x0 = mx - w / 2;
       return [
-        newText(x0, ph * 0.28, "BE PRESENT", Math.round(ph * 0.09), "#0f172a", w, ph * 0.18),
+        newText(
+          x0,
+          ph * 0.28,
+          "BE PRESENT",
+          Math.round(ph * 0.09),
+          "#0f172a",
+          w,
+          ph * 0.18,
+        ),
         newText(
           x0,
           ph * 0.48,
@@ -1631,8 +2884,19 @@ export function instantiateBookSlideTemplate(
       const y0 = imgH + ph * 0.04;
       const titleW = pw * 0.9;
       return [
-        newImage(0, 0, pw, imgH, stockPath(7), { borderRadius: 0, objectFit: "cover" }),
-        newText(mx - titleW / 2, y0, "화보: 도시의 빛", Math.round(ph * 0.048), "#0f172a", titleW, ph * 0.1),
+        newImage(0, 0, pw, imgH, stockPath(7), {
+          borderRadius: 0,
+          objectFit: "cover",
+        }),
+        newText(
+          mx - titleW / 2,
+          y0,
+          "화보: 도시의 빛",
+          Math.round(ph * 0.048),
+          "#0f172a",
+          titleW,
+          ph * 0.1,
+        ),
         newText(
           lx,
           y0 + ph * 0.12,

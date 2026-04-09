@@ -1,10 +1,11 @@
 import { BookMarked } from "lucide-react";
 import Link from "next/link";
-import type { BookListItem as BookListItemType } from "@/lib/api";
-import { formatDateMediumShort } from "@/lib/format-date";
+
 import { AuthorAvatarInline } from "@/components/posts/AuthorAvatarInline";
 import { Card } from "@/components/ui/card";
 import { SafeImage } from "@/components/ui/safe-image";
+import type { BookListItem as BookListItemType } from "@/lib/api";
+import { formatDateMediumShort } from "@/lib/format-date";
 
 type Props = {
   book: BookListItemType;
@@ -66,7 +67,8 @@ export function BookListItem({ book, coverThumbDataUrl }: Props) {
               <p className="flex min-h-8 shrink-0 flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
                 <AuthorAvatarInline author={book.author} size="xs">
                   {" "}
-                  · 페이지 {book.pageCount} · {formatDateMediumShort(book.updatedAt)}
+                  · 페이지 {book.pageCount} ·{" "}
+                  {formatDateMediumShort(book.updatedAt)}
                 </AuthorAvatarInline>
               </p>
             </Link>

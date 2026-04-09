@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+
 import { handleRouteError } from "@/server/http/api-response";
 import { NewsService } from "@/server/services/news.service";
 

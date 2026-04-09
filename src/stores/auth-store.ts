@@ -1,16 +1,17 @@
+import { isAxiosError } from "axios";
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 import { useShallow } from "zustand/react/shallow";
-import { isAxiosError } from "axios";
+
 import {
   api,
+  type AuthUser,
   fetchMe,
   getAccessToken,
   parseApiErrorMessage,
   refreshAccessToken,
   setAccessToken,
-  type AuthUser,
 } from "@/lib/api";
 import { appLog } from "@/lib/app-log";
 import { queryClient } from "@/lib/query-client";
@@ -106,10 +107,13 @@ export const useAuthStore = create<AuthState>()(
       signIn: async (email, password) => {
         appLog("auth", "signIn 시도", { email });
         try {
-          const { data } = await api.post<{ access_token?: string }>("/auth/signin", {
-            email,
-            password,
-          });
+          const { data } = await api.post<{ access_token?: string }>(
+            "/auth/signin",
+            {
+              email,
+              password,
+            },
+          );
           const token = data.access_token;
           if (!token) throw new Error("액세스 토큰을 받지 못했습니다.");
           setAccessToken(token);

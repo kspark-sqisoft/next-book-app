@@ -1,7 +1,9 @@
 import http from "node:http";
 import { parse } from "node:url";
+
 import next from "next";
 import { Server as SocketIOServer } from "socket.io";
+
 import { attachChatNamespace } from "@/server/chat/attach-chat-namespace";
 
 const dev = process.env.NODE_ENV !== "production";
@@ -24,7 +26,6 @@ app.prepare().then(() => {
   attachChatNamespace(io.of("/chat"));
 
   httpServer.listen(port, hostname, () => {
-    // eslint-disable-next-line no-console -- bootstrap log
     console.log(`> Ready on http://${hostname}:${port}`);
   });
 });

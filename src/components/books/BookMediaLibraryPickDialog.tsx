@@ -1,11 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
 import { Film, Library } from "lucide-react";
-import { publicAssetUrl } from "@/lib/api";
-import {
-  BOOK_MEDIA_LIBRARY_CHANGED,
-  loadBookMediaLibrary,
-  type BookMediaLibraryItem,
-} from "@/lib/book-media-library";
+import { useEffect, useMemo, useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,6 +10,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { publicAssetUrl } from "@/lib/api";
+import {
+  BOOK_MEDIA_LIBRARY_CHANGED,
+  type BookMediaLibraryItem,
+  loadBookMediaLibrary,
+} from "@/lib/book-media-library";
 import { cn } from "@/lib/utils";
 
 export function BookMediaLibraryPickDialog({
@@ -57,7 +58,10 @@ export function BookMediaLibraryPickDialog({
       <DialogContent className="max-h-[min(520px,85vh)] gap-0 overflow-hidden p-0 sm:max-w-md">
         <DialogHeader className="border-b border-border px-4 py-3 text-left">
           <DialogTitle className="flex items-center gap-2 text-base">
-            <Library className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+            <Library
+              className="size-4 shrink-0 text-muted-foreground"
+              aria-hidden
+            />
             {title}
           </DialogTitle>
           <DialogDescription className="text-xs">
@@ -98,7 +102,11 @@ export function BookMediaLibraryPickDialog({
                       )}
                     >
                       {thumb ? (
-                        <img src={thumb} alt="" className="size-full object-cover" />
+                        <img
+                          src={thumb}
+                          alt=""
+                          className="size-full object-cover"
+                        />
                       ) : (
                         <div className="flex size-full items-center justify-center text-muted-foreground">
                           <Film className="size-8" aria-hidden />
@@ -115,7 +123,11 @@ export function BookMediaLibraryPickDialog({
           )}
         </div>
         <DialogFooter className="border-t border-border px-4 py-3 sm:justify-end">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+          >
             닫기
           </Button>
         </DialogFooter>

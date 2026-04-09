@@ -1,12 +1,13 @@
 import { join } from "node:path";
+
 import {
   POST_IMAGES_SUBDIR,
   POST_VIDEO_POSTERS_SUBDIR,
   POST_VIDEOS_SUBDIR,
   UPLOAD_ROOT,
 } from "@/server/env";
-import { tryUnlink } from "@/server/uploads/write-file";
 import type { UploadedPostFile } from "@/server/services/posts.service";
+import { tryUnlink } from "@/server/uploads/write-file";
 
 export async function cleanupPostUploadedFiles(
   files: UploadedPostFile[],

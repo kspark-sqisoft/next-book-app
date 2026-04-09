@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+
 import { handleRouteError } from "@/server/http/api-response";
 import { requireAdmin } from "@/server/http/request-auth";
 import { UsersService } from "@/server/services/users.service";

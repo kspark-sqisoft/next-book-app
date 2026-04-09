@@ -10,8 +10,25 @@
  * Porsche 911 (930 Turbo 1975): GitHub MIT — Utkarsh Pathrabe
  * https://github.com/UtkarshPathrabe/Porche-911-930-Turbo-1975-3D-Model · `public/porsche-911-930-turbo/scene.gltf`
  */
-import * as THREE from "three";
 import {
+  ContactShadows,
+  Environment,
+  Lightformer,
+  OrbitControls,
+  Stats,
+  useGLTF,
+} from "@react-three/drei";
+import {
+  applyProps,
+  Canvas,
+  type ThreeElements,
+  useLoader,
+} from "@react-three/fiber";
+import { Bloom, EffectComposer, LUT } from "@react-three/postprocessing";
+import { Leva, useControls } from "leva";
+import { LUTCubeLoader } from "postprocessing";
+import {
+  type RefObject,
   Suspense,
   useCallback,
   useEffect,
@@ -19,13 +36,9 @@ import {
   useMemo,
   useRef,
   useState,
-  type RefObject,
 } from "react";
-import { Canvas, applyProps, useLoader, type ThreeElements } from "@react-three/fiber";
-import { ContactShadows, Environment, Lightformer, OrbitControls, Stats, useGLTF } from "@react-three/drei";
-import { Bloom, EffectComposer, LUT } from "@react-three/postprocessing";
-import { LUTCubeLoader } from "postprocessing";
-import { Leva, useControls } from "leva";
+import * as THREE from "three";
+
 import { cn } from "@/lib/utils";
 
 type PrimitiveWithoutObject = Omit<ThreeElements["primitive"], "object">;
@@ -126,7 +139,8 @@ function tuple3FromR3fPosition(
 ): [number, number, number] {
   if (p == null) return [0, 0, 0];
   if (typeof p === "number") return [0, 0, 0];
-  if (Array.isArray(p)) return [Number(p[0] ?? 0), Number(p[1] ?? 0), Number(p[2] ?? 0)];
+  if (Array.isArray(p))
+    return [Number(p[0] ?? 0), Number(p[1] ?? 0), Number(p[2] ?? 0)];
   return [p.x, p.y, p.z];
 }
 
@@ -142,17 +156,37 @@ function Lamborghini({ paintColor, ...props }: EnvmapCarProps) {
       if (!mesh.isMesh) return;
       if (mesh.name.startsWith("glass")) mesh.geometry.computeVertexNormals();
       if (mesh.name === "silver_001_BreakDiscs_0")
-        mesh.material = applyProps(materials.BreakDiscs.clone(), { color: "#ddd" }) as THREE.Material;
+        mesh.material = applyProps(materials.BreakDiscs.clone(), {
+          color: "#ddd",
+        }) as THREE.Material;
     });
     const glass003 = nodes.glass_003 as THREE.Mesh | undefined;
     if (glass003) glass003.scale.setScalar(2.7);
-    applyProps(materials.FrameBlack, { metalness: 0.75, roughness: 0, color: "black" });
+    applyProps(materials.FrameBlack, {
+      metalness: 0.75,
+      roughness: 0,
+      color: "black",
+    });
     applyProps(materials.Chrome, { metalness: 1, roughness: 0, color: "#333" });
-    applyProps(materials.BreakDiscs, { metalness: 0.2, roughness: 0.2, color: "#555" });
-    applyProps(materials.TiresGum, { metalness: 0, roughness: 0.4, color: "#181818" });
+    applyProps(materials.BreakDiscs, {
+      metalness: 0.2,
+      roughness: 0.2,
+      color: "#555",
+    });
+    applyProps(materials.TiresGum, {
+      metalness: 0,
+      roughness: 0.4,
+      color: "#181818",
+    });
     applyProps(materials.GreyElements, { metalness: 0, color: "#292929" });
-    applyProps(materials.emitbrake, { emissiveIntensity: 3, toneMapped: false });
-    applyProps(materials.LightsFrontLed, { emissiveIntensity: 3, toneMapped: false });
+    applyProps(materials.emitbrake, {
+      emissiveIntensity: 3,
+      toneMapped: false,
+    });
+    applyProps(materials.LightsFrontLed, {
+      emissiveIntensity: 3,
+      toneMapped: false,
+    });
     const yellow = nodes.yellow_WhiteCar_0 as THREE.Mesh | undefined;
     if (yellow) {
       yellow.material = new THREE.MeshPhysicalMaterial({
@@ -181,8 +215,16 @@ License: MIT — see `public/porsche-911-930-turbo/LICENSE`
 Source: https://github.com/UtkarshPathrabe/Porche-911-930-Turbo-1975-3D-Model
 Title: Porsche 911 930 Turbo (1975) glTF
 */
-function Porsche911({ paintColor, position, scale, rotation, ...props }: EnvmapCarProps) {
-  const gltf = useGLTF("/porsche-911-930-turbo/scene.gltf") as unknown as LamborghiniGltf;
+function Porsche911({
+  paintColor,
+  position,
+  scale,
+  rotation,
+  ...props
+}: EnvmapCarProps) {
+  const gltf = useGLTF(
+    "/porsche-911-930-turbo/scene.gltf",
+  ) as unknown as LamborghiniGltf;
   const { scene, nodes, materials } = gltf;
   const [px, py, pz] = tuple3FromR3fPosition(position);
   const s = uniformScaleFromProps(scale);
@@ -200,7 +242,9 @@ function Porsche911({ paintColor, position, scale, rotation, ...props }: EnvmapC
         mesh.castShadow = true;
       }
     });
-    const plastics = materials["930_plastics"] as THREE.MeshStandardMaterial | undefined;
+    const plastics = materials["930_plastics"] as
+      | THREE.MeshStandardMaterial
+      | undefined;
     if (plastics) {
       applyProps(plastics, {
         color: "#222",
@@ -210,11 +254,20 @@ function Porsche911({ paintColor, position, scale, rotation, ...props }: EnvmapC
       });
     }
     const glassMat = materials.glass as THREE.MeshStandardMaterial | undefined;
-    if (glassMat) applyProps(glassMat, { color: "black", roughness: 0, clearcoat: 0.1 });
+    if (glassMat)
+      applyProps(glassMat, { color: "black", roughness: 0, clearcoat: 0.1 });
     const coat = materials.coat as THREE.MeshStandardMaterial | undefined;
-    if (coat) applyProps(coat, { envMapIntensity: 4, roughness: 0.5, metalness: 1 });
-    const chromes = materials["930_chromes"] as THREE.MeshStandardMaterial | undefined;
-    if (chromes) applyProps(chromes, { metalness: 1, roughness: 0.12, envMapIntensity: 1.25 });
+    if (coat)
+      applyProps(coat, { envMapIntensity: 4, roughness: 0.5, metalness: 1 });
+    const chromes = materials["930_chromes"] as
+      | THREE.MeshStandardMaterial
+      | undefined;
+    if (chromes)
+      applyProps(chromes, {
+        metalness: 1,
+        roughness: 0.12,
+        envMapIntensity: 1.25,
+      });
     const paint = materials.paint as THREE.MeshStandardMaterial | undefined;
     if (paint) {
       applyProps(paint, {
@@ -235,13 +288,30 @@ function Porsche911({ paintColor, position, scale, rotation, ...props }: EnvmapC
   );
 }
 
-function EnvmapVehicle({ model, paintColor }: { model: EnvmapCarModelId; paintColor: string }) {
+function EnvmapVehicle({
+  model,
+  paintColor,
+}: {
+  model: EnvmapCarModelId;
+  paintColor: string;
+}) {
   if (model === "porsche") {
     return (
-      <Porsche911 paintColor={paintColor} scale={1.5} position={[-0.5, -0.2, 0]} rotation={[0, Math.PI / 1.5, 0]} />
+      <Porsche911
+        paintColor={paintColor}
+        scale={1.5}
+        position={[-0.5, -0.2, 0]}
+        rotation={[0, Math.PI / 1.5, 0]}
+      />
     );
   }
-  return <Lamborghini paintColor={paintColor} rotation={[0, Math.PI / 1.5, 0]} scale={0.015} />;
+  return (
+    <Lamborghini
+      paintColor={paintColor}
+      rotation={[0, Math.PI / 1.5, 0]}
+      scale={0.015}
+    />
+  );
 }
 
 type EnvmapPostEffectsProps = {
@@ -337,8 +407,12 @@ const OVERLAY_TOP_CLASS = "top-14";
 const LEVA_PANEL_MAX_H_CLASS = "max-h-[calc(100%-9.5rem)]";
 
 export function HomeHeroEnvmap3D({ className }: { className?: string }) {
-  const params = useControls("Effects", envmapEffectsSchema, { collapsed: true });
-  const vehicle = useControls("Vehicle", vehicleControlsSchema, { collapsed: true });
+  const params = useControls("Effects", envmapEffectsSchema, {
+    collapsed: true,
+  });
+  const vehicle = useControls("Vehicle", vehicleControlsSchema, {
+    collapsed: true,
+  });
   /** 진입 시 오른쪽 패널은 접힌 상태(타이틀 바만). */
   const [effectsPanelCollapsed, setEffectsPanelCollapsed] = useState(true);
   const statsParentRef = useRef<HTMLDivElement>(null);
@@ -371,12 +445,17 @@ export function HomeHeroEnvmap3D({ className }: { className?: string }) {
           <div
             className={cn(
               "min-h-0 overflow-x-hidden overscroll-y-contain",
-              effectsPanelCollapsed ? "max-h-none flex-none overflow-y-hidden" : "max-h-full flex-1 overflow-y-auto",
+              effectsPanelCollapsed
+                ? "max-h-none flex-none overflow-y-hidden"
+                : "max-h-full flex-1 overflow-y-auto",
             )}
           >
             <Leva
               fill
-              collapsed={{ collapsed: effectsPanelCollapsed, onChange: setEffectsPanelCollapsed }}
+              collapsed={{
+                collapsed: effectsPanelCollapsed,
+                onChange: setEffectsPanelCollapsed,
+              }}
               titleBar={{ title: "Effects", drag: false, filter: true }}
             />
           </div>
@@ -410,24 +489,77 @@ export function HomeHeroEnvmap3D({ className }: { className?: string }) {
             opacity={1}
             far={20}
           />
-          <mesh scale={4} position={[3, -1.161, -1.5]} rotation={[-Math.PI / 2, 0, Math.PI / 2.5]}>
+          <mesh
+            scale={4}
+            position={[3, -1.161, -1.5]}
+            rotation={[-Math.PI / 2, 0, Math.PI / 2.5]}
+          >
             <ringGeometry args={[0.9, 1, 4, 1]} />
             <meshStandardMaterial color="white" roughness={0.75} />
           </mesh>
-          <mesh scale={4} position={[-3, -1.161, -1]} rotation={[-Math.PI / 2, 0, Math.PI / 2.5]}>
+          <mesh
+            scale={4}
+            position={[-3, -1.161, -1]}
+            rotation={[-Math.PI / 2, 0, Math.PI / 2.5]}
+          >
             <ringGeometry args={[0.9, 1, 3, 1]} />
             <meshStandardMaterial color="white" roughness={0.75} />
           </mesh>
           <Environment resolution={512}>
-            <Lightformer intensity={2} rotation-x={Math.PI / 2} position={[0, 4, -9]} scale={[10, 1, 1]} />
-            <Lightformer intensity={2} rotation-x={Math.PI / 2} position={[0, 4, -6]} scale={[10, 1, 1]} />
-            <Lightformer intensity={2} rotation-x={Math.PI / 2} position={[0, 4, -3]} scale={[10, 1, 1]} />
-            <Lightformer intensity={2} rotation-x={Math.PI / 2} position={[0, 4, 0]} scale={[10, 1, 1]} />
-            <Lightformer intensity={2} rotation-x={Math.PI / 2} position={[0, 4, 3]} scale={[10, 1, 1]} />
-            <Lightformer intensity={2} rotation-x={Math.PI / 2} position={[0, 4, 6]} scale={[10, 1, 1]} />
-            <Lightformer intensity={2} rotation-x={Math.PI / 2} position={[0, 4, 9]} scale={[10, 1, 1]} />
-            <Lightformer intensity={2} rotation-y={Math.PI / 2} position={[-50, 2, 0]} scale={[100, 2, 1]} />
-            <Lightformer intensity={2} rotation-y={-Math.PI / 2} position={[50, 2, 0]} scale={[100, 2, 1]} />
+            <Lightformer
+              intensity={2}
+              rotation-x={Math.PI / 2}
+              position={[0, 4, -9]}
+              scale={[10, 1, 1]}
+            />
+            <Lightformer
+              intensity={2}
+              rotation-x={Math.PI / 2}
+              position={[0, 4, -6]}
+              scale={[10, 1, 1]}
+            />
+            <Lightformer
+              intensity={2}
+              rotation-x={Math.PI / 2}
+              position={[0, 4, -3]}
+              scale={[10, 1, 1]}
+            />
+            <Lightformer
+              intensity={2}
+              rotation-x={Math.PI / 2}
+              position={[0, 4, 0]}
+              scale={[10, 1, 1]}
+            />
+            <Lightformer
+              intensity={2}
+              rotation-x={Math.PI / 2}
+              position={[0, 4, 3]}
+              scale={[10, 1, 1]}
+            />
+            <Lightformer
+              intensity={2}
+              rotation-x={Math.PI / 2}
+              position={[0, 4, 6]}
+              scale={[10, 1, 1]}
+            />
+            <Lightformer
+              intensity={2}
+              rotation-x={Math.PI / 2}
+              position={[0, 4, 9]}
+              scale={[10, 1, 1]}
+            />
+            <Lightformer
+              intensity={2}
+              rotation-y={Math.PI / 2}
+              position={[-50, 2, 0]}
+              scale={[100, 2, 1]}
+            />
+            <Lightformer
+              intensity={2}
+              rotation-y={-Math.PI / 2}
+              position={[50, 2, 0]}
+              scale={[100, 2, 1]}
+            />
             <Lightformer
               form="ring"
               color="red"

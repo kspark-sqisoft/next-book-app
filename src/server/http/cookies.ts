@@ -1,10 +1,11 @@
 import { parse, serialize } from "cookie";
-import {
-  REFRESH_TOKEN_COOKIE,
-  REFRESH_TOKEN_MAX_AGE_MS,
-} from "@/server/env";
 
-export function getRequestCookie(request: Request, name: string): string | undefined {
+import { REFRESH_TOKEN_COOKIE, REFRESH_TOKEN_MAX_AGE_MS } from "@/server/env";
+
+export function getRequestCookie(
+  request: Request,
+  name: string,
+): string | undefined {
   return parse(request.headers.get("cookie") ?? "")[name];
 }
 

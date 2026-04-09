@@ -1,8 +1,14 @@
 import { existsSync } from "node:fs";
 import { unlink } from "node:fs/promises";
 import { join } from "node:path";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+
 import type { SQL } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+
+import {
+  type AuthActor,
+  canMutateOwnedResource,
+} from "@/server/auth/auth-policy";
 import { getDb } from "@/server/db";
 import {
   post,
@@ -17,18 +23,17 @@ import {
   POST_VIDEOS_SUBDIR,
   UPLOAD_ROOT,
 } from "@/server/env";
-import { type AuthActor, canMutateOwnedResource } from "@/server/auth/auth-policy";
 import { HttpError } from "@/server/http/http-error";
+import { normalizePostCategory } from "@/server/posts/post-categories";
+import {
+  postContentPlainLength,
+  sanitizePostContentHtml,
+} from "@/server/posts/post-content-sanitize";
 import { POST_ATTACHMENTS_MAX_COUNT } from "@/server/posts/post-upload-constants";
 import {
   POST_MEDIA_IMAGE_MAX_BYTES,
   POST_MEDIA_POSTER_MAX_BYTES,
 } from "@/server/posts/post-upload-constants";
-import {
-  postContentPlainLength,
-  sanitizePostContentHtml,
-} from "@/server/posts/post-content-sanitize";
-import { normalizePostCategory } from "@/server/posts/post-categories";
 
 const IMAGE_MIME = new Set([
   "image/jpeg",
@@ -253,10 +258,7 @@ export class PostsService {
         .select({ postId: postLike.postId })
         .from(postLike)
         .where(
-          and(
-            eq(postLike.userId, viewerId),
-            inArray(postLike.postId, postIds),
-          ),
+          and(eq(postLike.userId, viewerId), inArray(postLike.postId, postIds)),
         );
       for (const row of likedRows) {
         const cur = map.get(row.postId);
@@ -277,9 +279,7 @@ export class PostsService {
     const [mine] = await db
       .select({ id: postLike.id })
       .from(postLike)
-      .where(
-        and(eq(postLike.userId, userId), eq(postLike.postId, postId)),
-      )
+      .where(and(eq(postLike.userId, userId), eq(postLike.postId, postId)))
       .limit(1);
     return { likeCount, likedByMe: Boolean(mine) };
   }
@@ -291,7 +291,10 @@ export class PostsService {
     ).toString("base64url");
   }
 
-  private decodePostListCursor(cursor: string): { createdAt: Date; id: number } {
+  private decodePostListCursor(cursor: string): {
+    createdAt: Date;
+    id: number;
+  } {
     try {
       const json: unknown = JSON.parse(
         Buffer.from(cursor, "base64url").toString("utf8"),
@@ -753,7 +756,9 @@ export class PostsService {
     if (!canMutateOwnedResource(actor, row.author.id)) {
       throw new HttpError(403, "Forbidden");
     }
-    for (const a of this.sortedAttachments(row.attachments as AttachmentRow[])) {
+    for (const a of this.sortedAttachments(
+      row.attachments as AttachmentRow[],
+    )) {
       await this.unlinkAttachmentRow(a);
     }
     await db.delete(postComment).where(eq(postComment.postId, id));
@@ -773,7 +778,10 @@ export class PostsService {
     try {
       await db.insert(postLike).values({ userId, postId });
     } catch (e: unknown) {
-      const msg = e && typeof e === "object" && "code" in e ? String((e as { code: string }).code) : "";
+      const msg =
+        e && typeof e === "object" && "code" in e
+          ? String((e as { code: string }).code)
+          : "";
       if (msg !== "23505") throw e;
     }
     return this.getLikeState(postId, userId);

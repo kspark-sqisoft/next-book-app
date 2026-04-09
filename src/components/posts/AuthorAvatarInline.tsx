@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
-import type { PostAuthor } from "@/lib/api";
+
 import { SafeImage } from "@/components/ui/safe-image";
+import type { PostAuthor } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 type Size = "xs" | "sm" | "md";
@@ -28,7 +29,10 @@ export function AuthorAvatarInline({
 }) {
   return (
     <span
-      className={cn("inline-flex min-w-0 max-w-full items-center gap-2", className)}
+      className={cn(
+        "inline-flex min-w-0 max-w-full items-center gap-2",
+        className,
+      )}
     >
       {author.imageUrl ? (
         <SafeImage

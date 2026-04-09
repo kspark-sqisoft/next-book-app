@@ -1,17 +1,16 @@
 "use client";
 
+import { ChevronDown, ChevronUp } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { startTransition, useEffect, useRef, useState } from "react";
-import { NavLink } from "@/components/NavLink";
-import { ChevronDown, ChevronUp } from "lucide-react";
+
 import { ChatDock } from "@/components/chat/ChatDock";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
-import { Toaster } from "@/components/ui/sonner";
-import { useAuth } from "@/stores/auth-store";
+import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import { SafeImage } from "@/components/ui/safe-image";
-import { cn } from "@/lib/utils";
+import { Toaster } from "@/components/ui/sonner";
 import { SITE_APP_MAIN_SCROLL_ID } from "@/lib/app-layout-scroll";
 import {
   floatingDockBookSiteChromeToggleClass,
@@ -20,9 +19,13 @@ import {
   floatingDockBookSiteHeaderCollapsedStripClass,
   floatingDockBookSiteHeaderCollapsedStripInnerClass,
 } from "@/lib/floating-dock-chrome";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/stores/auth-store";
 
-const BOOK_WORKSPACE_CHROME_HEADER_KEY = "book-workspace-chrome-header-collapsed";
-const BOOK_WORKSPACE_CHROME_FOOTER_KEY = "book-workspace-chrome-footer-collapsed";
+const BOOK_WORKSPACE_CHROME_HEADER_KEY =
+  "book-workspace-chrome-header-collapsed";
+const BOOK_WORKSPACE_CHROME_FOOTER_KEY =
+  "book-workspace-chrome-footer-collapsed";
 
 /** `true` = 접힘. 저장값 없음 → 북 상세 첫 진입은 접힌 상태가 기본 */
 function readBookChromeCollapsed(key: string): boolean {
@@ -67,14 +70,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const location = { pathname: usePathname() };
   /** 북 워크스페이스(상세·새 북 편집)만 넓게; `/books` 목록은 글 목록과 동일 `max-w-3xl` */
   const wideMain =
-    location.pathname === "/books/new" || /^\/books\/\d+/.test(location.pathname);
+    location.pathname === "/books/new" ||
+    /^\/books\/\d+/.test(location.pathname);
   /** `BookWorkspaceShell` 사용 라우트 — 사이트 헤더 아래에 맞추려 main 패딩 제거·flex 높이 체인 */
   const bookShellRoute =
-    location.pathname === "/books/new" || /^\/books\/\d+$/.test(location.pathname);
+    location.pathname === "/books/new" ||
+    /^\/books\/\d+$/.test(location.pathname);
   /** 북 **상세**(`/books/:숫자`)만 사이트 헤더·푸터 접기/펼치기 — `/books/new`·그 외 라우트는 항상 헤더·푸터 표시 */
   const bookDetailChromeRoute = /^\/books\/\d+$/.test(location.pathname);
   /** 북 슬라이드쇼 미리보기 — 전체 화면에 가깝게 쓰므로 플로팅 채팅 숨김 */
-  const bookPresentationPreviewRoute = /^\/books\/\d+\/preview$/.test(location.pathname);
+  const bookPresentationPreviewRoute = /^\/books\/\d+\/preview$/.test(
+    location.pathname,
+  );
   /** 홈: 3D 씬이 헤더~푸터 사이를 꽉 채우도록 뷰포트 높이·main flex 체인 */
   const homeRoute = location.pathname === "/";
   const fullViewportShell = bookShellRoute || homeRoute;
@@ -95,19 +102,29 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     if (bookDetailChromeEnteredRef.current) return;
     bookDetailChromeEnteredRef.current = true;
     startTransition(() => {
-      setBookSiteHeaderCollapsed(readBookChromeCollapsed(BOOK_WORKSPACE_CHROME_HEADER_KEY));
-      setBookSiteFooterCollapsed(readBookChromeCollapsed(BOOK_WORKSPACE_CHROME_FOOTER_KEY));
+      setBookSiteHeaderCollapsed(
+        readBookChromeCollapsed(BOOK_WORKSPACE_CHROME_HEADER_KEY),
+      );
+      setBookSiteFooterCollapsed(
+        readBookChromeCollapsed(BOOK_WORKSPACE_CHROME_FOOTER_KEY),
+      );
     });
   }, [bookDetailChromeRoute]);
 
   useEffect(() => {
     if (!bookDetailChromeRoute) return;
-    writeBookChromeCollapsed(BOOK_WORKSPACE_CHROME_HEADER_KEY, bookSiteHeaderCollapsed);
+    writeBookChromeCollapsed(
+      BOOK_WORKSPACE_CHROME_HEADER_KEY,
+      bookSiteHeaderCollapsed,
+    );
   }, [bookDetailChromeRoute, bookSiteHeaderCollapsed]);
 
   useEffect(() => {
     if (!bookDetailChromeRoute) return;
-    writeBookChromeCollapsed(BOOK_WORKSPACE_CHROME_FOOTER_KEY, bookSiteFooterCollapsed);
+    writeBookChromeCollapsed(
+      BOOK_WORKSPACE_CHROME_FOOTER_KEY,
+      bookSiteFooterCollapsed,
+    );
   }, [bookDetailChromeRoute, bookSiteFooterCollapsed]);
 
   const showBookSiteHeader =
@@ -129,7 +146,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             className={cn(
               "mx-auto flex h-12 w-full items-center justify-between gap-4 px-4",
               /* 북 풀블리드여도 내비는 홈·글·북 목록과 동일 `max-w-3xl` 컬럼에 맞춤 */
-              bookShellRoute ? "max-w-3xl" : wideMain ? "max-w-6xl" : "max-w-3xl",
+              bookShellRoute
+                ? "max-w-3xl"
+                : wideMain
+                  ? "max-w-6xl"
+                  : "max-w-3xl",
             )}
           >
             <nav className="flex items-center gap-2 text-sm font-medium sm:gap-3">
@@ -142,7 +163,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <NavLink href="/books" className={headerNavClass}>
                 북
               </NavLink>
-              <NavLink href="/cats" className={headerNavClass}>
+              {/** 공부용: Cats만 명시적 full RSC 프리패치 (`prefetch={true}`). 다른 탭은 Link 기본 동작. */}
+              <NavLink href="/cats" prefetch className={headerNavClass}>
                 Cats
               </NavLink>
             </nav>
@@ -173,7 +195,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       {user.name || user.email}
                     </span>
                   </Link>
-                  <Button type="button" variant="outline" size="sm" onClick={() => void signOut()}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void signOut()}
+                  >
                     로그아웃
                   </Button>
                   {bookDetailChromeRoute ? (
@@ -265,8 +292,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 react-interactive
               </p>
               <p className="max-w-md text-[11px] leading-snug text-muted-foreground sm:text-xs">
-                NestJS와 React로 짠 풀스택 학습·실험 공간입니다. JWT 로그인, 글·댓글·좋아요, 슬라이드형
-                북 편집기와 레이아웃 AI, 실시간 채팅, Cats CRUD까지 한 프로젝트에서 이어집니다.
+                NestJS와 React로 짠 풀스택 학습·실험 공간입니다. JWT 로그인,
+                글·댓글·좋아요, 슬라이드형 북 편집기와 레이아웃 AI, 실시간 채팅,
+                Cats CRUD까지 한 프로젝트에서 이어집니다.
               </p>
             </div>
             <nav
@@ -282,7 +310,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <NavLink href="/books" className={footerNavClass}>
                 북
               </NavLink>
-              <NavLink href="/cats" className={footerNavClass}>
+              <NavLink href="/cats" prefetch className={footerNavClass}>
                 Cats
               </NavLink>
               {user ? (
@@ -334,7 +362,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       ) : null}
       {user && !bookPresentationPreviewRoute ? <ChatDock /> : null}
-      <Toaster position="bottom-center" richColors closeButton duration={4000} />
+      <Toaster
+        position="bottom-center"
+        richColors
+        closeButton
+        duration={4000}
+      />
     </div>
   );
 }

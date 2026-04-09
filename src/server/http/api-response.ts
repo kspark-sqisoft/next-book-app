@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+
 import { HttpError } from "@/server/http/http-error";
 
 function statusText(status: number): string {

@@ -1,4 +1,4 @@
-import sanitizeHtml from 'sanitize-html';
+import sanitizeHtml from "sanitize-html";
 
 const ALIGN = /^(left|right|center|justify)$/;
 /** TipTap 글자색: hex / rgb / rgba / hsl — url·expression 차단 */
@@ -19,60 +19,60 @@ const FONT_SIZE_STYLE = [
 export function sanitizePostContentHtml(raw: string): string {
   return sanitizeHtml(raw, {
     allowedTags: [
-      'p',
-      'br',
-      'strong',
-      'em',
-      'b',
-      'i',
-      's',
-      'strike',
-      'del',
-      'u',
-      'h1',
-      'h2',
-      'h3',
-      'h4',
-      'h5',
-      'h6',
-      'ul',
-      'ol',
-      'li',
-      'blockquote',
-      'pre',
-      'code',
-      'a',
-      'hr',
-      'span',
+      "p",
+      "br",
+      "strong",
+      "em",
+      "b",
+      "i",
+      "s",
+      "strike",
+      "del",
+      "u",
+      "h1",
+      "h2",
+      "h3",
+      "h4",
+      "h5",
+      "h6",
+      "ul",
+      "ol",
+      "li",
+      "blockquote",
+      "pre",
+      "code",
+      "a",
+      "hr",
+      "span",
     ],
     allowedAttributes: {
-      span: ['style'],
-      p: ['style'],
-      h1: ['style'],
-      h2: ['style'],
-      h3: ['style'],
-      h4: ['style'],
-      h5: ['style'],
-      h6: ['style'],
-      a: ['href', 'target', 'rel'],
+      span: ["style"],
+      p: ["style"],
+      h1: ["style"],
+      h2: ["style"],
+      h3: ["style"],
+      h4: ["style"],
+      h5: ["style"],
+      h6: ["style"],
+      a: ["href", "target", "rel"],
     },
     allowedStyles: {
-      '*': {
-        'text-align': [ALIGN],
+      "*": {
+        "text-align": [ALIGN],
       },
       span: {
         color: COLOR_STYLE,
-        'font-size': FONT_SIZE_STYLE,
+        "font-size": FONT_SIZE_STYLE,
       },
     },
-    allowedSchemes: ['http', 'https', 'mailto'],
+    allowedSchemes: ["http", "https", "mailto"],
     allowedSchemesByTag: {
-      a: ['http', 'https', 'mailto'],
+      a: ["http", "https", "mailto"],
     },
     transformTags: {
-      a: sanitizeHtml.simpleTransform('a', {
-        rel: 'noopener noreferrer',
-        target: '_blank',
+      a: sanitizeHtml.simpleTransform("a", {
+        rel: "noopener noreferrer",
+        target: "_blank",
       }),
     },
   });
@@ -80,8 +80,8 @@ export function sanitizePostContentHtml(raw: string): string {
 
 export function postContentPlainLength(html: string): number {
   return html
-    .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/\s+/g, ' ')
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
     .trim().length;
 }

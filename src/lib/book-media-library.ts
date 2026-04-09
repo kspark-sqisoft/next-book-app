@@ -34,7 +34,9 @@ export function loadBookMediaLibrary(bookId: number): BookMediaLibraryItem[] {
       if (typeof o.src !== "string" || o.src.length === 0) continue;
       if (typeof o.id !== "string") continue;
       const posterSrc =
-        o.posterSrc === null || typeof o.posterSrc === "string" ? o.posterSrc : null;
+        o.posterSrc === null || typeof o.posterSrc === "string"
+          ? o.posterSrc
+          : null;
       const addedAt = typeof o.addedAt === "number" ? o.addedAt : 0;
       out.push({ id: o.id, kind: o.kind, src: o.src, posterSrc, addedAt });
     }
@@ -44,7 +46,10 @@ export function loadBookMediaLibrary(bookId: number): BookMediaLibraryItem[] {
   }
 }
 
-function saveBookMediaLibrary(bookId: number, items: BookMediaLibraryItem[]): void {
+function saveBookMediaLibrary(
+  bookId: number,
+  items: BookMediaLibraryItem[],
+): void {
   try {
     localStorage.setItem(key(bookId), JSON.stringify(items));
   } catch {
@@ -73,7 +78,10 @@ export function appendBookMediaLibraryItem(
   saveBookMediaLibrary(bookId, next);
 }
 
-export function removeBookMediaLibraryItem(bookId: number, itemId: string): void {
+export function removeBookMediaLibraryItem(
+  bookId: number,
+  itemId: string,
+): void {
   const items = loadBookMediaLibrary(bookId).filter((x) => x.id !== itemId);
   saveBookMediaLibrary(bookId, items);
 }

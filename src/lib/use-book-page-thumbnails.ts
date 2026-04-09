@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+
+import {
+  type BookSlideSnapshotPage,
+  captureBookSlideToDataURL,
+  pageSnapshotSignature,
+} from "@/lib/book-slide-snapshot";
 import {
   bookSlideThumbnailCacheKey,
   getBookSlideThumbnailCached,
   setBookSlideThumbnailCache,
 } from "@/lib/book-slide-thumbnail-cache";
-import {
-  captureBookSlideToDataURL,
-  pageSnapshotSignature,
-  type BookSlideSnapshotPage,
-} from "@/lib/book-slide-snapshot";
 
 const DEBOUNCE_MS = 320;
 

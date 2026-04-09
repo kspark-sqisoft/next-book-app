@@ -1,13 +1,4 @@
 import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type DragEvent,
-  type PointerEvent as ReactPointerEvent,
-} from "react";
-import {
   ChevronDown,
   ChevronUp,
   Film,
@@ -17,18 +8,28 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import {
+  type DragEvent,
+  type PointerEvent as ReactPointerEvent,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { toast } from "sonner";
+
+import { BOOK_LIBRARY_DRAG_TYPE } from "@/components/books/BookSlideCanvas";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { publicAssetUrl, uploadBookMedia } from "@/lib/api";
 import {
   appendBookMediaLibraryItem,
   BOOK_MEDIA_LIBRARY_CHANGED,
+  type BookMediaLibraryItem,
   loadBookMediaLibrary,
   removeBookMediaLibraryItem,
-  type BookMediaLibraryItem,
 } from "@/lib/book-media-library";
-import { BOOK_LIBRARY_DRAG_TYPE } from "@/components/books/BookSlideCanvas";
-import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
 import {
   bookDockedPanelHeaderIconClass,
   bookDockedPanelHeaderRowClass,
@@ -106,17 +107,20 @@ function useBookMediaLibraryCore(bookId: number) {
     return () => window.removeEventListener(BOOK_MEDIA_LIBRARY_CHANGED, fn);
   }, [bookId]);
 
-  const onDragStartItem = useCallback((e: DragEvent, item: BookMediaLibraryItem) => {
-    e.dataTransfer.setData(
-      BOOK_LIBRARY_DRAG_TYPE,
-      JSON.stringify({
-        kind: item.kind,
-        src: item.src,
-        posterSrc: item.posterSrc,
-      }),
-    );
-    e.dataTransfer.effectAllowed = "copy";
-  }, []);
+  const onDragStartItem = useCallback(
+    (e: DragEvent, item: BookMediaLibraryItem) => {
+      e.dataTransfer.setData(
+        BOOK_LIBRARY_DRAG_TYPE,
+        JSON.stringify({
+          kind: item.kind,
+          src: item.src,
+          posterSrc: item.posterSrc,
+        }),
+      );
+      e.dataTransfer.effectAllowed = "copy";
+    },
+    [],
+  );
 
   const onPickFile = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -170,7 +174,9 @@ function MediaGrid({
     <ul className={cn("grid gap-2", gridClassName)}>
       {items.map((item) => {
         const thumb =
-          item.kind === "image" ? publicAssetUrl(item.src) : publicAssetUrl(item.posterSrc);
+          item.kind === "image"
+            ? publicAssetUrl(item.src)
+            : publicAssetUrl(item.posterSrc);
         return (
           <li key={item.id} className="relative">
             <div
@@ -180,7 +186,12 @@ function MediaGrid({
               className="group relative aspect-square cursor-grab select-none overflow-hidden rounded-lg border border-border/80 bg-muted/40 active:cursor-grabbing hover:border-violet-400/50"
             >
               {thumb ? (
-                <img src={thumb} alt="" className="size-full object-cover" draggable={false} />
+                <img
+                  src={thumb}
+                  alt=""
+                  className="size-full object-cover"
+                  draggable={false}
+                />
               ) : (
                 <div className="flex size-full items-center justify-center text-muted-foreground">
                   <Film className="size-8" aria-hidden />
@@ -217,7 +228,8 @@ function BookMediaLibraryDocked({
   className?: string;
   onRequestFloat?: () => void;
 }) {
-  const { items, fileRef, uploading, onPickFile, onDragStartItem } = useBookMediaLibraryCore(bookId);
+  const { items, fileRef, uploading, onPickFile, onDragStartItem } =
+    useBookMediaLibraryCore(bookId);
 
   return (
     <div
@@ -234,7 +246,9 @@ function BookMediaLibraryDocked({
       />
       <div className={bookDockedPanelHeaderRowClass()}>
         <ImagePlus className={bookDockedPanelHeaderIconClass()} aria-hidden />
-        <span className={cn(bookDockedPanelHeadingClass(), "min-w-0 flex-1")}>미디어 라이브러리</span>
+        <span className={cn(bookDockedPanelHeadingClass(), "min-w-0 flex-1")}>
+          미디어 라이브러리
+        </span>
         {onRequestFloat ? (
           <Button
             type="button"
@@ -243,8 +257,7 @@ function BookMediaLibraryDocked({
             className="h-7 shrink-0 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
             onClick={onRequestFloat}
           >
-            <PictureInPicture2 className="size-3.5" aria-hidden />
-            떠 있는 창
+            <PictureInPicture2 className="size-3.5" aria-hidden />떠 있는 창
           </Button>
         ) : null}
       </div>
@@ -260,7 +273,11 @@ function BookMediaLibraryDocked({
           disabled={uploading}
           onClick={() => fileRef.current?.click()}
         >
-          {uploading ? <Spinner className="size-4" /> : <ImagePlus className="size-4" />}
+          {uploading ? (
+            <Spinner className="size-4" />
+          ) : (
+            <ImagePlus className="size-4" />
+          )}
           업로드
         </Button>
       </div>
@@ -291,7 +308,8 @@ function BookMediaLibraryFloating({
   stackZIndex?: number;
   onRaiseStack?: () => void;
 }) {
-  const { items, fileRef, uploading, onPickFile, onDragStartItem } = useBookMediaLibraryCore(bookId);
+  const { items, fileRef, uploading, onPickFile, onDragStartItem } =
+    useBookMediaLibraryCore(bookId);
   const rootRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
     pointerId: number;
@@ -301,7 +319,9 @@ function BookMediaLibraryFloating({
     originTop: number;
   } | null>(null);
 
-  const [collapsed, setCollapsed] = useState(() => loadStored()?.collapsed ?? false);
+  const [collapsed, setCollapsed] = useState(
+    () => loadStored()?.collapsed ?? false,
+  );
   const onCollapsedChangeRef = useRef(onCollapsedChange);
   useEffect(() => {
     onCollapsedChangeRef.current = onCollapsedChange;
@@ -320,17 +340,22 @@ function BookMediaLibraryFloating({
   const estimateWidth = collapsed
     ? PANEL_COLLAPSED_ESTIMATE_W
     : Math.min(
-        typeof window !== "undefined" ? window.innerWidth - 2 * VIEW_MARGIN : PANEL_MAX_W,
+        typeof window !== "undefined"
+          ? window.innerWidth - 2 * VIEW_MARGIN
+          : PANEL_MAX_W,
         PANEL_MAX_W,
       );
 
-  const persist = useCallback((next: { left: number; top: number; collapsed: boolean }) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      /* ignore */
-    }
-  }, []);
+  const persist = useCallback(
+    (next: { left: number; top: number; collapsed: boolean }) => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     persist({ ...coords, collapsed });
@@ -343,7 +368,9 @@ function BookMediaLibraryFloating({
   useLayoutEffect(() => {
     const el = rootRef.current;
     if (!el) return;
-    setCoords((c) => clampCoords(c.left, c.top, el.offsetWidth, el.offsetHeight));
+    setCoords((c) =>
+      clampCoords(c.left, c.top, el.offsetWidth, el.offsetHeight),
+    );
   }, [collapsed]);
 
   useEffect(() => {
@@ -387,7 +414,9 @@ function BookMediaLibraryFloating({
     const d = dragRef.current;
     if (!d || e.pointerId !== d.pointerId) return;
     const el = rootRef.current;
-    const w = el?.offsetWidth ?? Math.min(window.innerWidth - 2 * VIEW_MARGIN, PANEL_MAX_W);
+    const w =
+      el?.offsetWidth ??
+      Math.min(window.innerWidth - 2 * VIEW_MARGIN, PANEL_MAX_W);
     const h = el?.offsetHeight ?? estimateHeight;
     const dx = e.clientX - d.startX;
     const dy = e.clientY - d.startY;
@@ -449,7 +478,10 @@ function BookMediaLibraryFloating({
         <div className={cn("min-w-0 flex-1 pt-0.5", collapsed && "shrink-0")}>
           <div className="flex items-center gap-1">
             {!collapsed ? (
-              <GripVertical className="size-3.5 shrink-0 text-muted-foreground/80" aria-hidden />
+              <GripVertical
+                className="size-3.5 shrink-0 text-muted-foreground/80"
+                aria-hidden
+              />
             ) : null}
             <h2 className="font-heading text-sm font-semibold leading-none tracking-tight text-foreground">
               미디어
@@ -469,11 +501,17 @@ function BookMediaLibraryFloating({
             className="size-8 shrink-0 text-muted-foreground hover:text-foreground"
             data-library-toggle
             aria-expanded={!collapsed}
-            aria-label={collapsed ? "미디어 라이브러리 펼치기" : "미디어 라이브러리 접기"}
+            aria-label={
+              collapsed ? "미디어 라이브러리 펼치기" : "미디어 라이브러리 접기"
+            }
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => setCollapsed((c) => !c)}
           >
-            {collapsed ? <ChevronDown className="size-4" /> : <ChevronUp className="size-4" />}
+            {collapsed ? (
+              <ChevronDown className="size-4" />
+            ) : (
+              <ChevronUp className="size-4" />
+            )}
           </Button>
           {onClose ? (
             <Button
@@ -505,7 +543,11 @@ function BookMediaLibraryFloating({
               onPointerDown={(e) => e.stopPropagation()}
               onClick={() => fileRef.current?.click()}
             >
-              {uploading ? <Spinner className="size-4" /> : <ImagePlus className="size-4" />}
+              {uploading ? (
+                <Spinner className="size-4" />
+              ) : (
+                <ImagePlus className="size-4" />
+              )}
               업로드
             </Button>
           </div>

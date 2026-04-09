@@ -1,11 +1,12 @@
 import * as jose from "jose";
+
+import type { JwtPayload } from "@/server/auth/jwt-payload";
 import {
   JWT_ACCESS_EXPIRES_IN,
   JWT_ACCESS_SECRET,
   JWT_REFRESH_EXPIRES_IN,
   JWT_REFRESH_SECRET,
 } from "@/server/env";
-import type { JwtPayload } from "@/server/auth/jwt-payload";
 import { UserRole } from "@/server/users/user-role";
 
 const encAccess = new TextEncoder().encode(JWT_ACCESS_SECRET);

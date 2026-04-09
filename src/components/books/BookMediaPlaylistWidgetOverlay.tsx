@@ -1,10 +1,24 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { CSSProperties } from "react";
-import { ImageIcon, Pause, Play, SkipBack, SkipForward, Video } from "lucide-react";
-import { publicAssetUrl } from "@/lib/api";
-import { cn } from "@/lib/utils";
-import type { BookTextOverlayLiveFrame } from "@/components/books/BookTextWidgetOverlay";
 import {
+  ImageIcon,
+  Pause,
+  Play,
+  SkipBack,
+  SkipForward,
+  Video,
+} from "lucide-react";
+import type { CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+
+import type { BookTextOverlayLiveFrame } from "@/components/books/BookTextWidgetOverlay";
+import { publicAssetUrl } from "@/lib/api";
+import {
+  type BookCanvasElement,
   bookElementOverlayTopLeftFromPivot,
   bookElementPivotKonva,
   formatBookMediaClock,
@@ -17,8 +31,8 @@ import {
   resolveMediaPlaylistImageDurationSec,
   resolveMediaPlaylistLoop,
   resolveMediaPlaylistShowControls,
-  type BookCanvasElement,
 } from "@/lib/book-canvas";
+import { cn } from "@/lib/utils";
 
 export type BookMediaPlaylistPlaybackUiSnapshot = {
   index: number;
@@ -52,7 +66,9 @@ type Props = {
   onPlaylistRemoteCommandConsumed?: () => void;
 };
 
-function objectFitStyle(fit: ReturnType<typeof resolveBookMediaObjectFit>): CSSProperties {
+function objectFitStyle(
+  fit: ReturnType<typeof resolveBookMediaObjectFit>,
+): CSSProperties {
   return {
     width: "100%",
     height: "100%",
@@ -122,7 +138,9 @@ export function BookMediaPlaylistWidgetOverlay({
   }, [el.id]);
 
   const imageSlideDurationSec =
-    current?.kind === "image" ? resolveMediaPlaylistImageDurationSec(current) : 0;
+    current?.kind === "image"
+      ? resolveMediaPlaylistImageDurationSec(current)
+      : 0;
 
   useEffect(() => {
     onPlaybackIndexChange?.(el.id, clampedIndex);
@@ -158,7 +176,15 @@ export function BookMediaPlaylistWidgetOverlay({
       });
     }, ms);
     return () => window.clearTimeout(t);
-  }, [current, current?.id, current?.kind, imageSlideDurationSec, items.length, loop, paused]);
+  }, [
+    current,
+    current?.id,
+    current?.kind,
+    imageSlideDurationSec,
+    items.length,
+    loop,
+    paused,
+  ]);
 
   /** 동영상 일시정지/재생 */
   useEffect(() => {
@@ -177,7 +203,8 @@ export function BookMediaPlaylistWidgetOverlay({
     const v = videoRef.current;
     if (!v) return;
     const tryPlay = () => void v.play().catch(() => undefined);
-    if (v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) queueMicrotask(tryPlay);
+    if (v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA)
+      queueMicrotask(tryPlay);
     else v.addEventListener("canplay", tryPlay, { once: true });
     return () => v.removeEventListener("canplay", tryPlay);
   }, [current?.id, current?.kind, paused]);
@@ -338,7 +365,9 @@ export function BookMediaPlaylistWidgetOverlay({
   const ow = resolveBookElementOutlineWidth(el);
   const oc = resolveBookElementOutlineColor(el);
   const outlineRing =
-    mode === "edit" && ow > 0 ? `0 0 0 ${Math.max(0.5, ow * scale)}px ${oc}` : "";
+    mode === "edit" && ow > 0
+      ? `0 0 0 ${Math.max(0.5, ow * scale)}px ${oc}`
+      : "";
 
   const fit = current
     ? resolveBookMediaObjectFit(
@@ -364,8 +393,7 @@ export function BookMediaPlaylistWidgetOverlay({
   const emptyHintPx = Math.max(10 * scale, fh * scale * 0.032);
   const emptyIconPx = Math.max(14 * scale, fh * scale * 0.055);
   const videoBarProgressH = Math.max(3, Math.min(7, 36 * 0.22));
-  const atFirst =
-    items.length === 0 || (!loop && clampedIndex <= 0);
+  const atFirst = items.length === 0 || (!loop && clampedIndex <= 0);
   const atLast =
     items.length === 0 || (!loop && clampedIndex >= items.length - 1);
 
@@ -403,7 +431,9 @@ export function BookMediaPlaylistWidgetOverlay({
                 style={{ width: emptyIconPx, height: emptyIconPx }}
               />
             </div>
-            <p>우클릭·속성 패널에서 파일 또는 라이브러리로 미디어를 추가하세요.</p>
+            <p>
+              우클릭·속성 패널에서 파일 또는 라이브러리로 미디어를 추가하세요.
+            </p>
           </div>
         ) : current?.kind === "image" ? (
           <img
@@ -451,7 +481,9 @@ export function BookMediaPlaylistWidgetOverlay({
           <div
             className={cn(
               "absolute bottom-0 left-0 right-0 z-10 flex h-9 min-h-9 items-center gap-1 border-t border-white/15 bg-black/75 px-1 py-0.5 transition-opacity duration-200",
-              barVisible ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0",
+              barVisible
+                ? "pointer-events-auto opacity-100"
+                : "pointer-events-none opacity-0",
             )}
             onMouseDown={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
@@ -502,7 +534,8 @@ export function BookMediaPlaylistWidgetOverlay({
               {clampedIndex + 1}/{items.length}
             </span>
             <span className="shrink-0 text-right font-mono text-[10px] tabular-nums leading-none text-white/90">
-              {formatBookMediaClock(timeUi.current)} / {formatBookMediaClock(timeUi.total)}
+              {formatBookMediaClock(timeUi.current)} /{" "}
+              {formatBookMediaClock(timeUi.total)}
             </span>
           </div>
         ) : null}

@@ -1,6 +1,7 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { join, extname } from "node:path";
 import { randomUUID } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
+import { extname, join } from "node:path";
+
 import {
   BOOK_IMAGES_SUBDIR,
   BOOK_VIDEO_POSTERS_SUBDIR,
@@ -50,7 +51,9 @@ export async function saveBookMainAndPoster(
     ? join(UPLOAD_ROOT, BOOK_VIDEOS_SUBDIR)
     : join(UPLOAD_ROOT, BOOK_IMAGES_SUBDIR);
   await mkdir(dest, { recursive: true });
-  const ext = extname(file.name).toLowerCase() || (videoMime.has(mimetype) ? ".mp4" : ".jpg");
+  const ext =
+    extname(file.name).toLowerCase() ||
+    (videoMime.has(mimetype) ? ".mp4" : ".jpg");
   const filename = `${randomUUID()}${ext}`;
   const path = join(dest, filename);
   await writeFile(path, buf);

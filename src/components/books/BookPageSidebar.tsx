@@ -1,22 +1,11 @@
 import {
-  Fragment,
-  type MouseEvent,
-  type RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { createPortal } from "react-dom";
-import {
+  closestCorners,
   DndContext,
-  DragOverlay,
   type DragEndEvent,
+  DragOverlay,
   type DragStartEvent,
   KeyboardSensor,
   PointerSensor,
-  closestCorners,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -28,6 +17,18 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Copy, FileStack, Plus, Trash2 } from "lucide-react";
+import {
+  Fragment,
+  type MouseEvent,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
+
 import { Button } from "@/components/ui/button";
 import {
   ContextMenuFloatingItem,
@@ -117,7 +118,9 @@ function PageInsertGap({
   fluid?: boolean;
   onAddPageAtInsertIndex?: (insertIndex: number) => void;
 }) {
-  const [ctxPoint, setCtxPoint] = useState<{ x: number; y: number } | null>(null);
+  const [ctxPoint, setCtxPoint] = useState<{ x: number; y: number } | null>(
+    null,
+  );
   const menuRef = useRef<HTMLDivElement>(null);
   const closeMenu = useCallback(() => setCtxPoint(null), []);
   useDismissFloatingMenu(
@@ -145,15 +148,23 @@ function PageInsertGap({
               position: "fixed",
               left: Math.min(
                 ctxPoint.x,
-                typeof window !== "undefined" ? Math.max(8, window.innerWidth - 200) : ctxPoint.x,
+                typeof window !== "undefined"
+                  ? Math.max(8, window.innerWidth - 200)
+                  : ctxPoint.x,
               ),
               top: Math.min(
                 ctxPoint.y,
-                typeof window !== "undefined" ? Math.max(8, window.innerHeight - 120) : ctxPoint.y,
+                typeof window !== "undefined"
+                  ? Math.max(8, window.innerHeight - 120)
+                  : ctxPoint.y,
               ),
             }}
           >
-            <div className="flex flex-col gap-0.5" role="group" aria-label="삽입">
+            <div
+              className="flex flex-col gap-0.5"
+              role="group"
+              aria-label="삽입"
+            >
               <ContextMenuFloatingItem
                 onClick={() => {
                   onAddPageAtInsertIndex(insertIndex);
@@ -299,8 +310,17 @@ function SortableSlideRow({
   canRemovePage?: boolean;
   onDuplicatePageAtIndex?: (i: number) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
-  const [ctxPoint, setCtxPoint] = useState<{ x: number; y: number } | null>(null);
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+  const [ctxPoint, setCtxPoint] = useState<{ x: number; y: number } | null>(
+    null,
+  );
   const menuRef = useRef<HTMLDivElement>(null);
   const closeCtxMenu = useCallback(() => setCtxPoint(null), []);
   useDismissFloatingMenu(ctxPoint != null, menuRef, closeCtxMenu);
@@ -317,7 +337,8 @@ function SortableSlideRow({
     isDragging && "relative z-[1] opacity-[0.35]",
   );
 
-  const ctxEnabled = onRemovePageAtIndex != null || onDuplicatePageAtIndex != null;
+  const ctxEnabled =
+    onRemovePageAtIndex != null || onDuplicatePageAtIndex != null;
 
   const onRowContextMenu = ctxEnabled
     ? (e: MouseEvent) => {
@@ -337,16 +358,24 @@ function SortableSlideRow({
               position: "fixed",
               left: Math.min(
                 ctxPoint.x,
-                typeof window !== "undefined" ? Math.max(8, window.innerWidth - 200) : ctxPoint.x,
+                typeof window !== "undefined"
+                  ? Math.max(8, window.innerWidth - 200)
+                  : ctxPoint.x,
               ),
               top: Math.min(
                 ctxPoint.y,
-                typeof window !== "undefined" ? Math.max(8, window.innerHeight - 120) : ctxPoint.y,
+                typeof window !== "undefined"
+                  ? Math.max(8, window.innerHeight - 120)
+                  : ctxPoint.y,
               ),
             }}
           >
             {onDuplicatePageAtIndex ? (
-              <div className="flex flex-col gap-0.5" role="group" aria-label="복사">
+              <div
+                className="flex flex-col gap-0.5"
+                role="group"
+                aria-label="복사"
+              >
                 <ContextMenuFloatingItem
                   onClick={() => {
                     onDuplicatePageAtIndex(index);
@@ -366,7 +395,11 @@ function SortableSlideRow({
               />
             ) : null}
             {onRemovePageAtIndex ? (
-              <div className="flex flex-col gap-0.5" role="group" aria-label="삭제">
+              <div
+                className="flex flex-col gap-0.5"
+                role="group"
+                aria-label="삭제"
+              >
                 <ContextMenuFloatingItem
                   variant="destructive"
                   disabled={!canRemovePage}
@@ -376,8 +409,7 @@ function SortableSlideRow({
                     setCtxPoint(null);
                   }}
                 >
-                  <Trash2 className="size-4" aria-hidden />
-                  이 페이지 삭제
+                  <Trash2 className="size-4" aria-hidden />이 페이지 삭제
                 </ContextMenuFloatingItem>
               </div>
             ) : null}
@@ -528,14 +560,19 @@ export function BookPageSidebar({
 
   const sortableIds = useMemo(() => {
     if (pageCount === 0) return [];
-    return Array.from({ length: pageCount }, (_, i) => pageKeys?.[i] ?? `sidebar-fallback-${i}`);
+    return Array.from(
+      { length: pageCount },
+      (_, i) => pageKeys?.[i] ?? `sidebar-fallback-${i}`,
+    );
   }, [pageCount, pageKeys]);
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
   );
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -559,7 +596,9 @@ export function BookPageSidebar({
     setActiveDragId(null);
   };
 
-  const activeOverlayIndex = activeDragId ? sortableIds.indexOf(activeDragId) : -1;
+  const activeOverlayIndex = activeDragId
+    ? sortableIds.indexOf(activeDragId)
+    : -1;
   const overlayLabel =
     activeOverlayIndex >= 0
       ? slideDisplayLabel(pageLabels?.[activeOverlayIndex], activeOverlayIndex)
@@ -583,7 +622,10 @@ export function BookPageSidebar({
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+        <SortableContext
+          items={sortableIds}
+          strategy={verticalListSortingStrategy}
+        >
           <div className={cn("flex w-full min-w-0 flex-col", listGapReorder)}>
             {sortableIds.map((id, i) => (
               <Fragment key={id}>
@@ -591,7 +633,9 @@ export function BookPageSidebar({
                   insertIndex={i}
                   pageCount={pageCount}
                   fluid={fluid}
-                  onAddPageAtInsertIndex={edit ? onAddPageAtInsertIndex : undefined}
+                  onAddPageAtInsertIndex={
+                    edit ? onAddPageAtInsertIndex : undefined
+                  }
                 />
                 <SortableSlideRow
                   id={id}
@@ -605,7 +649,9 @@ export function BookPageSidebar({
                   onSelect={onSelectPage}
                   onRemovePageAtIndex={edit ? onRemovePageAtIndex : undefined}
                   canRemovePage={canRemovePage}
-                  onDuplicatePageAtIndex={edit ? onDuplicatePageAtIndex : undefined}
+                  onDuplicatePageAtIndex={
+                    edit ? onDuplicatePageAtIndex : undefined
+                  }
                 />
               </Fragment>
             ))}
@@ -617,7 +663,12 @@ export function BookPageSidebar({
             />
           </div>
         </SortableContext>
-        <DragOverlay dropAnimation={{ duration: 200, easing: "cubic-bezier(0.25, 1, 0.5, 1)" }}>
+        <DragOverlay
+          dropAnimation={{
+            duration: 200,
+            easing: "cubic-bezier(0.25, 1, 0.5, 1)",
+          }}
+        >
           {activeDragId != null && activeOverlayIndex >= 0 ? (
             <DragOverlayRow
               fluid={fluid}
@@ -664,7 +715,11 @@ export function BookPageSidebar({
     >
       <div
         className={bookDockedPanelHeaderRowClass()}
-        title={reorder ? "슬라이드 줄 전체를 드래그해 순서를 바꿀 수 있습니다." : undefined}
+        title={
+          reorder
+            ? "슬라이드 줄 전체를 드래그해 순서를 바꿀 수 있습니다."
+            : undefined
+        }
       >
         <FileStack className={bookDockedPanelHeaderIconClass()} aria-hidden />
         <span className={bookDockedPanelHeadingClass()}>페이지</span>
@@ -675,8 +730,17 @@ export function BookPageSidebar({
       </div>
       {edit ? (
         <div className={bookDockedPanelFooterClass()}>
-          <Button type="button" variant="secondary" size="sm" className="w-full font-medium" onClick={onAddPage}>
-            <Plus className={cn("mr-1", fluid ? "size-4" : "size-3.5")} aria-hidden />
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="w-full font-medium"
+            onClick={onAddPage}
+          >
+            <Plus
+              className={cn("mr-1", fluid ? "size-4" : "size-3.5")}
+              aria-hidden
+            />
             페이지 추가
           </Button>
           <Button
@@ -687,7 +751,10 @@ export function BookPageSidebar({
             disabled={!canRemovePage || !onRemovePageAtIndex}
             onClick={() => onRemovePageAtIndex?.(activeIndex)}
           >
-            <Trash2 className={cn("mr-1", fluid ? "size-4" : "size-3.5")} aria-hidden />
+            <Trash2
+              className={cn("mr-1", fluid ? "size-4" : "size-3.5")}
+              aria-hidden
+            />
             현재 삭제
           </Button>
         </div>

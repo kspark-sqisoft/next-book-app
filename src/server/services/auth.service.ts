@@ -1,7 +1,6 @@
 import * as bcrypt from "bcrypt";
 import { and, eq } from "drizzle-orm";
-import { getDb, refreshToken as refreshTokenTable } from "@/server/db";
-import { HttpError } from "@/server/http/http-error";
+
 import { hashRefreshToken } from "@/server/auth/hash-refresh";
 import {
   decodeRefreshExp,
@@ -10,8 +9,10 @@ import {
   verifyRefreshToken,
 } from "@/server/auth/jwt";
 import type { JwtPayload } from "@/server/auth/jwt-payload";
-import { UserRole } from "@/server/users/user-role";
+import { getDb, refreshToken as refreshTokenTable } from "@/server/db";
+import { HttpError } from "@/server/http/http-error";
 import { UsersService } from "@/server/services/users.service";
+import { UserRole } from "@/server/users/user-role";
 
 export class AuthService {
   private usersService = new UsersService();
@@ -115,7 +116,9 @@ export class AuthService {
         if (!row || row.expiresAt.getTime() < now) {
           throw new HttpError(401, "Unauthorized");
         }
-        await tx.delete(refreshTokenTable).where(eq(refreshTokenTable.id, row.id));
+        await tx
+          .delete(refreshTokenTable)
+          .where(eq(refreshTokenTable.id, row.id));
 
         const role =
           user.role === UserRole.Admin || user.role === "admin"

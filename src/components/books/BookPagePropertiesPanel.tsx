@@ -1,9 +1,10 @@
-import { useMemo } from "react";
 import { LayoutTemplate } from "lucide-react";
+import { useMemo } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -12,10 +13,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  type BookCanvasElement,
   DEFAULT_PAGE_BACKGROUND,
   resolveEffectivePresentationTimingElementId,
   slideDisplayLabel,
-  type BookCanvasElement,
 } from "@/lib/book-canvas";
 import { BOOK_HEX_COLOR_PRESETS } from "@/lib/book-color-presets";
 import {
@@ -54,7 +55,10 @@ function hexForColorInput(css: string): string {
   return /^#[0-9A-Fa-f]{6}$/.test(css) ? css : DEFAULT_PAGE_BACKGROUND;
 }
 
-function bookElementTimingLabel(el: BookCanvasElement, displayIndex: number): string {
+function bookElementTimingLabel(
+  el: BookCanvasElement,
+  displayIndex: number,
+): string {
   const typeKo: Record<BookCanvasElement["type"], string> = {
     text: "텍스트",
     image: "이미지",
@@ -116,7 +120,10 @@ export function BookPagePropertiesPanel({
       )}
     >
       <div className={bookDockedPanelHeaderRowClass()}>
-        <LayoutTemplate className={bookDockedPanelHeaderIconClass()} aria-hidden />
+        <LayoutTemplate
+          className={bookDockedPanelHeaderIconClass()}
+          aria-hidden
+        />
         <span className={bookDockedPanelHeadingClass()}>페이지 속성</span>
       </div>
       <div className="min-h-0 flex-1 basis-0 overflow-y-auto overflow-x-hidden overscroll-contain [-webkit-overflow-scrolling:touch]">
@@ -137,15 +144,21 @@ export function BookPagePropertiesPanel({
               placeholder={`슬라이드 ${pageIndex + 1}`}
               maxLength={120}
             />
-            <p className="text-[11px] text-muted-foreground">목록 표시: {preview}</p>
+            <p className="text-[11px] text-muted-foreground">
+              목록 표시: {preview}
+            </p>
           </div>
           <div className="space-y-2 rounded-md border border-border/60 bg-muted/[0.06] p-2.5">
-            <p className="text-xs font-medium text-foreground">미리보기(슬라이드쇼)</p>
+            <p className="text-xs font-medium text-foreground">
+              미리보기(슬라이드쇼)
+            </p>
             <p className="text-[11px] leading-snug text-muted-foreground">
-              레이어 목록의 「기준」체크로 이 페이지의 시간 기준 위젯을 고를 수 있습니다(한 페이지에 위젯이 있으면
-              항상 하나는 기준이며, 같은 체크를 다시 눌러 해제할 수 없습니다). 미디어(플레이리스트) 위젯은 목록
-              항목 시간 합이 슬라이드 길이입니다. 그 외 위젯은 기본 10초이며 레이어 목록·위젯 속성에서 바꿀 수
-              있습니다. 아래에서도 기준을 고를 수 있습니다.
+              레이어 목록의 「기준」체크로 이 페이지의 시간 기준 위젯을 고를 수
+              있습니다(한 페이지에 위젯이 있으면 항상 하나는 기준이며, 같은
+              체크를 다시 눌러 해제할 수 없습니다). 미디어(플레이리스트) 위젯은
+              목록 항목 시간 합이 슬라이드 길이입니다. 그 외 위젯은 기본
+              10초이며 레이어 목록·위젯 속성에서 바꿀 수 있습니다. 아래에서도
+              기준을 고를 수 있습니다.
             </p>
             <div className="space-y-1">
               <Label className="text-[11px]">시간 기준 레이어</Label>
@@ -188,13 +201,15 @@ export function BookPagePropertiesPanel({
             <div className="space-y-1 border-t border-border/40 pt-2">
               <Label className="text-[11px]">이 슬라이드로 전환될 때</Label>
               <p className="text-[10px] leading-snug text-muted-foreground">
-                미리보기(/preview)에서 이 페이지가 나타날 때 적용됩니다. 첫 슬라이드는 애니메이션을 쓰지
-                않습니다.
+                미리보기(/preview)에서 이 페이지가 나타날 때 적용됩니다. 첫
+                슬라이드는 애니메이션을 쓰지 않습니다.
               </p>
               <Select
                 value={presentationTransition}
                 onValueChange={(v) =>
-                  onChangePresentationTransition(v as BookPresentationTransitionId)
+                  onChangePresentationTransition(
+                    v as BookPresentationTransitionId,
+                  )
                 }
               >
                 <SelectTrigger size="sm" className="h-9 w-full">
@@ -226,7 +241,9 @@ export function BookPagePropertiesPanel({
                     onChangePresentationTransitionMs(n);
                   }}
                 />
-                <span className="text-[10px] text-muted-foreground">80–2500</span>
+                <span className="text-[10px] text-muted-foreground">
+                  80–2500
+                </span>
               </div>
             </div>
           </div>
@@ -236,7 +253,8 @@ export function BookPagePropertiesPanel({
             <div className="flex flex-wrap gap-1 rounded-md border border-border bg-muted/25 p-1">
               {BOOK_HEX_COLOR_PRESETS.map((c) => {
                 const active =
-                  backgroundColor.trim().replace(/\s/g, "").toLowerCase() === c.toLowerCase();
+                  backgroundColor.trim().replace(/\s/g, "").toLowerCase() ===
+                  c.toLowerCase();
                 return (
                   <button
                     key={c}
@@ -267,7 +285,9 @@ export function BookPagePropertiesPanel({
                 id="page-bg-hex"
                 className="min-w-0 flex-1 font-mono text-xs"
                 value={backgroundColor}
-                onChange={(e) => onChangeBackgroundColor(e.target.value.slice(0, 64))}
+                onChange={(e) =>
+                  onChangeBackgroundColor(e.target.value.slice(0, 64))
+                }
                 placeholder="#ffffff 또는 rgb(…)"
                 maxLength={64}
                 spellCheck={false}
@@ -284,7 +304,8 @@ export function BookPagePropertiesPanel({
               배경을 기본(흰색)으로
             </Button>
             <p className="text-[11px] text-muted-foreground">
-              #RRGGBB, rgb(), hsl() 등 브라우저가 이해하는 색 문자열을 쓸 수 있습니다.
+              #RRGGBB, rgb(), hsl() 등 브라우저가 이해하는 색 문자열을 쓸 수
+              있습니다.
             </p>
           </div>
         </div>

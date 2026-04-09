@@ -1,35 +1,24 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import {
+  startTransition,
   useActionState,
   useEffect,
   useOptimistic,
   useRef,
   useState,
-  startTransition,
 } from "react";
-import Link from "next/link";
-import { useParams, usePathname, useRouter } from "next/navigation";
-import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
-import { useAuth } from "@/stores/auth-store";
-import { createPost, fetchPost, updatePost } from "@/lib/api";
-import { postKeys } from "@/lib/query-keys";
-import { appLog } from "@/lib/app-log";
-import { formDataGetString } from "@/lib/form-data-utils";
-import { fieldErrorsFromZodIssues } from "@/lib/zod-form";
-import {
-  isPostCategoryId,
-  POST_CATEGORY_LABELS,
-  POST_CATEGORY_VALUES,
-  type PostCategoryId,
-} from "@/lib/post-categories";
-import { postEditorSchema, type PostEditorFormValues } from "@/lib/schemas/forms";
-import { canEditAsOwnerOrAdmin } from "@/lib/authz";
+import { toast } from "sonner";
+
 import { FormErrorAlert } from "@/components/forms/FormErrorAlert";
 import { FormFieldError } from "@/components/forms/FormFieldError";
 import { FormStatusSubmitButton } from "@/components/forms/FormStatusSubmitButton";
 import { CenteredSpinner } from "@/components/layout/CenteredSpinner";
+import { PostRichEditor } from "@/components/posts/PostRichEditor";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -42,11 +31,26 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SafeImage } from "@/components/ui/safe-image";
-import { PostRichEditor } from "@/components/posts/PostRichEditor";
-import { captureVideoPosterJpeg } from "@/lib/video-poster";
+import { createPost, fetchPost, updatePost } from "@/lib/api";
+import { appLog } from "@/lib/app-log";
+import { canEditAsOwnerOrAdmin } from "@/lib/authz";
+import { formDataGetString } from "@/lib/form-data-utils";
 import { placeholderPosterFile } from "@/lib/placeholder-poster";
+import {
+  isPostCategoryId,
+  POST_CATEGORY_LABELS,
+  POST_CATEGORY_VALUES,
+  type PostCategoryId,
+} from "@/lib/post-categories";
+import { postKeys } from "@/lib/query-keys";
+import {
+  type PostEditorFormValues,
+  postEditorSchema,
+} from "@/lib/schemas/forms";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { captureVideoPosterJpeg } from "@/lib/video-poster";
+import { fieldErrorsFromZodIssues } from "@/lib/zod-form";
+import { useAuth } from "@/stores/auth-store";
 
 const MAX_ATTACHMENTS = 20;
 
@@ -126,7 +130,9 @@ export function PostEditorPage() {
     if (!parsed.success) {
       return {
         serverError: null,
-        fieldErrors: fieldErrorsFromZodIssues<keyof PostEditorFormValues>(parsed.error.issues),
+        fieldErrors: fieldErrorsFromZodIssues<keyof PostEditorFormValues>(
+          parsed.error.issues,
+        ),
         redirectTo: null,
       };
     }
@@ -142,14 +148,22 @@ export function PostEditorPage() {
             category: parsed.data.category,
             mediaPlan: [],
           });
-          queryClient.setQueryData(postKeys.detail(updated.id, viewerKey), updated);
+          queryClient.setQueryData(
+            postKeys.detail(updated.id, viewerKey),
+            updated,
+          );
           void queryClient.invalidateQueries({ queryKey: postKeys.lists() });
           appLog("posts", "글 수정 저장", { id: updated.id });
           toast.success("글이 수정되었습니다.");
-          return { serverError: null, fieldErrors: {}, redirectTo: `/posts/${updated.id}` };
+          return {
+            serverError: null,
+            fieldErrors: {},
+            redirectTo: `/posts/${updated.id}`,
+          };
         }
 
-        const mediaPlan: Array<{ t: "e"; id: number } | { t: "n"; i: number }> = [];
+        const mediaPlan: Array<{ t: "e"; id: number } | { t: "n"; i: number }> =
+          [];
         const newFiles: File[] = [];
         const newPosters: File[] = [];
         for (const s of currentSlots) {
@@ -170,11 +184,18 @@ export function PostEditorPage() {
           newFiles,
           newPosters,
         });
-        queryClient.setQueryData(postKeys.detail(updated.id, viewerKey), updated);
+        queryClient.setQueryData(
+          postKeys.detail(updated.id, viewerKey),
+          updated,
+        );
         void queryClient.invalidateQueries({ queryKey: postKeys.lists() });
         appLog("posts", "글 수정 저장", { id: updated.id });
         toast.success("글이 수정되었습니다.");
-        return { serverError: null, fieldErrors: {}, redirectTo: `/posts/${updated.id}` };
+        return {
+          serverError: null,
+          fieldErrors: {},
+          redirectTo: `/posts/${updated.id}`,
+        };
       }
 
       const attachmentFiles: File[] = [];
@@ -199,7 +220,11 @@ export function PostEditorPage() {
       void queryClient.invalidateQueries({ queryKey: postKeys.all });
       appLog("posts", "글 작성 저장", { id: created.id });
       toast.success("글이 등록되었습니다.");
-      return { serverError: null, fieldErrors: {}, redirectTo: `/posts/${created.id}` };
+      return {
+        serverError: null,
+        fieldErrors: {},
+        redirectTo: `/posts/${created.id}`,
+      };
     } catch (err) {
       appLog("posts", "저장 실패", err instanceof Error ? err.message : err);
       const msg = err instanceof Error ? err.message : "저장에 실패했습니다.";
@@ -212,10 +237,16 @@ export function PostEditorPage() {
     }
   }
 
-  const [formState, formAction] = useActionState(postEditorAction, initialState);
+  const [formState, formAction] = useActionState(
+    postEditorAction,
+    initialState,
+  );
   const [optimisticState, addOptimistic] = useOptimistic(
     formState,
-    (current, next: Partial<PostEditorActionState>) => ({ ...current, ...next }),
+    (current, next: Partial<PostEditorActionState>) => ({
+      ...current,
+      ...next,
+    }),
   );
 
   useEffect(() => {
@@ -338,7 +369,8 @@ export function PostEditorPage() {
             previewUrl: URL.createObjectURL(f),
           });
         } else {
-          const poster = (await captureVideoPosterJpeg(f)) ?? placeholderPosterFile();
+          const poster =
+            (await captureVideoPosterJpeg(f)) ?? placeholderPosterFile();
           additions.push({
             key: `n-${crypto.randomUUID()}`,
             type: "new",
@@ -355,7 +387,9 @@ export function PostEditorPage() {
       }
     } finally {
       setAddBusy(false);
-      const input = document.getElementById("post-attachments") as HTMLInputElement | null;
+      const input = document.getElementById(
+        "post-attachments",
+      ) as HTMLInputElement | null;
       if (input) input.value = "";
     }
   }
@@ -419,8 +453,9 @@ export function PostEditorPage() {
           {isEdit ? "글 수정" : "글 작성"}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          제목·본문·첨부 미디어를 최대 {MAX_ATTACHMENTS}개까지 넣을 수 있습니다. 순서는 위아래 버튼으로 바꿀 수 있고, 글
-          보기에서는 스와이프로 넘깁니다. 목록에는 첫 첨부가 썸네일로 쓰입니다.
+          제목·본문·첨부 미디어를 최대 {MAX_ATTACHMENTS}개까지 넣을 수 있습니다.
+          순서는 위아래 버튼으로 바꿀 수 있고, 글 보기에서는 스와이프로
+          넘깁니다. 목록에는 첫 첨부가 썸네일로 쓰입니다.
         </p>
       </div>
 
@@ -470,7 +505,9 @@ export function PostEditorPage() {
                 name="title"
                 maxLength={200}
                 aria-invalid={Boolean(optimisticState.fieldErrors.title)}
-                className={cn(optimisticState.fieldErrors.title && "border-destructive")}
+                className={cn(
+                  optimisticState.fieldErrors.title && "border-destructive",
+                )}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
@@ -479,14 +516,18 @@ export function PostEditorPage() {
             <div className="space-y-2">
               <Label>본문</Label>
               <PostRichEditor
-                key={isEdit && Number.isFinite(postId) ? `edit-${postId}` : "new"}
+                key={
+                  isEdit && Number.isFinite(postId) ? `edit-${postId}` : "new"
+                }
                 initialHtml={isEdit && loadedPost ? loadedPost.content : ""}
                 invalid={Boolean(optimisticState.fieldErrors.content)}
               />
               <FormFieldError message={optimisticState.fieldErrors.content} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="post-attachments">첨부 미디어 (선택, 여러 개)</Label>
+              <Label htmlFor="post-attachments">
+                첨부 미디어 (선택, 여러 개)
+              </Label>
               <Input
                 id="post-attachments"
                 type="file"
@@ -497,7 +538,9 @@ export function PostEditorPage() {
                 onChange={(e) => void onPickFiles(e.target.files)}
               />
               {addBusy ? (
-                <p className="text-xs text-muted-foreground">파일을 처리하는 중…</p>
+                <p className="text-xs text-muted-foreground">
+                  파일을 처리하는 중…
+                </p>
               ) : null}
               {slots.length > 0 ? (
                 <ul className="mt-2 space-y-2">
@@ -541,7 +584,8 @@ export function PostEditorPage() {
                           />
                         )}
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {index + 1}번 · {s.kind === "image" ? "이미지" : "동영상"}
+                          {index + 1}번 ·{" "}
+                          {s.kind === "image" ? "이미지" : "동영상"}
                           {s.type === "new" ? " (새 파일)" : ""}
                         </p>
                       </div>
@@ -583,12 +627,16 @@ export function PostEditorPage() {
                   ))}
                 </ul>
               ) : (
-                <p className="text-xs text-muted-foreground">첨부가 없습니다.</p>
+                <p className="text-xs text-muted-foreground">
+                  첨부가 없습니다.
+                </p>
               )}
             </div>
           </CardContent>
           <CardFooter className="flex flex-wrap gap-2 border-t bg-muted/30">
-            <FormStatusSubmitButton pendingLabel="저장 중…">저장</FormStatusSubmitButton>
+            <FormStatusSubmitButton pendingLabel="저장 중…">
+              저장
+            </FormStatusSubmitButton>
             <Button type="button" variant="outline" asChild>
               <Link href={isEdit ? `/posts/${postId}` : "/posts"}>취소</Link>
             </Button>

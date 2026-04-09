@@ -3,11 +3,12 @@
  */
 
 import type Konva from "konva";
+
 import {
+  type BookPresentationTransitionId,
   clampBookPresentationTransitionMs,
   DEFAULT_BOOK_PRESENTATION_TRANSITION_MS,
   normalizeBookPresentationTransition,
-  type BookPresentationTransitionId,
 } from "@/lib/book-presentation-transition";
 
 export const BOOK_MEDIA_OBJECT_FIT_VALUES = [
@@ -278,12 +279,7 @@ export function resolveMediaPlaylistImageDurationSec(
   item: BookMediaPlaylistImageItem,
 ): number {
   const n = item.durationSec;
-  if (
-    typeof n === "number" &&
-    Number.isInteger(n) &&
-    n >= 1 &&
-    n <= 600
-  ) {
+  if (typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 600) {
     return n;
   }
   return DEFAULT_MEDIA_PLAYLIST_IMAGE_DURATION_SEC;
@@ -1937,8 +1933,10 @@ export function normalizeBookElements(raw: unknown[]): BookCanvasElement[] {
       const height = Number.isFinite(h)
         ? Math.min(4000, Math.max(10, h))
         : DEFAULT_BOOK_SHAPE_HEIGHT;
-      const fillRaw = typeof o.fill === "string" ? o.fill.trim().slice(0, 40) : "";
-      const strokeRaw = typeof o.stroke === "string" ? o.stroke.trim().slice(0, 40) : "";
+      const fillRaw =
+        typeof o.fill === "string" ? o.fill.trim().slice(0, 40) : "";
+      const strokeRaw =
+        typeof o.stroke === "string" ? o.stroke.trim().slice(0, 40) : "";
       const sw = Number(o.strokeWidth);
       const strokeW = Number.isFinite(sw)
         ? Math.min(32, Math.max(0, Math.round(sw)))

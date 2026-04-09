@@ -1,6 +1,5 @@
 "use client";
 
-import { type ReactNode, useRef, useState } from "react";
 import {
   ArrowLeft,
   PanelLeftClose,
@@ -9,6 +8,8 @@ import {
   PanelRightOpen,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { type ReactNode, useRef, useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 

@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
+
 import { handleRouteError } from "@/server/http/api-response";
+import { HttpError } from "@/server/http/http-error";
 import { requireAdmin } from "@/server/http/request-auth";
 import { UsersService } from "@/server/services/users.service";
 import { UserRole } from "@/server/users/user-role";
-import { HttpError } from "@/server/http/http-error";
 
 export async function POST(request: Request) {
   try {

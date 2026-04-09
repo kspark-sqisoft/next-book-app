@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Newspaper } from "lucide-react";
+import type { CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+
+import type { BookTextOverlayLiveFrame } from "@/components/books/BookTextWidgetOverlay";
 import { fetchNewsHeadlines, type NewsArticlePayload } from "@/lib/api";
-import { cn } from "@/lib/utils";
 import {
+  type BookCanvasElement,
   bookElementOverlayTopLeftFromPivot,
   bookElementPivotKonva,
+  type BookNewsDisplayMode,
   bookWidgetBackdropChromeStyle,
   parseBookWeatherBackground,
   parseBookWidgetTextColor,
@@ -15,16 +18,14 @@ import {
   resolveBookElementOutlineColor,
   resolveBookElementOutlineWidth,
   resolveBookElementRotation,
-  type BookCanvasElement,
-  type BookNewsDisplayMode,
 } from "@/lib/book-canvas";
-import type { BookTextOverlayLiveFrame } from "@/components/books/BookTextWidgetOverlay";
 import {
   computeNewsHeadlinesRefetchIntervalMs,
   newsHeadlinesGcTimeMs,
   newsHeadlinesStaleTimeMs,
   useTabVisibleForNewsPolling,
 } from "@/lib/book-news-headlines-query-policy";
+import { cn } from "@/lib/utils";
 
 type Props = {
   el: Extract<BookCanvasElement, { type: "news" }>;
@@ -34,19 +35,27 @@ type Props = {
   liveFrame?: BookTextOverlayLiveFrame | null;
 };
 
-function resolveNewsMode(raw: BookNewsDisplayMode | undefined): BookNewsDisplayMode {
+function resolveNewsMode(
+  raw: BookNewsDisplayMode | undefined,
+): BookNewsDisplayMode {
   return raw === "list" ? "list" : "carousel";
 }
 
-function resolveCarouselSec(el: Extract<BookCanvasElement, { type: "news" }>): number {
+function resolveCarouselSec(
+  el: Extract<BookCanvasElement, { type: "news" }>,
+): number {
   const n = el.newsCarouselIntervalSec;
-  if (typeof n === "number" && Number.isInteger(n) && n >= 3 && n <= 120) return n;
+  if (typeof n === "number" && Number.isInteger(n) && n >= 3 && n <= 120)
+    return n;
   return 5;
 }
 
-function resolvePageSize(el: Extract<BookCanvasElement, { type: "news" }>): number {
+function resolvePageSize(
+  el: Extract<BookCanvasElement, { type: "news" }>,
+): number {
   const n = el.newsPageSize;
-  if (typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 10) return n;
+  if (typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 10)
+    return n;
   return 5;
 }
 
@@ -64,7 +73,8 @@ function resolveNewsTitleLineClamp(
   displayMode: BookNewsDisplayMode,
 ): number {
   const n = el.newsTitleLineClamp;
-  if (typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 6) return n;
+  if (typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 6)
+    return n;
   return displayMode === "carousel" ? 4 : 3;
 }
 
@@ -118,11 +128,17 @@ function NewsCarouselViewport({
   }, [articles.length, carouselSec]);
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col overflow-hidden" style={{ padding: padPx }}>
+    <div
+      className="relative flex h-full min-h-0 flex-col overflow-hidden"
+      style={{ padding: padPx }}
+    >
       {showNewsHeader ? (
         <div className="mb-1 flex shrink-0 items-center justify-between gap-2 opacity-90">
           <div
-            className={cn("flex items-center gap-1.5", useDefaultLightText && "text-white/90")}
+            className={cn(
+              "flex items-center gap-1.5",
+              useDefaultLightText && "text-white/90",
+            )}
             style={{ fontSize: metaFontPx, ...metaStyle }}
           >
             <Newspaper
@@ -130,11 +146,16 @@ function NewsCarouselViewport({
               style={{ width: metaFontPx * 1.2, height: metaFontPx * 1.2 }}
               aria-hidden
             />
-            <span className="font-semibold uppercase tracking-wider">{sectionTitle}</span>
+            <span className="font-semibold uppercase tracking-wider">
+              {sectionTitle}
+            </span>
           </div>
           {articles.length > 1 ? (
             <div
-              className={cn("tabular-nums opacity-70", useDefaultLightText && "text-white/80")}
+              className={cn(
+                "tabular-nums opacity-70",
+                useDefaultLightText && "text-white/80",
+              )}
               style={{ fontSize: metaFontPx * 0.95, ...metaStyle }}
             >
               {carouselIndex + 1}/{articles.length}
@@ -150,7 +171,9 @@ function NewsCarouselViewport({
               key={a.url}
               className={cn(
                 "absolute inset-0 flex flex-col justify-center transition-all duration-500 ease-out",
-                active ? "z-1 translate-y-0 opacity-100" : "z-0 translate-y-2 opacity-0",
+                active
+                  ? "z-1 translate-y-0 opacity-100"
+                  : "z-0 translate-y-2 opacity-0",
               )}
               aria-hidden={!active}
             >
@@ -159,14 +182,22 @@ function NewsCarouselViewport({
                   href={a.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={cn(titleLinkClass, titleClampClass, useDefaultLightText && "text-white")}
+                  className={cn(
+                    titleLinkClass,
+                    titleClampClass,
+                    useDefaultLightText && "text-white",
+                  )}
                   style={{ fontSize: titleFontPx, ...titleStyle }}
                 >
                   {a.title}
                 </a>
               ) : (
                 <span
-                  className={cn(titlePlainClass, titleClampClass, useDefaultLightText && "text-white")}
+                  className={cn(
+                    titlePlainClass,
+                    titleClampClass,
+                    useDefaultLightText && "text-white",
+                  )}
                   style={{ fontSize: titleFontPx, ...titleStyle }}
                 >
                   {a.title}
@@ -191,7 +222,13 @@ function NewsCarouselViewport({
   );
 }
 
-export function BookNewsWidgetOverlay({ el, scale, mode, isSelected, liveFrame }: Props) {
+export function BookNewsWidgetOverlay({
+  el,
+  scale,
+  mode,
+  isSelected,
+  liveFrame,
+}: Props) {
   const queryClient = useQueryClient();
   const tabVisible = useTabVisibleForNewsPolling();
   const rawCc = (el.newsCountry ?? "").trim().toLowerCase().slice(0, 2);
@@ -205,7 +242,10 @@ export function BookNewsWidgetOverlay({ el, scale, mode, isSelected, liveFrame }
     () => ["news", "headlines", country, category ?? "", pageSize] as const,
     [country, category, pageSize],
   );
-  const listQueryKeyJson = useMemo(() => JSON.stringify(listQueryKey), [listQueryKey]);
+  const listQueryKeyJson = useMemo(
+    () => JSON.stringify(listQueryKey),
+    [listQueryKey],
+  );
 
   const refetchIntervalMs = useMemo(
     () =>
@@ -220,7 +260,10 @@ export function BookNewsWidgetOverlay({ el, scale, mode, isSelected, liveFrame }
     () => newsHeadlinesStaleTimeMs(refetchIntervalMs),
     [refetchIntervalMs],
   );
-  const gcTimeMs = useMemo(() => newsHeadlinesGcTimeMs(refetchIntervalMs), [refetchIntervalMs]);
+  const gcTimeMs = useMemo(
+    () => newsHeadlinesGcTimeMs(refetchIntervalMs),
+    [refetchIntervalMs],
+  );
 
   const wasHiddenRef = useRef(false);
   useEffect(() => {
@@ -253,7 +296,13 @@ export function BookNewsWidgetOverlay({ el, scale, mode, isSelected, liveFrame }
   const h = el.height;
   const o = resolveBookElementOpacity(el.opacity);
   const rot = resolveBookElementRotation(el.rotation);
-  const pivot = bookElementPivotKonva({ x: el.x, y: el.y, width: w, height: h, rotation: el.rotation });
+  const pivot = bookElementPivotKonva({
+    x: el.x,
+    y: el.y,
+    width: w,
+    height: h,
+    rotation: el.rotation,
+  });
   const layoutOrigin = bookElementOverlayTopLeftFromPivot(pivot, w, h);
   const fx = liveFrame?.x ?? layoutOrigin.x;
   const fy = liveFrame?.y ?? layoutOrigin.y;
@@ -269,18 +318,21 @@ export function BookNewsWidgetOverlay({ el, scale, mode, isSelected, liveFrame }
   const defaultTitleLogical = metricsH * 0.072;
   const defaultMetaLogical = metricsH * 0.055;
   const titleFontPx =
-    typeof el.newsTitleFontSize === "number" && Number.isInteger(el.newsTitleFontSize)
+    typeof el.newsTitleFontSize === "number" &&
+    Number.isInteger(el.newsTitleFontSize)
       ? el.newsTitleFontSize * scale
       : Math.max(10 * scale, defaultTitleLogical * scale);
   const metaFontPx =
-    typeof el.newsMetaFontSize === "number" && Number.isInteger(el.newsMetaFontSize)
+    typeof el.newsMetaFontSize === "number" &&
+    Number.isInteger(el.newsMetaFontSize)
       ? el.newsMetaFontSize * scale
       : Math.max(8 * scale, defaultMetaLogical * scale);
   const titleLineClamp = resolveNewsTitleLineClamp(el, displayMode);
   const titleClampClass =
     TITLE_LINE_CLAMP_CLASS[titleLineClamp] ?? TITLE_LINE_CLAMP_CLASS[3]!;
   const padCanvasPx =
-    typeof el.newsContentPaddingPx === "number" && Number.isInteger(el.newsContentPaddingPx)
+    typeof el.newsContentPaddingPx === "number" &&
+    Number.isInteger(el.newsContentPaddingPx)
       ? Math.min(40, Math.max(4, el.newsContentPaddingPx))
       : Math.round(Math.max(10, Math.min(metricsH * 0.06, 28)));
   const padPx = padCanvasPx * scale;
@@ -289,7 +341,8 @@ export function BookNewsWidgetOverlay({ el, scale, mode, isSelected, liveFrame }
   const showNewsSource = el.newsShowSource !== false;
   const linksEnabled = el.newsLinksEnabled !== false;
 
-  const errMsg = error instanceof Error ? error.message : "불러오지 못했습니다.";
+  const errMsg =
+    error instanceof Error ? error.message : "불러오지 못했습니다.";
 
   const titleColor = parseBookWidgetTextColor(el.newsTextColor);
   const metaColor = parseBookWidgetTextColor(el.newsMetaColor);
@@ -304,12 +357,16 @@ export function BookNewsWidgetOverlay({ el, scale, mode, isSelected, liveFrame }
   const useDefaultLightText = !titleColor && !metaColor;
 
   const customBg = parseBookWeatherBackground(el.newsBackground);
-  const backdropChrome = customBg ? bookWidgetBackdropChromeStyle(customBg) : null;
+  const backdropChrome = customBg
+    ? bookWidgetBackdropChromeStyle(customBg)
+    : null;
   const brPx = Math.max(0, resolveBookElementBorderRadius(el) * scale);
   const ow = resolveBookElementOutlineWidth(el);
   const oc = resolveBookElementOutlineColor(el);
   const outlineRing =
-    mode === "edit" && ow > 0 ? `0 0 0 ${Math.max(0.5, ow * scale)}px ${oc}` : "";
+    mode === "edit" && ow > 0
+      ? `0 0 0 ${Math.max(0.5, ow * scale)}px ${oc}`
+      : "";
   const bgShadow = !customBg
     ? "0 16px 40px -10px rgba(0,0,0,0.35), 0 6px 20px -8px rgba(0,0,0,0.22)"
     : customBg && backdropChrome && backdropChrome.boxShadow !== "none"
@@ -317,13 +374,15 @@ export function BookNewsWidgetOverlay({ el, scale, mode, isSelected, liveFrame }
       : "";
   const mergedShadow = [bgShadow, outlineRing].filter(Boolean).join(", ");
 
-  const titleBaseClass =
-    "min-w-0 font-medium leading-snug transition-opacity";
+  const titleBaseClass = "min-w-0 font-medium leading-snug transition-opacity";
   const titleLinkClass = cn(
     titleBaseClass,
     "pointer-events-auto underline underline-offset-2 hover:opacity-90",
   );
-  const titlePlainClass = cn(titleBaseClass, "pointer-events-none cursor-default select-text");
+  const titlePlainClass = cn(
+    titleBaseClass,
+    "pointer-events-none cursor-default select-text",
+  );
 
   return (
     <div
@@ -350,7 +409,8 @@ export function BookNewsWidgetOverlay({ el, scale, mode, isSelected, liveFrame }
               border: backdropChrome?.border,
             }
           : {
-              background: "linear-gradient(145deg, #1e293b 0%, #0f172a 48%, #172554 100%)",
+              background:
+                "linear-gradient(145deg, #1e293b 0%, #0f172a 48%, #172554 100%)",
             }),
         boxShadow: mergedShadow || undefined,
       }}
@@ -380,7 +440,9 @@ export function BookNewsWidgetOverlay({ el, scale, mode, isSelected, liveFrame }
             style={{ width: titleFontPx * 1.6, height: titleFontPx * 1.6 }}
             aria-hidden
           />
-          <span className="max-w-[95%] text-[0.8em] font-medium leading-snug">{errMsg}</span>
+          <span className="max-w-[95%] text-[0.8em] font-medium leading-snug">
+            {errMsg}
+          </span>
         </div>
       ) : articles.length === 0 ? (
         <div
@@ -389,9 +451,11 @@ export function BookNewsWidgetOverlay({ el, scale, mode, isSelected, liveFrame }
         >
           <span>표시할 기사가 없습니다.</span>
           <span className="max-w-[95%] text-[0.72em] leading-snug opacity-90">
-            개발 시 프론트(Vite)가 <code className="rounded bg-black/25 px-1">/news</code>를 백엔드로
+            개발 시 프론트(Vite)가{" "}
+            <code className="rounded bg-black/25 px-1">/news</code>를 백엔드로
             프록시하는지, 인스펙터 국가 코드(예: kr→us)·카테고리·백엔드{" "}
-            <code className="rounded bg-black/25 px-1">NEWSAPI_KEY</code>를 확인해 보세요.
+            <code className="rounded bg-black/25 px-1">NEWSAPI_KEY</code>를
+            확인해 보세요.
           </span>
         </div>
       ) : displayMode === "list" ? (
@@ -415,7 +479,9 @@ export function BookNewsWidgetOverlay({ el, scale, mode, isSelected, liveFrame }
                 style={{ width: metaFontPx * 1.2, height: metaFontPx * 1.2 }}
                 aria-hidden
               />
-              <span className="font-semibold uppercase tracking-wider">{sectionTitle}</span>
+              <span className="font-semibold uppercase tracking-wider">
+                {sectionTitle}
+              </span>
             </div>
           ) : null}
           <ul className="min-h-0 flex-1 space-y-2 overflow-hidden">

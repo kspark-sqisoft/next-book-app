@@ -41,10 +41,7 @@ export function parseUpdateCatBody(value: unknown): {
   const hasAge = Object.hasOwn(body, "age");
   const hasBreed = Object.hasOwn(body, "breed");
   if (!hasName && !hasAge && !hasBreed) {
-    throw new HttpError(
-      400,
-      "name, age, breed 중 최소 하나는 보내야 합니다.",
-    );
+    throw new HttpError(400, "name, age, breed 중 최소 하나는 보내야 합니다.");
   }
 
   const dto: { name?: string; age?: number; breed?: string } = {};

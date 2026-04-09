@@ -1,5 +1,6 @@
-import { useFormStatus } from "react-dom";
 import type { ComponentProps, ReactNode } from "react";
+import { useFormStatus } from "react-dom";
+
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";

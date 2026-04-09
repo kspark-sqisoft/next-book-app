@@ -1,27 +1,19 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import {
+  startTransition,
   useEffect,
   useId,
   useMemo,
   useRef,
   useState,
-  startTransition,
 } from "react";
-import { useAuth } from "@/stores/auth-store";
-import { appLog } from "@/lib/app-log";
-import { isAdminUser } from "@/lib/authz";
-import {
-  adminSetUserRoleByEmail,
-  fetchAdminUsersList,
-  fetchMe,
-  publicAssetUrl,
-  updateMyProfile,
-} from "@/lib/api";
-import { userKeys } from "@/lib/query-keys";
+import { toast } from "sonner";
+
 import { FormErrorAlert } from "@/components/forms/FormErrorAlert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -29,10 +21,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SafeImage } from "@/components/ui/safe-image";
 import {
   Select,
   SelectContent,
@@ -40,8 +31,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SafeImage } from "@/components/ui/safe-image";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  adminSetUserRoleByEmail,
+  fetchAdminUsersList,
+  fetchMe,
+  publicAssetUrl,
+  updateMyProfile,
+} from "@/lib/api";
+import { appLog } from "@/lib/app-log";
+import { isAdminUser } from "@/lib/authz";
+import { userKeys } from "@/lib/query-keys";
+import { useAuth } from "@/stores/auth-store";
 
 const DISPLAY_NAME_MAX = 100;
 
@@ -136,8 +137,10 @@ export function MyInfoPage() {
       }
       appLog("me", "프로필 반영 완료", { sub: next.sub });
       if (variables.name != null) toast.success("표시 이름을 저장했습니다.");
-      else if (variables.image != null) toast.success("프로필 이미지를 저장했습니다.");
-      else if (variables.removeImage) toast.success("프로필 이미지를 제거했습니다.");
+      else if (variables.image != null)
+        toast.success("프로필 이미지를 저장했습니다.");
+      else if (variables.removeImage)
+        toast.success("프로필 이미지를 제거했습니다.");
     },
     onError: (e) => {
       const msg =
@@ -178,7 +181,9 @@ export function MyInfoPage() {
         targetId: row.id,
         role: row.role,
       });
-      toast.success(`저장했습니다: ${row.email} → ${row.role === "admin" ? "관리자" : "일반"}`);
+      toast.success(
+        `저장했습니다: ${row.email} → ${row.role === "admin" ? "관리자" : "일반"}`,
+      );
       void queryClient.invalidateQueries({ queryKey: userKeys.adminList() });
       void queryClient.invalidateQueries({ queryKey: userKeys.me() });
     },
@@ -253,13 +258,14 @@ export function MyInfoPage() {
   const nameTrimmed = nameDraft.trim();
   const nameLenOk =
     nameTrimmed.length > 0 && nameTrimmed.length <= DISPLAY_NAME_MAX;
-  const nameDirty =
-    nameTrimmed !== (profile?.name ?? "").trim();
+  const nameDirty = nameTrimmed !== (profile?.name ?? "").trim();
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">내 정보</h1>
+        <h1 className="font-heading text-2xl font-semibold tracking-tight">
+          내 정보
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           표시 이름·프로필 이미지·계정 유형을 확인·변경할 수 있습니다.
         </p>
@@ -270,14 +276,17 @@ export function MyInfoPage() {
       <Card>
         <CardHeader>
           <CardTitle>계정</CardTitle>
-          <CardDescription>현재 로그인 세션의 사용자 식별 값입니다.</CardDescription>
+          <CardDescription>
+            현재 로그인 세션의 사용자 식별 값입니다.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 font-mono text-sm">
           <p>
             <span className="text-muted-foreground">sub:</span> {profile?.sub}
           </p>
           <p>
-            <span className="text-muted-foreground">email:</span> {profile?.email}
+            <span className="text-muted-foreground">email:</span>{" "}
+            {profile?.email}
           </p>
           <div className="space-y-2 border-t border-border pt-4 font-sans">
             <p className="text-xs font-medium text-muted-foreground">
@@ -332,8 +341,8 @@ export function MyInfoPage() {
               ) : (
                 <p className="max-w-md text-xs text-muted-foreground">
                   관리자 권한은 DB에 저장됩니다. 관리자는 프로필 이미지 아래
-                  «다른 사용자 역할»에서 계정별로 지정할 수 있습니다. (선택) 서버
-                  부팅 시 BOOTSTRAP_ADMIN_EMAILS로 최초 시드도 가능합니다.
+                  «다른 사용자 역할»에서 계정별로 지정할 수 있습니다. (선택)
+                  서버 부팅 시 BOOTSTRAP_ADMIN_EMAILS로 최초 시드도 가능합니다.
                 </p>
               )}
             </div>
@@ -345,7 +354,8 @@ export function MyInfoPage() {
         <CardHeader>
           <CardTitle>표시 이름</CardTitle>
           <CardDescription>
-            글 작성자·댓글·헤더 등에 보이는 이름입니다. 최대 {DISPLAY_NAME_MAX}자입니다.
+            글 작성자·댓글·헤더 등에 보이는 이름입니다. 최대 {DISPLAY_NAME_MAX}
+            자입니다.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -507,7 +517,8 @@ export function MyInfoPage() {
             <CardTitle>다른 사용자 역할</CardTitle>
             <CardDescription>
               본인을 제외한 전체 계정입니다. 행마다 일반 사용자 또는 관리자로
-              저장할 수 있습니다. 마지막 남은 관리자는 일반 사용자로 내릴 수 없습니다.
+              저장할 수 있습니다. 마지막 남은 관리자는 일반 사용자로 내릴 수
+              없습니다.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -607,7 +618,9 @@ export function MyInfoPage() {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="user">일반 사용자</SelectItem>
+                                <SelectItem value="user">
+                                  일반 사용자
+                                </SelectItem>
                                 <SelectItem value="admin">관리자</SelectItem>
                               </SelectContent>
                             </Select>

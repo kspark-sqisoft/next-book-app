@@ -1,5 +1,6 @@
 import {
   BOOK_CANVAS_DRAG_GRID_PX,
+  type BookCanvasElement,
   DEFAULT_BOOK_DIGITAL_CLOCK_HEIGHT,
   DEFAULT_BOOK_DIGITAL_CLOCK_WIDTH,
   DEFAULT_BOOK_NEWS_WIDGET_HEIGHT,
@@ -7,7 +8,6 @@ import {
   DEFAULT_BOOK_WEATHER_WIDGET_HEIGHT,
   DEFAULT_BOOK_WEATHER_WIDGET_WIDTH,
   snapBookElementTopLeftToGrid,
-  type BookCanvasElement,
 } from "@/lib/book-canvas";
 import { defaultTextWidgetBoxHeight } from "@/lib/book-text-widget";
 
@@ -180,9 +180,7 @@ function clampPlacementBox(
   return { x: xi, y: yi, w, h };
 }
 
-function widgetSize(
-  a: BookLayoutAiAddWidgetAction,
-): { w: number; h: number } {
+function widgetSize(a: BookLayoutAiAddWidgetAction): { w: number; h: number } {
   if (a.widget === "weather") {
     return {
       w: DEFAULT_BOOK_WEATHER_WIDGET_WIDTH,
@@ -263,11 +261,12 @@ export function anchorToTopLeft(
   }
 }
 
-export function pageBackgroundActions(
-  actions: BookLayoutAiAction[],
-): string[] {
+export function pageBackgroundActions(actions: BookLayoutAiAction[]): string[] {
   return actions
-    .filter((x): x is BookLayoutAiSetBackgroundAction => x.type === "set_page_background")
+    .filter(
+      (x): x is BookLayoutAiSetBackgroundAction =>
+        x.type === "set_page_background",
+    )
     .map((x) => x.backgroundColor);
 }
 
@@ -275,7 +274,9 @@ export function pageTitleActions(
   actions: BookLayoutAiAction[],
 ): { title: string; slideNumber?: number }[] {
   return actions
-    .filter((x): x is BookLayoutAiSetPageTitleAction => x.type === "set_page_title")
+    .filter(
+      (x): x is BookLayoutAiSetPageTitleAction => x.type === "set_page_title",
+    )
     .map((x) => {
       const sn =
         typeof x.slideNumber === "number" &&
@@ -283,13 +284,17 @@ export function pageTitleActions(
         x.slideNumber >= 1
           ? Math.round(x.slideNumber)
           : undefined;
-      return sn != null ? { title: x.title, slideNumber: sn } : { title: x.title };
+      return sn != null
+        ? { title: x.title, slideNumber: sn }
+        : { title: x.title };
     });
 }
 
 export function bookTitleActions(actions: BookLayoutAiAction[]): string[] {
   return actions
-    .filter((x): x is BookLayoutAiSetBookTitleAction => x.type === "set_book_title")
+    .filter(
+      (x): x is BookLayoutAiSetBookTitleAction => x.type === "set_book_title",
+    )
     .map((x) => x.title);
 }
 
@@ -308,9 +313,10 @@ export function addPagesTotalCount(actions: BookLayoutAiAction[]): number {
 }
 
 /** 여러 set_slide_dimensions가 있으면 같은 축은 마지막 값이 적용됩니다. */
-export function slideDimensionsFromActions(
-  actions: BookLayoutAiAction[],
-): { slideWidth?: number; slideHeight?: number } {
+export function slideDimensionsFromActions(actions: BookLayoutAiAction[]): {
+  slideWidth?: number;
+  slideHeight?: number;
+} {
   let slideWidth: number | undefined;
   let slideHeight: number | undefined;
   for (const a of actions) {
@@ -366,7 +372,14 @@ export function widgetPlacementsFromLayoutAiActions(
     let h: number;
     let snapped: { x: number; y: number };
     if (explicit) {
-      const box = clampPlacementBox(a.x!, a.y!, a.width!, a.height!, slideW, slideH);
+      const box = clampPlacementBox(
+        a.x!,
+        a.y!,
+        a.width!,
+        a.height!,
+        slideW,
+        slideH,
+      );
       w = box.w;
       h = box.h;
       snapped = snapBookElementTopLeftToGrid(box.x, box.y, gridPx);
@@ -443,8 +456,7 @@ export function widgetPlacementsFromLayoutAiActions(
     if (a.widget === "video") {
       const src = a.src!.trim();
       const p = a.posterSrc?.trim();
-      const posterSrc =
-        p && /^https:\/\//i.test(p) ? p : null;
+      const posterSrc = p && /^https:\/\//i.test(p) ? p : null;
       out.push({
         element: {
           id,

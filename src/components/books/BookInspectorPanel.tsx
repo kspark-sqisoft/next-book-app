@@ -1,5 +1,3 @@
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import {
   ChevronDown,
   ChevronUp,
@@ -15,22 +13,42 @@ import {
   SlidersHorizontal,
   Trash2,
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+
+import type { BookMediaPlaylistPlaybackUiSnapshot } from "@/components/books/BookMediaPlaylistWidgetOverlay";
+import { BookTextRichEditor } from "@/components/books/BookTextRichEditor";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Slider } from "@/components/ui/slider";
 import { publicAssetUrl } from "@/lib/api";
 import {
   BOOK_MEDIA_OBJECT_FIT_VALUES,
   BOOK_NEWS_CATEGORIES,
   BOOK_SHAPE_KINDS,
   BOOK_WIDGET_DEFAULT_ROUNDED_RADIUS,
-  DEFAULT_MEDIA_PLAYLIST_IMAGE_DURATION_SEC,
-  MEDIA_PLAYLIST_MAX_ITEMS,
   type BookCanvasElement,
-  type BookShapeKind,
-  type BookMediaPlaylistItem,
   type BookDigitalClockDisplay,
   type BookDigitalClockDisplayResolved,
   type BookMediaObjectFit,
+  type BookMediaPlaylistItem,
+  type BookShapeKind,
   type BookWeatherDisplay,
   type BookWeatherDisplayResolved,
+  DEFAULT_MEDIA_PLAYLIST_IMAGE_DURATION_SEC,
+  formatBookMediaClock,
+  isBookElementLocked,
+  MEDIA_PLAYLIST_MAX_ITEMS,
   parseBookClockBackground,
   parseBookWidgetTextColor,
   resolveBookDigitalClockDisplay,
@@ -43,9 +61,8 @@ import {
   resolveBookWeatherDisplay,
   resolveMediaPlaylistLoop,
   resolveMediaPlaylistShowControls,
-  formatBookMediaClock,
-  isBookElementLocked,
 } from "@/lib/book-canvas";
+import { BOOK_HEX_COLOR_PRESETS } from "@/lib/book-color-presets";
 import {
   computeMediaPlaylistPresentationDurationSec,
   DEFAULT_PRESENTATION_PLAYLIST_VIDEO_ESTIMATE_SEC,
@@ -55,9 +72,6 @@ import {
   defaultTextWidgetBoxHeight,
   getTextWidgetDisplayHtml,
 } from "@/lib/book-text-widget";
-import { BookTextRichEditor } from "@/components/books/BookTextRichEditor";
-import type { BookMediaPlaylistPlaybackUiSnapshot } from "@/components/books/BookMediaPlaylistWidgetOverlay";
-import { BOOK_HEX_COLOR_PRESETS } from "@/lib/book-color-presets";
 import {
   bookDockedPanelHeaderIconClass,
   bookDockedPanelHeaderRowClass,
@@ -65,19 +79,6 @@ import {
   bookDockedPanelRootClass,
 } from "@/lib/book-workspace-ui";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 type BookInspectorPanelProps = {
   selected: BookCanvasElement | null;
@@ -104,7 +105,10 @@ type BookInspectorPanelProps = {
   /** 캔버스 플레이리스트 위젯 id → 재생 중인 항목 인덱스(목록 하이라이트) */
   mediaPlaylistPlaybackByElementId?: Record<string, number>;
   /** 선택된 위젯 재생 UI(캔버스 오버레이와 동기) */
-  mediaPlaylistPlaybackUiByElementId?: Record<string, BookMediaPlaylistPlaybackUiSnapshot>;
+  mediaPlaylistPlaybackUiByElementId?: Record<
+    string,
+    BookMediaPlaylistPlaybackUiSnapshot
+  >;
   /** 인스펙터 미니 컨트롤 → 캔버스 플레이리스트 */
   onMediaPlaylistRemoteControl?: (
     elementId: string,
@@ -126,8 +130,8 @@ function NewsCarouselIntervalInputInner({
   seconds: number | undefined;
   onChange: BookInspectorPanelProps["onChange"];
 }) {
-  const [draft, setDraft] = useState(
-    () => (seconds != null && Number.isInteger(seconds) ? String(seconds) : ""),
+  const [draft, setDraft] = useState(() =>
+    seconds != null && Number.isInteger(seconds) ? String(seconds) : "",
   );
 
   return (
@@ -157,12 +161,16 @@ function NewsCarouselIntervalInputInner({
             onChange(elementId, { newsCarouselIntervalSec: n });
           } else {
             setDraft(
-              seconds != null && Number.isInteger(seconds) ? String(seconds) : "",
+              seconds != null && Number.isInteger(seconds)
+                ? String(seconds)
+                : "",
             );
           }
         }}
       />
-      <p className="text-[11px] text-muted-foreground leading-snug">3~120초, 비우면 5초</p>
+      <p className="text-[11px] text-muted-foreground leading-snug">
+        3~120초, 비우면 5초
+      </p>
     </div>
   );
 }
@@ -185,8 +193,8 @@ function InspectorPresentationHoldInputInner({
   value: number | undefined;
   onChange: BookInspectorPanelProps["onChange"];
 }) {
-  const [draft, setDraft] = useState(
-    () => (value != null && Number.isInteger(value) ? String(value) : ""),
+  const [draft, setDraft] = useState(() =>
+    value != null && Number.isInteger(value) ? String(value) : "",
   );
 
   return (
@@ -223,7 +231,8 @@ function InspectorPresentationHoldInputInner({
         }}
       />
       <p className="text-[10px] leading-snug text-muted-foreground">
-        1~3600초. 비우면 기본 {DEFAULT_WIDGET_PRESENTATION_SEC}초(또는 동영상 메타 길이)를 씁니다.
+        1~3600초. 비우면 기본 {DEFAULT_WIDGET_PRESENTATION_SEC}초(또는 동영상
+        메타 길이)를 씁니다.
       </p>
     </div>
   );
@@ -258,19 +267,23 @@ function InspectorPresentationTimingSection({
     const sum = computeMediaPlaylistPresentationDurationSec(el);
     return (
       <div className="space-y-2 rounded-md border border-border/60 bg-muted/[0.08] p-2.5">
-        <p className="text-[10px] font-semibold text-foreground">슬라이드쇼(미리보기)</p>
+        <p className="text-[10px] font-semibold text-foreground">
+          슬라이드쇼(미리보기)
+        </p>
         {isTiming ? (
           <p className="text-[10px] font-medium text-primary">
             이 위젯이 이 페이지의 시간 기준 레이어입니다.
           </p>
         ) : (
           <p className="text-[10px] leading-snug text-muted-foreground">
-            페이지 속성에서 이 레이어를 시간 기준으로 고르면, 아래 합계가 슬라이드 길이가 됩니다.
+            페이지 속성에서 이 레이어를 시간 기준으로 고르면, 아래 합계가
+            슬라이드 길이가 됩니다.
           </p>
         )}
         <p className="text-[10px] leading-snug text-muted-foreground">
-          목록의 이미지 표시 시간 + 동영상(메타 없으면 {DEFAULT_PRESENTATION_PLAYLIST_VIDEO_ESTIMATE_SEC}초로
-          추정)을 더합니다.
+          목록의 이미지 표시 시간 + 동영상(메타 없으면{" "}
+          {DEFAULT_PRESENTATION_PLAYLIST_VIDEO_ESTIMATE_SEC}초로 추정)을
+          더합니다.
         </p>
         <p className="font-mono text-sm tabular-nums">합계 약 {sum}초</p>
       </div>
@@ -279,7 +292,9 @@ function InspectorPresentationTimingSection({
 
   return (
     <div className="space-y-2 rounded-md border border-border/60 bg-muted/[0.08] p-2.5">
-      <p className="text-[10px] font-semibold text-foreground">슬라이드쇼(미리보기)</p>
+      <p className="text-[10px] font-semibold text-foreground">
+        슬라이드쇼(미리보기)
+      </p>
       {isTiming ? (
         <p className="text-[10px] font-medium text-primary">
           이 위젯이 이 페이지의 시간 기준 레이어입니다.
@@ -289,10 +304,12 @@ function InspectorPresentationTimingSection({
           이 위젯을 시간 기준으로 쓰려면 페이지 속성에서 선택하세요.
         </p>
       )}
-      {el.type === "video" && videoMetaDurationSec != null && videoMetaDurationSec > 0 ? (
+      {el.type === "video" &&
+      videoMetaDurationSec != null &&
+      videoMetaDurationSec > 0 ? (
         <p className="text-[10px] leading-snug text-muted-foreground">
-          동영상 메타 길이 약 {Math.ceil(videoMetaDurationSec)}초. 표시 시간을 비우면 미리보기 타이머에 이 길이를
-          씁니다.
+          동영상 메타 길이 약 {Math.ceil(videoMetaDurationSec)}초. 표시 시간을
+          비우면 미리보기 타이머에 이 길이를 씁니다.
         </p>
       ) : null}
       <InspectorPresentationHoldInput
@@ -424,13 +441,18 @@ function InspectorMediaSourceSection({
   libraryEnabled?: boolean;
 }) {
   const showActions =
-    Boolean(onReplaceFile) || (Boolean(libraryEnabled) && Boolean(onPickLibrary));
+    Boolean(onReplaceFile) ||
+    (Boolean(libraryEnabled) && Boolean(onPickLibrary));
 
   if (!showActions) {
     return (
       <div className="space-y-1 rounded-md border border-border/70 bg-muted/20 px-2.5 py-2">
-        <p className="text-[10px] font-medium text-muted-foreground">현재 주소</p>
-        <p className="break-all font-mono text-[11px] leading-snug text-foreground/90">{src}</p>
+        <p className="text-[10px] font-medium text-muted-foreground">
+          현재 주소
+        </p>
+        <p className="break-all font-mono text-[11px] leading-snug text-foreground/90">
+          {src}
+        </p>
         {kind === "video" && posterSrc ? (
           <p className="break-all font-mono text-[10px] leading-snug text-muted-foreground">
             포스터: {posterSrc}
@@ -453,18 +475,23 @@ function InspectorMediaSourceSection({
           미디어 소스
         </h3>
         <p className="text-[10px] leading-snug text-muted-foreground">
-          아래 경로가 캔버스에 표시됩니다. 파일 또는 이 북의 미디어 라이브러리로 바꿀 수 있습니다.
+          아래 경로가 캔버스에 표시됩니다. 파일 또는 이 북의 미디어 라이브러리로
+          바꿀 수 있습니다.
         </p>
       </div>
       <div className="rounded-md border border-border bg-background/90 px-2 py-1.5">
         <p className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground">
           {kind === "image" ? "이미지 URL" : "동영상 URL"}
         </p>
-        <p className="mt-0.5 break-all font-mono text-[11px] leading-snug text-foreground">{src}</p>
+        <p className="mt-0.5 break-all font-mono text-[11px] leading-snug text-foreground">
+          {src}
+        </p>
       </div>
       {kind === "video" ? (
         <div className="rounded-md border border-dashed border-border/90 bg-muted/20 px-2 py-1.5">
-          <p className="text-[9px] font-medium text-muted-foreground">포스터(썸네일)</p>
+          <p className="text-[9px] font-medium text-muted-foreground">
+            포스터(썸네일)
+          </p>
           <p className="mt-0.5 break-all font-mono text-[10px] leading-snug text-foreground/85">
             {posterSrc?.trim() ? posterSrc : "— 없음 —"}
           </p>
@@ -500,7 +527,10 @@ function InspectorMediaSourceSection({
   );
 }
 
-const WEATHER_INSPECTOR_FIELDS: { key: keyof BookWeatherDisplayResolved; label: string }[] = [
+const WEATHER_INSPECTOR_FIELDS: {
+  key: keyof BookWeatherDisplayResolved;
+  label: string;
+}[] = [
   { key: "temp", label: "기온" },
   { key: "feelsLike", label: "체감 온도" },
   { key: "description", label: "상태 설명" },
@@ -529,7 +559,10 @@ function patchWeatherDisplay(
   return next;
 }
 
-const DIGITAL_CLOCK_INSPECTOR_FIELDS: { key: keyof BookDigitalClockDisplayResolved; label: string }[] = [
+const DIGITAL_CLOCK_INSPECTOR_FIELDS: {
+  key: keyof BookDigitalClockDisplayResolved;
+  label: string;
+}[] = [
   { key: "seconds", label: "초 표시" },
   { key: "date", label: "날짜 표시" },
   { key: "hour12", label: "12시간(AM/PM)" },
@@ -573,11 +606,16 @@ function digitalClockHexToRgba(hex: string, alpha: number): string {
   return `rgba(${r},${g},${b},${a})`;
 }
 
-function parseDigitalClockBgForInspector(raw: string | undefined): { hex: string; alpha: number } {
+function parseDigitalClockBgForInspector(raw: string | undefined): {
+  hex: string;
+  alpha: number;
+} {
   const fallback = { hex: "#0f172a", alpha: 0.92 };
   if (!raw?.trim()) return fallback;
   const s = raw.trim();
-  const m = s.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+))?\s*\)$/i);
+  const m = s.match(
+    /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+))?\s*\)$/i,
+  );
   if (m) {
     const r = Math.min(255, Math.max(0, parseInt(m[1], 10)));
     const g = Math.min(255, Math.max(0, parseInt(m[2], 10)));
@@ -607,7 +645,10 @@ function parseDigitalClockBgForInspector(raw: string | undefined): { hex: string
   return fallback;
 }
 
-type WidgetBackdropFieldKey = "clockBackground" | "weatherBackground" | "newsBackground";
+type WidgetBackdropFieldKey =
+  | "clockBackground"
+  | "weatherBackground"
+  | "newsBackground";
 type WidgetTextColorFieldKey =
   | "weatherTextColor"
   | "clockTextColor"
@@ -671,7 +712,9 @@ function OptionalWidgetTextColorFields({
             onChange={(e) => patch(digitalClockHexToRgba(e.target.value, 1))}
             aria-label={colorAriaLabel}
           />
-          <span className="text-[11px] text-muted-foreground">{appliedHint}</span>
+          <span className="text-[11px] text-muted-foreground">
+            {appliedHint}
+          </span>
         </div>
       ) : (
         <p className="text-[11px] text-muted-foreground">{defaultHint}</p>
@@ -729,7 +772,9 @@ function OptionalWidgetBackdropFields({
               type="color"
               className="h-9 w-14 shrink-0 cursor-pointer px-1"
               value={colorInputValue}
-              onChange={(e) => patch(digitalClockHexToRgba(e.target.value, alpha))}
+              onChange={(e) =>
+                patch(digitalClockHexToRgba(e.target.value, alpha))
+              }
               aria-label={colorAriaLabel}
             />
             <span className="text-[11px] text-muted-foreground">
@@ -746,7 +791,9 @@ function OptionalWidgetBackdropFields({
               min={0}
               max={100}
               step={1}
-              onValueChange={([v]) => patch(digitalClockHexToRgba(colorInputValue, v / 100))}
+              onValueChange={([v]) =>
+                patch(digitalClockHexToRgba(colorInputValue, v / 100))
+              }
             />
           </div>
         </>
@@ -770,7 +817,8 @@ function outlineInspectorHex(resolvedColor: string): string {
   if (/^#[0-9a-fA-F]{6}$/i.test(t)) return t;
   const m = t.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
   if (m) {
-    const toHex = (n: number) => Math.min(255, Math.max(0, n)).toString(16).padStart(2, "0");
+    const toHex = (n: number) =>
+      Math.min(255, Math.max(0, n)).toString(16).padStart(2, "0");
     return `#${toHex(+m[1])}${toHex(+m[2])}${toHex(+m[3])}`;
   }
   return "#94a3b8";
@@ -869,7 +917,9 @@ function ElementOpacitySlider({
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
         <Label htmlFor={`insp-op-${elementId}`}>불투명도</Label>
-        <span className="text-xs text-muted-foreground tabular-nums">{pct}%</span>
+        <span className="text-xs text-muted-foreground tabular-nums">
+          {pct}%
+        </span>
       </div>
       <Slider
         id={`insp-op-${elementId}`}
@@ -925,7 +975,11 @@ function MediaObjectFitFields({
   );
 }
 
-function MediaPlaylistInspectorItemThumb({ item }: { item: BookMediaPlaylistItem }) {
+function MediaPlaylistInspectorItemThumb({
+  item,
+}: {
+  item: BookMediaPlaylistItem;
+}) {
   const [broken, setBroken] = useState(false);
 
   const frameClass =
@@ -988,7 +1042,9 @@ function MediaPlaylistInspectorMiniBar({
   const loop = resolveMediaPlaylistLoop(el);
   const n = items.length;
   const safeHighlight =
-    highlightIndex != null && highlightIndex >= 0 && highlightIndex < n ? highlightIndex : 0;
+    highlightIndex != null && highlightIndex >= 0 && highlightIndex < n
+      ? highlightIndex
+      : 0;
   const idx =
     playbackUi != null && playbackUi.index >= 0 && playbackUi.index < n
       ? playbackUi.index
@@ -1139,223 +1195,228 @@ function MediaPlaylistInspectorBody({
     <>
       {/* 잠긴 위젯은 상위에 pointer-events-none이 있어, 미디어 목록은 여기서 다시 받도록 함 */}
       <div className="pointer-events-auto">
-      <p className="text-xs text-muted-foreground leading-relaxed">
-        순서대로 재생됩니다. 이미지는 기본 {DEFAULT_MEDIA_PLAYLIST_IMAGE_DURATION_SEC}초이며 항목마다 바꿀 수
-        있습니다. 동영상은 파일 길이만큼 재생됩니다.
-      </p>
-      <div className="flex flex-col gap-2">
-        <label className="flex cursor-pointer items-center gap-2 text-sm">
-          <Checkbox
-            checked={resolveMediaPlaylistLoop(el)}
-            onCheckedChange={(c) =>
-              onChange(el.id, {
-                mediaPlaylistLoop: c === false ? false : undefined,
-              })
-            }
-          />
-          <span>반복 재생</span>
-        </label>
-        <label className="flex cursor-pointer items-center gap-2 text-sm">
-          <Checkbox
-            checked={resolveMediaPlaylistShowControls(el)}
-            onCheckedChange={(c) =>
-              onChange(el.id, {
-                mediaPlaylistShowControls: c === false ? false : undefined,
-              })
-            }
-          />
-          <span>진행 바·이전/다음·일시정지 표시</span>
-        </label>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {onRequestAppendPlaylistMediaFromFile ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            disabled={items.length >= MEDIA_PLAYLIST_MAX_ITEMS}
-            onClick={() => onRequestAppendPlaylistMediaFromFile(el.id)}
-          >
-            파일에서 미디어 추가
-          </Button>
-        ) : null}
-        {mediaLibraryReplaceEnabled && onRequestAppendPlaylistMediaFromLibrary ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            disabled={items.length >= MEDIA_PLAYLIST_MAX_ITEMS}
-            onClick={() => onRequestAppendPlaylistMediaFromLibrary(el.id)}
-          >
-            라이브러리에서 미디어 추가
-          </Button>
-        ) : null}
-      </div>
-      <MediaPlaylistInspectorMiniBar
-        el={el}
-        items={items}
-        playbackUi={playbackUi}
-        highlightIndex={activePlaybackItemIndex}
-        onRemote={
-          onMediaPlaylistRemoteControl
-            ? (kind) => onMediaPlaylistRemoteControl(el.id, kind)
-            : undefined
-        }
-      />
-      <div
-        ref={listScrollRef}
-        className="max-h-96 space-y-2 overflow-y-auto overflow-x-hidden pr-3 scroll-smooth"
-      >
-        {items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">항목이 없습니다.</p>
-        ) : (
-          items.map((it, i) => (
-            <div
-              key={it.id}
-              ref={(node) => {
-                if (node) itemRowRefs.current.set(i, node);
-                else itemRowRefs.current.delete(i);
-              }}
-              className={cn(
-                "rounded-md border p-2 transition-colors",
-                activePlaybackItemIndex === i
-                  ? "border-primary bg-primary/[0.07] ring-2 ring-primary/35"
-                  : "border-border/80 bg-muted/20",
-              )}
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          순서대로 재생됩니다. 이미지는 기본{" "}
+          {DEFAULT_MEDIA_PLAYLIST_IMAGE_DURATION_SEC}초이며 항목마다 바꿀 수
+          있습니다. 동영상은 파일 길이만큼 재생됩니다.
+        </p>
+        <div className="flex flex-col gap-2">
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <Checkbox
+              checked={resolveMediaPlaylistLoop(el)}
+              onCheckedChange={(c) =>
+                onChange(el.id, {
+                  mediaPlaylistLoop: c === false ? false : undefined,
+                })
+              }
+            />
+            <span>반복 재생</span>
+          </label>
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <Checkbox
+              checked={resolveMediaPlaylistShowControls(el)}
+              onCheckedChange={(c) =>
+                onChange(el.id, {
+                  mediaPlaylistShowControls: c === false ? false : undefined,
+                })
+              }
+            />
+            <span>진행 바·이전/다음·일시정지 표시</span>
+          </label>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {onRequestAppendPlaylistMediaFromFile ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={items.length >= MEDIA_PLAYLIST_MAX_ITEMS}
+              onClick={() => onRequestAppendPlaylistMediaFromFile(el.id)}
             >
-              <div className="flex gap-2">
-                <MediaPlaylistInspectorItemThumb
-                  key={`${it.id}:${it.src}:${it.kind === "video" ? (it.posterSrc ?? "") : ""}`}
-                  item={it}
-                />
-                <div className="min-w-0 flex-1 space-y-2">
-                  {/* 목록에 overflow-x-hidden 이므로 가로 넘치면 오른쪽이 잘림 — 라벨 truncate로 넘침 방지 */}
-                  <div className="flex min-w-0 items-center justify-between gap-1">
-                    <span className="min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground">
-                      {i + 1}. {it.kind === "image" ? "이미지" : "동영상"}
-                      {activePlaybackItemIndex === i ? (
-                        <span className="ml-1.5 rounded bg-primary/15 px-1 py-px text-[10px] font-semibold text-primary">
-                          재생 중
-                        </span>
-                      ) : null}
-                    </span>
-                    {/* 오른쪽 끝은 overflow-x-hidden 에 잘리기 쉬움 → 삭제를 맨 앞(더 안쪽)에 둠 */}
-                    <div className="relative z-10 isolate flex shrink-0 items-center gap-1 pr-2.5">
-                      <Button
-                        type="button"
-                        size="icon-xs"
-                        variant="ghost"
-                        className="text-destructive"
-                        aria-label="삭제"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          onRequestDeletePlaylistItem?.(i);
-                        }}
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
-                      <Button
-                        type="button"
-                        size="icon-xs"
-                        variant="ghost"
-                        aria-label="위로"
-                        disabled={i === 0}
-                        onClick={() => move(i, -1)}
-                      >
-                        <ChevronUp className="size-3.5" />
-                      </Button>
-                      <Button
-                        type="button"
-                        size="icon-xs"
-                        variant="ghost"
-                        aria-label="아래로"
-                        disabled={i === items.length - 1}
-                        onClick={() => move(i, 1)}
-                      >
-                        <ChevronDown className="size-3.5" />
-                      </Button>
+              파일에서 미디어 추가
+            </Button>
+          ) : null}
+          {mediaLibraryReplaceEnabled &&
+          onRequestAppendPlaylistMediaFromLibrary ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={items.length >= MEDIA_PLAYLIST_MAX_ITEMS}
+              onClick={() => onRequestAppendPlaylistMediaFromLibrary(el.id)}
+            >
+              라이브러리에서 미디어 추가
+            </Button>
+          ) : null}
+        </div>
+        <MediaPlaylistInspectorMiniBar
+          el={el}
+          items={items}
+          playbackUi={playbackUi}
+          highlightIndex={activePlaybackItemIndex}
+          onRemote={
+            onMediaPlaylistRemoteControl
+              ? (kind) => onMediaPlaylistRemoteControl(el.id, kind)
+              : undefined
+          }
+        />
+        <div
+          ref={listScrollRef}
+          className="max-h-96 space-y-2 overflow-y-auto overflow-x-hidden pr-3 scroll-smooth"
+        >
+          {items.length === 0 ? (
+            <p className="text-sm text-muted-foreground">항목이 없습니다.</p>
+          ) : (
+            items.map((it, i) => (
+              <div
+                key={it.id}
+                ref={(node) => {
+                  if (node) itemRowRefs.current.set(i, node);
+                  else itemRowRefs.current.delete(i);
+                }}
+                className={cn(
+                  "rounded-md border p-2 transition-colors",
+                  activePlaybackItemIndex === i
+                    ? "border-primary bg-primary/[0.07] ring-2 ring-primary/35"
+                    : "border-border/80 bg-muted/20",
+                )}
+              >
+                <div className="flex gap-2">
+                  <MediaPlaylistInspectorItemThumb
+                    key={`${it.id}:${it.src}:${it.kind === "video" ? (it.posterSrc ?? "") : ""}`}
+                    item={it}
+                  />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    {/* 목록에 overflow-x-hidden 이므로 가로 넘치면 오른쪽이 잘림 — 라벨 truncate로 넘침 방지 */}
+                    <div className="flex min-w-0 items-center justify-between gap-1">
+                      <span className="min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground">
+                        {i + 1}. {it.kind === "image" ? "이미지" : "동영상"}
+                        {activePlaybackItemIndex === i ? (
+                          <span className="ml-1.5 rounded bg-primary/15 px-1 py-px text-[10px] font-semibold text-primary">
+                            재생 중
+                          </span>
+                        ) : null}
+                      </span>
+                      {/* 오른쪽 끝은 overflow-x-hidden 에 잘리기 쉬움 → 삭제를 맨 앞(더 안쪽)에 둠 */}
+                      <div className="relative z-10 isolate flex shrink-0 items-center gap-1 pr-2.5">
+                        <Button
+                          type="button"
+                          size="icon-xs"
+                          variant="ghost"
+                          className="text-destructive"
+                          aria-label="삭제"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onRequestDeletePlaylistItem?.(i);
+                          }}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon-xs"
+                          variant="ghost"
+                          aria-label="위로"
+                          disabled={i === 0}
+                          onClick={() => move(i, -1)}
+                        >
+                          <ChevronUp className="size-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon-xs"
+                          variant="ghost"
+                          aria-label="아래로"
+                          disabled={i === items.length - 1}
+                          onClick={() => move(i, 1)}
+                        >
+                          <ChevronDown className="size-3.5" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[11px]">미디어 URL</Label>
-                    <Input
-                      className="font-mono text-xs"
-                      placeholder={
-                        it.kind === "image"
-                          ? "/uploads/… 또는 https://…"
-                          : "/uploads/… 비디오"
-                      }
-                      value={it.src}
-                      onChange={(e) => updateItem(i, { src: e.target.value })}
-                    />
-                  </div>
-                  {it.kind === "image" ? (
                     <div className="space-y-1">
-                      <Label className="text-[11px]">표시 시간(초)</Label>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={600}
-                        placeholder={`기본 ${DEFAULT_MEDIA_PLAYLIST_IMAGE_DURATION_SEC}`}
-                        value={
-                          typeof it.durationSec === "number" && it.durationSec >= 1
-                            ? it.durationSec
-                            : ""
-                        }
-                        onChange={(e) => {
-                          const t = e.target.value.trim();
-                          if (t === "") {
-                            updateItem(i, { durationSec: undefined });
-                            return;
-                          }
-                          const n = Number(t);
-                          if (Number.isInteger(n) && n >= 1 && n <= 600) {
-                            updateItem(i, { durationSec: n });
-                          }
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      <Label className="text-[11px]">포스터 URL (선택)</Label>
+                      <Label className="text-[11px]">미디어 URL</Label>
                       <Input
                         className="font-mono text-xs"
-                        placeholder="비우면 없음"
-                        value={it.posterSrc ?? ""}
-                        onChange={(e) => {
-                          const v = e.target.value.trim();
-                          updateItem(i, { posterSrc: v === "" ? null : v });
-                        }}
+                        placeholder={
+                          it.kind === "image"
+                            ? "/uploads/… 또는 https://…"
+                            : "/uploads/… 비디오"
+                        }
+                        value={it.src}
+                        onChange={(e) => updateItem(i, { src: e.target.value })}
                       />
                     </div>
-                  )}
-                  <div className="space-y-1">
-                    <Label className="text-[11px]">프레임 맞춤</Label>
-                    <Select
-                      value={resolveBookMediaObjectFit(it.objectFit)}
-                      onValueChange={(next) =>
-                        updateItem(i, { objectFit: next as BookMediaObjectFit })
-                      }
-                    >
-                      <SelectTrigger size="sm" className="h-8 w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {BOOK_MEDIA_OBJECT_FIT_VALUES.map((fit) => (
-                          <SelectItem key={fit} value={fit}>
-                            {MEDIA_FIT_LABELS[fit]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {it.kind === "image" ? (
+                      <div className="space-y-1">
+                        <Label className="text-[11px]">표시 시간(초)</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={600}
+                          placeholder={`기본 ${DEFAULT_MEDIA_PLAYLIST_IMAGE_DURATION_SEC}`}
+                          value={
+                            typeof it.durationSec === "number" &&
+                            it.durationSec >= 1
+                              ? it.durationSec
+                              : ""
+                          }
+                          onChange={(e) => {
+                            const t = e.target.value.trim();
+                            if (t === "") {
+                              updateItem(i, { durationSec: undefined });
+                              return;
+                            }
+                            const n = Number(t);
+                            if (Number.isInteger(n) && n >= 1 && n <= 600) {
+                              updateItem(i, { durationSec: n });
+                            }
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <Label className="text-[11px]">포스터 URL (선택)</Label>
+                        <Input
+                          className="font-mono text-xs"
+                          placeholder="비우면 없음"
+                          value={it.posterSrc ?? ""}
+                          onChange={(e) => {
+                            const v = e.target.value.trim();
+                            updateItem(i, { posterSrc: v === "" ? null : v });
+                          }}
+                        />
+                      </div>
+                    )}
+                    <div className="space-y-1">
+                      <Label className="text-[11px]">프레임 맞춤</Label>
+                      <Select
+                        value={resolveBookMediaObjectFit(it.objectFit)}
+                        onValueChange={(next) =>
+                          updateItem(i, {
+                            objectFit: next as BookMediaObjectFit,
+                          })
+                        }
+                      >
+                        <SelectTrigger size="sm" className="h-8 w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {BOOK_MEDIA_OBJECT_FIT_VALUES.map((fit) => (
+                            <SelectItem key={fit} value={fit}>
+                              {MEDIA_FIT_LABELS[fit]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))
-        )}
-      </div>
+            ))
+          )}
+        </div>
       </div>
     </>
   );
@@ -1411,1026 +1472,1199 @@ export function BookInspectorPanel({
       ? playlistDeleteItems[playlistDeleteIdx]
       : undefined;
 
-  const playlistDeleteConfirmLayer =
-    showPlaylistDeleteModal ? (
+  const playlistDeleteConfirmLayer = showPlaylistDeleteModal ? (
+    <div
+      role="presentation"
+      className="fixed inset-0 z-[30000] flex items-center justify-center bg-black/50 p-4"
+      onClick={() => setPlaylistItemDelete(null)}
+    >
       <div
-        role="presentation"
-        className="fixed inset-0 z-[30000] flex items-center justify-center bg-black/50 p-4"
-        onClick={() => setPlaylistItemDelete(null)}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="playlist-item-delete-title"
+        className="w-full max-w-sm rounded-xl border border-border bg-popover p-4 text-popover-foreground shadow-lg"
+        onClick={(e) => e.stopPropagation()}
       >
-        <div
-          role="alertdialog"
-          aria-modal="true"
-          aria-labelledby="playlist-item-delete-title"
-          className="w-full max-w-sm rounded-xl border border-border bg-popover p-4 text-popover-foreground shadow-lg"
-          onClick={(e) => e.stopPropagation()}
+        <h2
+          id="playlist-item-delete-title"
+          className="text-base font-semibold tracking-tight"
         >
-          <h2
-            id="playlist-item-delete-title"
-            className="text-base font-semibold tracking-tight"
+          미디어 항목을 삭제할까요?
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {playlistDeleteTargetItem != null && playlistDeleteIdx >= 0
+            ? `목록 ${playlistDeleteIdx + 1}번 ${
+                playlistDeleteTargetItem.kind === "image" ? "이미지" : "동영상"
+              } 항목을 삭제합니다. 이 작업은 되돌릴 수 없습니다.`
+            : "이 항목을 삭제합니다. 이 작업은 되돌릴 수 없습니다."}
+        </p>
+        <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setPlaylistItemDelete(null)}
           >
-            미디어 항목을 삭제할까요?
-          </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {playlistDeleteTargetItem != null && playlistDeleteIdx >= 0
-              ? `목록 ${playlistDeleteIdx + 1}번 ${
-                  playlistDeleteTargetItem.kind === "image" ? "이미지" : "동영상"
-                } 항목을 삭제합니다. 이 작업은 되돌릴 수 없습니다.`
-              : "이 항목을 삭제합니다. 이 작업은 되돌릴 수 없습니다."}
-          </p>
-          <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button type="button" variant="outline" onClick={() => setPlaylistItemDelete(null)}>
-              취소
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() => {
-                const t = playlistItemDelete;
-                if (!t) return;
-                const cur =
-                  selected?.type === "mediaPlaylist" && selected.id === t.elementId
-                    ? (selected.mediaPlaylistItems ?? [])
-                    : [];
-                if (t.index < 0 || t.index >= cur.length) {
-                  setPlaylistItemDelete(null);
-                  return;
-                }
-                onChange(t.elementId, {
-                  mediaPlaylistItems: cur.filter((_, i) => i !== t.index),
-                });
+            취소
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={() => {
+              const t = playlistItemDelete;
+              if (!t) return;
+              const cur =
+                selected?.type === "mediaPlaylist" &&
+                selected.id === t.elementId
+                  ? (selected.mediaPlaylistItems ?? [])
+                  : [];
+              if (t.index < 0 || t.index >= cur.length) {
                 setPlaylistItemDelete(null);
-              }}
-            >
-              삭제
-            </Button>
-          </div>
+                return;
+              }
+              onChange(t.elementId, {
+                mediaPlaylistItems: cur.filter((_, i) => i !== t.index),
+              });
+              setPlaylistItemDelete(null);
+            }}
+          >
+            삭제
+          </Button>
         </div>
       </div>
-    ) : null;
+    </div>
+  ) : null;
 
   return (
     <>
-    <Root
-      className={cn(
-        bookDockedPanelRootClass("max-h-full"),
-        embedded ? "min-w-0" : "w-80 shrink-0 border-l border-border/70",
-      )}
-    >
-      <div className={bookDockedPanelHeaderRowClass()}>
-        <SlidersHorizontal className={bookDockedPanelHeaderIconClass()} aria-hidden />
-        <span className={bookDockedPanelHeadingClass()}>위젯 속성</span>
-      </div>
-      <div className="min-h-0 flex-1 basis-0 overflow-y-auto overflow-x-hidden overscroll-contain [-webkit-overflow-scrolling:touch]">
-        <div className="space-y-4 p-3">
-          {multiSelectionCount >= 2 ? (
-            <div className="space-y-3 rounded-lg border border-border/70 bg-muted/[0.08] p-3 shadow-sm">
-              <p className="text-sm font-semibold text-foreground">
-                위젯 {multiSelectionCount}개 선택됨
-              </p>
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                한 번에 하나만 속성을 편집할 수 있습니다. Shift+클릭으로 선택을 추가·해제하고, 캔버스 빈 곳을
-                눌러 모두 해제할 수 있습니다. Delete로 선택 항목을 함께 삭제할 수 있습니다.
-              </p>
-              <Button type="button" variant="destructive" size="sm" className="w-full" onClick={onDelete}>
-                선택 항목 모두 삭제…
-              </Button>
-            </div>
-          ) : !selected ? (
-            <p className="rounded-md border border-dashed border-border/60 bg-muted/[0.05] px-3 py-4 text-center text-sm leading-relaxed text-muted-foreground">
-              캔버스에서 위젯을 선택하면 이 패널에서 글자·위치·크기를 바꿀 수 있습니다.
-            </p>
-          ) : (
-            <>
-              {isBookElementLocked(selected) ? (
-                <p className="mb-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-2 text-xs text-amber-900 dark:text-amber-100">
-                  잠긴 위젯입니다. 레이어 목록의 자물쇠로 잠금을 해제한 뒤 편집할 수 있습니다.
+      <Root
+        className={cn(
+          bookDockedPanelRootClass("max-h-full"),
+          embedded ? "min-w-0" : "w-80 shrink-0 border-l border-border/70",
+        )}
+      >
+        <div className={bookDockedPanelHeaderRowClass()}>
+          <SlidersHorizontal
+            className={bookDockedPanelHeaderIconClass()}
+            aria-hidden
+          />
+          <span className={bookDockedPanelHeadingClass()}>위젯 속성</span>
+        </div>
+        <div className="min-h-0 flex-1 basis-0 overflow-y-auto overflow-x-hidden overscroll-contain [-webkit-overflow-scrolling:touch]">
+          <div className="space-y-4 p-3">
+            {multiSelectionCount >= 2 ? (
+              <div className="space-y-3 rounded-lg border border-border/70 bg-muted/[0.08] p-3 shadow-sm">
+                <p className="text-sm font-semibold text-foreground">
+                  위젯 {multiSelectionCount}개 선택됨
                 </p>
-              ) : null}
-              <div
-                className={cn(
-                  "space-y-4",
-                  isBookElementLocked(selected) &&
-                    selected.type !== "mediaPlaylist" &&
-                    "pointer-events-none opacity-[0.68]",
-                )}
-              >
-                {selected.type === "text" ? (
-                  <>
-                    <div className="space-y-1">
-                      <Label>내용 (리치 텍스트)</Label>
-                      <p className="text-[11px] leading-snug text-muted-foreground">
-                        문단 좌·우·가운데 맞춤과 위젯 박스 안 세로(위·중·아래)는 바로 아래 도구 모음에서 같이
-                        설정합니다.
-                      </p>
-                      <BookTextRichEditor
-                        widgetKey={selected.id}
-                        html={getTextWidgetDisplayHtml(selected)}
-                        onRichPatch={(p) =>
-                          onChange(selected.id, { richHtml: p.richHtml, text: p.text })
-                        }
-                        verticalAlign={
-                          selected.verticalAlign === "middle" ||
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  한 번에 하나만 속성을 편집할 수 있습니다. Shift+클릭으로
+                  선택을 추가·해제하고, 캔버스 빈 곳을 눌러 모두 해제할 수
+                  있습니다. Delete로 선택 항목을 함께 삭제할 수 있습니다.
+                </p>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="w-full"
+                  onClick={onDelete}
+                >
+                  선택 항목 모두 삭제…
+                </Button>
+              </div>
+            ) : !selected ? (
+              <p className="rounded-md border border-dashed border-border/60 bg-muted/[0.05] px-3 py-4 text-center text-sm leading-relaxed text-muted-foreground">
+                캔버스에서 위젯을 선택하면 이 패널에서 글자·위치·크기를 바꿀 수
+                있습니다.
+              </p>
+            ) : (
+              <>
+                {isBookElementLocked(selected) ? (
+                  <p className="mb-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-2 text-xs text-amber-900 dark:text-amber-100">
+                    잠긴 위젯입니다. 레이어 목록의 자물쇠로 잠금을 해제한 뒤
+                    편집할 수 있습니다.
+                  </p>
+                ) : null}
+                <div
+                  className={cn(
+                    "space-y-4",
+                    isBookElementLocked(selected) &&
+                      selected.type !== "mediaPlaylist" &&
+                      "pointer-events-none opacity-[0.68]",
+                  )}
+                >
+                  {selected.type === "text" ? (
+                    <>
+                      <div className="space-y-1">
+                        <Label>내용 (리치 텍스트)</Label>
+                        <p className="text-[11px] leading-snug text-muted-foreground">
+                          문단 좌·우·가운데 맞춤과 위젯 박스 안
+                          세로(위·중·아래)는 바로 아래 도구 모음에서 같이
+                          설정합니다.
+                        </p>
+                        <BookTextRichEditor
+                          widgetKey={selected.id}
+                          html={getTextWidgetDisplayHtml(selected)}
+                          onRichPatch={(p) =>
+                            onChange(selected.id, {
+                              richHtml: p.richHtml,
+                              text: p.text,
+                            })
+                          }
+                          verticalAlign={
+                            selected.verticalAlign === "middle" ||
                             selected.verticalAlign === "bottom"
-                            ? selected.verticalAlign
-                            : "top"
-                        }
-                        onVerticalAlignChange={(v) =>
-                          onChange(selected.id, { verticalAlign: v })
-                        }
-                      />
-                    </div>
-                    <InspectorClampedSizeInput
-                      elementId={selected.id}
-                      value={selected.fontSize}
-                      min={10}
-                      max={120}
-                      htmlId="insp-fs"
-                      label="글자 크기 (pt)"
-                      onCommit={(n) => onChange(selected.id, { fontSize: n })}
-                    />
-                    <div className="space-y-2">
-                      <Label htmlFor="insp-fill">기본 글자색</Label>
-                      <p className="text-[11px] text-muted-foreground">
-                        리치 텍스트에 색이 없는 구간·플레인 미리보기에 쓰입니다.
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">자주 쓰는 색</p>
-                      <div className="flex flex-wrap gap-1 rounded-md border border-border bg-muted/25 p-1">
-                        {BOOK_HEX_COLOR_PRESETS.map((c) => {
-                          const fillNorm = selected.fill.trim().replace(/\s/g, "").toLowerCase();
-                          const active = fillNorm === c.toLowerCase();
-                          return (
-                            <button
-                              key={c}
-                              type="button"
-                              title={c}
-                              aria-label={`기본 글자색 ${c}`}
-                              aria-pressed={active}
-                              className={cn(
-                                "size-7 shrink-0 rounded-md border border-border shadow-sm ring-offset-background hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
-                                active && "ring-2 ring-primary ring-offset-2",
-                              )}
-                              style={{ backgroundColor: c }}
-                              onClick={() => onChange(selected.id, { fill: c })}
-                            />
-                          );
-                        })}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Input
-                          id="insp-fill"
-                          type="color"
-                          className="h-9 w-14 shrink-0 cursor-pointer px-1"
-                          value={selected.fill.startsWith("#") ? selected.fill : "#111827"}
-                          onChange={(e) => onChange(selected.id, { fill: e.target.value })}
-                          aria-label="기본 글자색 직접 선택"
+                              ? selected.verticalAlign
+                              : "top"
+                          }
+                          onVerticalAlignChange={(v) =>
+                            onChange(selected.id, { verticalAlign: v })
+                          }
                         />
-                        <span className="text-[11px] text-muted-foreground">팔레트로 직접 선택</span>
                       </div>
-                    </div>
-                    <ElementOpacitySlider
-                      elementId={selected.id}
-                      opacity={selected.opacity}
-                      onChange={onChange}
-                    />
-                    <InspectorClampedSizeInput
-                      elementId={selected.id}
-                      value={selected.width ?? 640}
-                      min={80}
-                      max={2000}
-                      htmlId="insp-tw"
-                      label="줄 너비"
-                      onCommit={(n) => onChange(selected.id, { width: n })}
-                    />
-                    <InspectorClampedSizeInput
-                      elementId={selected.id}
-                      value={Math.round(
-                        selected.height ?? defaultTextWidgetBoxHeight(selected.fontSize),
-                      )}
-                      min={28}
-                      max={4000}
-                      htmlId="insp-th"
-                      label="박스 높이"
-                      onCommit={(n) => onChange(selected.id, { height: n })}
-                    />
-                    <ElementShapeChromeFields el={selected} onChange={onChange} />
-                    <PositionSizeFields el={selected} onChange={onChange} />
-                  </>
-                ) : selected.type === "weather" ? (
-                  <>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      OpenWeatherMap(지오코딩·날씨·대기질)을 사용합니다. 서버에{" "}
-                      <code className="rounded bg-muted px-1 py-0.5 text-[10px]">OPENWEATHERMAP_API_KEY</code>가
-                      필요합니다.
-                    </p>
-                    <div className="space-y-1">
-                      <Label htmlFor="insp-weather-city">도시 / 지역</Label>
-                      <Input
-                        id="insp-weather-city"
-                        placeholder="비우면 서울 · 예: Seoul,KR, Busan,KR"
-                        value={selected.cityQuery ?? ""}
-                        maxLength={120}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          onChange(selected.id, {
-                            cityQuery: v.trim() === "" ? undefined : v,
-                          });
-                        }}
+                      <InspectorClampedSizeInput
+                        elementId={selected.id}
+                        value={selected.fontSize}
+                        min={10}
+                        max={120}
+                        htmlId="insp-fs"
+                        label="글자 크기 (pt)"
+                        onCommit={(n) => onChange(selected.id, { fontSize: n })}
                       />
-                      <p className="text-[11px] text-muted-foreground">
-                        검색어 뒤에 국가 코드를 붙이면 더 정확합니다.
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>표시 항목</Label>
-                      <p className="text-[11px] text-muted-foreground">
-                        날씨만 남기면 큰 기온 카드, 대기 항목만 켜면 대기질 전용 톤으로 바뀝니다. 시계·날짜만 켠 경우·기온·아이콘 없이
-                        습도 등만 켠 경우에도 빈 칸 없이 한 열로 정리됩니다.
-                      </p>
-                      <div className="flex flex-col gap-2">
-                        {WEATHER_INSPECTOR_FIELDS.map(({ key, label }) => {
-                          const disp = resolveBookWeatherDisplay(selected.weatherDisplay);
-                          return (
-                            <label
-                              key={key}
-                              className="flex cursor-pointer items-center gap-2 text-sm leading-none"
-                            >
-                              <Checkbox
-                                checked={disp[key]}
-                                onCheckedChange={(c) => {
-                                  const on = c === true;
-                                  onChange(selected.id, {
-                                    weatherDisplay: patchWeatherDisplay(selected.weatherDisplay, key, on),
-                                  });
-                                }}
+                      <div className="space-y-2">
+                        <Label htmlFor="insp-fill">기본 글자색</Label>
+                        <p className="text-[11px] text-muted-foreground">
+                          리치 텍스트에 색이 없는 구간·플레인 미리보기에
+                          쓰입니다.
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          자주 쓰는 색
+                        </p>
+                        <div className="flex flex-wrap gap-1 rounded-md border border-border bg-muted/25 p-1">
+                          {BOOK_HEX_COLOR_PRESETS.map((c) => {
+                            const fillNorm = selected.fill
+                              .trim()
+                              .replace(/\s/g, "")
+                              .toLowerCase();
+                            const active = fillNorm === c.toLowerCase();
+                            return (
+                              <button
+                                key={c}
+                                type="button"
+                                title={c}
+                                aria-label={`기본 글자색 ${c}`}
+                                aria-pressed={active}
+                                className={cn(
+                                  "size-7 shrink-0 rounded-md border border-border shadow-sm ring-offset-background hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
+                                  active && "ring-2 ring-primary ring-offset-2",
+                                )}
+                                style={{ backgroundColor: c }}
+                                onClick={() =>
+                                  onChange(selected.id, { fill: c })
+                                }
                               />
-                              <span>{label}</span>
-                            </label>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Input
+                            id="insp-fill"
+                            type="color"
+                            className="h-9 w-14 shrink-0 cursor-pointer px-1"
+                            value={
+                              selected.fill.startsWith("#")
+                                ? selected.fill
+                                : "#111827"
+                            }
+                            onChange={(e) =>
+                              onChange(selected.id, { fill: e.target.value })
+                            }
+                            aria-label="기본 글자색 직접 선택"
+                          />
+                          <span className="text-[11px] text-muted-foreground">
+                            팔레트로 직접 선택
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                    <OptionalWidgetBackdropFields
-                      elementId={selected.id}
-                      value={selected.weatherBackground}
-                      field="weatherBackground"
-                      defaultRgba="rgba(14,165,233,0.88)"
-                      colorAriaLabel="날씨 카드 배경색"
-                      defaultHint="끄면 날씨/대기 테마 일러스트 배경을 씁니다."
-                      onChange={onChange}
-                    />
-                    <OptionalWidgetTextColorFields
-                      elementId={selected.id}
-                      value={selected.weatherTextColor}
-                      field="weatherTextColor"
-                      defaultHex="#ffffff"
-                      colorAriaLabel="날씨 위젯 글자색"
-                      defaultHint="끄면 배경 테마에 맞는 기본 글자색을 씁니다."
-                      onChange={onChange}
-                    />
-                    <ElementOpacitySlider
-                      elementId={selected.id}
-                      opacity={selected.opacity}
-                      onChange={onChange}
-                    />
-                    <ElementShapeChromeFields el={selected} onChange={onChange} />
-                    <PositionSizeFields el={selected} onChange={onChange} />
-                  </>
-                ) : selected.type === "news" ? (
-                  <>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      <a
-                        href="https://newsapi.org/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline underline-offset-2"
-                      >
-                        NewsAPI.org
-                      </a>{" "}
-                      top-headlines. 서버{" "}
-                      <code className="rounded bg-muted px-1 py-0.5 text-[10px]">NEWSAPI_KEY</code> 필요.
-                    </p>
-                    <div className="space-y-1">
-                      <Label htmlFor="insp-news-country">국가 코드 (ISO 2자)</Label>
-                      <Input
-                        id="insp-news-country"
-                        maxLength={2}
-                        placeholder="KR"
-                        className="font-mono uppercase"
-                        title="한 글자만 있어도 입력 가능합니다. 비우면 기본 kr로 요청됩니다."
-                        value={(selected.newsCountry ?? "").toUpperCase()}
-                        onChange={(e) => {
-                          const v = e.target.value
-                            .replace(/[^a-zA-Z]/g, "")
-                            .slice(0, 2)
-                            .toLowerCase();
-                          onChange(selected.id, {
-                            newsCountry: v === "" ? undefined : v,
-                          });
-                        }}
+                      <ElementOpacitySlider
+                        elementId={selected.id}
+                        opacity={selected.opacity}
+                        onChange={onChange}
                       />
-                      <p className="text-[11px] text-muted-foreground leading-snug">
-                        비우면 <span className="font-mono">kr</span>, 한 자리만 있으면 입력 마칠 때까지 위젯은{" "}
-                        <span className="font-mono">kr</span>로 불러옵니다.
+                      <InspectorClampedSizeInput
+                        elementId={selected.id}
+                        value={selected.width ?? 640}
+                        min={80}
+                        max={2000}
+                        htmlId="insp-tw"
+                        label="줄 너비"
+                        onCommit={(n) => onChange(selected.id, { width: n })}
+                      />
+                      <InspectorClampedSizeInput
+                        elementId={selected.id}
+                        value={Math.round(
+                          selected.height ??
+                            defaultTextWidgetBoxHeight(selected.fontSize),
+                        )}
+                        min={28}
+                        max={4000}
+                        htmlId="insp-th"
+                        label="박스 높이"
+                        onCommit={(n) => onChange(selected.id, { height: n })}
+                      />
+                      <ElementShapeChromeFields
+                        el={selected}
+                        onChange={onChange}
+                      />
+                      <PositionSizeFields el={selected} onChange={onChange} />
+                    </>
+                  ) : selected.type === "weather" ? (
+                    <>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        OpenWeatherMap(지오코딩·날씨·대기질)을 사용합니다.
+                        서버에{" "}
+                        <code className="rounded bg-muted px-1 py-0.5 text-[10px]">
+                          OPENWEATHERMAP_API_KEY
+                        </code>
+                        가 필요합니다.
                       </p>
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="insp-news-cat">카테고리</Label>
-                      <Select
-                        value={selected.newsCategory ?? "__all__"}
-                        onValueChange={(v) =>
-                          onChange(selected.id, {
-                            newsCategory: v === "__all__" ? undefined : v,
-                          })
-                        }
-                      >
-                        <SelectTrigger id="insp-news-cat">
-                          <SelectValue placeholder="전체" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__all__">전체</SelectItem>
-                          {BOOK_NEWS_CATEGORIES.map((c) => (
-                            <SelectItem key={c} value={c}>
-                              {c}
+                      <div className="space-y-1">
+                        <Label htmlFor="insp-weather-city">도시 / 지역</Label>
+                        <Input
+                          id="insp-weather-city"
+                          placeholder="비우면 서울 · 예: Seoul,KR, Busan,KR"
+                          value={selected.cityQuery ?? ""}
+                          maxLength={120}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            onChange(selected.id, {
+                              cityQuery: v.trim() === "" ? undefined : v,
+                            });
+                          }}
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                          검색어 뒤에 국가 코드를 붙이면 더 정확합니다.
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>표시 항목</Label>
+                        <p className="text-[11px] text-muted-foreground">
+                          날씨만 남기면 큰 기온 카드, 대기 항목만 켜면 대기질
+                          전용 톤으로 바뀝니다. 시계·날짜만 켠 경우·기온·아이콘
+                          없이 습도 등만 켠 경우에도 빈 칸 없이 한 열로
+                          정리됩니다.
+                        </p>
+                        <div className="flex flex-col gap-2">
+                          {WEATHER_INSPECTOR_FIELDS.map(({ key, label }) => {
+                            const disp = resolveBookWeatherDisplay(
+                              selected.weatherDisplay,
+                            );
+                            return (
+                              <label
+                                key={key}
+                                className="flex cursor-pointer items-center gap-2 text-sm leading-none"
+                              >
+                                <Checkbox
+                                  checked={disp[key]}
+                                  onCheckedChange={(c) => {
+                                    const on = c === true;
+                                    onChange(selected.id, {
+                                      weatherDisplay: patchWeatherDisplay(
+                                        selected.weatherDisplay,
+                                        key,
+                                        on,
+                                      ),
+                                    });
+                                  }}
+                                />
+                                <span>{label}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <OptionalWidgetBackdropFields
+                        elementId={selected.id}
+                        value={selected.weatherBackground}
+                        field="weatherBackground"
+                        defaultRgba="rgba(14,165,233,0.88)"
+                        colorAriaLabel="날씨 카드 배경색"
+                        defaultHint="끄면 날씨/대기 테마 일러스트 배경을 씁니다."
+                        onChange={onChange}
+                      />
+                      <OptionalWidgetTextColorFields
+                        elementId={selected.id}
+                        value={selected.weatherTextColor}
+                        field="weatherTextColor"
+                        defaultHex="#ffffff"
+                        colorAriaLabel="날씨 위젯 글자색"
+                        defaultHint="끄면 배경 테마에 맞는 기본 글자색을 씁니다."
+                        onChange={onChange}
+                      />
+                      <ElementOpacitySlider
+                        elementId={selected.id}
+                        opacity={selected.opacity}
+                        onChange={onChange}
+                      />
+                      <ElementShapeChromeFields
+                        el={selected}
+                        onChange={onChange}
+                      />
+                      <PositionSizeFields el={selected} onChange={onChange} />
+                    </>
+                  ) : selected.type === "news" ? (
+                    <>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        <a
+                          href="https://newsapi.org/"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline underline-offset-2"
+                        >
+                          NewsAPI.org
+                        </a>{" "}
+                        top-headlines. 서버{" "}
+                        <code className="rounded bg-muted px-1 py-0.5 text-[10px]">
+                          NEWSAPI_KEY
+                        </code>{" "}
+                        필요.
+                      </p>
+                      <div className="space-y-1">
+                        <Label htmlFor="insp-news-country">
+                          국가 코드 (ISO 2자)
+                        </Label>
+                        <Input
+                          id="insp-news-country"
+                          maxLength={2}
+                          placeholder="KR"
+                          className="font-mono uppercase"
+                          title="한 글자만 있어도 입력 가능합니다. 비우면 기본 kr로 요청됩니다."
+                          value={(selected.newsCountry ?? "").toUpperCase()}
+                          onChange={(e) => {
+                            const v = e.target.value
+                              .replace(/[^a-zA-Z]/g, "")
+                              .slice(0, 2)
+                              .toLowerCase();
+                            onChange(selected.id, {
+                              newsCountry: v === "" ? undefined : v,
+                            });
+                          }}
+                        />
+                        <p className="text-[11px] text-muted-foreground leading-snug">
+                          비우면 <span className="font-mono">kr</span>, 한
+                          자리만 있으면 입력 마칠 때까지 위젯은{" "}
+                          <span className="font-mono">kr</span>로 불러옵니다.
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="insp-news-cat">카테고리</Label>
+                        <Select
+                          value={selected.newsCategory ?? "__all__"}
+                          onValueChange={(v) =>
+                            onChange(selected.id, {
+                              newsCategory: v === "__all__" ? undefined : v,
+                            })
+                          }
+                        >
+                          <SelectTrigger id="insp-news-cat">
+                            <SelectValue placeholder="전체" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__all__">전체</SelectItem>
+                            {BOOK_NEWS_CATEGORIES.map((c) => (
+                              <SelectItem key={c} value={c}>
+                                {c}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label htmlFor="insp-news-ps">기사 수 (1~10)</Label>
+                          <Input
+                            id="insp-news-ps"
+                            type="number"
+                            min={1}
+                            max={10}
+                            value={selected.newsPageSize ?? 5}
+                            onChange={(e) => {
+                              const n = Number(e.target.value);
+                              onChange(selected.id, {
+                                newsPageSize:
+                                  Number.isInteger(n) && n >= 1 && n <= 10
+                                    ? n
+                                    : undefined,
+                              });
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="insp-news-iv">캐러셀 간격(초)</Label>
+                          <NewsCarouselIntervalInput
+                            elementId={selected.id}
+                            seconds={selected.newsCarouselIntervalSec}
+                            onChange={onChange}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="insp-news-mode">표시 방식</Label>
+                        <Select
+                          value={selected.newsDisplayMode ?? "carousel"}
+                          onValueChange={(v) =>
+                            onChange(selected.id, {
+                              newsDisplayMode:
+                                v === "list" ? "list" : "carousel",
+                            })
+                          }
+                        >
+                          <SelectTrigger id="insp-news-mode">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="carousel">
+                              캐러셀 (한 줄씩 전환)
                             </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <Label htmlFor="insp-news-ps">기사 수 (1~10)</Label>
-                        <Input
-                          id="insp-news-ps"
-                          type="number"
-                          min={1}
-                          max={10}
-                          value={selected.newsPageSize ?? 5}
-                          onChange={(e) => {
-                            const n = Number(e.target.value);
-                            onChange(selected.id, {
-                              newsPageSize:
-                                Number.isInteger(n) && n >= 1 && n <= 10 ? n : undefined,
-                            });
-                          }}
-                        />
+                            <SelectItem value="list">목록 (여러 줄)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-[11px] text-muted-foreground">
+                          캐러셀은 위 간격마다 부드럽게 다음 기사로 넘어갑니다.
+                        </p>
                       </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="insp-news-iv">캐러셀 간격(초)</Label>
-                        <NewsCarouselIntervalInput
-                          elementId={selected.id}
-                          seconds={selected.newsCarouselIntervalSec}
-                          onChange={onChange}
-                        />
+                      <div className="space-y-2 rounded-md border border-border/60 bg-muted/15 px-2.5 py-2">
+                        <p className="text-[11px] font-medium text-muted-foreground">
+                          표시 항목
+                        </p>
+                        <label className="flex cursor-pointer items-center gap-2 text-sm leading-none">
+                          <Checkbox
+                            checked={selected.newsShowHeader !== false}
+                            onCheckedChange={(c) =>
+                              onChange(selected.id, {
+                                newsShowHeader: c === true,
+                              })
+                            }
+                          />
+                          <span>상단 헤더 (아이콘·제목·캐러셀 번호)</span>
+                        </label>
+                        <label className="flex cursor-pointer items-center gap-2 text-sm leading-none">
+                          <Checkbox
+                            checked={selected.newsShowSource !== false}
+                            onCheckedChange={(c) =>
+                              onChange(selected.id, {
+                                newsShowSource: c === true,
+                              })
+                            }
+                          />
+                          <span>기사 출처</span>
+                        </label>
+                        <label className="flex cursor-pointer items-center gap-2 text-sm leading-none">
+                          <Checkbox
+                            checked={selected.newsLinksEnabled !== false}
+                            onCheckedChange={(c) =>
+                              onChange(selected.id, {
+                                newsLinksEnabled: c === true,
+                              })
+                            }
+                          />
+                          <span>제목 링크 (원문 열기)</span>
+                        </label>
                       </div>
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="insp-news-mode">표시 방식</Label>
-                      <Select
-                        value={selected.newsDisplayMode ?? "carousel"}
-                        onValueChange={(v) =>
-                          onChange(selected.id, {
-                            newsDisplayMode: v === "list" ? "list" : "carousel",
-                          })
-                        }
-                      >
-                        <SelectTrigger id="insp-news-mode">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="carousel">캐러셀 (한 줄씩 전환)</SelectItem>
-                          <SelectItem value="list">목록 (여러 줄)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-[11px] text-muted-foreground">
-                        캐러셀은 위 간격마다 부드럽게 다음 기사로 넘어갑니다.
-                      </p>
-                    </div>
-                    <div className="space-y-2 rounded-md border border-border/60 bg-muted/15 px-2.5 py-2">
-                      <p className="text-[11px] font-medium text-muted-foreground">표시 항목</p>
-                      <label className="flex cursor-pointer items-center gap-2 text-sm leading-none">
-                        <Checkbox
-                          checked={selected.newsShowHeader !== false}
-                          onCheckedChange={(c) =>
-                            onChange(selected.id, {
-                              newsShowHeader: c === true,
-                            })
-                          }
-                        />
-                        <span>상단 헤더 (아이콘·제목·캐러셀 번호)</span>
-                      </label>
-                      <label className="flex cursor-pointer items-center gap-2 text-sm leading-none">
-                        <Checkbox
-                          checked={selected.newsShowSource !== false}
-                          onCheckedChange={(c) =>
-                            onChange(selected.id, {
-                              newsShowSource: c === true,
-                            })
-                          }
-                        />
-                        <span>기사 출처</span>
-                      </label>
-                      <label className="flex cursor-pointer items-center gap-2 text-sm leading-none">
-                        <Checkbox
-                          checked={selected.newsLinksEnabled !== false}
-                          onCheckedChange={(c) =>
-                            onChange(selected.id, {
-                              newsLinksEnabled: c === true,
-                            })
-                          }
-                        />
-                        <span>제목 링크 (원문 열기)</span>
-                      </label>
-                    </div>
-                    <OptionalWidgetBackdropFields
-                      elementId={selected.id}
-                      value={selected.newsBackground}
-                      field="newsBackground"
-                      defaultRgba="rgba(15,23,42,0.92)"
-                      colorAriaLabel="뉴스 카드 배경색"
-                      defaultHint="끄면 기본 다크 그라데이션을 씁니다."
-                      onChange={onChange}
-                    />
-                    <OptionalWidgetTextColorFields
-                      elementId={selected.id}
-                      value={selected.newsTextColor}
-                      field="newsTextColor"
-                      defaultHex="#ffffff"
-                      colorAriaLabel="뉴스 제목·링크 색"
-                      defaultHint="끄면 밝은 기본 제목색을 씁니다."
-                      labelText="제목·링크 색"
-                      appliedHint="기사 제목 링크에 적용됩니다."
-                      onChange={onChange}
-                    />
-                    <OptionalWidgetTextColorFields
-                      elementId={selected.id}
-                      value={selected.newsMetaColor}
-                      field="newsMetaColor"
-                      defaultHex="#cbd5e1"
-                      colorAriaLabel="뉴스 보조 글자색"
-                      defaultHint="끄면 제목색(또는 기본)에 맞춰 출처·헤더가 보입니다."
-                      labelText="출처·헤더 색"
-                      appliedHint="상단 띠·출처·캐러셀 번호에 적용됩니다."
-                      onChange={onChange}
-                    />
-                    <div className="space-y-1">
-                      <Label htmlFor="insp-news-section-title">상단 제목</Label>
-                      <Input
-                        id="insp-news-section-title"
-                        maxLength={36}
-                        placeholder="Headlines"
-                        value={selected.newsSectionTitle ?? ""}
-                        onChange={(e) => {
-                          const t = e.target.value.replace(/[<>]/g, "").slice(0, 36);
-                          onChange(selected.id, {
-                            newsSectionTitle: t.trim() === "" ? undefined : t,
-                          });
-                        }}
+                      <OptionalWidgetBackdropFields
+                        elementId={selected.id}
+                        value={selected.newsBackground}
+                        field="newsBackground"
+                        defaultRgba="rgba(15,23,42,0.92)"
+                        colorAriaLabel="뉴스 카드 배경색"
+                        defaultHint="끄면 기본 다크 그라데이션을 씁니다."
+                        onChange={onChange}
                       />
-                      <p className="text-[11px] text-muted-foreground">
-                        비우면 &quot;Headlines&quot; 로 표시합니다.
+                      <OptionalWidgetTextColorFields
+                        elementId={selected.id}
+                        value={selected.newsTextColor}
+                        field="newsTextColor"
+                        defaultHex="#ffffff"
+                        colorAriaLabel="뉴스 제목·링크 색"
+                        defaultHint="끄면 밝은 기본 제목색을 씁니다."
+                        labelText="제목·링크 색"
+                        appliedHint="기사 제목 링크에 적용됩니다."
+                        onChange={onChange}
+                      />
+                      <OptionalWidgetTextColorFields
+                        elementId={selected.id}
+                        value={selected.newsMetaColor}
+                        field="newsMetaColor"
+                        defaultHex="#cbd5e1"
+                        colorAriaLabel="뉴스 보조 글자색"
+                        defaultHint="끄면 제목색(또는 기본)에 맞춰 출처·헤더가 보입니다."
+                        labelText="출처·헤더 색"
+                        appliedHint="상단 띠·출처·캐러셀 번호에 적용됩니다."
+                        onChange={onChange}
+                      />
+                      <div className="space-y-1">
+                        <Label htmlFor="insp-news-section-title">
+                          상단 제목
+                        </Label>
+                        <Input
+                          id="insp-news-section-title"
+                          maxLength={36}
+                          placeholder="Headlines"
+                          value={selected.newsSectionTitle ?? ""}
+                          onChange={(e) => {
+                            const t = e.target.value
+                              .replace(/[<>]/g, "")
+                              .slice(0, 36);
+                            onChange(selected.id, {
+                              newsSectionTitle: t.trim() === "" ? undefined : t,
+                            });
+                          }}
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                          비우면 &quot;Headlines&quot; 로 표시합니다.
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label htmlFor="insp-news-title-fs">
+                            제목 글자(px)
+                          </Label>
+                          <Input
+                            id="insp-news-title-fs"
+                            type="number"
+                            min={10}
+                            max={32}
+                            placeholder="자동"
+                            value={selected.newsTitleFontSize ?? ""}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              if (raw === "") {
+                                onChange(selected.id, {
+                                  newsTitleFontSize: undefined,
+                                });
+                                return;
+                              }
+                              const n = Number(raw);
+                              onChange(selected.id, {
+                                newsTitleFontSize:
+                                  Number.isInteger(n) && n >= 10 && n <= 32
+                                    ? n
+                                    : undefined,
+                              });
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="insp-news-meta-fs">
+                            보조 글자(px)
+                          </Label>
+                          <Input
+                            id="insp-news-meta-fs"
+                            type="number"
+                            min={8}
+                            max={22}
+                            placeholder="자동"
+                            value={selected.newsMetaFontSize ?? ""}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              if (raw === "") {
+                                onChange(selected.id, {
+                                  newsMetaFontSize: undefined,
+                                });
+                                return;
+                              }
+                              const n = Number(raw);
+                              onChange(selected.id, {
+                                newsMetaFontSize:
+                                  Number.isInteger(n) && n >= 8 && n <= 22
+                                    ? n
+                                    : undefined,
+                              });
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label htmlFor="insp-news-clamp">제목 줄 수</Label>
+                          <Input
+                            id="insp-news-clamp"
+                            type="number"
+                            min={1}
+                            max={6}
+                            placeholder="목록3·캐4"
+                            value={selected.newsTitleLineClamp ?? ""}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              if (raw === "") {
+                                onChange(selected.id, {
+                                  newsTitleLineClamp: undefined,
+                                });
+                                return;
+                              }
+                              const n = Number(raw);
+                              onChange(selected.id, {
+                                newsTitleLineClamp:
+                                  Number.isInteger(n) && n >= 1 && n <= 6
+                                    ? n
+                                    : undefined,
+                              });
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="insp-news-pad">안쪽 여백(px)</Label>
+                          <Input
+                            id="insp-news-pad"
+                            type="number"
+                            min={4}
+                            max={40}
+                            placeholder="자동"
+                            value={selected.newsContentPaddingPx ?? ""}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              if (raw === "") {
+                                onChange(selected.id, {
+                                  newsContentPaddingPx: undefined,
+                                });
+                                return;
+                              }
+                              const n = Number(raw);
+                              onChange(selected.id, {
+                                newsContentPaddingPx:
+                                  Number.isInteger(n) && n >= 4 && n <= 40
+                                    ? n
+                                    : undefined,
+                              });
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <ElementOpacitySlider
+                        elementId={selected.id}
+                        opacity={selected.opacity}
+                        onChange={onChange}
+                      />
+                      <ElementShapeChromeFields
+                        el={selected}
+                        onChange={onChange}
+                      />
+                      <PositionSizeFields el={selected} onChange={onChange} />
+                    </>
+                  ) : selected.type === "digitalClock" ? (
+                    <>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        브라우저 로컬 시간 기준입니다. 초 표시를 끄면 분이 바뀔
+                        때만 갱신됩니다.
                       </p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <Label htmlFor="insp-news-title-fs">제목 글자(px)</Label>
-                        <Input
-                          id="insp-news-title-fs"
-                          type="number"
-                          min={10}
-                          max={32}
-                          placeholder="자동"
-                          value={selected.newsTitleFontSize ?? ""}
-                          onChange={(e) => {
-                            const raw = e.target.value;
-                            if (raw === "") {
-                              onChange(selected.id, { newsTitleFontSize: undefined });
-                              return;
-                            }
-                            const n = Number(raw);
-                            onChange(selected.id, {
-                              newsTitleFontSize:
-                                Number.isInteger(n) && n >= 10 && n <= 32 ? n : undefined,
-                            });
-                          }}
-                        />
+                      <div className="space-y-2">
+                        <Label>표시</Label>
+                        <div className="flex flex-col gap-2">
+                          {DIGITAL_CLOCK_INSPECTOR_FIELDS.map(
+                            ({ key, label }) => {
+                              const disp = resolveBookDigitalClockDisplay(
+                                selected.clockDisplay,
+                              );
+                              const checked = disp[key];
+                              return (
+                                <label
+                                  key={key}
+                                  className="flex cursor-pointer items-center gap-2 text-sm leading-none"
+                                >
+                                  <Checkbox
+                                    checked={checked}
+                                    onCheckedChange={(c) => {
+                                      const on = c === true;
+                                      onChange(selected.id, {
+                                        clockDisplay: patchDigitalClockDisplay(
+                                          selected.clockDisplay,
+                                          key,
+                                          on,
+                                        ),
+                                      });
+                                    }}
+                                  />
+                                  <span>{label}</span>
+                                </label>
+                              );
+                            },
+                          )}
+                        </div>
                       </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="insp-news-meta-fs">보조 글자(px)</Label>
-                        <Input
-                          id="insp-news-meta-fs"
-                          type="number"
-                          min={8}
-                          max={22}
-                          placeholder="자동"
-                          value={selected.newsMetaFontSize ?? ""}
-                          onChange={(e) => {
-                            const raw = e.target.value;
-                            if (raw === "") {
-                              onChange(selected.id, { newsMetaFontSize: undefined });
-                              return;
-                            }
-                            const n = Number(raw);
-                            onChange(selected.id, {
-                              newsMetaFontSize:
-                                Number.isInteger(n) && n >= 8 && n <= 22 ? n : undefined,
-                            });
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <Label htmlFor="insp-news-clamp">제목 줄 수</Label>
-                        <Input
-                          id="insp-news-clamp"
-                          type="number"
-                          min={1}
-                          max={6}
-                          placeholder="목록3·캐4"
-                          value={selected.newsTitleLineClamp ?? ""}
-                          onChange={(e) => {
-                            const raw = e.target.value;
-                            if (raw === "") {
-                              onChange(selected.id, { newsTitleLineClamp: undefined });
-                              return;
-                            }
-                            const n = Number(raw);
-                            onChange(selected.id, {
-                              newsTitleLineClamp:
-                                Number.isInteger(n) && n >= 1 && n <= 6 ? n : undefined,
-                            });
-                          }}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="insp-news-pad">안쪽 여백(px)</Label>
-                        <Input
-                          id="insp-news-pad"
-                          type="number"
-                          min={4}
-                          max={40}
-                          placeholder="자동"
-                          value={selected.newsContentPaddingPx ?? ""}
-                          onChange={(e) => {
-                            const raw = e.target.value;
-                            if (raw === "") {
-                              onChange(selected.id, { newsContentPaddingPx: undefined });
-                              return;
-                            }
-                            const n = Number(raw);
-                            onChange(selected.id, {
-                              newsContentPaddingPx:
-                                Number.isInteger(n) && n >= 4 && n <= 40 ? n : undefined,
-                            });
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <ElementOpacitySlider
-                      elementId={selected.id}
-                      opacity={selected.opacity}
-                      onChange={onChange}
-                    />
-                    <ElementShapeChromeFields el={selected} onChange={onChange} />
-                    <PositionSizeFields el={selected} onChange={onChange} />
-                  </>
-                ) : selected.type === "digitalClock" ? (
-                  <>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      브라우저 로컬 시간 기준입니다. 초 표시를 끄면 분이 바뀔 때만 갱신됩니다.
-                    </p>
-                    <div className="space-y-2">
-                      <Label>표시</Label>
-                      <div className="flex flex-col gap-2">
-                        {DIGITAL_CLOCK_INSPECTOR_FIELDS.map(({ key, label }) => {
-                          const disp = resolveBookDigitalClockDisplay(selected.clockDisplay);
-                          const checked = disp[key];
-                          return (
-                            <label
-                              key={key}
-                              className="flex cursor-pointer items-center gap-2 text-sm leading-none"
-                            >
-                              <Checkbox
-                                checked={checked}
-                                onCheckedChange={(c) => {
-                                  const on = c === true;
-                                  onChange(selected.id, {
-                                    clockDisplay: patchDigitalClockDisplay(selected.clockDisplay, key, on),
-                                  });
-                                }}
+                      <OptionalWidgetBackdropFields
+                        elementId={selected.id}
+                        value={selected.clockBackground}
+                        field="clockBackground"
+                        defaultRgba="rgba(15,23,42,0.92)"
+                        colorAriaLabel="시계 배경색"
+                        defaultHint="끄면 기본 그라데이션 배경을 씁니다."
+                        onChange={onChange}
+                      />
+                      <OptionalWidgetTextColorFields
+                        elementId={selected.id}
+                        value={selected.clockTextColor}
+                        field="clockTextColor"
+                        defaultHex="#ffffff"
+                        colorAriaLabel="디지털 시계 글자색"
+                        defaultHint="끄면 밝은 기본 글자색을 씁니다."
+                        onChange={onChange}
+                      />
+                      <ElementOpacitySlider
+                        elementId={selected.id}
+                        opacity={selected.opacity}
+                        onChange={onChange}
+                      />
+                      <ElementShapeChromeFields
+                        el={selected}
+                        onChange={onChange}
+                      />
+                      <PositionSizeFields el={selected} onChange={onChange} />
+                    </>
+                  ) : selected.type === "drawing" ? (
+                    <>
+                      <p className="text-[11px] leading-snug text-muted-foreground">
+                        자유 곡선입니다. 선 좌표는 박스 안에서 상대 위치로
+                        저장되며, 박스를 옮기거나 크기를 바꿔도 모양이 함께
+                        이동합니다.
+                      </p>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">
+                          선 색
+                        </Label>
+                        <div className="flex flex-wrap gap-1 rounded-md border border-border bg-muted/25 p-1">
+                          {BOOK_HEX_COLOR_PRESETS.map((c) => {
+                            const strokeNorm = selected.stroke
+                              .trim()
+                              .replace(/\s/g, "")
+                              .toLowerCase();
+                            const active = strokeNorm === c.toLowerCase();
+                            return (
+                              <button
+                                key={c}
+                                type="button"
+                                title={c}
+                                aria-label={`선 색 ${c}`}
+                                aria-pressed={active}
+                                className={cn(
+                                  "size-7 shrink-0 rounded-md border border-border shadow-sm ring-offset-background hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
+                                  active && "ring-2 ring-primary ring-offset-2",
+                                )}
+                                style={{ backgroundColor: c }}
+                                onClick={() =>
+                                  onChange(selected.id, { stroke: c })
+                                }
                               />
-                              <span>{label}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    <OptionalWidgetBackdropFields
-                      elementId={selected.id}
-                      value={selected.clockBackground}
-                      field="clockBackground"
-                      defaultRgba="rgba(15,23,42,0.92)"
-                      colorAriaLabel="시계 배경색"
-                      defaultHint="끄면 기본 그라데이션 배경을 씁니다."
-                      onChange={onChange}
-                    />
-                    <OptionalWidgetTextColorFields
-                      elementId={selected.id}
-                      value={selected.clockTextColor}
-                      field="clockTextColor"
-                      defaultHex="#ffffff"
-                      colorAriaLabel="디지털 시계 글자색"
-                      defaultHint="끄면 밝은 기본 글자색을 씁니다."
-                      onChange={onChange}
-                    />
-                    <ElementOpacitySlider
-                      elementId={selected.id}
-                      opacity={selected.opacity}
-                      onChange={onChange}
-                    />
-                    <ElementShapeChromeFields el={selected} onChange={onChange} />
-                    <PositionSizeFields el={selected} onChange={onChange} />
-                  </>
-                ) : selected.type === "drawing" ? (
-                  <>
-                    <p className="text-[11px] leading-snug text-muted-foreground">
-                      자유 곡선입니다. 선 좌표는 박스 안에서 상대 위치로 저장되며, 박스를 옮기거나 크기를 바꿔도 모양이
-                      함께 이동합니다.
-                    </p>
-                    <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground">선 색</Label>
-                      <div className="flex flex-wrap gap-1 rounded-md border border-border bg-muted/25 p-1">
-                        {BOOK_HEX_COLOR_PRESETS.map((c) => {
-                          const strokeNorm = selected.stroke.trim().replace(/\s/g, "").toLowerCase();
-                          const active = strokeNorm === c.toLowerCase();
-                          return (
-                            <button
-                              key={c}
-                              type="button"
-                              title={c}
-                              aria-label={`선 색 ${c}`}
-                              aria-pressed={active}
-                              className={cn(
-                                "size-7 shrink-0 rounded-md border border-border shadow-sm ring-offset-background hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
-                                active && "ring-2 ring-primary ring-offset-2",
-                              )}
-                              style={{ backgroundColor: c }}
-                              onClick={() => onChange(selected.id, { stroke: c })}
-                            />
-                          );
-                        })}
-                      </div>
-                      <Input
-                        type="color"
-                        className="h-9 w-14 shrink-0 cursor-pointer px-1"
-                        value={
-                          selected.stroke.startsWith("#") && selected.stroke.length >= 7
-                            ? selected.stroke.slice(0, 7)
-                            : "#000000"
-                        }
-                        onChange={(e) => onChange(selected.id, { stroke: e.target.value })}
-                        aria-label="선 색 직접 선택"
-                      />
-                    </div>
-                    <InspectorStrokeWidthPxInput
-                      key={`${selected.id}-insp-draw-sw-${Math.round(selected.strokeWidth)}`}
-                      inputId="insp-draw-sw"
-                      label="선 굵기 (px)"
-                      value={selected.strokeWidth}
-                      min={1}
-                      max={48}
-                      onCommit={(n) =>
-                        onChange(selected.id, { strokeWidth: n })
-                      }
-                    />
-                    <ElementOpacitySlider
-                      elementId={selected.id}
-                      opacity={selected.opacity}
-                      onChange={onChange}
-                    />
-                    <PositionSizeFields el={selected} onChange={onChange} />
-                  </>
-                ) : selected.type === "shape" ? (
-                  <>
-                    <div className="space-y-1">
-                      <Label htmlFor="insp-shape-kind" className="text-xs text-muted-foreground">
-                        도형 종류
-                      </Label>
-                      <Select
-                        value={selected.shapeKind}
-                        onValueChange={(v) =>
-                          onChange(selected.id, {
-                            shapeKind: v as BookShapeKind,
-                          })
-                        }
-                      >
-                        <SelectTrigger id="insp-shape-kind" className="h-9">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {BOOK_SHAPE_KINDS.map((k) => (
-                            <SelectItem key={k} value={k}>
-                              {bookShapeKindLabelKo(k)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {selected.shapeKind === "rect" ||
-                    selected.shapeKind === "roundRect" ? (
-                      <div className="space-y-1">
-                        <Label htmlFor="insp-shape-cr">모서리 둥글기 (px)</Label>
-                        <Input
-                          id="insp-shape-cr"
-                          type="number"
-                          min={0}
-                          max={200}
-                          value={Math.round(selected.cornerRadius ?? 0)}
-                          onChange={(e) =>
-                            onChange(selected.id, {
-                              cornerRadius: num(
-                                e.target.value,
-                                selected.cornerRadius ?? 0,
-                                0,
-                                200,
-                              ),
-                            })
-                          }
-                        />
-                      </div>
-                    ) : null}
-                    <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground">면 색</Label>
-                      <div className="flex flex-wrap gap-1 rounded-md border border-border bg-muted/25 p-1">
-                        {BOOK_HEX_COLOR_PRESETS.map((c) => {
-                          const fillNorm = (selected.fill ?? "")
-                            .trim()
-                            .replace(/\s/g, "")
-                            .toLowerCase();
-                          const active = fillNorm === c.toLowerCase();
-                          return (
-                            <button
-                              key={c}
-                              type="button"
-                              title={c}
-                              aria-label={`면 색 ${c}`}
-                              aria-pressed={active}
-                              className={cn(
-                                "size-7 shrink-0 rounded-md border border-border shadow-sm ring-offset-background hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
-                                active && "ring-2 ring-primary ring-offset-2",
-                              )}
-                              style={{ backgroundColor: c }}
-                              onClick={() => onChange(selected.id, { fill: c })}
-                            />
-                          );
-                        })}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
+                            );
+                          })}
+                        </div>
                         <Input
                           type="color"
                           className="h-9 w-14 shrink-0 cursor-pointer px-1"
                           value={
-                            selected.fill.startsWith("#") && selected.fill.length >= 7
-                              ? selected.fill.slice(0, 7)
-                              : selected.fill === "transparent"
-                                ? "#cbd5e1"
-                                : "#94a3b8"
+                            selected.stroke.startsWith("#") &&
+                            selected.stroke.length >= 7
+                              ? selected.stroke.slice(0, 7)
+                              : "#000000"
                           }
-                          onChange={(e) => onChange(selected.id, { fill: e.target.value })}
-                          aria-label="면 색 직접 선택"
+                          onChange={(e) =>
+                            onChange(selected.id, { stroke: e.target.value })
+                          }
+                          aria-label="선 색 직접 선택"
                         />
+                      </div>
+                      <InspectorStrokeWidthPxInput
+                        key={`${selected.id}-insp-draw-sw-${Math.round(selected.strokeWidth)}`}
+                        inputId="insp-draw-sw"
+                        label="선 굵기 (px)"
+                        value={selected.strokeWidth}
+                        min={1}
+                        max={48}
+                        onCommit={(n) =>
+                          onChange(selected.id, { strokeWidth: n })
+                        }
+                      />
+                      <ElementOpacitySlider
+                        elementId={selected.id}
+                        opacity={selected.opacity}
+                        onChange={onChange}
+                      />
+                      <PositionSizeFields el={selected} onChange={onChange} />
+                    </>
+                  ) : selected.type === "shape" ? (
+                    <>
+                      <div className="space-y-1">
+                        <Label
+                          htmlFor="insp-shape-kind"
+                          className="text-xs text-muted-foreground"
+                        >
+                          도형 종류
+                        </Label>
+                        <Select
+                          value={selected.shapeKind}
+                          onValueChange={(v) =>
+                            onChange(selected.id, {
+                              shapeKind: v as BookShapeKind,
+                            })
+                          }
+                        >
+                          <SelectTrigger id="insp-shape-kind" className="h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {BOOK_SHAPE_KINDS.map((k) => (
+                              <SelectItem key={k} value={k}>
+                                {bookShapeKindLabelKo(k)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {selected.shapeKind === "rect" ||
+                      selected.shapeKind === "roundRect" ? (
+                        <div className="space-y-1">
+                          <Label htmlFor="insp-shape-cr">
+                            모서리 둥글기 (px)
+                          </Label>
+                          <Input
+                            id="insp-shape-cr"
+                            type="number"
+                            min={0}
+                            max={200}
+                            value={Math.round(selected.cornerRadius ?? 0)}
+                            onChange={(e) =>
+                              onChange(selected.id, {
+                                cornerRadius: num(
+                                  e.target.value,
+                                  selected.cornerRadius ?? 0,
+                                  0,
+                                  200,
+                                ),
+                              })
+                            }
+                          />
+                        </div>
+                      ) : null}
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">
+                          면 색
+                        </Label>
+                        <div className="flex flex-wrap gap-1 rounded-md border border-border bg-muted/25 p-1">
+                          {BOOK_HEX_COLOR_PRESETS.map((c) => {
+                            const fillNorm = (selected.fill ?? "")
+                              .trim()
+                              .replace(/\s/g, "")
+                              .toLowerCase();
+                            const active = fillNorm === c.toLowerCase();
+                            return (
+                              <button
+                                key={c}
+                                type="button"
+                                title={c}
+                                aria-label={`면 색 ${c}`}
+                                aria-pressed={active}
+                                className={cn(
+                                  "size-7 shrink-0 rounded-md border border-border shadow-sm ring-offset-background hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
+                                  active && "ring-2 ring-primary ring-offset-2",
+                                )}
+                                style={{ backgroundColor: c }}
+                                onClick={() =>
+                                  onChange(selected.id, { fill: c })
+                                }
+                              />
+                            );
+                          })}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Input
+                            type="color"
+                            className="h-9 w-14 shrink-0 cursor-pointer px-1"
+                            value={
+                              selected.fill.startsWith("#") &&
+                              selected.fill.length >= 7
+                                ? selected.fill.slice(0, 7)
+                                : selected.fill === "transparent"
+                                  ? "#cbd5e1"
+                                  : "#94a3b8"
+                            }
+                            onChange={(e) =>
+                              onChange(selected.id, { fill: e.target.value })
+                            }
+                            aria-label="면 색 직접 선택"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs"
+                            onClick={() =>
+                              onChange(selected.id, { fill: "transparent" })
+                            }
+                          >
+                            투명
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">
+                          선 색
+                        </Label>
+                        <div className="flex flex-wrap gap-1 rounded-md border border-border bg-muted/25 p-1">
+                          {BOOK_HEX_COLOR_PRESETS.map((c) => {
+                            const strokeNorm = selected.stroke
+                              .trim()
+                              .replace(/\s/g, "")
+                              .toLowerCase();
+                            const active = strokeNorm === c.toLowerCase();
+                            return (
+                              <button
+                                key={c}
+                                type="button"
+                                title={c}
+                                aria-label={`선 색 ${c}`}
+                                aria-pressed={active}
+                                className={cn(
+                                  "size-7 shrink-0 rounded-md border border-border shadow-sm ring-offset-background hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
+                                  active && "ring-2 ring-primary ring-offset-2",
+                                )}
+                                style={{ backgroundColor: c }}
+                                onClick={() =>
+                                  onChange(selected.id, { stroke: c })
+                                }
+                              />
+                            );
+                          })}
+                        </div>
+                        <Input
+                          type="color"
+                          className="h-9 w-14 shrink-0 cursor-pointer px-1"
+                          value={
+                            selected.stroke.startsWith("#") &&
+                            selected.stroke.length >= 7
+                              ? selected.stroke.slice(0, 7)
+                              : "#000000"
+                          }
+                          onChange={(e) =>
+                            onChange(selected.id, { stroke: e.target.value })
+                          }
+                          aria-label="선 색 직접 선택"
+                        />
+                      </div>
+                      <div className="flex flex-wrap items-end gap-2">
+                        <div className="min-w-0 flex-1">
+                          <InspectorStrokeWidthPxInput
+                            key={`${selected.id}-insp-shape-sw-${Math.round(selected.strokeWidth)}`}
+                            inputId="insp-shape-sw"
+                            label="선 굵기 (px) · 0이면 테두리 없음"
+                            value={selected.strokeWidth}
+                            min={0}
+                            max={32}
+                            onCommit={(n) =>
+                              onChange(selected.id, { strokeWidth: n })
+                            }
+                          />
+                        </div>
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="h-8 text-xs"
-                          onClick={() => onChange(selected.id, { fill: "transparent" })}
+                          className="h-9 shrink-0 text-xs"
+                          onClick={() =>
+                            onChange(selected.id, { strokeWidth: 0 })
+                          }
                         >
-                          투명
+                          선 없음
                         </Button>
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground">선 색</Label>
-                      <div className="flex flex-wrap gap-1 rounded-md border border-border bg-muted/25 p-1">
-                        {BOOK_HEX_COLOR_PRESETS.map((c) => {
-                          const strokeNorm = selected.stroke.trim().replace(/\s/g, "").toLowerCase();
-                          const active = strokeNorm === c.toLowerCase();
-                          return (
-                            <button
-                              key={c}
-                              type="button"
-                              title={c}
-                              aria-label={`선 색 ${c}`}
-                              aria-pressed={active}
-                              className={cn(
-                                "size-7 shrink-0 rounded-md border border-border shadow-sm ring-offset-background hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
-                                active && "ring-2 ring-primary ring-offset-2",
-                              )}
-                              style={{ backgroundColor: c }}
-                              onClick={() => onChange(selected.id, { stroke: c })}
-                            />
-                          );
-                        })}
-                      </div>
-                      <Input
-                        type="color"
-                        className="h-9 w-14 shrink-0 cursor-pointer px-1"
-                        value={
-                          selected.stroke.startsWith("#") && selected.stroke.length >= 7
-                            ? selected.stroke.slice(0, 7)
-                            : "#000000"
-                        }
-                        onChange={(e) => onChange(selected.id, { stroke: e.target.value })}
-                        aria-label="선 색 직접 선택"
-                      />
-                    </div>
-                    <div className="flex flex-wrap items-end gap-2">
-                      <div className="min-w-0 flex-1">
-                        <InspectorStrokeWidthPxInput
-                          key={`${selected.id}-insp-shape-sw-${Math.round(selected.strokeWidth)}`}
-                          inputId="insp-shape-sw"
-                          label="선 굵기 (px) · 0이면 테두리 없음"
-                          value={selected.strokeWidth}
-                          min={0}
-                          max={32}
-                          onCommit={(n) =>
-                            onChange(selected.id, { strokeWidth: n })
-                          }
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-9 shrink-0 text-xs"
-                        onClick={() => onChange(selected.id, { strokeWidth: 0 })}
-                      >
-                        선 없음
-                      </Button>
-                    </div>
-                    <ElementOpacitySlider
-                      elementId={selected.id}
-                      opacity={selected.opacity}
-                      onChange={onChange}
-                    />
-                    <ElementShapeChromeFields el={selected} onChange={onChange} />
-                    <PositionSizeFields el={selected} onChange={onChange} />
-                  </>
-                ) : selected.type === "image" ? (
-                  <>
-                    <InspectorMediaSourceSection
-                      kind="image"
-                      src={selected.src}
-                      onReplaceFile={onReplaceMediaFromFile}
-                      onPickLibrary={onPickMediaFromLibrary}
-                      libraryEnabled={mediaLibraryReplaceEnabled}
-                    />
-                    <Separator className="my-1 bg-border/80" />
-                    <div className="space-y-3">
-                      <p className="text-[10px] font-medium text-muted-foreground">표시</p>
-                      <MediaObjectFitFields
-                        elementId={selected.id}
-                        value={selected.objectFit}
-                        onChange={onChange}
-                      />
                       <ElementOpacitySlider
                         elementId={selected.id}
                         opacity={selected.opacity}
                         onChange={onChange}
                       />
-                      <ElementShapeChromeFields el={selected} onChange={onChange} />
+                      <ElementShapeChromeFields
+                        el={selected}
+                        onChange={onChange}
+                      />
                       <PositionSizeFields el={selected} onChange={onChange} />
-                    </div>
-                  </>
-                ) : selected.type === "video" ? (
-                  <>
-                    <InspectorMediaSourceSection
-                      kind="video"
-                      src={selected.src}
-                      posterSrc={selected.posterSrc}
-                      onReplaceFile={onReplaceMediaFromFile}
-                      onPickLibrary={onPickMediaFromLibrary}
-                      libraryEnabled={mediaLibraryReplaceEnabled}
-                    />
-                    <Separator className="my-1 bg-border/80" />
-                    <div className="space-y-3">
-                      <p className="text-[10px] font-medium text-muted-foreground">표시</p>
-                      <div className="space-y-1">
-                        <Label className="text-[11px]">재생 길이</Label>
-                        <div className="rounded-md border border-border/70 bg-muted/25 px-2 py-1.5 font-mono text-xs text-muted-foreground">
-                          {(() => {
-                            const dur = videoDurationSecByElementId?.[selected.id];
-                            return dur != null && dur > 0
-                              ? formatBookMediaClock(dur)
-                              : "메타데이터를 불러오는 중…";
-                          })()}
-                        </div>
-                        <p className="text-[10px] text-muted-foreground">
-                          파일에서 읽은 길이이며 수정할 수 없습니다.
+                    </>
+                  ) : selected.type === "image" ? (
+                    <>
+                      <InspectorMediaSourceSection
+                        kind="image"
+                        src={selected.src}
+                        onReplaceFile={onReplaceMediaFromFile}
+                        onPickLibrary={onPickMediaFromLibrary}
+                        libraryEnabled={mediaLibraryReplaceEnabled}
+                      />
+                      <Separator className="my-1 bg-border/80" />
+                      <div className="space-y-3">
+                        <p className="text-[10px] font-medium text-muted-foreground">
+                          표시
                         </p>
+                        <MediaObjectFitFields
+                          elementId={selected.id}
+                          value={selected.objectFit}
+                          onChange={onChange}
+                        />
+                        <ElementOpacitySlider
+                          elementId={selected.id}
+                          opacity={selected.opacity}
+                          onChange={onChange}
+                        />
+                        <ElementShapeChromeFields
+                          el={selected}
+                          onChange={onChange}
+                        />
+                        <PositionSizeFields el={selected} onChange={onChange} />
                       </div>
-                      <MediaObjectFitFields
-                        elementId={selected.id}
-                        value={selected.objectFit}
-                        onChange={onChange}
+                    </>
+                  ) : selected.type === "video" ? (
+                    <>
+                      <InspectorMediaSourceSection
+                        kind="video"
+                        src={selected.src}
+                        posterSrc={selected.posterSrc}
+                        onReplaceFile={onReplaceMediaFromFile}
+                        onPickLibrary={onPickMediaFromLibrary}
+                        libraryEnabled={mediaLibraryReplaceEnabled}
                       />
-                      <ElementOpacitySlider
-                        elementId={selected.id}
-                        opacity={selected.opacity}
+                      <Separator className="my-1 bg-border/80" />
+                      <div className="space-y-3">
+                        <p className="text-[10px] font-medium text-muted-foreground">
+                          표시
+                        </p>
+                        <div className="space-y-1">
+                          <Label className="text-[11px]">재생 길이</Label>
+                          <div className="rounded-md border border-border/70 bg-muted/25 px-2 py-1.5 font-mono text-xs text-muted-foreground">
+                            {(() => {
+                              const dur =
+                                videoDurationSecByElementId?.[selected.id];
+                              return dur != null && dur > 0
+                                ? formatBookMediaClock(dur)
+                                : "메타데이터를 불러오는 중…";
+                            })()}
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">
+                            파일에서 읽은 길이이며 수정할 수 없습니다.
+                          </p>
+                        </div>
+                        <MediaObjectFitFields
+                          elementId={selected.id}
+                          value={selected.objectFit}
+                          onChange={onChange}
+                        />
+                        <ElementOpacitySlider
+                          elementId={selected.id}
+                          opacity={selected.opacity}
+                          onChange={onChange}
+                        />
+                        <ElementShapeChromeFields
+                          el={selected}
+                          onChange={onChange}
+                        />
+                        <PositionSizeFields el={selected} onChange={onChange} />
+                      </div>
+                    </>
+                  ) : selected.type === "mediaPlaylist" ? (
+                    <>
+                      <MediaPlaylistInspectorBody
+                        el={selected}
                         onChange={onChange}
-                      />
-                      <ElementShapeChromeFields el={selected} onChange={onChange} />
-                      <PositionSizeFields el={selected} onChange={onChange} />
-                    </div>
-                  </>
-                ) : selected.type === "mediaPlaylist" ? (
-                  <>
-                    <MediaPlaylistInspectorBody
-                      el={selected}
-                      onChange={onChange}
-                      onRequestAppendPlaylistMediaFromFile={
-                        onRequestAppendPlaylistMediaFromFile
-                      }
-                      onRequestAppendPlaylistMediaFromLibrary={
-                        onRequestAppendPlaylistMediaFromLibrary
-                      }
-                      onRequestDeletePlaylistItem={(index) =>
-                        setPlaylistItemDelete({ elementId: selected.id, index })
-                      }
-                      mediaLibraryReplaceEnabled={mediaLibraryReplaceEnabled}
-                      activePlaybackItemIndex={
-                        mediaPlaylistPlaybackByElementId?.[selected.id]
-                      }
-                      playbackUi={mediaPlaylistPlaybackUiByElementId?.[selected.id]}
-                      onMediaPlaylistRemoteControl={onMediaPlaylistRemoteControl}
-                    />
-                    <Separator className="my-1 bg-border/80" />
-                    <ElementOpacitySlider
-                      elementId={selected.id}
-                      opacity={selected.opacity}
-                      onChange={onChange}
-                    />
-                    <ElementShapeChromeFields el={selected} onChange={onChange} />
-                    <PositionSizeFields el={selected} onChange={onChange} />
-                  </>
-                ) : null}
-
-                {selected ? (
-                  <div className="flex flex-col gap-2">
-                    <InspectorPresentationTimingSection
-                      el={selected}
-                      pagePresentationTimingElementId={pagePresentationTimingElementId}
-                      onChange={onChange}
-                      videoMetaDurationSec={
-                        selected.type === "video"
-                          ? videoDurationSecByElementId?.[selected.id]
-                          : undefined
-                      }
-                    />
-                    {selected.type !== "drawing" ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                        onClick={() =>
-                          onChange(selected.id, {
-                            x: 0,
-                            y: 0,
-                            width: slideWidth,
-                            height: slideHeight,
+                        onRequestAppendPlaylistMediaFromFile={
+                          onRequestAppendPlaylistMediaFromFile
+                        }
+                        onRequestAppendPlaylistMediaFromLibrary={
+                          onRequestAppendPlaylistMediaFromLibrary
+                        }
+                        onRequestDeletePlaylistItem={(index) =>
+                          setPlaylistItemDelete({
+                            elementId: selected.id,
+                            index,
                           })
                         }
-                      >
-                        <Expand className="mr-1.5 size-3.5" aria-hidden />
-                        슬라이드 전체(0,0)로 맞추기
-                      </Button>
-                    ) : null}
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      className="w-full"
-                      onClick={onDelete}
-                    >
-                      <Trash2 className="mr-1.5 size-3.5" aria-hidden />
-                      위젯 삭제
-                    </Button>
-                  </div>
-                ) : null}
-              </div>
-            </>
-          )}
+                        mediaLibraryReplaceEnabled={mediaLibraryReplaceEnabled}
+                        activePlaybackItemIndex={
+                          mediaPlaylistPlaybackByElementId?.[selected.id]
+                        }
+                        playbackUi={
+                          mediaPlaylistPlaybackUiByElementId?.[selected.id]
+                        }
+                        onMediaPlaylistRemoteControl={
+                          onMediaPlaylistRemoteControl
+                        }
+                      />
+                      <Separator className="my-1 bg-border/80" />
+                      <ElementOpacitySlider
+                        elementId={selected.id}
+                        opacity={selected.opacity}
+                        onChange={onChange}
+                      />
+                      <ElementShapeChromeFields
+                        el={selected}
+                        onChange={onChange}
+                      />
+                      <PositionSizeFields el={selected} onChange={onChange} />
+                    </>
+                  ) : null}
 
-          {mediaHint ? <p className="text-xs text-amber-600 dark:text-amber-400">{mediaHint}</p> : null}
+                  {selected ? (
+                    <div className="flex flex-col gap-2">
+                      <InspectorPresentationTimingSection
+                        el={selected}
+                        pagePresentationTimingElementId={
+                          pagePresentationTimingElementId
+                        }
+                        onChange={onChange}
+                        videoMetaDurationSec={
+                          selected.type === "video"
+                            ? videoDurationSecByElementId?.[selected.id]
+                            : undefined
+                        }
+                      />
+                      {selected.type !== "drawing" ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() =>
+                            onChange(selected.id, {
+                              x: 0,
+                              y: 0,
+                              width: slideWidth,
+                              height: slideHeight,
+                            })
+                          }
+                        >
+                          <Expand className="mr-1.5 size-3.5" aria-hidden />
+                          슬라이드 전체(0,0)로 맞추기
+                        </Button>
+                      ) : null}
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="w-full"
+                        onClick={onDelete}
+                      >
+                        <Trash2 className="mr-1.5 size-3.5" aria-hidden />
+                        위젯 삭제
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+              </>
+            )}
+
+            {mediaHint ? (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                {mediaHint}
+              </p>
+            ) : null}
+          </div>
         </div>
-      </div>
-    </Root>
-    {playlistDeleteConfirmLayer && typeof document !== "undefined"
-      ? createPortal(playlistDeleteConfirmLayer, document.body)
-      : null}
+      </Root>
+      {playlistDeleteConfirmLayer && typeof document !== "undefined"
+        ? createPortal(playlistDeleteConfirmLayer, document.body)
+        : null}
     </>
   );
 }
@@ -2480,7 +2714,9 @@ function InspectorClampedSizeInputInner({
         autoComplete="off"
         className="font-mono tabular-nums"
         value={draft}
-        onChange={(e) => setDraft(e.target.value.replace(/\D/g, "").slice(0, 5))}
+        onChange={(e) =>
+          setDraft(e.target.value.replace(/\D/g, "").slice(0, 5))
+        }
         onBlur={commit}
         onKeyDown={(e) => {
           if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
@@ -2520,7 +2756,9 @@ function PositionSizeFields({
           id="insp-x"
           type="number"
           value={Math.round(el.x)}
-          onChange={(e) => onChange(el.id, { x: num(e.target.value, el.x, 0, 4000) })}
+          onChange={(e) =>
+            onChange(el.id, { x: num(e.target.value, el.x, 0, 4000) })
+          }
         />
       </div>
       <div className="space-y-1">
@@ -2529,7 +2767,9 @@ function PositionSizeFields({
           id="insp-y"
           type="number"
           value={Math.round(el.y)}
-          onChange={(e) => onChange(el.id, { y: num(e.target.value, el.y, 0, 4000) })}
+          onChange={(e) =>
+            onChange(el.id, { y: num(e.target.value, el.y, 0, 4000) })
+          }
         />
       </div>
       {el.type !== "text" ? (
@@ -2556,7 +2796,8 @@ function PositionSizeFields({
       ) : (
         <>
           <div className="col-span-2 text-xs text-muted-foreground">
-            텍스트 박스 크기는 캔버스에서 모서리를 드래그하거나 &quot;줄 너비&quot;로 조절합니다.
+            텍스트 박스 크기는 캔버스에서 모서리를 드래그하거나 &quot;줄
+            너비&quot;로 조절합니다.
           </div>
         </>
       )}

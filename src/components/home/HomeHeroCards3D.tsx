@@ -1,14 +1,26 @@
 /**
  * CodeSandbox [Cards (dc5fjy)](https://codesandbox.io/p/sandbox/dc5fjy) `App.js` 와 동일한 시즌 배치·ActiveCard 프리뷰.
  */
-import * as THREE from "three";
-import { Suspense, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useFrame, type RootState, type ThreeElements } from "@react-three/fiber";
-import { Billboard, Image, ScrollControls, Text, useScroll } from "@react-three/drei";
+import {
+  Billboard,
+  Image as DreiImage,
+  ScrollControls,
+  Text,
+  useScroll,
+} from "@react-three/drei";
+import {
+  Canvas,
+  type RootState,
+  type ThreeElements,
+  useFrame,
+} from "@react-three/fiber";
 import { easing } from "maath";
 import { useTheme } from "next-themes";
-import { cn } from "@/lib/utils";
+import { Suspense, useLayoutEffect, useMemo, useRef, useState } from "react";
+import * as THREE from "three";
+
 import { cardImages } from "@/assets/cards";
+import { cn } from "@/lib/utils";
 
 THREE.ColorManagement.enabled = true;
 
@@ -16,16 +28,39 @@ const INTER_FONT =
   "https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.16/files/inter-latin-400-normal.woff";
 
 const ADJECTIVES = [
-  "misty", "quiet", "golden", "silver", "ancient", "wild", "soft", "bright", "deep", "calm",
+  "misty",
+  "quiet",
+  "golden",
+  "silver",
+  "ancient",
+  "wild",
+  "soft",
+  "bright",
+  "deep",
+  "calm",
 ];
 const NOUNS = [
-  "forest", "river", "meadow", "harbor", "summit", "garden", "canopy", "shore", "valley", "ridge",
+  "forest",
+  "river",
+  "meadow",
+  "harbor",
+  "summit",
+  "garden",
+  "canopy",
+  "shore",
+  "valley",
+  "ridge",
 ];
 
 /** 원본 App.js 와 같은 호 분할 + summer/winter 세로 오프셋 */
 const SEASON_ROWS = [
   { category: "spring", from: 0, len: Math.PI / 4 },
-  { category: "summer", from: Math.PI / 4, len: Math.PI / 2, position: [0, 0.4, 0] as const },
+  {
+    category: "summer",
+    from: Math.PI / 4,
+    len: Math.PI / 2,
+    position: [0, 0.4, 0] as const,
+  },
   { category: "autumn", from: Math.PI / 4 + Math.PI / 2, len: Math.PI / 2 },
   {
     category: "winter",
@@ -56,7 +91,11 @@ function Scene({
     state.events.update?.();
     easing.damp3(
       state.camera.position,
-      [-state.pointer.x * 2, state.pointer.y * 1.35 + CAMERA_Y_BASE, CAMERA_Z_REST],
+      [
+        -state.pointer.x * 2,
+        state.pointer.y * 1.35 + CAMERA_Y_BASE,
+        CAMERA_Z_REST,
+      ],
       0.3,
       delta,
     );
@@ -74,7 +113,9 @@ function Scene({
           category={row.category}
           from={row.from}
           len={row.len}
-          {...("position" in row && row.position ? { position: row.position } : {})}
+          {...("position" in row && row.position
+            ? { position: row.position }
+            : {})}
           onPointerOver={(i, url) => {
             setHovered(i);
             setPreviewUrl(url);
@@ -85,7 +126,11 @@ function Scene({
           }}
         />
       ))}
-      <ActiveCard textColor={textColor} hovered={hovered} previewUrl={previewUrl} />
+      <ActiveCard
+        textColor={textColor}
+        hovered={hovered}
+        previewUrl={previewUrl}
+      />
     </group>
   );
 }
@@ -110,7 +155,7 @@ function Card({
   });
   return (
     <group {...props}>
-      <Image
+      <DreiImage
         ref={meshRef}
         url={url}
         transparent
@@ -147,8 +192,19 @@ function Cards({
 
   return (
     <group {...props}>
-      <Billboard position={[Math.sin(textPosition) * radius * 1.4, 0.5, Math.cos(textPosition) * radius * 1.4]}>
-        <Text font={INTER_FONT} fontSize={0.25} anchorX="center" color={textColor}>
+      <Billboard
+        position={[
+          Math.sin(textPosition) * radius * 1.4,
+          0.5,
+          Math.cos(textPosition) * radius * 1.4,
+        ]}
+      >
+        <Text
+          font={INTER_FONT}
+          fontSize={0.25}
+          anchorX="center"
+          color={textColor}
+        >
           {category}
         </Text>
       </Billboard>
@@ -179,7 +235,10 @@ function Cards({
   );
 }
 
-type ImageShaderMaterial = THREE.ShaderMaterial & { zoom: number; opacity: number };
+type ImageShaderMaterial = THREE.ShaderMaterial & {
+  zoom: number;
+  opacity: number;
+};
 
 function ActiveCard({
   textColor,
@@ -224,7 +283,7 @@ function ActiveCard({
       >
         {hovered !== null ? `${name}\n${hovered}` : " "}
       </Text>
-      <Image
+      <DreiImage
         ref={meshRef}
         transparent
         toneMapped={false}
@@ -247,11 +306,20 @@ export function HomeHeroCards3D({ className }: { className?: string }) {
       <Canvas
         className="h-full w-full touch-none"
         dpr={[1, 1.5]}
-        camera={{ position: [0, CAMERA_Y_BASE, CAMERA_Z_REST], fov: CAMERA_FOV, near: 0.1, far: 400 }}
+        camera={{
+          position: [0, CAMERA_Y_BASE, CAMERA_Z_REST],
+          fov: CAMERA_FOV,
+          near: 0.1,
+          far: 400,
+        }}
         gl={{ alpha: true, antialias: true }}
       >
         <Suspense fallback={null}>
-          <ScrollControls pages={4} infinite style={{ width: "100%", height: "100%" }}>
+          <ScrollControls
+            pages={4}
+            infinite
+            style={{ width: "100%", height: "100%" }}
+          >
             <Scene textColor={textColor} position={[0, 1.5, 0]} />
           </ScrollControls>
         </Suspense>

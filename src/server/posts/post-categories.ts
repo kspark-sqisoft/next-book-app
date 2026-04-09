@@ -1,10 +1,10 @@
 /** 글 카테고리(시드·필터·작성 시 공통) */
 export const POST_CATEGORY_VALUES = [
-  'tech',
-  'life',
-  'study',
-  'chat',
-  'general',
+  "tech",
+  "life",
+  "study",
+  "chat",
+  "general",
 ] as const;
 
 export type PostCategoryId = (typeof POST_CATEGORY_VALUES)[number];
@@ -18,7 +18,7 @@ export function normalizePostCategory(
 ): PostCategoryId {
   const t = raw?.trim().toLowerCase();
   if (t && isPostCategoryId(t)) return t;
-  return 'general';
+  return "general";
 }
 
 export function randomPostCategory(): PostCategoryId {

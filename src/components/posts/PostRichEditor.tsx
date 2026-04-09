@@ -1,6 +1,6 @@
 import Placeholder from "@tiptap/extension-placeholder";
-import { Color, FontSize, TextStyle } from "@tiptap/extension-text-style";
 import TextAlign from "@tiptap/extension-text-align";
+import { Color, FontSize, TextStyle } from "@tiptap/extension-text-style";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import {
@@ -25,7 +25,8 @@ import {
   Underline as UnderlineIcon,
   Undo2,
 } from "lucide-react";
-import { useRef, useState, type ReactNode } from "react";
+import { type ReactNode, useRef, useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -151,13 +152,7 @@ function TipInsertChip({
   );
 }
 
-function TipColorSwatch({
-  hex,
-  onPick,
-}: {
-  hex: string;
-  onPick: () => void;
-}) {
+function TipColorSwatch({ hex, onPick }: { hex: string; onPick: () => void }) {
   const tip = `글자 색 ${hex} 적용 (선택한 텍스트만)`;
   return (
     <Tooltip>
@@ -203,7 +198,8 @@ export function PostRichEditor({ initialHtml, invalid, onHtmlChange }: Props) {
           types: ["heading", "paragraph"],
         }),
         Placeholder.configure({
-          placeholder: "본문을 입력하세요. 굵게, 목록, 링크, 인용 등을 사용할 수 있습니다.",
+          placeholder:
+            "본문을 입력하세요. 굵게, 목록, 링크, 인용 등을 사용할 수 있습니다.",
         }),
       ],
       content: initialHtml?.trim() ? initialHtml : "<p></p>",
@@ -248,232 +244,282 @@ export function PostRichEditor({ initialHtml, invalid, onHtmlChange }: Props) {
           {editor ? (
             <>
               <div className="flex flex-wrap gap-0.5">
-              <TipToolbarBtn
-                tip="선택한 글자를 굵게 표시합니다. (단락 전체 제목과는 다릅니다)"
-                ariaLabel="굵게"
-                active={editor.isActive("bold")}
-                onClick={() => editor.chain().focus().toggleBold().run()}
-              >
-                <Bold className="size-4" />
-              </TipToolbarBtn>
-              <TipToolbarBtn
-                tip="선택한 글자를 기울임꼴로 표시합니다."
-                ariaLabel="기울임"
-                active={editor.isActive("italic")}
-                onClick={() => editor.chain().focus().toggleItalic().run()}
-              >
-                <Italic className="size-4" />
-              </TipToolbarBtn>
-              <TipToolbarBtn
-                tip="선택한 글자에 밑줄을 긋습니다."
-                ariaLabel="밑줄"
-                active={editor.isActive("underline")}
-                onClick={() => editor.chain().focus().toggleUnderline().run()}
-              >
-                <UnderlineIcon className="size-4" />
-              </TipToolbarBtn>
-              <TipToolbarBtn
-                tip="선택한 글자에 취소선을 긋습니다."
-                ariaLabel="취소선"
-                active={editor.isActive("strike")}
-                onClick={() => editor.chain().focus().toggleStrike().run()}
-              >
-                <Strikethrough className="size-4" />
-              </TipToolbarBtn>
+                <TipToolbarBtn
+                  tip="선택한 글자를 굵게 표시합니다. (단락 전체 제목과는 다릅니다)"
+                  ariaLabel="굵게"
+                  active={editor.isActive("bold")}
+                  onClick={() => editor.chain().focus().toggleBold().run()}
+                >
+                  <Bold className="size-4" />
+                </TipToolbarBtn>
+                <TipToolbarBtn
+                  tip="선택한 글자를 기울임꼴로 표시합니다."
+                  ariaLabel="기울임"
+                  active={editor.isActive("italic")}
+                  onClick={() => editor.chain().focus().toggleItalic().run()}
+                >
+                  <Italic className="size-4" />
+                </TipToolbarBtn>
+                <TipToolbarBtn
+                  tip="선택한 글자에 밑줄을 긋습니다."
+                  ariaLabel="밑줄"
+                  active={editor.isActive("underline")}
+                  onClick={() => editor.chain().focus().toggleUnderline().run()}
+                >
+                  <UnderlineIcon className="size-4" />
+                </TipToolbarBtn>
+                <TipToolbarBtn
+                  tip="선택한 글자에 취소선을 긋습니다."
+                  ariaLabel="취소선"
+                  active={editor.isActive("strike")}
+                  onClick={() => editor.chain().focus().toggleStrike().run()}
+                >
+                  <Strikethrough className="size-4" />
+                </TipToolbarBtn>
 
-              <span className="mx-0.5 hidden h-6 w-px shrink-0 bg-border sm:inline-block" aria-hidden />
+                <span
+                  className="mx-0.5 hidden h-6 w-px shrink-0 bg-border sm:inline-block"
+                  aria-hidden
+                />
 
-              <div className="flex flex-wrap items-center gap-0.5">
-                <span className="sr-only">글자 크기</span>
-                {FONT_SIZE_PRESETS.map(({ value, label, tip }) => (
+                <div className="flex flex-wrap items-center gap-0.5">
+                  <span className="sr-only">글자 크기</span>
+                  {FONT_SIZE_PRESETS.map(({ value, label, tip }) => (
+                    <TipToolbarBtn
+                      key={value}
+                      tip={tip}
+                      ariaLabel={tip}
+                      active={currentFontSize === value}
+                      onClick={() =>
+                        editor.chain().focus().setFontSize(value).run()
+                      }
+                    >
+                      <span className="min-w-[1.25rem] text-center text-xs font-semibold tabular-nums">
+                        {label}
+                      </span>
+                    </TipToolbarBtn>
+                  ))}
                   <TipToolbarBtn
-                    key={value}
-                    tip={tip}
-                    ariaLabel={tip}
-                    active={currentFontSize === value}
-                    onClick={() => editor.chain().focus().setFontSize(value).run()}
+                    tip="선택한 글에 지정한 글자 크기를 없애고, 단락 기본 크기로 돌립니다."
+                    ariaLabel="글자 크기 초기화"
+                    active={false}
+                    disabled={!currentFontSize}
+                    onClick={() => editor.chain().focus().unsetFontSize().run()}
                   >
-                    <span className="min-w-[1.25rem] text-center text-xs font-semibold tabular-nums">
-                      {label}
+                    <RemoveFormatting className="size-4" />
+                  </TipToolbarBtn>
+                </div>
+
+                <span
+                  className="mx-0.5 hidden h-6 w-px shrink-0 bg-border sm:inline-block"
+                  aria-hidden
+                />
+
+                <div className="flex flex-wrap items-center gap-0.5">
+                  <span className="sr-only">글자 색</span>
+                  {PRESET_COLORS.map((c) => (
+                    <TipColorSwatch
+                      key={c}
+                      hex={c}
+                      onPick={() => editor.chain().focus().setColor(c).run()}
+                    />
+                  ))}
+                  <input
+                    ref={colorInputRef}
+                    type="color"
+                    className="sr-only"
+                    aria-hidden
+                    tabIndex={-1}
+                    defaultValue="#000000"
+                    onChange={(e) =>
+                      editor.chain().focus().setColor(e.target.value).run()
+                    }
+                  />
+                  <TipToolbarBtn
+                    tip="시스템 색상 창에서 원하는 글자 색을 고릅니다. 먼저 문장에서 글자를 선택하세요."
+                    ariaLabel="색상 직접 선택"
+                    active={Boolean(currentColor)}
+                    onClick={() => colorInputRef.current?.click()}
+                  >
+                    <Palette className="size-4" />
+                  </TipToolbarBtn>
+                  <TipToolbarBtn
+                    tip="선택한 글에서만 글자 색을 제거합니다."
+                    ariaLabel="글자 색 제거"
+                    active={false}
+                    disabled={!currentColor}
+                    onClick={() => editor.chain().focus().unsetColor().run()}
+                  >
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      A
                     </span>
                   </TipToolbarBtn>
-                ))}
-                <TipToolbarBtn
-                  tip="선택한 글에 지정한 글자 크기를 없애고, 단락 기본 크기로 돌립니다."
-                  ariaLabel="글자 크기 초기화"
-                  active={false}
-                  disabled={!currentFontSize}
-                  onClick={() => editor.chain().focus().unsetFontSize().run()}
-                >
-                  <RemoveFormatting className="size-4" />
-                </TipToolbarBtn>
-              </div>
+                </div>
 
-              <span className="mx-0.5 hidden h-6 w-px shrink-0 bg-border sm:inline-block" aria-hidden />
-
-              <div className="flex flex-wrap items-center gap-0.5">
-                <span className="sr-only">글자 색</span>
-                {PRESET_COLORS.map((c) => (
-                  <TipColorSwatch
-                    key={c}
-                    hex={c}
-                    onPick={() => editor.chain().focus().setColor(c).run()}
-                  />
-                ))}
-                <input
-                  ref={colorInputRef}
-                  type="color"
-                  className="sr-only"
+                <span
+                  className="mx-0.5 hidden h-6 w-px shrink-0 bg-border sm:inline-block"
                   aria-hidden
-                  tabIndex={-1}
-                  defaultValue="#000000"
-                  onChange={(e) => editor.chain().focus().setColor(e.target.value).run()}
                 />
+
                 <TipToolbarBtn
-                  tip="시스템 색상 창에서 원하는 글자 색을 고릅니다. 먼저 문장에서 글자를 선택하세요."
-                  ariaLabel="색상 직접 선택"
-                  active={Boolean(currentColor)}
-                  onClick={() => colorInputRef.current?.click()}
+                  tip="선택한 부분을 인라인 코드 스타일(짧은 코드 조각)로 표시합니다."
+                  ariaLabel="인라인 코드"
+                  active={editor.isActive("code")}
+                  onClick={() => editor.chain().focus().toggleCode().run()}
                 >
-                  <Palette className="size-4" />
+                  <Code className="size-4" />
                 </TipToolbarBtn>
                 <TipToolbarBtn
-                  tip="선택한 글에서만 글자 색을 제거합니다."
-                  ariaLabel="글자 색 제거"
-                  active={false}
-                  disabled={!currentColor}
-                  onClick={() => editor.chain().focus().unsetColor().run()}
-                >
-                  <span className="text-xs font-semibold text-muted-foreground">A</span>
-                </TipToolbarBtn>
-              </div>
-
-              <span className="mx-0.5 hidden h-6 w-px shrink-0 bg-border sm:inline-block" aria-hidden />
-
-              <TipToolbarBtn
-                tip="선택한 부분을 인라인 코드 스타일(짧은 코드 조각)로 표시합니다."
-                ariaLabel="인라인 코드"
-                active={editor.isActive("code")}
-                onClick={() => editor.chain().focus().toggleCode().run()}
-              >
-                <Code className="size-4" />
-              </TipToolbarBtn>
-              <TipToolbarBtn
-                tip="현재 줄/단락을 ‘중간 제목’ 크기(제목 2) 블록으로 바꿉니다. 글자만 키우는 것이 아니라 단락 전체가 제목이 됩니다."
-                ariaLabel="제목 2"
-                active={editor.isActive("heading", { level: 2 })}
-                onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-              >
-                <Heading2 className="size-4" />
-              </TipToolbarBtn>
-              <TipToolbarBtn
-                tip="현재 줄/단락을 ‘작은 제목’(제목 3) 블록으로 바꿉니다."
-                ariaLabel="제목 3"
-                active={editor.isActive("heading", { level: 3 })}
-                onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-              >
-                <Heading3 className="size-4" />
-              </TipToolbarBtn>
-              <TipToolbarBtn
-                tip="글머리 기호 목록을 만듭니다."
-                ariaLabel="글머리 목록"
-                active={editor.isActive("bulletList")}
-                onClick={() => editor.chain().focus().toggleBulletList().run()}
-              >
-                <List className="size-4" />
-              </TipToolbarBtn>
-              <TipToolbarBtn
-                tip="번호가 매겨진 목록을 만듭니다."
-                ariaLabel="번호 목록"
-                active={editor.isActive("orderedList")}
-                onClick={() => editor.chain().focus().toggleOrderedList().run()}
-              >
-                <ListOrdered className="size-4" />
-              </TipToolbarBtn>
-              <TipToolbarBtn
-                tip="인용문 블록(왼쪽 막대)으로 표시합니다."
-                ariaLabel="인용"
-                active={editor.isActive("blockquote")}
-                onClick={() => editor.chain().focus().toggleBlockquote().run()}
-              >
-                <Quote className="size-4" />
-              </TipToolbarBtn>
-              <TipToolbarBtn
-                tip="가로 구분선을 한 줄 넣습니다."
-                ariaLabel="구분선"
-                active={false}
-                onClick={() => editor.chain().focus().setHorizontalRule().run()}
-              >
-                <Minus className="size-4" />
-              </TipToolbarBtn>
-              <TipToolbarBtn
-                tip="현재 단락/제목의 텍스트를 왼쪽 정렬합니다."
-                ariaLabel="왼쪽 정렬"
-                active={editor.isActive({ textAlign: "left" })}
-                onClick={() => editor.chain().focus().setTextAlign("left").run()}
-              >
-                <AlignLeft className="size-4" />
-              </TipToolbarBtn>
-              <TipToolbarBtn
-                tip="가운데 정렬합니다."
-                ariaLabel="가운데 정렬"
-                active={editor.isActive({ textAlign: "center" })}
-                onClick={() => editor.chain().focus().setTextAlign("center").run()}
-              >
-                <AlignCenter className="size-4" />
-              </TipToolbarBtn>
-              <TipToolbarBtn
-                tip="오른쪽 정렬합니다."
-                ariaLabel="오른쪽 정렬"
-                active={editor.isActive({ textAlign: "right" })}
-                onClick={() => editor.chain().focus().setTextAlign("right").run()}
-              >
-                <AlignRight className="size-4" />
-              </TipToolbarBtn>
-              <TipToolbarBtn
-                tip="양쪽 맞춤(줄 끝을 맞춤)합니다."
-                ariaLabel="양쪽 정렬"
-                active={editor.isActive({ textAlign: "justify" })}
-                onClick={() => editor.chain().focus().setTextAlign("justify").run()}
-              >
-                <AlignJustify className="size-4" />
-              </TipToolbarBtn>
-              <TipToolbarBtn
-                tip="선택한 글자에 링크(URL)를 겁니다. 주소를 비우면 링크만 제거합니다."
-                ariaLabel="링크"
-                active={editor.isActive("link")}
-                onClick={() => {
-                  const prev = editor.getAttributes("link").href as string | undefined;
-                  const url = window.prompt("링크 URL (비우면 제거)", prev ?? "https://");
-                  if (url === null) return;
-                  const t = url.trim();
-                  if (t === "") {
-                    editor.chain().focus().extendMarkRange("link").unsetLink().run();
-                    return;
+                  tip="현재 줄/단락을 ‘중간 제목’ 크기(제목 2) 블록으로 바꿉니다. 글자만 키우는 것이 아니라 단락 전체가 제목이 됩니다."
+                  ariaLabel="제목 2"
+                  active={editor.isActive("heading", { level: 2 })}
+                  onClick={() =>
+                    editor.chain().focus().toggleHeading({ level: 2 }).run()
                   }
-                  editor.chain().focus().extendMarkRange("link").setLink({ href: t }).run();
-                }}
-              >
-                <Link2 className="size-4" />
-              </TipToolbarBtn>
-              <TipToolbarBtn
-                tip="방금 한 작업을 취소합니다."
-                ariaLabel="실행 취소"
-                active={false}
-                disabled={!editor.can().undo()}
-                onClick={() => editor.chain().focus().undo().run()}
-              >
-                <Undo2 className="size-4" />
-              </TipToolbarBtn>
-              <TipToolbarBtn
-                tip="실행 취소했던 작업을 다시 적용합니다."
-                ariaLabel="다시 실행"
-                active={false}
-                disabled={!editor.can().redo()}
-                onClick={() => editor.chain().focus().redo().run()}
-              >
-                <Redo2 className="size-4" />
-              </TipToolbarBtn>
+                >
+                  <Heading2 className="size-4" />
+                </TipToolbarBtn>
+                <TipToolbarBtn
+                  tip="현재 줄/단락을 ‘작은 제목’(제목 3) 블록으로 바꿉니다."
+                  ariaLabel="제목 3"
+                  active={editor.isActive("heading", { level: 3 })}
+                  onClick={() =>
+                    editor.chain().focus().toggleHeading({ level: 3 }).run()
+                  }
+                >
+                  <Heading3 className="size-4" />
+                </TipToolbarBtn>
+                <TipToolbarBtn
+                  tip="글머리 기호 목록을 만듭니다."
+                  ariaLabel="글머리 목록"
+                  active={editor.isActive("bulletList")}
+                  onClick={() =>
+                    editor.chain().focus().toggleBulletList().run()
+                  }
+                >
+                  <List className="size-4" />
+                </TipToolbarBtn>
+                <TipToolbarBtn
+                  tip="번호가 매겨진 목록을 만듭니다."
+                  ariaLabel="번호 목록"
+                  active={editor.isActive("orderedList")}
+                  onClick={() =>
+                    editor.chain().focus().toggleOrderedList().run()
+                  }
+                >
+                  <ListOrdered className="size-4" />
+                </TipToolbarBtn>
+                <TipToolbarBtn
+                  tip="인용문 블록(왼쪽 막대)으로 표시합니다."
+                  ariaLabel="인용"
+                  active={editor.isActive("blockquote")}
+                  onClick={() =>
+                    editor.chain().focus().toggleBlockquote().run()
+                  }
+                >
+                  <Quote className="size-4" />
+                </TipToolbarBtn>
+                <TipToolbarBtn
+                  tip="가로 구분선을 한 줄 넣습니다."
+                  ariaLabel="구분선"
+                  active={false}
+                  onClick={() =>
+                    editor.chain().focus().setHorizontalRule().run()
+                  }
+                >
+                  <Minus className="size-4" />
+                </TipToolbarBtn>
+                <TipToolbarBtn
+                  tip="현재 단락/제목의 텍스트를 왼쪽 정렬합니다."
+                  ariaLabel="왼쪽 정렬"
+                  active={editor.isActive({ textAlign: "left" })}
+                  onClick={() =>
+                    editor.chain().focus().setTextAlign("left").run()
+                  }
+                >
+                  <AlignLeft className="size-4" />
+                </TipToolbarBtn>
+                <TipToolbarBtn
+                  tip="가운데 정렬합니다."
+                  ariaLabel="가운데 정렬"
+                  active={editor.isActive({ textAlign: "center" })}
+                  onClick={() =>
+                    editor.chain().focus().setTextAlign("center").run()
+                  }
+                >
+                  <AlignCenter className="size-4" />
+                </TipToolbarBtn>
+                <TipToolbarBtn
+                  tip="오른쪽 정렬합니다."
+                  ariaLabel="오른쪽 정렬"
+                  active={editor.isActive({ textAlign: "right" })}
+                  onClick={() =>
+                    editor.chain().focus().setTextAlign("right").run()
+                  }
+                >
+                  <AlignRight className="size-4" />
+                </TipToolbarBtn>
+                <TipToolbarBtn
+                  tip="양쪽 맞춤(줄 끝을 맞춤)합니다."
+                  ariaLabel="양쪽 정렬"
+                  active={editor.isActive({ textAlign: "justify" })}
+                  onClick={() =>
+                    editor.chain().focus().setTextAlign("justify").run()
+                  }
+                >
+                  <AlignJustify className="size-4" />
+                </TipToolbarBtn>
+                <TipToolbarBtn
+                  tip="선택한 글자에 링크(URL)를 겁니다. 주소를 비우면 링크만 제거합니다."
+                  ariaLabel="링크"
+                  active={editor.isActive("link")}
+                  onClick={() => {
+                    const prev = editor.getAttributes("link").href as
+                      | string
+                      | undefined;
+                    const url = window.prompt(
+                      "링크 URL (비우면 제거)",
+                      prev ?? "https://",
+                    );
+                    if (url === null) return;
+                    const t = url.trim();
+                    if (t === "") {
+                      editor
+                        .chain()
+                        .focus()
+                        .extendMarkRange("link")
+                        .unsetLink()
+                        .run();
+                      return;
+                    }
+                    editor
+                      .chain()
+                      .focus()
+                      .extendMarkRange("link")
+                      .setLink({ href: t })
+                      .run();
+                  }}
+                >
+                  <Link2 className="size-4" />
+                </TipToolbarBtn>
+                <TipToolbarBtn
+                  tip="방금 한 작업을 취소합니다."
+                  ariaLabel="실행 취소"
+                  active={false}
+                  disabled={!editor.can().undo()}
+                  onClick={() => editor.chain().focus().undo().run()}
+                >
+                  <Undo2 className="size-4" />
+                </TipToolbarBtn>
+                <TipToolbarBtn
+                  tip="실행 취소했던 작업을 다시 적용합니다."
+                  ariaLabel="다시 실행"
+                  active={false}
+                  disabled={!editor.can().redo()}
+                  onClick={() => editor.chain().focus().redo().run()}
+                >
+                  <Redo2 className="size-4" />
+                </TipToolbarBtn>
               </div>
 
               <div
@@ -487,13 +533,17 @@ export function PostRichEditor({ initialHtml, invalid, onHtmlChange }: Props) {
                     key={char + tip}
                     char={char}
                     tip={tip}
-                    onInsert={() => editor.chain().focus().insertContent(char).run()}
+                    onInsert={() =>
+                      editor.chain().focus().insertContent(char).run()
+                    }
                   />
                 ))}
               </div>
             </>
           ) : (
-            <span className="px-2 py-1 text-xs text-muted-foreground">에디터 로드 중…</span>
+            <span className="px-2 py-1 text-xs text-muted-foreground">
+              에디터 로드 중…
+            </span>
           )}
         </div>
 

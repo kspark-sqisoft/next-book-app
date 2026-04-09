@@ -2,9 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { useAuth } from "@/stores/auth-store";
-import { appLog } from "@/lib/app-log";
+
 import { CenteredSpinner } from "@/components/layout/CenteredSpinner";
+import { appLog } from "@/lib/app-log";
+import { useAuth } from "@/stores/auth-store";
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isReady } = useAuth();

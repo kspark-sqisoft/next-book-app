@@ -1,4 +1,5 @@
 import { Pencil } from "lucide-react";
+
 import { Label } from "@/components/ui/label";
 import {
   bookDockedPanelHeaderIconClass,
@@ -8,7 +9,14 @@ import {
 } from "@/lib/book-workspace-ui";
 import { cn } from "@/lib/utils";
 
-const PRESET_COLORS = ["#0f172a", "#dc2626", "#2563eb", "#16a34a", "#ca8a04", "#9333ea"];
+const PRESET_COLORS = [
+  "#0f172a",
+  "#dc2626",
+  "#2563eb",
+  "#16a34a",
+  "#ca8a04",
+  "#9333ea",
+];
 
 export function BookSlideDrawingPanel({
   strokeColor,
@@ -35,8 +43,8 @@ export function BookSlideDrawingPanel({
       </div>
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-3 [-webkit-overflow-scrolling:touch]">
         <p className="rounded-md border border-border/50 bg-muted/[0.06] px-2.5 py-2 text-[11px] leading-relaxed text-muted-foreground">
-          이 탭이 선택된 상태에서 슬라이드 위를 드래그하면 선이 그어집니다. 다른 탭으로 바꾸면 선택·이동 모드로
-          돌아갑니다.
+          이 탭이 선택된 상태에서 슬라이드 위를 드래그하면 선이 그어집니다. 다른
+          탭으로 바꾸면 선택·이동 모드로 돌아갑니다.
         </p>
         <div className="space-y-2">
           <Label className="text-xs text-muted-foreground">색</Label>
@@ -48,7 +56,9 @@ export function BookSlideDrawingPanel({
                 title={c}
                 className={cn(
                   "size-8 rounded-md border-2 shadow-sm transition-transform hover:scale-105",
-                  strokeColor === c ? "border-primary ring-2 ring-primary/30" : "border-border",
+                  strokeColor === c
+                    ? "border-primary ring-2 ring-primary/30"
+                    : "border-border",
                 )}
                 style={{ backgroundColor: c }}
                 onClick={() => onStrokeColorChange(c)}
@@ -57,7 +67,11 @@ export function BookSlideDrawingPanel({
           </div>
           <input
             type="color"
-            value={strokeColor.startsWith("#") && strokeColor.length >= 7 ? strokeColor.slice(0, 7) : "#000000"}
+            value={
+              strokeColor.startsWith("#") && strokeColor.length >= 7
+                ? strokeColor.slice(0, 7)
+                : "#000000"
+            }
             onChange={(e) => onStrokeColorChange(e.target.value)}
             className="h-9 w-full cursor-pointer rounded-md border border-border bg-background"
             aria-label="선 색 직접 선택"

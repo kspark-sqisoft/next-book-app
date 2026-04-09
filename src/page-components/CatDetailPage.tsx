@@ -1,19 +1,20 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useAuth } from "@/stores/auth-store";
-import type { Cat } from "@/lib/api";
-import { deleteCat, fetchCat, patchCat, uploadCatImage } from "@/lib/api";
-import { appLog } from "@/lib/app-log";
-import { fieldErrorsFromZodIssues } from "@/lib/zod-form";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+
 import {
-  catCreateSchema,
-  type CatCreateFormValues,
-} from "@/lib/schemas/forms";
-import { catKeys } from "@/lib/query-keys";
+  deleteCatAction,
+  getCatAction,
+  updateCatAction,
+  uploadCatImageAction,
+} from "@/actions/cats";
+import { FormErrorAlert } from "@/components/forms/FormErrorAlert";
+import { FormFieldError } from "@/components/forms/FormFieldError";
+import { CenteredSpinner } from "@/components/layout/CenteredSpinner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,9 +25,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { FormErrorAlert } from "@/components/forms/FormErrorAlert";
-import { FormFieldError } from "@/components/forms/FormFieldError";
-import { CenteredSpinner } from "@/components/layout/CenteredSpinner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -39,9 +37,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SafeImage } from "@/components/ui/safe-image";
 import { Spinner } from "@/components/ui/spinner";
-import { formatDateFullShort } from "@/lib/format-date";
-import { toast } from "sonner";
+import type { Cat } from "@/lib/api";
+import { getAccessToken } from "@/lib/api";
+import { appLog } from "@/lib/app-log";
 import { canEditCatAsOwnerOrAdmin } from "@/lib/authz";
+import { formatDateFullShort } from "@/lib/format-date";
+import { catKeys } from "@/lib/query-keys";
+import { type CatCreateFormValues, catCreateSchema } from "@/lib/schemas/forms";
+import { fieldErrorsFromZodIssues } from "@/lib/zod-form";
+import { useAuth } from "@/stores/auth-store";
 
 /**
  * 서버에서 cat이 바뀔 때마다 `key`로 리마운트되어 폼 초기값이 맞춰짐 (effect 동기화 불필요).
@@ -58,23 +62,31 @@ function CatDetailEditor({ cat, id }: { cat: Cat; id: number }) {
   const [editServerError, setEditServerError] = useState<string | null>(null);
 
   const updateMutation = useMutation({
-    mutationFn: (body: { name: string; age: number; breed: string }) =>
-      patchCat(id, body),
+    mutationFn: async (body: { name: string; age: number; breed: string }) => {
+      const token = getAccessToken();
+      if (!token) throw new Error("로그인이 필요합니다.");
+      return updateCatAction(token, id, body);
+    },
     onSuccess: () => {
       toast.success("정보를 저장했습니다.");
       setEditServerError(null);
       void queryClient.invalidateQueries({ queryKey: catKeys.all });
     },
     onError: (e) => {
-      const msg =
-        e instanceof Error ? e.message : "저장에 실패했습니다.";
+      const msg = e instanceof Error ? e.message : "저장에 실패했습니다.";
       setEditServerError(msg);
       toast.error(msg);
     },
   });
 
   const uploadImageMutation = useMutation({
-    mutationFn: (file: File) => uploadCatImage(id, file),
+    mutationFn: async (file: File) => {
+      const token = getAccessToken();
+      if (!token) throw new Error("로그인이 필요합니다.");
+      const fd = new FormData();
+      fd.append("image", file);
+      return uploadCatImageAction(token, id, fd);
+    },
     onSuccess: () => {
       toast.success("사진을 올렸습니다.");
       void queryClient.invalidateQueries({ queryKey: catKeys.all });
@@ -218,7 +230,7 @@ export function CatDetailPage() {
   } = useQuery({
     queryKey: catKeys.detail(id),
     queryFn: async () => {
-      const c = await fetchCat(id);
+      const c = await getCatAction(id);
       appLog("cats", "상세 로드", { id: c.id });
       return c;
     },
@@ -226,7 +238,11 @@ export function CatDetailPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => deleteCat(id),
+    mutationFn: async () => {
+      const token = getAccessToken();
+      if (!token) throw new Error("로그인이 필요합니다.");
+      await deleteCatAction(token, id);
+    },
     onSuccess: () => {
       toast.success("삭제되었습니다.");
       void queryClient.invalidateQueries({ queryKey: catKeys.all });
@@ -241,18 +257,25 @@ export function CatDetailPage() {
   useEffect(() => {
     if (!Number.isFinite(id) || !isError) return;
     const msg =
-      queryError instanceof Error
-        ? queryError.message
-        : "불러오지 못했습니다.";
+      queryError instanceof Error ? queryError.message : "불러오지 못했습니다.";
     toast.error(msg);
   }, [id, isError, queryError]);
+
+  // 공부용: 상세 페이지에 있을 때 목록 `/cats`를 `router.prefetch`로 미리 당겨 옵니다.
+  useEffect(() => {
+    if (!Number.isFinite(id)) return;
+    router.prefetch("/cats");
+    appLog("cats", "공부용 prefetch 목록", { id });
+  }, [id, router]);
 
   if (!Number.isFinite(id)) {
     return (
       <div className="space-y-4">
         <FormErrorAlert message="잘못된 번호입니다." />
         <Button asChild variant="outline" size="sm">
-          <Link href="/cats">목록으로</Link>
+          <Link href="/cats" prefetch>
+            목록으로
+          </Link>
         </Button>
       </div>
     );
@@ -274,7 +297,9 @@ export function CatDetailPage() {
       <div className="space-y-4">
         <FormErrorAlert message={loadError ?? "데이터가 없습니다."} />
         <Button asChild variant="outline" size="sm">
-          <Link href="/cats">목록으로</Link>
+          <Link href="/cats" prefetch>
+            목록으로
+          </Link>
         </Button>
       </div>
     );
@@ -286,7 +311,9 @@ export function CatDetailPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Button asChild variant="ghost" size="sm" className="-ml-2">
-          <Link href="/cats">← 목록</Link>
+          <Link href="/cats" prefetch>
+            ← 목록
+          </Link>
         </Button>
         {user && canMutateCat ? (
           <Button
@@ -341,9 +368,7 @@ export function CatDetailPage() {
         <p className="text-sm text-muted-foreground">
           수정·삭제·사진 업로드는{" "}
           <Button asChild variant="link" className="h-auto p-0">
-            <Link
-              href={`/login?from=${encodeURIComponent(`/cats/${id}`)}`}
-            >
+            <Link href={`/login?from=${encodeURIComponent(`/cats/${id}`)}`}>
               로그인
             </Link>
           </Button>
@@ -351,7 +376,8 @@ export function CatDetailPage() {
         </p>
       ) : !canMutateCat ? (
         <p className="text-sm text-muted-foreground">
-          이 고양이 정보를 수정·삭제할 권한이 없습니다. (등록자 또는 관리자만 가능)
+          이 고양이 정보를 수정·삭제할 권한이 없습니다. (등록자 또는 관리자만
+          가능)
         </p>
       ) : null}
 

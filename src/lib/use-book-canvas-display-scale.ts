@@ -1,9 +1,9 @@
 import {
+  type RefObject,
   useCallback,
   useLayoutEffect,
   useReducer,
   useState,
-  type RefObject,
   type WheelEvent,
 } from "react";
 
@@ -91,15 +91,12 @@ export function useBookCanvasDisplayScale(
     const boxW = contentW > 0 ? contentW : cr.width;
     const boxH = contentH > 0 ? contentH : cr.height;
     const verticalDeduction =
-      symmetricVerticalPad != null
-        ? 2 * symmetricVerticalPad
-        : bottomPad;
+      symmetricVerticalPad != null ? 2 * symmetricVerticalPad : bottomPad;
     const availW = Math.max(1, boxW - horizontalPad);
     const availH = Math.max(1, boxH - verticalDeduction);
     const sx = availW / slideWidth;
     const sy = availH / slideHeight;
-    const base =
-      fitMode === "cover" ? Math.max(sx, sy) : Math.min(sx, sy);
+    const base = fitMode === "cover" ? Math.max(sx, sy) : Math.min(sx, sy);
     const s = Math.max(0.22, Math.min(base, maxFitScale));
     setFitScale(s);
     setLayoutAvail({ w: availW, h: availH });
@@ -130,12 +127,16 @@ export function useBookCanvasDisplayScale(
 
   const zoomIn = useCallback(
     () =>
-      setZoomMul((z) => Math.min(MAX_USER_ZOOM, Math.round(z * 1.15 * 1000) / 1000)),
+      setZoomMul((z) =>
+        Math.min(MAX_USER_ZOOM, Math.round(z * 1.15 * 1000) / 1000),
+      ),
     [],
   );
   const zoomOut = useCallback(
     () =>
-      setZoomMul((z) => Math.max(MIN_USER_ZOOM, Math.round((z / 1.15) * 1000) / 1000)),
+      setZoomMul((z) =>
+        Math.max(MIN_USER_ZOOM, Math.round((z / 1.15) * 1000) / 1000),
+      ),
     [],
   );
   /** 100% 배율 + 맞춤 비율 재계산. 동일 수치여도 리렌더해 미리보기 등에서 버튼이 무반응처럼 보이지 않게 함 */

@@ -1,15 +1,15 @@
-/* eslint-disable react-refresh/only-export-components --
-   Drag constants, types, and helpers are exported beside BookSlideCanvas for the editor. */
+/** Drag 상수·타입·헬퍼는 편집기용으로 `BookSlideCanvas`와 같은 모듈에서 export 합니다. */
+import type Konva from "konva";
+import { FolderOpen, Library, Pause, Play, Square } from "lucide-react";
 import {
+  type CSSProperties,
+  type DragEvent,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
-  type DragEvent,
 } from "react";
-import { getBookImageIfReady, loadBookImage } from "@/lib/book-image-cache";
 import { createPortal } from "react-dom";
 import {
   Arc,
@@ -26,18 +26,41 @@ import {
   Star,
   Transformer,
 } from "react-konva";
-import type Konva from "konva";
-import { FolderOpen, Library, Pause, Play, Square } from "lucide-react";
+
+import { BookDigitalClockWidgetOverlay } from "@/components/books/BookDigitalClockWidgetOverlay";
+import {
+  type BookMediaPlaylistPlaybackUiSnapshot,
+  type BookMediaPlaylistRemoteCommand,
+  BookMediaPlaylistWidgetOverlay,
+} from "@/components/books/BookMediaPlaylistWidgetOverlay";
+import { BookNewsWidgetOverlay } from "@/components/books/BookNewsWidgetOverlay";
+import {
+  BookTextWidgetInlineEditor,
+  type BookTextWidgetInlineEditorHandle,
+} from "@/components/books/BookTextWidgetInlineEditor";
+import {
+  type BookTextOverlayLiveFrame,
+  BookTextWidgetOverlay,
+} from "@/components/books/BookTextWidgetOverlay";
+import { BookWeatherWidgetOverlay } from "@/components/books/BookWeatherWidgetOverlay";
 import {
   ContextMenuFloatingItem,
   ContextMenuFloatingPanel,
 } from "@/components/ui/context-menu";
-import { cn } from "@/lib/utils";
+import { publicAssetUrl } from "@/lib/api";
+import { appLog } from "@/lib/app-log";
 import {
   BOOK_CANVAS_DRAG_GRID_PX,
+  BOOK_SHAPE_KINDS,
+  type BookCanvasElement,
   bookElementOverlayTopLeftFromPivot,
   bookElementPivotKonva,
+  type BookShapeKind,
+  buildBookDrawingElement,
   canvasRoundRectPath,
+  type ElementZOrderOp,
+  isBookElementLocked,
+  isBookElementVisible,
   KONVA_BOOK_WIDGET_HIT_RECT_NAME,
   konvaBookTopLeftFromCommitNode,
   resolveBookElementBorderRadius,
@@ -45,40 +68,17 @@ import {
   resolveBookElementOutlineColor,
   resolveBookElementOutlineWidth,
   resolveBookElementRotation,
-  snapKonvaBookNodePositionToGrid,
-  BOOK_SHAPE_KINDS,
-  buildBookDrawingElement,
-  isBookElementLocked,
-  isBookElementVisible,
   resolveMediaPlaylistShowControls,
-  type BookCanvasElement,
-  type BookShapeKind,
-  type ElementZOrderOp,
+  snapKonvaBookNodePositionToGrid,
 } from "@/lib/book-canvas";
-import { publicAssetUrl } from "@/lib/api";
-import { appLog } from "@/lib/app-log";
-import {
-  BookTextWidgetInlineEditor,
-  type BookTextWidgetInlineEditorHandle,
-} from "@/components/books/BookTextWidgetInlineEditor";
-import {
-  BookTextWidgetOverlay,
-  type BookTextOverlayLiveFrame,
-} from "@/components/books/BookTextWidgetOverlay";
-import { BookDigitalClockWidgetOverlay } from "@/components/books/BookDigitalClockWidgetOverlay";
-import { BookNewsWidgetOverlay } from "@/components/books/BookNewsWidgetOverlay";
-import {
-  BookMediaPlaylistWidgetOverlay,
-  type BookMediaPlaylistPlaybackUiSnapshot,
-  type BookMediaPlaylistRemoteCommand,
-} from "@/components/books/BookMediaPlaylistWidgetOverlay";
-import { BookWeatherWidgetOverlay } from "@/components/books/BookWeatherWidgetOverlay";
+import { getBookImageIfReady, loadBookImage } from "@/lib/book-image-cache";
 import { computeKonvaFittedImageLayout } from "@/lib/book-media-layout";
 import {
   getTextWidgetDisplayHtml,
   nextTextWidgetHeightGrowOnly,
   textWidgetHitHeight,
 } from "@/lib/book-text-widget";
+import { cn } from "@/lib/utils";
 
 function useBookImage(src: string) {
   const url = publicAssetUrl(src) ?? src;
@@ -147,7 +147,9 @@ export function parseLibraryDropPayload(
     if (r.kind !== "image" && r.kind !== "video") return null;
     if (typeof r.src !== "string" || r.src.length === 0) return null;
     const posterSrc =
-      r.posterSrc === null || typeof r.posterSrc === "string" ? r.posterSrc : null;
+      r.posterSrc === null || typeof r.posterSrc === "string"
+        ? r.posterSrc
+        : null;
     return { kind: r.kind, src: r.src, posterSrc };
   } catch {
     return null;
@@ -185,10 +187,7 @@ export function parseShapeDropPayload(
   }
   const plain = e.dataTransfer.getData("text/plain").trim();
   const m = /^book-shape:([a-zA-Z][a-zA-Z0-9]*)$/.exec(plain);
-  if (
-    m &&
-    (BOOK_SHAPE_KINDS as readonly string[]).includes(m[1]!)
-  ) {
+  if (m && (BOOK_SHAPE_KINDS as readonly string[]).includes(m[1]!)) {
     return m[1] as BookShapeKind;
   }
   return null;
@@ -222,9 +221,15 @@ type BookSlideCanvasProps = {
   onSelect: (detail: BookCanvasSelectDetail) => void;
   onElementChange: (id: string, patch: Partial<BookCanvasElement>) => void;
   /** 편집 모드에서 팔레트 위젯을 캔버스로 드롭 */
-  onDropWidget?: (point: { x: number; y: number }, kind: BookDropWidgetKind) => void;
+  onDropWidget?: (
+    point: { x: number; y: number },
+    kind: BookDropWidgetKind,
+  ) => void;
   /** 편집 모드에서 Elements 도형을 캔버스로 드롭 */
-  onDropShape?: (point: { x: number; y: number }, shapeKind: BookShapeKind) => void;
+  onDropShape?: (
+    point: { x: number; y: number },
+    shapeKind: BookShapeKind,
+  ) => void;
   /** 편집 모드: 미디어 라이브러리에서 업로드된 URL을 슬라이드에 배치 */
   onDropLibraryMedia?: (
     point: { x: number; y: number },
@@ -245,7 +250,9 @@ type BookSlideCanvasProps = {
   /** 새 요소 추가(자유 그리기 확정 시) */
   onAppendElement?: (el: BookCanvasElement) => void;
   /** 이미지·동영상: 우클릭 → 탐색기로 파일 선택 후 업로드·교체 */
-  onRequestReplaceMediaFromFile?: (req: BookReplaceMediaFromFileRequest) => void;
+  onRequestReplaceMediaFromFile?: (
+    req: BookReplaceMediaFromFileRequest,
+  ) => void;
   /** 이미지·동영상: 우클릭 → 미디어 라이브러리에서 선택해 교체 */
   onRequestPickLibraryMediaForReplace?: (req: { elementId: string }) => void;
   /** 미디어 플레이리스트: 우클릭 → 파일 선택 후 목록 끝에 추가 */
@@ -255,7 +262,10 @@ type BookSlideCanvasProps = {
   /** `false`면 라이브러리 교체 메뉴 숨김(예: `/books/new`) */
   mediaLibraryReplaceEnabled?: boolean;
   /** 미디어 플레이리스트 재생 중 항목 인덱스(속성 패널 하이라이트) */
-  onMediaPlaylistPlaybackIndexChange?: (elementId: string, index: number) => void;
+  onMediaPlaylistPlaybackIndexChange?: (
+    elementId: string,
+    index: number,
+  ) => void;
   /** 선택된 플레이리스트 위젯 재생 UI(속성 패널 미니 컨트롤) */
   onMediaPlaylistPlaybackUiReport?: (
     elementId: string,
@@ -288,10 +298,13 @@ function BookFreehandDrawLayer({
   onCommit: (pts: { x: number; y: number }[]) => void;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const activeRef = useRef<{ pointerId: number; pts: { x: number; y: number }[] } | null>(
+  const activeRef = useRef<{
+    pointerId: number;
+    pts: { x: number; y: number }[];
+  } | null>(null);
+  const [preview, setPreview] = useState<{ x: number; y: number }[] | null>(
     null,
   );
-  const [preview, setPreview] = useState<{ x: number; y: number }[] | null>(null);
 
   const toLogical = (clientX: number, clientY: number) => {
     const el = rootRef.current;
@@ -359,7 +372,9 @@ function BookFreehandDrawLayer({
             strokeWidth={strokeWidth * scale}
             strokeLinecap="round"
             strokeLinejoin="round"
-            points={preview.map((p) => `${p.x * scale},${p.y * scale}`).join(" ")}
+            points={preview
+              .map((p) => `${p.x * scale},${p.y * scale}`)
+              .join(" ")}
           />
         </svg>
       ) : null}
@@ -397,7 +412,9 @@ function transformLiveFrameSize(node: Konva.Node, sx: number, sy: number) {
  * 한쪽 핸들만 잡아도 양쪽이 움직이는 현상을 줄입니다.
  */
 function bakeKonvaBookWidgetGroupDuringTransform(g: Konva.Group): void {
-  const r = g.findOne(`.${KONVA_BOOK_WIDGET_HIT_RECT_NAME}`) as Konva.Rect | null;
+  const r = g.findOne(
+    `.${KONVA_BOOK_WIDGET_HIT_RECT_NAME}`,
+  ) as Konva.Rect | null;
   if (!r) return;
   const sx = Math.abs(g.scaleX());
   const sy = Math.abs(g.scaleY());
@@ -430,10 +447,20 @@ type BookShapeLiveSync = {
   onDragLiveStart: (elementId: string, node: Konva.Node) => void;
   onDragLiveMove: (elementId: string, node: Konva.Node) => void;
   /** 드래그 중 논리 좌표 그리드 스냅 후 `dragLive` 갱신 */
-  onDragMoveSnapGrid: (elementId: string, node: Konva.Node, logicalW: number, logicalH: number) => void;
+  onDragMoveSnapGrid: (
+    elementId: string,
+    node: Konva.Node,
+    logicalW: number,
+    logicalH: number,
+  ) => void;
   clearDragLive: () => void;
   /** 드래그 종료: 다중 선택 시 함께 이동, 아니면 해당 요소만 */
-  commitDragEndPosition: (elementId: string, node: Konva.Node, logicalW: number, logicalH: number) => void;
+  commitDragEndPosition: (
+    elementId: string,
+    node: Konva.Node,
+    logicalW: number,
+    logicalH: number,
+  ) => void;
   onTransformLiveStart: (elementId: string, node: Konva.Node) => void;
   onTransformLiveMove: (elementId: string, node: Konva.Node) => void;
   clearTransformLive: () => void;
@@ -449,7 +476,9 @@ function commitBookWidgetHitShellTransformEnd(
 ) {
   liveSync.clearTransformLive();
   const g = e.target as Konva.Group;
-  const r = g.findOne(`.${KONVA_BOOK_WIDGET_HIT_RECT_NAME}`) as Konva.Rect | null;
+  const r = g.findOne(
+    `.${KONVA_BOOK_WIDGET_HIT_RECT_NAME}`,
+  ) as Konva.Rect | null;
   if (!r) return;
   const sx = Math.abs(g.scaleX());
   const sy = Math.abs(g.scaleY());
@@ -542,7 +571,9 @@ function BookSlideVideoOverlay({
 
   const src = publicAssetUrl(el.src) ?? el.src;
   const poster =
-    el.posterSrc != null ? (publicAssetUrl(el.posterSrc) ?? el.posterSrc) : undefined;
+    el.posterSrc != null
+      ? (publicAssetUrl(el.posterSrc) ?? el.posterSrc)
+      : undefined;
 
   const setVideoRef = useCallback(
     (node: HTMLVideoElement | null) => {
@@ -646,7 +677,8 @@ function BookSlideVideoOverlay({
       if (!v || duration <= 0) return;
       const r = track.getBoundingClientRect();
       const w = r.width || 1;
-      v.currentTime = (Math.min(Math.max(0, clientX - r.left), w) / w) * duration;
+      v.currentTime =
+        (Math.min(Math.max(0, clientX - r.left), w) / w) * duration;
       syncFromVideo();
     },
     [duration, syncFromVideo],
@@ -655,7 +687,11 @@ function BookSlideVideoOverlay({
   const vOpacity = resolveBookElementOpacity(el.opacity);
   const vRot = resolveBookElementRotation(el.rotation);
   const vPivot = bookElementPivotKonva(el);
-  const vOrigin = bookElementOverlayTopLeftFromPivot(vPivot, el.width, el.height);
+  const vOrigin = bookElementOverlayTopLeftFromPivot(
+    vPivot,
+    el.width,
+    el.height,
+  );
   const vx = liveFrame?.x ?? vOrigin.x;
   const vy = liveFrame?.y ?? vOrigin.y;
   const vw = liveFrame?.width ?? el.width;
@@ -713,7 +749,9 @@ function BookSlideVideoOverlay({
         <div
           className={cn(
             "absolute bottom-0 left-0 right-0 z-10 flex h-9 min-h-9 items-center gap-1 border-t border-white/15 bg-black/75 px-1 py-0.5 transition-opacity duration-200",
-            barVisible ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0",
+            barVisible
+              ? "pointer-events-auto opacity-100"
+              : "pointer-events-none opacity-0",
           )}
           onMouseDown={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
@@ -727,7 +765,11 @@ function BookSlideVideoOverlay({
             onClick={togglePlay}
             aria-label={playing ? "일시정지" : "재생"}
           >
-            {playing ? <Pause className="size-3.5" /> : <Play className="size-3.5 pl-0.5" />}
+            {playing ? (
+              <Pause className="size-3.5" />
+            ) : (
+              <Play className="size-3.5 pl-0.5" />
+            )}
           </button>
           <button
             type="button"
@@ -757,7 +799,8 @@ function BookSlideVideoOverlay({
               const track = e.currentTarget;
               track.setPointerCapture(e.pointerId);
               seekFromClientX(track, e.clientX);
-              const onMove = (ev: PointerEvent) => seekFromClientX(track, ev.clientX);
+              const onMove = (ev: PointerEvent) =>
+                seekFromClientX(track, ev.clientX);
               const cleanup = (ev: PointerEvent) => {
                 if (track.hasPointerCapture(ev.pointerId)) {
                   track.releasePointerCapture(ev.pointerId);
@@ -824,20 +867,31 @@ export function BookSlideCanvas({
     leaderId: string;
     origins: Map<string, { x: number; y: number }>;
   } | null>(null);
-  const videoBarHideTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
-  const [videoHtmlById, setVideoHtmlById] = useState<Map<string, HTMLVideoElement>>(
-    () => new Map(),
+  const videoBarHideTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(
+    new Map(),
   );
-  const onHtmlVideoRef = useCallback((elementId: string, node: HTMLVideoElement | null) => {
-    setVideoHtmlById((prev) => {
-      const next = new Map(prev);
-      if (node) next.set(elementId, node);
-      else next.delete(elementId);
-      return next;
-    });
-  }, []);
-  const [videoBarVisible, setVideoBarVisible] = useState<Record<string, boolean>>({});
-  const [zMenu, setZMenu] = useState<{ x: number; y: number; elementId: string } | null>(null);
+  const [videoHtmlById, setVideoHtmlById] = useState<
+    Map<string, HTMLVideoElement>
+  >(() => new Map());
+  const onHtmlVideoRef = useCallback(
+    (elementId: string, node: HTMLVideoElement | null) => {
+      setVideoHtmlById((prev) => {
+        const next = new Map(prev);
+        if (node) next.set(elementId, node);
+        else next.delete(elementId);
+        return next;
+      });
+    },
+    [],
+  );
+  const [videoBarVisible, setVideoBarVisible] = useState<
+    Record<string, boolean>
+  >({});
+  const [zMenu, setZMenu] = useState<{
+    x: number;
+    y: number;
+    elementId: string;
+  } | null>(null);
   const zMenuRef = useRef<HTMLDivElement>(null);
   /** 텍스트 위젯 캔버스 인라인 편집(더블클릭) */
   const [inlineTextEdit, setInlineTextEdit] = useState<{
@@ -857,17 +911,25 @@ export function BookSlideCanvas({
 
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
-  const registerKonvaNode = useCallback((elementId: string, node: Konva.Node | null) => {
-    const m = konvaNodeByIdRef.current;
-    if (node) m.set(elementId, node);
-    else m.delete(elementId);
-  }, []);
+  const registerKonvaNode = useCallback(
+    (elementId: string, node: Konva.Node | null) => {
+      const m = konvaNodeByIdRef.current;
+      if (node) m.set(elementId, node);
+      else m.delete(elementId);
+    },
+    [],
+  );
 
   const [dragLive, setDragLive] = useState<BookDragLive | null>(null);
-  const [transformLive, setTransformLive] = useState<BookTransformLive | null>(null);
+  const [transformLive, setTransformLive] = useState<BookTransformLive | null>(
+    null,
+  );
   const dragLiveRafRef = useRef<number | null>(null);
   /** Konva Transformer는 `transform` 직후 `update()`로 앵커를 맞춤. 그 전에 React가 Rect를 덮어쓰면 한쪽 핸들만 당겨도 양쪽이 움직이는 것처럼 보임 → microtask로 그 이후에 동기화 */
-  const transformLiveMovePendingRef = useRef<{ id: string; node: Konva.Node } | null>(null);
+  const transformLiveMovePendingRef = useRef<{
+    id: string;
+    node: Konva.Node;
+  } | null>(null);
   const transformLiveMoveMicroScheduledRef = useRef(false);
 
   const clearDragLive = useCallback(() => {
@@ -884,14 +946,17 @@ export function BookSlideCanvas({
     setTransformLive(null);
   }, []);
 
-  const onDragLiveStartBase = useCallback((elementId: string, node: Konva.Node) => {
-    if (dragLiveRafRef.current != null) {
-      cancelAnimationFrame(dragLiveRafRef.current);
-      dragLiveRafRef.current = null;
-    }
-    clearTransformLive();
-    setDragLive({ id: elementId, cx: node.x(), cy: node.y() });
-  }, [clearTransformLive]);
+  const onDragLiveStartBase = useCallback(
+    (elementId: string, node: Konva.Node) => {
+      if (dragLiveRafRef.current != null) {
+        cancelAnimationFrame(dragLiveRafRef.current);
+        dragLiveRafRef.current = null;
+      }
+      clearTransformLive();
+      setDragLive({ id: elementId, cx: node.x(), cy: node.y() });
+    },
+    [clearTransformLive],
+  );
 
   const onDragLiveStart = useCallback(
     (elementId: string, node: Konva.Node) => {
@@ -915,65 +980,78 @@ export function BookSlideCanvas({
   );
 
   const onDragLiveMove = useCallback((elementId: string, node: Konva.Node) => {
-    if (dragLiveRafRef.current != null) cancelAnimationFrame(dragLiveRafRef.current);
+    if (dragLiveRafRef.current != null)
+      cancelAnimationFrame(dragLiveRafRef.current);
     dragLiveRafRef.current = requestAnimationFrame(() => {
       dragLiveRafRef.current = null;
       setDragLive({ id: elementId, cx: node.x(), cy: node.y() });
     });
   }, []);
 
-  const onTransformLiveStart = useCallback((elementId: string, node: Konva.Node) => {
-    if (dragLiveRafRef.current != null) {
-      cancelAnimationFrame(dragLiveRafRef.current);
-      dragLiveRafRef.current = null;
-    }
-    setDragLive(null);
-    transformLiveMovePendingRef.current = null;
-    transformLiveMoveMicroScheduledRef.current = false;
-    const sx = node.scaleX();
-    const sy = node.scaleY();
-    const { width, height } = transformLiveFrameSize(node, sx, sy);
-    setTransformLive({
-      id: elementId,
-      cx: node.x(),
-      cy: node.y(),
-      rotation: node.rotation(),
-      width,
-      height,
-    });
-  }, []);
-
-  const onTransformLiveMove = useCallback((elementId: string, node: Konva.Node) => {
-    transformLiveMovePendingRef.current = { id: elementId, node };
-    if (transformLiveMoveMicroScheduledRef.current) return;
-    transformLiveMoveMicroScheduledRef.current = true;
-    queueMicrotask(() => {
+  const onTransformLiveStart = useCallback(
+    (elementId: string, node: Konva.Node) => {
+      if (dragLiveRafRef.current != null) {
+        cancelAnimationFrame(dragLiveRafRef.current);
+        dragLiveRafRef.current = null;
+      }
+      setDragLive(null);
+      transformLiveMovePendingRef.current = null;
       transformLiveMoveMicroScheduledRef.current = false;
-      const pending = transformLiveMovePendingRef.current;
-      if (!pending) return;
-      const n = konvaNodeByIdRef.current.get(pending.id) ?? pending.node;
-      const sx = n.scaleX();
-      const sy = n.scaleY();
-      const { width, height } = transformLiveFrameSize(n, sx, sy);
+      const sx = node.scaleX();
+      const sy = node.scaleY();
+      const { width, height } = transformLiveFrameSize(node, sx, sy);
       setTransformLive({
-        id: pending.id,
-        cx: n.x(),
-        cy: n.y(),
-        rotation: n.rotation(),
+        id: elementId,
+        cx: node.x(),
+        cy: node.y(),
+        rotation: node.rotation(),
         width,
         height,
       });
-    });
-  }, []);
+    },
+    [],
+  );
+
+  const onTransformLiveMove = useCallback(
+    (elementId: string, node: Konva.Node) => {
+      transformLiveMovePendingRef.current = { id: elementId, node };
+      if (transformLiveMoveMicroScheduledRef.current) return;
+      transformLiveMoveMicroScheduledRef.current = true;
+      queueMicrotask(() => {
+        transformLiveMoveMicroScheduledRef.current = false;
+        const pending = transformLiveMovePendingRef.current;
+        if (!pending) return;
+        const n = konvaNodeByIdRef.current.get(pending.id) ?? pending.node;
+        const sx = n.scaleX();
+        const sy = n.scaleY();
+        const { width, height } = transformLiveFrameSize(n, sx, sy);
+        setTransformLive({
+          id: pending.id,
+          cx: n.x(),
+          cy: n.y(),
+          rotation: n.rotation(),
+          width,
+          height,
+        });
+      });
+    },
+    [],
+  );
 
   useEffect(() => {
     return () => {
-      if (dragLiveRafRef.current != null) cancelAnimationFrame(dragLiveRafRef.current);
+      if (dragLiveRafRef.current != null)
+        cancelAnimationFrame(dragLiveRafRef.current);
     };
   }, []);
 
   const commitDragEndPosition = useCallback(
-    (elementId: string, node: Konva.Node, logicalW: number, logicalH: number) => {
+    (
+      elementId: string,
+      node: Konva.Node,
+      logicalW: number,
+      logicalH: number,
+    ) => {
       snapKonvaBookNodePositionToGrid(
         node,
         {
@@ -1077,7 +1155,9 @@ export function BookSlideCanvas({
     };
   }, []);
 
-  const textHeightTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const textHeightTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(
+    new Map(),
+  );
   useEffect(() => {
     const m = textHeightTimers.current;
     return () => {
@@ -1106,7 +1186,10 @@ export function BookSlideCanvas({
       const tel = elements.find((e) => e.id === elementId);
       if (!tel || tel.type !== "text") return;
       if (isBookElementLocked(tel)) return;
-      setInlineTextEdit({ id: elementId, initialHtml: getTextWidgetDisplayHtml(tel) });
+      setInlineTextEdit({
+        id: elementId,
+        initialHtml: getTextWidgetDisplayHtml(tel),
+      });
       onSelect({ id: elementId, shiftKey: false });
     },
     [elements, onSelect],
@@ -1121,12 +1204,15 @@ export function BookSlideCanvas({
 
   useEffect(() => {
     if (!inlineTextEdit) return;
-    const exists = elements.some((e) => e.id === inlineTextEdit.id && e.type === "text");
+    const exists = elements.some(
+      (e) => e.id === inlineTextEdit.id && e.type === "text",
+    );
     if (!exists) queueMicrotask(() => setInlineTextEdit(null));
   }, [elements, inlineTextEdit]);
 
   useEffect(() => {
-    if (mode !== "edit" && inlineTextEdit) queueMicrotask(() => setInlineTextEdit(null));
+    if (mode !== "edit" && inlineTextEdit)
+      queueMicrotask(() => setInlineTextEdit(null));
   }, [mode, inlineTextEdit]);
 
   useEffect(() => {
@@ -1261,7 +1347,15 @@ export function BookSlideCanvas({
     if (isLiveInteracting) return;
     tr.nodes(nodes);
     tr.getLayer()?.batchDraw();
-  }, [mode, selectedIds, elements, visibleElements, pageWidth, pageHeight, isLiveInteracting]);
+  }, [
+    mode,
+    selectedIds,
+    elements,
+    visibleElements,
+    pageWidth,
+    pageHeight,
+    isLiveInteracting,
+  ]);
 
   const sw = pageWidth * scale;
   const sh = pageHeight * scale;
@@ -1350,14 +1444,16 @@ export function BookSlideCanvas({
       className={cn(
         "relative inline-block ring-1 ring-border shadow-sm",
         dropEnabled && "ring-primary/40",
-        mode === "edit" && editInteractionTool === "draw" && "ring-2 ring-primary/45",
+        mode === "edit" &&
+          editInteractionTool === "draw" &&
+          "ring-2 ring-primary/45",
       )}
       onDragOver={
         dropEnabled
           ? (e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = "copy";
-          }
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "copy";
+            }
           : undefined
       }
       onDrop={dropEnabled ? handleDrop : undefined}
@@ -1398,16 +1494,17 @@ export function BookSlideCanvas({
         </div>
       ) : null}
       {visibleElements
-        .filter((e): e is Extract<BookCanvasElement, { type: "video" }> => e.type === "video")
+        .filter(
+          (e): e is Extract<BookCanvasElement, { type: "video" }> =>
+            e.type === "video",
+        )
         .map((el) => (
           <BookSlideVideoOverlay
             key={el.id}
             el={el}
             scale={scale}
             mode={mode}
-            barVisible={
-              !hideViewMediaChrome && Boolean(videoBarVisible[el.id])
-            }
+            barVisible={!hideViewMediaChrome && Boolean(videoBarVisible[el.id])}
             liveFrame={overlayLiveFrame(el.id, dragLive, transformLive, {
               w: el.width,
               h: el.height,
@@ -1504,7 +1601,9 @@ export function BookSlideCanvas({
                       mplBarOnHover ? () => showVideoBar(el.id) : undefined
                     }
                     onMediaHoverLeave={
-                      mplBarOnHover ? () => scheduleHideVideoBar(el.id) : undefined
+                      mplBarOnHover
+                        ? () => scheduleHideVideoBar(el.id)
+                        : undefined
                     }
                   />
                 );
@@ -1592,8 +1691,12 @@ export function BookSlideCanvas({
               );
             })}
             {mode === "edit" &&
-              selectedIds.length > 0 &&
-              !(inlineTextEdit && selectedIds.length === 1 && selectedIds[0] === inlineTextEdit.id) ? (
+            selectedIds.length > 0 &&
+            !(
+              inlineTextEdit &&
+              selectedIds.length === 1 &&
+              selectedIds[0] === inlineTextEdit.id
+            ) ? (
               <Transformer
                 ref={trRef}
                 rotateEnabled
@@ -1624,12 +1727,18 @@ export function BookSlideCanvas({
           strokeColor={drawingStrokeColor}
           strokeWidth={drawingStrokeWidth}
           onCommit={(pts) => {
-            const el = buildBookDrawingElement(pts, drawingStrokeColor, drawingStrokeWidth);
+            const el = buildBookDrawingElement(
+              pts,
+              drawingStrokeColor,
+              drawingStrokeWidth,
+            );
             if (el) onAppendElement(el);
           }}
         />
       ) : null}
-      {mode === "edit" && elements.length === 0 && editInteractionTool !== "draw" ? (
+      {mode === "edit" &&
+      elements.length === 0 &&
+      editInteractionTool !== "draw" ? (
         <div
           className="pointer-events-none absolute inset-0 z-[6] flex items-center justify-center px-4"
           aria-hidden
@@ -1646,7 +1755,14 @@ export function BookSlideCanvas({
               e,
             ): e is Extract<
               BookCanvasElement,
-              { type: "text" | "weather" | "digitalClock" | "news" | "mediaPlaylist" }
+              {
+                type:
+                  | "text"
+                  | "weather"
+                  | "digitalClock"
+                  | "news"
+                  | "mediaPlaylist";
+              }
             > =>
               e.type === "text" ||
               e.type === "weather" ||
@@ -1659,11 +1775,16 @@ export function BookSlideCanvas({
               if (inlineTextEdit?.id === el.id) return null;
               const tw = el.width ?? 720;
               const th = textWidgetHitHeight(el);
-              const textLive = overlayLiveFrame(el.id, dragLive, transformLive, {
-                w: tw,
-                h: th,
-                rotation: resolveBookElementRotation(el.rotation),
-              });
+              const textLive = overlayLiveFrame(
+                el.id,
+                dragLive,
+                transformLive,
+                {
+                  w: tw,
+                  h: th,
+                  rotation: resolveBookElementRotation(el.rotation),
+                },
+              );
               return (
                 <BookTextWidgetOverlay
                   key={el.id}
@@ -1675,14 +1796,14 @@ export function BookSlideCanvas({
                   onReportLogicalHeight={
                     mode === "edit"
                       ? (logical) => {
-                        const next = nextTextWidgetHeightGrowOnly(
-                          logical,
-                          el.height,
-                          el.fontSize,
-                        );
-                        if (next == null) return;
-                        scheduleTextBoxHeight(el.id, next);
-                      }
+                          const next = nextTextWidgetHeightGrowOnly(
+                            logical,
+                            el.height,
+                            el.fontSize,
+                          );
+                          if (next == null) return;
+                          scheduleTextBoxHeight(el.id, next);
+                        }
                       : undefined
                   }
                 />
@@ -1738,12 +1859,15 @@ export function BookSlideCanvas({
                     mplBarOnHover ? () => showVideoBar(el.id) : undefined
                   }
                   onBarPointerLeave={
-                    mplBarOnHover ? () => scheduleHideVideoBar(el.id) : undefined
+                    mplBarOnHover
+                      ? () => scheduleHideVideoBar(el.id)
+                      : undefined
                   }
                   onPlaybackIndexChange={onMediaPlaylistPlaybackIndexChange}
                   onPlaybackUiReport={
                     selectedIdSet.has(el.id) && onMediaPlaylistPlaybackUiReport
-                      ? (payload) => onMediaPlaylistPlaybackUiReport(el.id, payload)
+                      ? (payload) =>
+                          onMediaPlaylistPlaybackUiReport(el.id, payload)
                       : undefined
                   }
                   mediaPlaylistRemoteCommand={mediaPlaylistRemoteCommand}
@@ -1766,217 +1890,256 @@ export function BookSlideCanvas({
           })}
         {mode === "edit" && inlineTextEdit
           ? (() => {
-            const tel = elements.find(
-              (e): e is Extract<BookCanvasElement, { type: "text" }> =>
-                e.id === inlineTextEdit.id && e.type === "text",
-            );
-            if (!tel) return null;
-            const tw = tel.width ?? 720;
-            const th = textWidgetHitHeight(tel);
-            const textLive = overlayLiveFrame(tel.id, dragLive, transformLive, {
-              w: tw,
-              h: th,
-              rotation: resolveBookElementRotation(tel.rotation),
-            });
-            return (
-              <BookTextWidgetInlineEditor
-                ref={inlineTextEditorRef}
-                key={`inline-${inlineTextEdit.id}`}
-                el={tel}
-                scale={scale}
-                liveFrame={textLive}
-                initialDisplayHtml={inlineTextEdit.initialHtml}
-                onCommit={(patch) => {
-                  onElementChange(inlineTextEdit.id, patch);
-                  setInlineTextEdit(null);
-                }}
-                onCancel={() => setInlineTextEdit(null)}
-                onReportLogicalHeight={(logical) => {
-                  const next = nextTextWidgetHeightGrowOnly(
-                    logical,
-                    tel.height,
-                    tel.fontSize,
-                  );
-                  if (next == null) return;
-                  scheduleTextBoxHeight(tel.id, next);
-                }}
-              />
-            );
-          })()
+              const tel = elements.find(
+                (e): e is Extract<BookCanvasElement, { type: "text" }> =>
+                  e.id === inlineTextEdit.id && e.type === "text",
+              );
+              if (!tel) return null;
+              const tw = tel.width ?? 720;
+              const th = textWidgetHitHeight(tel);
+              const textLive = overlayLiveFrame(
+                tel.id,
+                dragLive,
+                transformLive,
+                {
+                  w: tw,
+                  h: th,
+                  rotation: resolveBookElementRotation(tel.rotation),
+                },
+              );
+              return (
+                <BookTextWidgetInlineEditor
+                  ref={inlineTextEditorRef}
+                  key={`inline-${inlineTextEdit.id}`}
+                  el={tel}
+                  scale={scale}
+                  liveFrame={textLive}
+                  initialDisplayHtml={inlineTextEdit.initialHtml}
+                  onCommit={(patch) => {
+                    onElementChange(inlineTextEdit.id, patch);
+                    setInlineTextEdit(null);
+                  }}
+                  onCancel={() => setInlineTextEdit(null)}
+                  onReportLogicalHeight={(logical) => {
+                    const next = nextTextWidgetHeightGrowOnly(
+                      logical,
+                      tel.height,
+                      tel.fontSize,
+                    );
+                    if (next == null) return;
+                    scheduleTextBoxHeight(tel.id, next);
+                  }}
+                />
+              );
+            })()
           : null}
       </div>
       {zMenu && mode === "edit"
         ? createPortal(
-          <ContextMenuFloatingPanel
-            ref={zMenuRef}
-            className="z-[320] flex min-w-[11rem] flex-col gap-0.5"
-            style={{
-              position: "fixed",
-              left: Math.min(
-                zMenu.x,
-                typeof window !== "undefined" ? Math.max(8, window.innerWidth - 200) : zMenu.x,
-              ),
-              top: Math.min(
-                zMenu.y,
-                typeof window !== "undefined" ? Math.max(8, window.innerHeight - 400) : zMenu.y,
-              ),
-            }}
-          >
-            <div className="flex flex-col gap-0.5" role="group" aria-label="크기">
-              <ContextMenuFloatingItem onClick={() => applyFitToStage()}>
-                슬라이드 전체(0,0)로 맞추기
-              </ContextMenuFloatingItem>
-            </div>
-            {(() => {
-              const zTarget = elements.find((e) => e.id === zMenu.elementId);
-              const mk =
-                zTarget?.type === "image"
-                  ? ("image" as const)
-                  : zTarget?.type === "video"
-                    ? ("video" as const)
-                    : null;
-              const showFile = mk && onRequestReplaceMediaFromFile;
-              const showLib =
-                mk && mediaLibraryReplaceEnabled && onRequestPickLibraryMediaForReplace;
-              if (!showFile && !showLib) return null;
-              return (
-                <>
-                  <div
-                    className="-mx-1 my-0.5 h-px shrink-0 bg-border"
-                    role="separator"
-                    aria-hidden="true"
-                  />
-                  <div className="flex flex-col gap-0.5" role="group" aria-label="미디어 교체">
-                    {showFile ? (
-                      <ContextMenuFloatingItem
-                        onClick={() => {
-                          onRequestReplaceMediaFromFile?.({
-                            elementId: zMenu.elementId,
-                            kind: mk,
-                          });
-                          setZMenu(null);
-                        }}
-                      >
-                        <FolderOpen className="opacity-70" aria-hidden />
-                        파일에서 바꾸기…
-                      </ContextMenuFloatingItem>
-                    ) : null}
-                    {showLib ? (
-                      <ContextMenuFloatingItem
-                        onClick={() => {
-                          onRequestPickLibraryMediaForReplace?.({
-                            elementId: zMenu.elementId,
-                          });
-                          setZMenu(null);
-                        }}
-                      >
-                        <Library className="opacity-70" aria-hidden />
-                        미디어 라이브러리에서 바꾸기…
-                      </ContextMenuFloatingItem>
-                    ) : null}
-                  </div>
-                </>
-              );
-            })()}
-            {(() => {
-              const zPl = elements.find((e) => e.id === zMenu.elementId);
-              if (zPl?.type !== "mediaPlaylist") return null;
-              const showFile = onRequestPlaylistAppendFromFile;
-              const showLib =
-                mediaLibraryReplaceEnabled && onRequestPlaylistAppendFromLibrary;
-              if (!showFile && !showLib) return null;
-              return (
-                <>
-                  <div
-                    className="-mx-1 my-0.5 h-px shrink-0 bg-border"
-                    role="separator"
-                    aria-hidden="true"
-                  />
-                  <div className="flex flex-col gap-0.5" role="group" aria-label="미디어 목록">
-                    {showFile ? (
-                      <ContextMenuFloatingItem
-                        onClick={() => {
-                          onRequestPlaylistAppendFromFile?.(zMenu.elementId);
-                          setZMenu(null);
-                        }}
-                      >
-                        <FolderOpen className="opacity-70" aria-hidden />
-                        파일에서 미디어 추가…
-                      </ContextMenuFloatingItem>
-                    ) : null}
-                    {showLib ? (
-                      <ContextMenuFloatingItem
-                        onClick={() => {
-                          onRequestPlaylistAppendFromLibrary?.(zMenu.elementId);
-                          setZMenu(null);
-                        }}
-                      >
-                        <Library className="opacity-70" aria-hidden />
-                        라이브러리에서 미디어 추가…
-                      </ContextMenuFloatingItem>
-                    ) : null}
-                  </div>
-                </>
-              );
-            })()}
-            {onReorderZ || onDeleteElement ? (
+            <ContextMenuFloatingPanel
+              ref={zMenuRef}
+              className="z-[320] flex min-w-[11rem] flex-col gap-0.5"
+              style={{
+                position: "fixed",
+                left: Math.min(
+                  zMenu.x,
+                  typeof window !== "undefined"
+                    ? Math.max(8, window.innerWidth - 200)
+                    : zMenu.x,
+                ),
+                top: Math.min(
+                  zMenu.y,
+                  typeof window !== "undefined"
+                    ? Math.max(8, window.innerHeight - 400)
+                    : zMenu.y,
+                ),
+              }}
+            >
               <div
-                className="-mx-1 my-0.5 h-px shrink-0 bg-border"
-                role="separator"
-                aria-hidden="true"
-              />
-            ) : null}
-            {onReorderZ
-              ? (() => {
-                const zi = elements.findIndex((e) => e.id === zMenu.elementId);
-                const n = elements.length;
-                return (
-                  <div className="flex flex-col gap-0.5" role="group" aria-label="순서">
-                    <ContextMenuFloatingItem
-                      disabled={zi < 0 || zi >= n - 1}
-                      onClick={() => applyZ("forward")}
-                    >
-                      한 칸 앞으로
-                    </ContextMenuFloatingItem>
-                    <ContextMenuFloatingItem
-                      disabled={zi <= 0}
-                      onClick={() => applyZ("backward")}
-                    >
-                      한 칸 뒤로
-                    </ContextMenuFloatingItem>
-                    <ContextMenuFloatingItem
-                      disabled={zi < 0 || zi >= n - 1}
-                      onClick={() => applyZ("front")}
-                    >
-                      맨 앞으로
-                    </ContextMenuFloatingItem>
-                    <ContextMenuFloatingItem
-                      disabled={zi <= 0}
-                      onClick={() => applyZ("back")}
-                    >
-                      맨 뒤로
-                    </ContextMenuFloatingItem>
-                  </div>
-                );
-              })()
-              : null}
-            {onReorderZ && onDeleteElement ? (
-              <div
-                className="-mx-1 my-0.5 h-px shrink-0 bg-border"
-                role="separator"
-                aria-hidden="true"
-              />
-            ) : null}
-            {onDeleteElement ? (
-              <div className="flex flex-col gap-0.5" role="group" aria-label="편집">
-                <ContextMenuFloatingItem variant="destructive" onClick={() => applyDelete()}>
-                  위젯 지우기
+                className="flex flex-col gap-0.5"
+                role="group"
+                aria-label="크기"
+              >
+                <ContextMenuFloatingItem onClick={() => applyFitToStage()}>
+                  슬라이드 전체(0,0)로 맞추기
                 </ContextMenuFloatingItem>
               </div>
-            ) : null}
-          </ContextMenuFloatingPanel>,
-          document.body,
-        )
+              {(() => {
+                const zTarget = elements.find((e) => e.id === zMenu.elementId);
+                const mk =
+                  zTarget?.type === "image"
+                    ? ("image" as const)
+                    : zTarget?.type === "video"
+                      ? ("video" as const)
+                      : null;
+                const showFile = mk && onRequestReplaceMediaFromFile;
+                const showLib =
+                  mk &&
+                  mediaLibraryReplaceEnabled &&
+                  onRequestPickLibraryMediaForReplace;
+                if (!showFile && !showLib) return null;
+                return (
+                  <>
+                    <div
+                      className="-mx-1 my-0.5 h-px shrink-0 bg-border"
+                      role="separator"
+                      aria-hidden="true"
+                    />
+                    <div
+                      className="flex flex-col gap-0.5"
+                      role="group"
+                      aria-label="미디어 교체"
+                    >
+                      {showFile ? (
+                        <ContextMenuFloatingItem
+                          onClick={() => {
+                            onRequestReplaceMediaFromFile?.({
+                              elementId: zMenu.elementId,
+                              kind: mk,
+                            });
+                            setZMenu(null);
+                          }}
+                        >
+                          <FolderOpen className="opacity-70" aria-hidden />
+                          파일에서 바꾸기…
+                        </ContextMenuFloatingItem>
+                      ) : null}
+                      {showLib ? (
+                        <ContextMenuFloatingItem
+                          onClick={() => {
+                            onRequestPickLibraryMediaForReplace?.({
+                              elementId: zMenu.elementId,
+                            });
+                            setZMenu(null);
+                          }}
+                        >
+                          <Library className="opacity-70" aria-hidden />
+                          미디어 라이브러리에서 바꾸기…
+                        </ContextMenuFloatingItem>
+                      ) : null}
+                    </div>
+                  </>
+                );
+              })()}
+              {(() => {
+                const zPl = elements.find((e) => e.id === zMenu.elementId);
+                if (zPl?.type !== "mediaPlaylist") return null;
+                const showFile = onRequestPlaylistAppendFromFile;
+                const showLib =
+                  mediaLibraryReplaceEnabled &&
+                  onRequestPlaylistAppendFromLibrary;
+                if (!showFile && !showLib) return null;
+                return (
+                  <>
+                    <div
+                      className="-mx-1 my-0.5 h-px shrink-0 bg-border"
+                      role="separator"
+                      aria-hidden="true"
+                    />
+                    <div
+                      className="flex flex-col gap-0.5"
+                      role="group"
+                      aria-label="미디어 목록"
+                    >
+                      {showFile ? (
+                        <ContextMenuFloatingItem
+                          onClick={() => {
+                            onRequestPlaylistAppendFromFile?.(zMenu.elementId);
+                            setZMenu(null);
+                          }}
+                        >
+                          <FolderOpen className="opacity-70" aria-hidden />
+                          파일에서 미디어 추가…
+                        </ContextMenuFloatingItem>
+                      ) : null}
+                      {showLib ? (
+                        <ContextMenuFloatingItem
+                          onClick={() => {
+                            onRequestPlaylistAppendFromLibrary?.(
+                              zMenu.elementId,
+                            );
+                            setZMenu(null);
+                          }}
+                        >
+                          <Library className="opacity-70" aria-hidden />
+                          라이브러리에서 미디어 추가…
+                        </ContextMenuFloatingItem>
+                      ) : null}
+                    </div>
+                  </>
+                );
+              })()}
+              {onReorderZ || onDeleteElement ? (
+                <div
+                  className="-mx-1 my-0.5 h-px shrink-0 bg-border"
+                  role="separator"
+                  aria-hidden="true"
+                />
+              ) : null}
+              {onReorderZ
+                ? (() => {
+                    const zi = elements.findIndex(
+                      (e) => e.id === zMenu.elementId,
+                    );
+                    const n = elements.length;
+                    return (
+                      <div
+                        className="flex flex-col gap-0.5"
+                        role="group"
+                        aria-label="순서"
+                      >
+                        <ContextMenuFloatingItem
+                          disabled={zi < 0 || zi >= n - 1}
+                          onClick={() => applyZ("forward")}
+                        >
+                          한 칸 앞으로
+                        </ContextMenuFloatingItem>
+                        <ContextMenuFloatingItem
+                          disabled={zi <= 0}
+                          onClick={() => applyZ("backward")}
+                        >
+                          한 칸 뒤로
+                        </ContextMenuFloatingItem>
+                        <ContextMenuFloatingItem
+                          disabled={zi < 0 || zi >= n - 1}
+                          onClick={() => applyZ("front")}
+                        >
+                          맨 앞으로
+                        </ContextMenuFloatingItem>
+                        <ContextMenuFloatingItem
+                          disabled={zi <= 0}
+                          onClick={() => applyZ("back")}
+                        >
+                          맨 뒤로
+                        </ContextMenuFloatingItem>
+                      </div>
+                    );
+                  })()
+                : null}
+              {onReorderZ && onDeleteElement ? (
+                <div
+                  className="-mx-1 my-0.5 h-px shrink-0 bg-border"
+                  role="separator"
+                  aria-hidden="true"
+                />
+              ) : null}
+              {onDeleteElement ? (
+                <div
+                  className="flex flex-col gap-0.5"
+                  role="group"
+                  aria-label="편집"
+                >
+                  <ContextMenuFloatingItem
+                    variant="destructive"
+                    onClick={() => applyDelete()}
+                  >
+                    위젯 지우기
+                  </ContextMenuFloatingItem>
+                </div>
+              ) : null}
+            </ContextMenuFloatingPanel>,
+            document.body,
+          )
         : null}
     </div>
   );
@@ -2004,7 +2167,8 @@ function BookShapeHitShape({
   onZMenu: (clientX: number, clientY: number) => void;
 }) {
   const basePivot = bookElementPivotKonva(el);
-  const tf = liveSync.transformLive?.id === el.id ? liveSync.transformLive : null;
+  const tf =
+    liveSync.transformLive?.id === el.id ? liveSync.transformLive : null;
   const dg = liveSync.dragLive?.id === el.id ? liveSync.dragLive : null;
   let fw = el.width;
   let fh = el.height;
@@ -2030,23 +2194,26 @@ function BookShapeHitShape({
   const showKonvaChromeOutline = mode === "edit" && chromeOw > 0;
   const innerCr =
     el.shapeKind === "rect" || el.shapeKind === "roundRect"
-      ? Math.min(
-        Math.max(0, el.cornerRadius ?? 0),
-        fw / 2,
-        fh / 2,
-      )
+      ? Math.min(Math.max(0, el.cornerRadius ?? 0), fw / 2, fh / 2)
       : 0;
   const rawShapeSw = Number(el.strokeWidth);
-  const strokeW =
-    Number.isFinite(rawShapeSw) ? Math.min(32, Math.max(0, Math.round(rawShapeSw))) : 3;
+  const strokeW = Number.isFinite(rawShapeSw)
+    ? Math.min(32, Math.max(0, Math.round(rawShapeSw)))
+    : 3;
   const fill =
     el.fill?.trim() && el.fill.trim() !== "transparent" ? el.fill : undefined;
   const stroke =
-    strokeW > 0 ? (el.stroke?.trim() ? el.stroke.trim() : "#1e293b") : undefined;
+    strokeW > 0
+      ? el.stroke?.trim()
+        ? el.stroke.trim()
+        : "#1e293b"
+      : undefined;
 
   const shapeBody = (() => {
     if (
-      (el.shapeKind === "line" || el.shapeKind === "arrow" || el.shapeKind === "cross") &&
+      (el.shapeKind === "line" ||
+        el.shapeKind === "arrow" ||
+        el.shapeKind === "cross") &&
       strokeW <= 0
     ) {
       return null;
@@ -2133,18 +2300,7 @@ function BookShapeHitShape({
         const inset = fw * 0.38;
         return (
           <Line
-            points={[
-              ox,
-              oy,
-              ox + inset,
-              oy,
-              -ox,
-              0,
-              ox + inset,
-              -oy,
-              ox,
-              -oy,
-            ]}
+            points={[ox, oy, ox + inset, oy, -ox, 0, ox + inset, -oy, ox, -oy]}
             closed
             fill={fill ?? "transparent"}
             stroke={stroke}
@@ -2225,16 +2381,7 @@ function BookShapeHitShape({
         const inset = fw * 0.2;
         return (
           <Line
-            points={[
-              ox + inset,
-              oy,
-              -ox - inset,
-              oy,
-              -ox,
-              -oy,
-              ox,
-              -oy,
-            ]}
+            points={[ox + inset, oy, -ox - inset, oy, -ox, -oy, ox, -oy]}
             closed
             fill={fill ?? "transparent"}
             stroke={stroke}
@@ -2248,16 +2395,7 @@ function BookShapeHitShape({
         const skew = fw * 0.28;
         return (
           <Line
-            points={[
-              ox + skew,
-              oy,
-              -ox + skew,
-              oy,
-              -ox,
-              -oy,
-              ox,
-              -oy,
-            ]}
+            points={[ox + skew, oy, -ox + skew, oy, -ox, -oy, ox, -oy]}
             closed
             fill={fill ?? "transparent"}
             stroke={stroke}
@@ -2373,49 +2511,58 @@ function BookShapeHitShape({
       onContextMenu={
         zMenuEnabled
           ? (e) => {
-            e.cancelBubble = true;
-            e.evt.preventDefault();
-            onZMenu(e.evt.clientX, e.evt.clientY);
-          }
+              e.cancelBubble = true;
+              e.evt.preventDefault();
+              onZMenu(e.evt.clientX, e.evt.clientY);
+            }
           : undefined
       }
       onDragStart={
         locked ? undefined : (e) => liveSync.onDragLiveStart(el.id, e.target)
       }
       onDragMove={
-        locked ? undefined : (e) => liveSync.onDragMoveSnapGrid(el.id, e.target, fw, fh)
+        locked
+          ? undefined
+          : (e) => liveSync.onDragMoveSnapGrid(el.id, e.target, fw, fh)
       }
       onDragEnd={
         locked
           ? undefined
           : (e) => {
-            liveSync.commitDragEndPosition(el.id, e.target as Konva.Node, fw, fh);
-          }
+              liveSync.commitDragEndPosition(
+                el.id,
+                e.target as Konva.Node,
+                fw,
+                fh,
+              );
+            }
       }
       onTransformStart={
-        locked ? undefined : (e) => liveSync.onTransformLiveStart(el.id, e.target)
+        locked
+          ? undefined
+          : (e) => liveSync.onTransformLiveStart(el.id, e.target)
       }
       onTransform={
         locked
           ? undefined
           : (e) => {
-            bakeKonvaBookWidgetGroupDuringTransform(e.target as Konva.Group);
-            liveSync.onTransformLiveMove(el.id, e.target);
-          }
+              bakeKonvaBookWidgetGroupDuringTransform(e.target as Konva.Group);
+              liveSync.onTransformLiveMove(el.id, e.target);
+            }
       }
       onTransformEnd={
         locked
           ? undefined
           : (e) => {
-            commitBookWidgetHitShellTransformEnd(
-              e,
-              el.id,
-              24,
-              24,
-              liveSync,
-              onElementChange,
-            );
-          }
+              commitBookWidgetHitShellTransformEnd(
+                e,
+                el.id,
+                24,
+                24,
+                liveSync,
+                onElementChange,
+              );
+            }
       }
     >
       {shapeBody}
@@ -2470,7 +2617,8 @@ function BookDrawingHitShape({
   const h = el.height;
   const dOpacity = resolveBookElementOpacity(el.opacity);
   const basePivot = bookElementPivotKonva(el);
-  const tf = liveSync.transformLive?.id === el.id ? liveSync.transformLive : null;
+  const tf =
+    liveSync.transformLive?.id === el.id ? liveSync.transformLive : null;
   const dg = liveSync.dragLive?.id === el.id ? liveSync.dragLive : null;
   let fw = w;
   let fh = h;
@@ -2509,24 +2657,26 @@ function BookDrawingHitShape({
       onContextMenu={
         zMenuEnabled
           ? (e) => {
-            e.cancelBubble = true;
-            e.evt.preventDefault();
-            onZMenu(e.evt.clientX, e.evt.clientY);
-          }
+              e.cancelBubble = true;
+              e.evt.preventDefault();
+              onZMenu(e.evt.clientX, e.evt.clientY);
+            }
           : undefined
       }
       onDragStart={
         locked ? undefined : (e) => liveSync.onDragLiveStart(el.id, e.target)
       }
       onDragMove={
-        locked ? undefined : (e) => liveSync.onDragMoveSnapGrid(el.id, e.target, fw, fh)
+        locked
+          ? undefined
+          : (e) => liveSync.onDragMoveSnapGrid(el.id, e.target, fw, fh)
       }
       onDragEnd={
         locked
           ? undefined
           : (e) => {
-            liveSync.commitDragEndPosition(el.id, e.target, fw, fh);
-          }
+              liveSync.commitDragEndPosition(el.id, e.target, fw, fh);
+            }
       }
     >
       <Rect
@@ -2577,8 +2727,15 @@ function BookTextHitShape({
   const w = el.width ?? 720;
   const h = textWidgetHitHeight(el);
   const tOpacity = resolveBookElementOpacity(el.opacity);
-  const basePivot = bookElementPivotKonva({ x: el.x, y: el.y, width: w, height: h, rotation: el.rotation });
-  const tf = liveSync.transformLive?.id === el.id ? liveSync.transformLive : null;
+  const basePivot = bookElementPivotKonva({
+    x: el.x,
+    y: el.y,
+    width: w,
+    height: h,
+    rotation: el.rotation,
+  });
+  const tf =
+    liveSync.transformLive?.id === el.id ? liveSync.transformLive : null;
   const dg = liveSync.dragLive?.id === el.id ? liveSync.dragLive : null;
   let fw = w;
   let fh = h;
@@ -2631,50 +2788,59 @@ function BookTextHitShape({
       onContextMenu={
         zMenuEnabled
           ? (e) => {
-            e.cancelBubble = true;
-            e.evt.preventDefault();
-            onZMenu(e.evt.clientX, e.evt.clientY);
-          }
+              e.cancelBubble = true;
+              e.evt.preventDefault();
+              onZMenu(e.evt.clientX, e.evt.clientY);
+            }
           : undefined
       }
       onDragStart={
         locked || inlineTextEditing
           ? undefined
           : (e) => {
-            liveSync.onDragLiveStart(el.id, e.target);
-          }
+              liveSync.onDragLiveStart(el.id, e.target);
+            }
       }
       onDragMove={
         locked
           ? undefined
           : (e) => {
-            liveSync.onDragMoveSnapGrid(el.id, e.target, fw, fh);
-          }
+              liveSync.onDragMoveSnapGrid(el.id, e.target, fw, fh);
+            }
       }
       onDragEnd={
         locked
           ? undefined
           : (e) => {
-            liveSync.commitDragEndPosition(el.id, e.target, fw, fh);
-          }
+              liveSync.commitDragEndPosition(el.id, e.target, fw, fh);
+            }
       }
       onTransformStart={
-        locked ? undefined : (e) => liveSync.onTransformLiveStart(el.id, e.target)
+        locked
+          ? undefined
+          : (e) => liveSync.onTransformLiveStart(el.id, e.target)
       }
       onTransform={
         locked
           ? undefined
           : (e) => {
-            bakeKonvaBookWidgetGroupDuringTransform(e.target as Konva.Group);
-            liveSync.onTransformLiveMove(el.id, e.target);
-          }
+              bakeKonvaBookWidgetGroupDuringTransform(e.target as Konva.Group);
+              liveSync.onTransformLiveMove(el.id, e.target);
+            }
       }
       onTransformEnd={
         locked
           ? undefined
           : (e) => {
-            commitBookWidgetHitShellTransformEnd(e, el.id, 24, 28, liveSync, onElementChange);
-          }
+              commitBookWidgetHitShellTransformEnd(
+                e,
+                el.id,
+                24,
+                28,
+                liveSync,
+                onElementChange,
+              );
+            }
       }
     >
       <Rect
@@ -2727,8 +2893,15 @@ function BookDigitalClockHitShape({
   const w = el.width;
   const h = el.height;
   const tOpacity = resolveBookElementOpacity(el.opacity);
-  const basePivot = bookElementPivotKonva({ x: el.x, y: el.y, width: w, height: h, rotation: el.rotation });
-  const tf = liveSync.transformLive?.id === el.id ? liveSync.transformLive : null;
+  const basePivot = bookElementPivotKonva({
+    x: el.x,
+    y: el.y,
+    width: w,
+    height: h,
+    rotation: el.rotation,
+  });
+  const tf =
+    liveSync.transformLive?.id === el.id ? liveSync.transformLive : null;
   const dg = liveSync.dragLive?.id === el.id ? liveSync.dragLive : null;
   let fw = w;
   let fh = h;
@@ -2769,49 +2942,53 @@ function BookDigitalClockHitShape({
       onContextMenu={
         zMenuEnabled
           ? (e) => {
-            e.cancelBubble = true;
-            e.evt.preventDefault();
-            onZMenu(e.evt.clientX, e.evt.clientY);
-          }
+              e.cancelBubble = true;
+              e.evt.preventDefault();
+              onZMenu(e.evt.clientX, e.evt.clientY);
+            }
           : undefined
       }
       onDragStart={
         locked ? undefined : (e) => liveSync.onDragLiveStart(el.id, e.target)
       }
       onDragMove={
-        locked ? undefined : (e) => liveSync.onDragMoveSnapGrid(el.id, e.target, fw, fh)
+        locked
+          ? undefined
+          : (e) => liveSync.onDragMoveSnapGrid(el.id, e.target, fw, fh)
       }
       onDragEnd={
         locked
           ? undefined
           : (e) => {
-            liveSync.commitDragEndPosition(el.id, e.target, fw, fh);
-          }
+              liveSync.commitDragEndPosition(el.id, e.target, fw, fh);
+            }
       }
       onTransformStart={
-        locked ? undefined : (e) => liveSync.onTransformLiveStart(el.id, e.target)
+        locked
+          ? undefined
+          : (e) => liveSync.onTransformLiveStart(el.id, e.target)
       }
       onTransform={
         locked
           ? undefined
           : (e) => {
-            bakeKonvaBookWidgetGroupDuringTransform(e.target as Konva.Group);
-            liveSync.onTransformLiveMove(el.id, e.target);
-          }
+              bakeKonvaBookWidgetGroupDuringTransform(e.target as Konva.Group);
+              liveSync.onTransformLiveMove(el.id, e.target);
+            }
       }
       onTransformEnd={
         locked
           ? undefined
           : (e) => {
-            commitBookWidgetHitShellTransformEnd(
-              e,
-              el.id,
-              DIGITAL_CLOCK_MIN_W,
-              DIGITAL_CLOCK_MIN_H,
-              liveSync,
-              onElementChange,
-            );
-          }
+              commitBookWidgetHitShellTransformEnd(
+                e,
+                el.id,
+                DIGITAL_CLOCK_MIN_W,
+                DIGITAL_CLOCK_MIN_H,
+                liveSync,
+                onElementChange,
+              );
+            }
       }
     >
       <Rect
@@ -2854,8 +3031,15 @@ function BookWeatherHitShape({
   const w = el.width;
   const h = el.height;
   const tOpacity = resolveBookElementOpacity(el.opacity);
-  const basePivot = bookElementPivotKonva({ x: el.x, y: el.y, width: w, height: h, rotation: el.rotation });
-  const tf = liveSync.transformLive?.id === el.id ? liveSync.transformLive : null;
+  const basePivot = bookElementPivotKonva({
+    x: el.x,
+    y: el.y,
+    width: w,
+    height: h,
+    rotation: el.rotation,
+  });
+  const tf =
+    liveSync.transformLive?.id === el.id ? liveSync.transformLive : null;
   const dg = liveSync.dragLive?.id === el.id ? liveSync.dragLive : null;
   let fw = w;
   let fh = h;
@@ -2896,49 +3080,53 @@ function BookWeatherHitShape({
       onContextMenu={
         zMenuEnabled
           ? (e) => {
-            e.cancelBubble = true;
-            e.evt.preventDefault();
-            onZMenu(e.evt.clientX, e.evt.clientY);
-          }
+              e.cancelBubble = true;
+              e.evt.preventDefault();
+              onZMenu(e.evt.clientX, e.evt.clientY);
+            }
           : undefined
       }
       onDragStart={
         locked ? undefined : (e) => liveSync.onDragLiveStart(el.id, e.target)
       }
       onDragMove={
-        locked ? undefined : (e) => liveSync.onDragMoveSnapGrid(el.id, e.target, fw, fh)
+        locked
+          ? undefined
+          : (e) => liveSync.onDragMoveSnapGrid(el.id, e.target, fw, fh)
       }
       onDragEnd={
         locked
           ? undefined
           : (e) => {
-            liveSync.commitDragEndPosition(el.id, e.target, fw, fh);
-          }
+              liveSync.commitDragEndPosition(el.id, e.target, fw, fh);
+            }
       }
       onTransformStart={
-        locked ? undefined : (e) => liveSync.onTransformLiveStart(el.id, e.target)
+        locked
+          ? undefined
+          : (e) => liveSync.onTransformLiveStart(el.id, e.target)
       }
       onTransform={
         locked
           ? undefined
           : (e) => {
-            bakeKonvaBookWidgetGroupDuringTransform(e.target as Konva.Group);
-            liveSync.onTransformLiveMove(el.id, e.target);
-          }
+              bakeKonvaBookWidgetGroupDuringTransform(e.target as Konva.Group);
+              liveSync.onTransformLiveMove(el.id, e.target);
+            }
       }
       onTransformEnd={
         locked
           ? undefined
           : (e) => {
-            commitBookWidgetHitShellTransformEnd(
-              e,
-              el.id,
-              WEATHER_WIDGET_MIN_W,
-              WEATHER_WIDGET_MIN_H,
-              liveSync,
-              onElementChange,
-            );
-          }
+              commitBookWidgetHitShellTransformEnd(
+                e,
+                el.id,
+                WEATHER_WIDGET_MIN_W,
+                WEATHER_WIDGET_MIN_H,
+                liveSync,
+                onElementChange,
+              );
+            }
       }
     >
       <Rect
@@ -2981,8 +3169,15 @@ function BookNewsHitShape({
   const w = el.width;
   const h = el.height;
   const tOpacity = resolveBookElementOpacity(el.opacity);
-  const basePivot = bookElementPivotKonva({ x: el.x, y: el.y, width: w, height: h, rotation: el.rotation });
-  const tf = liveSync.transformLive?.id === el.id ? liveSync.transformLive : null;
+  const basePivot = bookElementPivotKonva({
+    x: el.x,
+    y: el.y,
+    width: w,
+    height: h,
+    rotation: el.rotation,
+  });
+  const tf =
+    liveSync.transformLive?.id === el.id ? liveSync.transformLive : null;
   const dg = liveSync.dragLive?.id === el.id ? liveSync.dragLive : null;
   let fw = w;
   let fh = h;
@@ -3023,49 +3218,53 @@ function BookNewsHitShape({
       onContextMenu={
         zMenuEnabled
           ? (e) => {
-            e.cancelBubble = true;
-            e.evt.preventDefault();
-            onZMenu(e.evt.clientX, e.evt.clientY);
-          }
+              e.cancelBubble = true;
+              e.evt.preventDefault();
+              onZMenu(e.evt.clientX, e.evt.clientY);
+            }
           : undefined
       }
       onDragStart={
         locked ? undefined : (e) => liveSync.onDragLiveStart(el.id, e.target)
       }
       onDragMove={
-        locked ? undefined : (e) => liveSync.onDragMoveSnapGrid(el.id, e.target, fw, fh)
+        locked
+          ? undefined
+          : (e) => liveSync.onDragMoveSnapGrid(el.id, e.target, fw, fh)
       }
       onDragEnd={
         locked
           ? undefined
           : (e) => {
-            liveSync.commitDragEndPosition(el.id, e.target, fw, fh);
-          }
+              liveSync.commitDragEndPosition(el.id, e.target, fw, fh);
+            }
       }
       onTransformStart={
-        locked ? undefined : (e) => liveSync.onTransformLiveStart(el.id, e.target)
+        locked
+          ? undefined
+          : (e) => liveSync.onTransformLiveStart(el.id, e.target)
       }
       onTransform={
         locked
           ? undefined
           : (e) => {
-            bakeKonvaBookWidgetGroupDuringTransform(e.target as Konva.Group);
-            liveSync.onTransformLiveMove(el.id, e.target);
-          }
+              bakeKonvaBookWidgetGroupDuringTransform(e.target as Konva.Group);
+              liveSync.onTransformLiveMove(el.id, e.target);
+            }
       }
       onTransformEnd={
         locked
           ? undefined
           : (e) => {
-            commitBookWidgetHitShellTransformEnd(
-              e,
-              el.id,
-              NEWS_WIDGET_MIN_W,
-              NEWS_WIDGET_MIN_H,
-              liveSync,
-              onElementChange,
-            );
-          }
+              commitBookWidgetHitShellTransformEnd(
+                e,
+                el.id,
+                NEWS_WIDGET_MIN_W,
+                NEWS_WIDGET_MIN_H,
+                liveSync,
+                onElementChange,
+              );
+            }
       }
     >
       <Rect
@@ -3112,8 +3311,15 @@ function BookMediaPlaylistHitShape({
   const w = el.width;
   const h = el.height;
   const tOpacity = resolveBookElementOpacity(el.opacity);
-  const basePivot = bookElementPivotKonva({ x: el.x, y: el.y, width: w, height: h, rotation: el.rotation });
-  const tf = liveSync.transformLive?.id === el.id ? liveSync.transformLive : null;
+  const basePivot = bookElementPivotKonva({
+    x: el.x,
+    y: el.y,
+    width: w,
+    height: h,
+    rotation: el.rotation,
+  });
+  const tf =
+    liveSync.transformLive?.id === el.id ? liveSync.transformLive : null;
   const dg = liveSync.dragLive?.id === el.id ? liveSync.dragLive : null;
   let fw = w;
   let fh = h;
@@ -3156,49 +3362,53 @@ function BookMediaPlaylistHitShape({
       onContextMenu={
         zMenuEnabled
           ? (e) => {
-            e.cancelBubble = true;
-            e.evt.preventDefault();
-            onZMenu(e.evt.clientX, e.evt.clientY);
-          }
+              e.cancelBubble = true;
+              e.evt.preventDefault();
+              onZMenu(e.evt.clientX, e.evt.clientY);
+            }
           : undefined
       }
       onDragStart={
         locked ? undefined : (e) => liveSync.onDragLiveStart(el.id, e.target)
       }
       onDragMove={
-        locked ? undefined : (e) => liveSync.onDragMoveSnapGrid(el.id, e.target, fw, fh)
+        locked
+          ? undefined
+          : (e) => liveSync.onDragMoveSnapGrid(el.id, e.target, fw, fh)
       }
       onDragEnd={
         locked
           ? undefined
           : (e) => {
-            liveSync.commitDragEndPosition(el.id, e.target, fw, fh);
-          }
+              liveSync.commitDragEndPosition(el.id, e.target, fw, fh);
+            }
       }
       onTransformStart={
-        locked ? undefined : (e) => liveSync.onTransformLiveStart(el.id, e.target)
+        locked
+          ? undefined
+          : (e) => liveSync.onTransformLiveStart(el.id, e.target)
       }
       onTransform={
         locked
           ? undefined
           : (e) => {
-            bakeKonvaBookWidgetGroupDuringTransform(e.target as Konva.Group);
-            liveSync.onTransformLiveMove(el.id, e.target);
-          }
+              bakeKonvaBookWidgetGroupDuringTransform(e.target as Konva.Group);
+              liveSync.onTransformLiveMove(el.id, e.target);
+            }
       }
       onTransformEnd={
         locked
           ? undefined
           : (e) => {
-            commitBookWidgetHitShellTransformEnd(
-              e,
-              el.id,
-              MEDIA_PLAYLIST_MIN_W,
-              MEDIA_PLAYLIST_MIN_H,
-              liveSync,
-              onElementChange,
-            );
-          }
+              commitBookWidgetHitShellTransformEnd(
+                e,
+                el.id,
+                MEDIA_PLAYLIST_MIN_W,
+                MEDIA_PLAYLIST_MIN_H,
+                liveSync,
+                onElementChange,
+              );
+            }
       }
     >
       <Rect
@@ -3240,7 +3450,8 @@ function BookImageShape({
 }) {
   const img = useBookImage(el.src);
   const basePivot = bookElementPivotKonva(el);
-  const tf = liveSync.transformLive?.id === el.id ? liveSync.transformLive : null;
+  const tf =
+    liveSync.transformLive?.id === el.id ? liveSync.transformLive : null;
   const dg = liveSync.dragLive?.id === el.id ? liveSync.dragLive : null;
   const fw = tf ? tf.width : el.width;
   const fh = tf ? tf.height : el.height;
@@ -3260,7 +3471,13 @@ function BookImageShape({
   const layout = useMemo(
     () =>
       img
-        ? computeKonvaFittedImageLayout(el.objectFit, fw, fh, img.naturalWidth, img.naturalHeight)
+        ? computeKonvaFittedImageLayout(
+            el.objectFit,
+            fw,
+            fh,
+            img.naturalWidth,
+            img.naturalHeight,
+          )
         : null,
     [img, el.objectFit, fw, fh],
   );
@@ -3293,42 +3510,58 @@ function BookImageShape({
       onContextMenu={
         zMenuEnabled
           ? (e) => {
-            e.cancelBubble = true;
-            e.evt.preventDefault();
-            onZMenu(e.evt.clientX, e.evt.clientY);
-          }
+              e.cancelBubble = true;
+              e.evt.preventDefault();
+              onZMenu(e.evt.clientX, e.evt.clientY);
+            }
           : undefined
       }
       onDragStart={
         locked ? undefined : (e) => liveSync.onDragLiveStart(el.id, e.target)
       }
       onDragMove={
-        locked ? undefined : (e) => liveSync.onDragMoveSnapGrid(el.id, e.target, fw, fh)
+        locked
+          ? undefined
+          : (e) => liveSync.onDragMoveSnapGrid(el.id, e.target, fw, fh)
       }
       onDragEnd={
         locked
           ? undefined
           : (e) => {
-            liveSync.commitDragEndPosition(el.id, e.target as Konva.Node, fw, fh);
-          }
+              liveSync.commitDragEndPosition(
+                el.id,
+                e.target as Konva.Node,
+                fw,
+                fh,
+              );
+            }
       }
       onTransformStart={
-        locked ? undefined : (e) => liveSync.onTransformLiveStart(el.id, e.target)
+        locked
+          ? undefined
+          : (e) => liveSync.onTransformLiveStart(el.id, e.target)
       }
       onTransform={
         locked
           ? undefined
           : (e) => {
-            bakeKonvaBookWidgetGroupDuringTransform(e.target as Konva.Group);
-            liveSync.onTransformLiveMove(el.id, e.target);
-          }
+              bakeKonvaBookWidgetGroupDuringTransform(e.target as Konva.Group);
+              liveSync.onTransformLiveMove(el.id, e.target);
+            }
       }
       onTransformEnd={
         locked
           ? undefined
           : (e) => {
-            commitBookWidgetHitShellTransformEnd(e, el.id, 24, 24, liveSync, onElementChange);
-          }
+              commitBookWidgetHitShellTransformEnd(
+                e,
+                el.id,
+                24,
+                24,
+                liveSync,
+                onElementChange,
+              );
+            }
       }
     >
       {img && layout ? (
@@ -3482,7 +3715,8 @@ function BookVideoBox({
 
   const vidOpacity = resolveBookElementOpacity(el.opacity);
   const basePivot = bookElementPivotKonva(el);
-  const tf = liveSync.transformLive?.id === el.id ? liveSync.transformLive : null;
+  const tf =
+    liveSync.transformLive?.id === el.id ? liveSync.transformLive : null;
   const dg = liveSync.dragLive?.id === el.id ? liveSync.dragLive : null;
   const fw = tf ? tf.width : el.width;
   const fh = tf ? tf.height : el.height;
@@ -3510,7 +3744,11 @@ function BookVideoBox({
   );
 
   const posterLayout = useMemo(() => {
-    if (!posterImg?.complete || posterImg.naturalWidth <= 0 || posterImg.naturalHeight <= 0) {
+    if (
+      !posterImg?.complete ||
+      posterImg.naturalWidth <= 0 ||
+      posterImg.naturalHeight <= 0
+    ) {
       return null;
     }
     return computeKonvaFittedImageLayout(
@@ -3557,42 +3795,58 @@ function BookVideoBox({
       onContextMenu={
         zMenuEnabled
           ? (e) => {
-            e.cancelBubble = true;
-            e.evt.preventDefault();
-            onZMenu(e.evt.clientX, e.evt.clientY);
-          }
+              e.cancelBubble = true;
+              e.evt.preventDefault();
+              onZMenu(e.evt.clientX, e.evt.clientY);
+            }
           : undefined
       }
       onDragStart={
         locked ? undefined : (e) => liveSync.onDragLiveStart(el.id, e.target)
       }
       onDragMove={
-        locked ? undefined : (e) => liveSync.onDragMoveSnapGrid(el.id, e.target, fw, fh)
+        locked
+          ? undefined
+          : (e) => liveSync.onDragMoveSnapGrid(el.id, e.target, fw, fh)
       }
       onDragEnd={
         locked
           ? undefined
           : (e) => {
-            liveSync.commitDragEndPosition(el.id, e.target as Konva.Node, fw, fh);
-          }
+              liveSync.commitDragEndPosition(
+                el.id,
+                e.target as Konva.Node,
+                fw,
+                fh,
+              );
+            }
       }
       onTransformStart={
-        locked ? undefined : (e) => liveSync.onTransformLiveStart(el.id, e.target)
+        locked
+          ? undefined
+          : (e) => liveSync.onTransformLiveStart(el.id, e.target)
       }
       onTransform={
         locked
           ? undefined
           : (e) => {
-            bakeKonvaBookWidgetGroupDuringTransform(e.target as Konva.Group);
-            liveSync.onTransformLiveMove(el.id, e.target);
-          }
+              bakeKonvaBookWidgetGroupDuringTransform(e.target as Konva.Group);
+              liveSync.onTransformLiveMove(el.id, e.target);
+            }
       }
       onTransformEnd={
         locked
           ? undefined
           : (e) => {
-            commitBookWidgetHitShellTransformEnd(e, el.id, 24, 24, liveSync, onElementChange);
-          }
+              commitBookWidgetHitShellTransformEnd(
+                e,
+                el.id,
+                24,
+                24,
+                liveSync,
+                onElementChange,
+              );
+            }
       }
     >
       {showPoster ? (
@@ -3650,7 +3904,13 @@ function BookVideoBox({
         height={fh}
         cornerRadius={vBr}
         fill="rgba(0,0,0,0.01)"
-        stroke={showKonvaOutline ? "transparent" : videoEditGuide ? "#cbd5e1" : "transparent"}
+        stroke={
+          showKonvaOutline
+            ? "transparent"
+            : videoEditGuide
+              ? "#cbd5e1"
+              : "transparent"
+        }
         strokeWidth={showKonvaOutline ? 0 : videoEditGuide ? 1 : 0}
       />
     </Group>

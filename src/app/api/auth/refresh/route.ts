@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
+
+import { REFRESH_TOKEN_COOKIE } from "@/server/env";
 import { handleRouteError } from "@/server/http/api-response";
 import {
   clearRefreshTokenCookieHeader,
   getRequestCookie,
   refreshTokenCookieHeader,
 } from "@/server/http/cookies";
-import { REFRESH_TOKEN_COOKIE } from "@/server/env";
 import { AuthService } from "@/server/services/auth.service";
 import { ensureUserBootstraps } from "@/server/services/bootstrap";
 

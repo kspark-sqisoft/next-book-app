@@ -1,13 +1,4 @@
 import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type DragEvent,
-  type PointerEvent as ReactPointerEvent,
-} from "react";
-import {
   Blocks,
   ChevronDown,
   ChevronUp,
@@ -16,14 +7,27 @@ import {
   GripVertical,
   ImagePlus,
   ListVideo,
+  type LucideIcon,
   Newspaper,
   PictureInPicture2,
   Type,
   Video,
   X,
-  type LucideIcon,
 } from "lucide-react";
-import { BOOK_WIDGET_DRAG_TYPE, type BookDropWidgetKind } from "@/components/books/BookSlideCanvas";
+import {
+  type DragEvent,
+  type PointerEvent as ReactPointerEvent,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+
+import {
+  BOOK_WIDGET_DRAG_TYPE,
+  type BookDropWidgetKind,
+} from "@/components/books/BookSlideCanvas";
 import { Button } from "@/components/ui/button";
 import {
   bookDockedPanelHeaderIconClass,
@@ -118,7 +122,9 @@ function BookWidgetPaletteDocked({
     >
       <div className={bookDockedPanelHeaderRowClass()}>
         <Blocks className={bookDockedPanelHeaderIconClass()} aria-hidden />
-        <span className={cn(bookDockedPanelHeadingClass(), "min-w-0 flex-1")}>위젯</span>
+        <span className={cn(bookDockedPanelHeadingClass(), "min-w-0 flex-1")}>
+          위젯
+        </span>
         {onRequestFloat ? (
           <Button
             type="button"
@@ -127,8 +133,7 @@ function BookWidgetPaletteDocked({
             className="h-7 shrink-0 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
             onClick={onRequestFloat}
           >
-            <PictureInPicture2 className="size-3.5" aria-hidden />
-            떠 있는 창
+            <PictureInPicture2 className="size-3.5" aria-hidden />떠 있는 창
           </Button>
         ) : null}
       </div>
@@ -144,9 +149,14 @@ function BookWidgetPaletteDocked({
               onDragStart={(e) => setWidgetDragData(e, kind)}
               className="flex cursor-grab select-none items-center gap-3 rounded-lg border border-border/80 bg-background/90 px-3 py-2.5 transition-colors active:cursor-grabbing hover:border-primary/35 hover:bg-muted/40"
             >
-              <GripVertical className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+              <GripVertical
+                className="size-3.5 shrink-0 text-muted-foreground"
+                aria-hidden
+              />
               <Icon className="size-5 shrink-0 text-foreground" aria-hidden />
-              <span className="min-w-0 flex-1 text-sm font-medium text-foreground">{label}</span>
+              <span className="min-w-0 flex-1 text-sm font-medium text-foreground">
+                {label}
+              </span>
             </div>
           ))}
         </div>
@@ -179,7 +189,9 @@ function BookWidgetPaletteFloating({
     originTop: number;
   } | null>(null);
 
-  const [collapsed, setCollapsed] = useState(() => loadStored()?.collapsed ?? false);
+  const [collapsed, setCollapsed] = useState(
+    () => loadStored()?.collapsed ?? false,
+  );
   const onCollapsedChangeRef = useRef(onCollapsedChange);
   useEffect(() => {
     onCollapsedChangeRef.current = onCollapsedChange;
@@ -198,17 +210,22 @@ function BookWidgetPaletteFloating({
   const estimateWidth = collapsed
     ? PANEL_COLLAPSED_ESTIMATE_W
     : Math.min(
-        typeof window !== "undefined" ? window.innerWidth - 2 * VIEW_MARGIN : PANEL_MAX_W,
+        typeof window !== "undefined"
+          ? window.innerWidth - 2 * VIEW_MARGIN
+          : PANEL_MAX_W,
         PANEL_MAX_W,
       );
 
-  const persist = useCallback((next: { left: number; top: number; collapsed: boolean }) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      /* ignore */
-    }
-  }, []);
+  const persist = useCallback(
+    (next: { left: number; top: number; collapsed: boolean }) => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     persist({ ...coords, collapsed });
@@ -221,7 +238,9 @@ function BookWidgetPaletteFloating({
   useLayoutEffect(() => {
     const el = rootRef.current;
     if (!el) return;
-    setCoords((c) => clampCoords(c.left, c.top, el.offsetWidth, el.offsetHeight));
+    setCoords((c) =>
+      clampCoords(c.left, c.top, el.offsetWidth, el.offsetHeight),
+    );
   }, [collapsed]);
 
   useEffect(() => {
@@ -242,7 +261,11 @@ function BookWidgetPaletteFloating({
   }, []);
 
   const onHeaderPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
-    if ((e.target as HTMLElement).closest("[data-palette-toggle],[data-palette-close]")) {
+    if (
+      (e.target as HTMLElement).closest(
+        "[data-palette-toggle],[data-palette-close]",
+      )
+    ) {
       return;
     }
     if (e.button !== 0) return;
@@ -261,7 +284,9 @@ function BookWidgetPaletteFloating({
     const d = dragRef.current;
     if (!d || e.pointerId !== d.pointerId) return;
     const el = rootRef.current;
-    const w = el?.offsetWidth ?? Math.min(window.innerWidth - 2 * VIEW_MARGIN, PANEL_MAX_W);
+    const w =
+      el?.offsetWidth ??
+      Math.min(window.innerWidth - 2 * VIEW_MARGIN, PANEL_MAX_W);
     const h = el?.offsetHeight ?? estimateHeight;
     const dx = e.clientX - d.startX;
     const dy = e.clientY - d.startY;
@@ -313,10 +338,15 @@ function BookWidgetPaletteFloating({
         <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15">
           <Blocks className="size-4" aria-hidden />
         </div>
-        <div className={cn("pt-0.5", collapsed ? "shrink-0" : "min-w-0 flex-1")}>
+        <div
+          className={cn("pt-0.5", collapsed ? "shrink-0" : "min-w-0 flex-1")}
+        >
           <div className="flex items-center gap-1">
             {!collapsed ? (
-              <GripVertical className="size-3.5 shrink-0 text-muted-foreground/80" aria-hidden />
+              <GripVertical
+                className="size-3.5 shrink-0 text-muted-foreground/80"
+                aria-hidden
+              />
             ) : null}
             <h2 className="font-heading text-sm font-semibold leading-none tracking-tight text-foreground">
               위젯
@@ -340,7 +370,11 @@ function BookWidgetPaletteFloating({
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => setCollapsed((c) => !c)}
           >
-            {collapsed ? <ChevronDown className="size-4" /> : <ChevronUp className="size-4" />}
+            {collapsed ? (
+              <ChevronDown className="size-4" />
+            ) : (
+              <ChevronUp className="size-4" />
+            )}
           </Button>
           {onClose ? (
             <Button
@@ -369,9 +403,14 @@ function BookWidgetPaletteFloating({
               onPointerDown={(e) => e.stopPropagation()}
               className="flex min-w-0 flex-1 cursor-grab select-none flex-col items-center gap-1 rounded-lg border border-border/80 bg-background/90 px-2 py-2 transition-colors active:cursor-grabbing hover:border-primary/35 hover:bg-muted/40 sm:px-3"
             >
-              <GripVertical className="size-3 text-muted-foreground" aria-hidden />
+              <GripVertical
+                className="size-3 text-muted-foreground"
+                aria-hidden
+              />
               <Icon className="size-5 text-foreground" aria-hidden />
-              <span className="text-center text-[10px] font-medium text-muted-foreground">{label}</span>
+              <span className="text-center text-[10px] font-medium text-muted-foreground">
+                {label}
+              </span>
             </div>
           ))}
         </div>
@@ -407,7 +446,10 @@ export function BookWidgetPalette({
 }) {
   if (variant === "docked") {
     return (
-      <BookWidgetPaletteDocked className={className} onRequestFloat={onRequestFloat} />
+      <BookWidgetPaletteDocked
+        className={className}
+        onRequestFloat={onRequestFloat}
+      />
     );
   }
   return (

@@ -1,8 +1,12 @@
 import { and, asc, eq } from "drizzle-orm";
+
+import {
+  type AuthActor,
+  canMutateOwnedResource,
+} from "@/server/auth/auth-policy";
 import { getDb } from "@/server/db";
 import { post as postTable, postComment } from "@/server/db/schema";
 import { AVATARS_SUBDIR } from "@/server/env";
-import { type AuthActor, canMutateOwnedResource } from "@/server/auth/auth-policy";
 import { HttpError } from "@/server/http/http-error";
 
 export type CommentAuthorPublic = {
@@ -210,10 +214,7 @@ export class CommentsService {
   ): Promise<void> {
     const db = this.db();
     const c = await db.query.postComment.findFirst({
-      where: and(
-        eq(postComment.id, commentId),
-        eq(postComment.postId, postId),
-      ),
+      where: and(eq(postComment.id, commentId), eq(postComment.postId, postId)),
       with: { author: true },
     });
     if (!c) throw new HttpError(404, "Not Found");

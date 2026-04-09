@@ -1,55 +1,91 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
 import { Save } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { createBook, type BookCanvasElement } from "@/lib/api";
+
+import { BookAiAssistantPanel } from "@/components/books/BookAiAssistantPanel";
+import { BookCanvasToolbar } from "@/components/books/BookCanvasToolbar";
+import { BookEditorToolRail } from "@/components/books/BookEditorToolRail";
+import { BookElementsPanel } from "@/components/books/BookElementsPanel";
+import { BookHeaderSlideDimensions } from "@/components/books/BookHeaderSlideDimensions";
+import { BookInspectorPanel } from "@/components/books/BookInspectorPanel";
+import { BookLayersPanel } from "@/components/books/BookLayersPanel";
+import type {
+  BookMediaPlaylistPlaybackUiSnapshot,
+  BookMediaPlaylistRemoteCommand,
+} from "@/components/books/BookMediaPlaylistWidgetOverlay";
+import { BookPagePropertiesPanel } from "@/components/books/BookPagePropertiesPanel";
+import { BookPageSidebar } from "@/components/books/BookPageSidebar";
+import {
+  type BookCanvasSelectDetail,
+  type BookDropWidgetKind,
+  BookSlideCanvas,
+  DEFAULT_BOOK_SLIDE_CENTER_GUIDE_THRESHOLD_PX,
+} from "@/components/books/BookSlideCanvas";
+import { BookSlideDrawingPanel } from "@/components/books/BookSlideDrawingPanel";
+import { BookSlideTemplatesPanel } from "@/components/books/BookSlideTemplatesPanel";
+import { BookWidgetPalette } from "@/components/books/BookWidgetPalette";
+import { BookWorkspaceShell } from "@/components/books/BookWorkspaceShell";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
+import { type BookCanvasElement, createBook } from "@/lib/api";
 import {
   applyAutoSlideNamesByIndex,
   BOOK_CANVAS_DRAG_GRID_PX,
+  type BookShapeKind,
   createBookShapeElement,
   createEmptyEditorPage,
-  placeBookShapeElementAtPointer,
   DEFAULT_BOOK_DIGITAL_CLOCK_HEIGHT,
   DEFAULT_BOOK_DIGITAL_CLOCK_WIDTH,
-  DEFAULT_BOOK_NEWS_WIDGET_HEIGHT,
-  DEFAULT_BOOK_NEWS_WIDGET_WIDTH,
   DEFAULT_BOOK_MEDIA_PLAYLIST_HEIGHT,
   DEFAULT_BOOK_MEDIA_PLAYLIST_WIDTH,
+  DEFAULT_BOOK_NEWS_WIDGET_HEIGHT,
+  DEFAULT_BOOK_NEWS_WIDGET_WIDTH,
   DEFAULT_BOOK_WEATHER_WIDGET_HEIGHT,
   DEFAULT_BOOK_WEATHER_WIDGET_WIDTH,
   DEFAULT_PAGE_BACKGROUND,
   DEFAULT_SLIDE_HEIGHT,
   DEFAULT_SLIDE_WIDTH,
   duplicateBookEditorPage,
+  type ElementZOrderOp,
   pageIndexAfterRemove,
   pageIndexAfterReorder,
+  placeBookShapeElementAtPointer,
   reorderBookElementsByDisplayIndex,
   reorderElementsZ,
   reorderPagesArray,
   resolveEffectivePresentationTimingElementId,
   toBookPagePayloads,
-  type BookShapeKind,
-  type ElementZOrderOp,
 } from "@/lib/book-canvas";
-import {
-  clampBookPresentationTransitionMs,
-  normalizeBookPresentationTransition,
-  type BookPresentationTransitionId,
-} from "@/lib/book-presentation-transition";
-import { defaultTextWidgetBoxHeight } from "@/lib/book-text-widget";
-import { warmBookCanvasImagesForNeighborPages } from "@/lib/book-image-cache";
 import type { BookEditorLeftTab } from "@/lib/book-editor-panel-events";
-import {
-  instantiateBookSlideTemplate,
-  type BookSlideTemplateId,
-} from "@/lib/book-slide-templates";
 import {
   readFloatingWidgetPaletteVisible,
   writeFloatingWidgetPaletteVisible,
 } from "@/lib/book-floating-ui-prefs";
+import { warmBookCanvasImagesForNeighborPages } from "@/lib/book-image-cache";
+import {
+  type BookPresentationTransitionId,
+  clampBookPresentationTransitionMs,
+  normalizeBookPresentationTransition,
+} from "@/lib/book-presentation-transition";
+import {
+  type BookSlideTemplateId,
+  instantiateBookSlideTemplate,
+} from "@/lib/book-slide-templates";
+import { defaultTextWidgetBoxHeight } from "@/lib/book-text-widget";
 import {
   bookCanvasStageMatClass,
   bookCanvasToolbarRowClass,
@@ -63,41 +99,6 @@ import {
 } from "@/lib/use-book-canvas-display-scale";
 import { useBookDocumentHistory } from "@/lib/use-book-document-history";
 import { useBookPageThumbnails } from "@/lib/use-book-page-thumbnails";
-import { BookCanvasToolbar } from "@/components/books/BookCanvasToolbar";
-import { BookInspectorPanel } from "@/components/books/BookInspectorPanel";
-import { BookLayersPanel } from "@/components/books/BookLayersPanel";
-import { BookHeaderSlideDimensions } from "@/components/books/BookHeaderSlideDimensions";
-import { BookPagePropertiesPanel } from "@/components/books/BookPagePropertiesPanel";
-import { BookPageSidebar } from "@/components/books/BookPageSidebar";
-import {
-  BookSlideCanvas,
-  DEFAULT_BOOK_SLIDE_CENTER_GUIDE_THRESHOLD_PX,
-  type BookCanvasSelectDetail,
-  type BookDropWidgetKind,
-} from "@/components/books/BookSlideCanvas";
-import { BookEditorToolRail } from "@/components/books/BookEditorToolRail";
-import { BookElementsPanel } from "@/components/books/BookElementsPanel";
-import { BookSlideDrawingPanel } from "@/components/books/BookSlideDrawingPanel";
-import { BookSlideTemplatesPanel } from "@/components/books/BookSlideTemplatesPanel";
-import { BookAiAssistantPanel } from "@/components/books/BookAiAssistantPanel";
-import { BookWidgetPalette } from "@/components/books/BookWidgetPalette";
-import { BookWorkspaceShell } from "@/components/books/BookWorkspaceShell";
-import type {
-  BookMediaPlaylistPlaybackUiSnapshot,
-  BookMediaPlaylistRemoteCommand,
-} from "@/components/books/BookMediaPlaylistWidgetOverlay";
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Spinner } from "@/components/ui/spinner";
 
 /** `/books/new` — 저장 후 `/books/:id`로 이동해 동일 편집 UI를 씁니다. */
 export function BookEditorPage() {
@@ -105,15 +106,10 @@ export function BookEditorPage() {
   const queryClient = useQueryClient();
 
   const [title, setTitle] = useState("");
-  const {
-    pages,
-    updatePages,
-    commitPages,
-    undo,
-    redo,
-    canUndo,
-    canRedo,
-  } = useBookDocumentHistory(applyAutoSlideNamesByIndex([createEmptyEditorPage(0)]));
+  const { pages, updatePages, commitPages, undo, redo, canUndo, canRedo } =
+    useBookDocumentHistory(
+      applyAutoSlideNamesByIndex([createEmptyEditorPage(0)]),
+    );
   const [pageIndex, setPageIndex] = useState(0);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const canvasWrapRef = useRef<HTMLDivElement>(null);
@@ -128,12 +124,14 @@ export function BookEditorPage() {
   );
   const [dragGridPx, setDragGridPx] = useState(BOOK_CANVAS_DRAG_GRID_PX);
   const [presentationLoop, setPresentationLoop] = useState(true);
-  const [mediaPlaylistPlaybackByElementId, setMediaPlaylistPlaybackByElementId] = useState<
-    Record<string, number>
-  >({});
-  const [mediaPlaylistPlaybackUiByElementId, setMediaPlaylistPlaybackUiByElementId] = useState<
-    Record<string, BookMediaPlaylistPlaybackUiSnapshot>
-  >({});
+  const [
+    mediaPlaylistPlaybackByElementId,
+    setMediaPlaylistPlaybackByElementId,
+  ] = useState<Record<string, number>>({});
+  const [
+    mediaPlaylistPlaybackUiByElementId,
+    setMediaPlaylistPlaybackUiByElementId,
+  ] = useState<Record<string, BookMediaPlaylistPlaybackUiSnapshot>>({});
   const playlistRemoteSeqRef = useRef(0);
   const [playlistRemoteCmd, setPlaylistRemoteCmd] =
     useState<BookMediaPlaylistRemoteCommand | null>(null);
@@ -169,7 +167,8 @@ export function BookEditorPage() {
       if (pg.presentationTimingElementId != null) {
         updatePages((d) => {
           const p = d[activePageIndex];
-          if (p && p.elements.length === 0) p.presentationTimingElementId = null;
+          if (p && p.elements.length === 0)
+            p.presentationTimingElementId = null;
         });
       }
       return;
@@ -182,10 +181,11 @@ export function BookEditorPage() {
       updatePages((d) => {
         const p = d[activePageIndex];
         if (!p || p.elements.length === 0) return;
-        p.presentationTimingElementId = resolveEffectivePresentationTimingElementId(
-          p.elements,
-          p.presentationTimingElementId,
-        );
+        p.presentationTimingElementId =
+          resolveEffectivePresentationTimingElementId(
+            p.elements,
+            p.presentationTimingElementId,
+          );
       });
     }
   }, [
@@ -231,7 +231,11 @@ export function BookEditorPage() {
     queueMicrotask(() => {
       setSelectedIds((prev) => {
         const next = prev.filter((id) => onPage.has(id));
-        if (next.length === prev.length && next.every((id, i) => id === prev[i])) return prev;
+        if (
+          next.length === prev.length &&
+          next.every((id, i) => id === prev[i])
+        )
+          return prev;
         return next;
       });
     });
@@ -279,7 +283,10 @@ export function BookEditorPage() {
     [],
   );
 
-  const clearPlaylistRemoteCmd = useCallback(() => setPlaylistRemoteCmd(null), []);
+  const clearPlaylistRemoteCmd = useCallback(
+    () => setPlaylistRemoteCmd(null),
+    [],
+  );
 
   const handleMediaPlaylistRemoteControl = useCallback(
     (elementId: string, kind: "prev" | "next" | "togglePause") => {
@@ -293,18 +300,12 @@ export function BookEditorPage() {
     [],
   );
 
-  const {
-    displayScale,
-    zoomPercent,
-    zoomIn,
-    zoomOut,
-    zoomReset,
-    handleWheel,
-  } = useBookCanvasDisplayScale(canvasWrapRef, {
-    slideWidth,
-    slideHeight,
-    ...BOOK_CANVAS_STAGE_DISPLAY_OPTS,
-  });
+  const { displayScale, zoomPercent, zoomIn, zoomOut, zoomReset, handleWheel } =
+    useBookCanvasDisplayScale(canvasWrapRef, {
+      slideWidth,
+      slideHeight,
+      ...BOOK_CANVAS_STAGE_DISPLAY_OPTS,
+    });
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -438,7 +439,11 @@ export function BookEditorPage() {
       updatePages((draft) => {
         const p = draft[activePageIndex];
         if (!p) return;
-        p.elements = reorderBookElementsByDisplayIndex(p.elements, fromDisplay, toDisplay);
+        p.elements = reorderBookElementsByDisplayIndex(
+          p.elements,
+          fromDisplay,
+          toDisplay,
+        );
       });
     },
     [activePageIndex, updatePages],
@@ -448,7 +453,9 @@ export function BookEditorPage() {
     (elementId: string, visible: boolean) => {
       onElementChange(
         elementId,
-        visible ? ({ visible: undefined } as Partial<BookCanvasElement>) : { visible: false },
+        visible
+          ? ({ visible: undefined } as Partial<BookCanvasElement>)
+          : { visible: false },
       );
       if (!visible) {
         setSelectedIds((prev) => prev.filter((id) => id !== elementId));
@@ -461,7 +468,9 @@ export function BookEditorPage() {
     (elementId: string, locked: boolean) => {
       onElementChange(
         elementId,
-        locked ? { locked: true } : ({ locked: undefined } as Partial<BookCanvasElement>),
+        locked
+          ? { locked: true }
+          : ({ locked: undefined } as Partial<BookCanvasElement>),
       );
     },
     [onElementChange],
@@ -470,20 +479,29 @@ export function BookEditorPage() {
   const applySlideTemplate = useCallback(
     (templateId: BookSlideTemplateId) => {
       if (!currentPage) return;
-      const nextElements = instantiateBookSlideTemplate(templateId, slideWidth, slideHeight);
+      const nextElements = instantiateBookSlideTemplate(
+        templateId,
+        slideWidth,
+        slideHeight,
+      );
       updatePages((draft) => {
         const p = draft[activePageIndex];
         if (!p) return;
         p.elements = nextElements;
-        p.presentationTimingElementId = resolveEffectivePresentationTimingElementId(
-          p.elements,
-          null,
-        );
+        p.presentationTimingElementId =
+          resolveEffectivePresentationTimingElementId(p.elements, null);
       });
       setSelectedIds([]);
       toast.success("슬라이드 내용을 비우고 템플릿을 적용했습니다.");
     },
-    [activePageIndex, currentPage, slideHeight, slideWidth, setSelectedIds, updatePages],
+    [
+      activePageIndex,
+      currentPage,
+      slideHeight,
+      slideWidth,
+      setSelectedIds,
+      updatePages,
+    ],
   );
 
   const onAppendDrawingElement = useCallback(
@@ -509,7 +527,13 @@ export function BookEditorPage() {
   const addShapeAt = useCallback(
     (x: number, y: number, kind: BookShapeKind) => {
       const base = createBookShapeElement(kind, slideWidth, slideHeight);
-      const placed = placeBookShapeElementAtPointer(base, x, y, slideWidth, slideHeight);
+      const placed = placeBookShapeElementAtPointer(
+        base,
+        x,
+        y,
+        slideWidth,
+        slideHeight,
+      );
       updatePages((draft) => {
         const p = draft[activePageIndex];
         if (p) p.elements.push(placed);
@@ -728,22 +752,15 @@ export function BookEditorPage() {
         addMediaPlaylistAt(point.x, point.y);
         return;
       }
-      toast.error("저장한 뒤 열린 북 화면에서 이미지·동영상 위젯을 넣을 수 있습니다.");
+      toast.error(
+        "저장한 뒤 열린 북 화면에서 이미지·동영상 위젯을 넣을 수 있습니다.",
+      );
     },
-    [
-      addDigitalClockAt,
-      addMediaPlaylistAt,
-      addNewsAt,
-      addTextAt,
-      addWeatherAt,
-    ],
+    [addDigitalClockAt, addMediaPlaylistAt, addNewsAt, addTextAt, addWeatherAt],
   );
 
   const applyAiElements = useCallback(
-    (
-      elements: BookCanvasElement[],
-      opts?: { targetSlideNumber?: number },
-    ) => {
+    (elements: BookCanvasElement[], opts?: { targetSlideNumber?: number }) => {
       if (elements.length === 0) return;
       let navigatedIdx: number | null = null;
       updatePages((draft) => {
@@ -751,7 +768,10 @@ export function BookEditorPage() {
         const idx =
           typeof opts?.targetSlideNumber === "number" &&
           Number.isFinite(opts.targetSlideNumber)
-            ? Math.min(maxIdx, Math.max(0, Math.round(opts.targetSlideNumber) - 1))
+            ? Math.min(
+                maxIdx,
+                Math.max(0, Math.round(opts.targetSlideNumber) - 1),
+              )
             : Math.min(Math.max(0, activePageIndex), maxIdx);
         const p = draft[idx];
         if (!p) return;
@@ -790,8 +810,10 @@ export function BookEditorPage() {
 
   const applySlideDimensionsFromAi = useCallback(
     (partial: { slideWidth?: number; slideHeight?: number }) => {
-      if (typeof partial.slideWidth === "number") setSlideWidth(partial.slideWidth);
-      if (typeof partial.slideHeight === "number") setSlideHeight(partial.slideHeight);
+      if (typeof partial.slideWidth === "number")
+        setSlideWidth(partial.slideWidth);
+      if (typeof partial.slideHeight === "number")
+        setSlideHeight(partial.slideHeight);
     },
     [],
   );
@@ -804,10 +826,11 @@ export function BookEditorPage() {
         const p = draft[activePageIndex];
         if (!p) return;
         p.elements = p.elements.filter((e) => !idSet.has(e.id));
-        p.presentationTimingElementId = resolveEffectivePresentationTimingElementId(
-          p.elements,
-          p.presentationTimingElementId,
-        );
+        p.presentationTimingElementId =
+          resolveEffectivePresentationTimingElementId(
+            p.elements,
+            p.presentationTimingElementId,
+          );
       });
       setSelectedIds((prev) => prev.filter((id) => !idSet.has(id)));
     },
@@ -850,7 +873,9 @@ export function BookEditorPage() {
         const idx = Math.max(0, Math.min(insertIndex, prev.length));
         const newPage = createEmptyEditorPage(0);
         const next = [...prev.slice(0, idx), newPage, ...prev.slice(idx)];
-        return applyAutoSlideNamesByIndex(next.map((p, i) => ({ ...p, sortOrder: i })));
+        return applyAutoSlideNamesByIndex(
+          next.map((p, i) => ({ ...p, sortOrder: i })),
+        );
       });
       setPageIndex(insertIndex);
       setSelectedIds([]);
@@ -893,8 +918,14 @@ export function BookEditorPage() {
       commitPages((prev) => {
         if (index < 0 || index >= prev.length) return prev;
         const dup = duplicateBookEditorPage(prev[index]);
-        const next = [...prev.slice(0, index + 1), dup, ...prev.slice(index + 1)];
-        return applyAutoSlideNamesByIndex(next.map((p, i) => ({ ...p, sortOrder: i })));
+        const next = [
+          ...prev.slice(0, index + 1),
+          dup,
+          ...prev.slice(index + 1),
+        ];
+        return applyAutoSlideNamesByIndex(
+          next.map((p, i) => ({ ...p, sortOrder: i })),
+        );
       });
       setPageIndex(index + 1);
       setSelectedIds([]);
@@ -945,7 +976,8 @@ export function BookEditorPage() {
   }, [widgetDeleteIds, currentPage]);
 
   const mediaHint = useMemo(
-    () => "저장하면 북이 만들어지고, 그 화면에서 이미지·동영상 위젯을 쓸 수 있습니다.",
+    () =>
+      "저장하면 북이 만들어지고, 그 화면에서 이미지·동영상 위젯을 쓸 수 있습니다.",
     [],
   );
 
@@ -1012,10 +1044,13 @@ export function BookEditorPage() {
               mediaLibraryEnabled={false}
             />
             <div
-              className={bookLeftDockContentColumnClass("border-s border-border/40", {
-                slideWidth,
-                slideHeight,
-              })}
+              className={bookLeftDockContentColumnClass(
+                "border-s border-border/40",
+                {
+                  slideWidth,
+                  slideHeight,
+                },
+              )}
             >
               {leftDockTab === "page" ? (
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -1112,7 +1147,8 @@ export function BookEditorPage() {
                     pageWidth={slideWidth}
                     pageHeight={slideHeight}
                     pageBackgroundColor={
-                      currentPage.backgroundColor?.trim() || DEFAULT_PAGE_BACKGROUND
+                      currentPage.backgroundColor?.trim() ||
+                      DEFAULT_PAGE_BACKGROUND
                     }
                     scale={displayScale}
                     elements={currentPage.elements}
@@ -1126,14 +1162,22 @@ export function BookEditorPage() {
                     onDeleteElement={requestRemoveWidget}
                     centerGuideThresholdPx={centerGuideThresholdPx}
                     dragGridPx={dragGridPx}
-                    editInteractionTool={leftDockTab === "drawing" ? "draw" : "default"}
+                    editInteractionTool={
+                      leftDockTab === "drawing" ? "draw" : "default"
+                    }
                     drawingStrokeColor={drawingStrokeColor}
                     drawingStrokeWidth={drawingStrokeWidth}
                     onAppendElement={onAppendDrawingElement}
-                    onMediaPlaylistPlaybackIndexChange={handleMediaPlaylistPlaybackIndex}
-                    onMediaPlaylistPlaybackUiReport={handleMediaPlaylistPlaybackUiReport}
+                    onMediaPlaylistPlaybackIndexChange={
+                      handleMediaPlaylistPlaybackIndex
+                    }
+                    onMediaPlaylistPlaybackUiReport={
+                      handleMediaPlaylistPlaybackUiReport
+                    }
                     mediaPlaylistRemoteCommand={playlistRemoteCmd}
-                    onMediaPlaylistRemoteCommandConsumed={clearPlaylistRemoteCmd}
+                    onMediaPlaylistRemoteCommandConsumed={
+                      clearPlaylistRemoteCmd
+                    }
                   />
                 ) : null}
               </div>
@@ -1177,8 +1221,12 @@ export function BookEditorPage() {
                 onVisibilityChange={onLayerVisibilityChange}
                 onLockChange={onLayerLockChange}
                 onRequestDelete={requestRemoveWidget}
-                presentationTimingElementId={currentPage.presentationTimingElementId}
-                onPresentationTimingElementIdChange={updatePresentationTimingElementId}
+                presentationTimingElementId={
+                  currentPage.presentationTimingElementId
+                }
+                onPresentationTimingElementIdChange={
+                  updatePresentationTimingElementId
+                }
                 onPresentationHoldSecChange={(eid, sec) =>
                   onElementChange(eid, { presentationHoldSec: sec })
                 }
@@ -1204,10 +1252,18 @@ export function BookEditorPage() {
                     onChange={onElementChange}
                     onDelete={removeSelected}
                     mediaHint={mediaHint}
-                    mediaPlaylistPlaybackByElementId={mediaPlaylistPlaybackByElementId}
-                    mediaPlaylistPlaybackUiByElementId={mediaPlaylistPlaybackUiByElementId}
-                    onMediaPlaylistRemoteControl={handleMediaPlaylistRemoteControl}
-                    pagePresentationTimingElementId={currentPage.presentationTimingElementId}
+                    mediaPlaylistPlaybackByElementId={
+                      mediaPlaylistPlaybackByElementId
+                    }
+                    mediaPlaylistPlaybackUiByElementId={
+                      mediaPlaylistPlaybackUiByElementId
+                    }
+                    onMediaPlaylistRemoteControl={
+                      handleMediaPlaylistRemoteControl
+                    }
+                    pagePresentationTimingElementId={
+                      currentPage.presentationTimingElementId
+                    }
                   />
                 ) : (
                   <BookPagePropertiesPanel
@@ -1217,22 +1273,31 @@ export function BookEditorPage() {
                     name={currentPage.name}
                     onChangeName={updateCurrentPageName}
                     backgroundColor={
-                      currentPage.backgroundColor?.trim() || DEFAULT_PAGE_BACKGROUND
+                      currentPage.backgroundColor?.trim() ||
+                      DEFAULT_PAGE_BACKGROUND
                     }
                     onChangeBackgroundColor={updateCurrentPageBackground}
                     elements={currentPage.elements}
-                    presentationTimingElementId={currentPage.presentationTimingElementId}
-                    onChangePresentationTimingElementId={updatePresentationTimingElementId}
+                    presentationTimingElementId={
+                      currentPage.presentationTimingElementId
+                    }
+                    onChangePresentationTimingElementId={
+                      updatePresentationTimingElementId
+                    }
                     presentationLoop={presentationLoop}
                     onChangePresentationLoop={setPresentationLoop}
                     presentationTransition={normalizeBookPresentationTransition(
                       currentPage.presentationTransition,
                     )}
-                    onChangePresentationTransition={updatePresentationTransition}
+                    onChangePresentationTransition={
+                      updatePresentationTransition
+                    }
                     presentationTransitionMs={clampBookPresentationTransitionMs(
                       currentPage.presentationTransitionMs,
                     )}
-                    onChangePresentationTransitionMs={updatePresentationTransitionMs}
+                    onChangePresentationTransitionMs={
+                      updatePresentationTransitionMs
+                    }
                   />
                 )}
               </div>
@@ -1252,13 +1317,19 @@ export function BookEditorPage() {
             <AlertDialogTitle>위젯을 삭제할까요?</AlertDialogTitle>
             <AlertDialogDescription>
               이 슬라이드에서 「{widgetDeleteKindLabel}」을(를) 제거합니다.
-              {widgetDeleteIds.length > 1 ? " 선택한 위젯이 모두 삭제됩니다." : ""} 실행 후에는 되돌리기(Ctrl+Z)로
-              복구할 수 있습니다.
+              {widgetDeleteIds.length > 1
+                ? " 선택한 위젯이 모두 삭제됩니다."
+                : ""}{" "}
+              실행 후에는 되돌리기(Ctrl+Z)로 복구할 수 있습니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel type="button">취소</AlertDialogCancel>
-            <Button type="button" variant="destructive" onClick={() => confirmRemoveWidget()}>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => confirmRemoveWidget()}
+            >
               삭제
             </Button>
           </AlertDialogFooter>
@@ -1277,14 +1348,20 @@ export function BookEditorPage() {
             <AlertDialogDescription>
               「
               {pageDeleteIndex != null && pages[pageDeleteIndex]
-                ? pages[pageDeleteIndex].name.trim() || `슬라이드 ${pageDeleteIndex + 1}`
+                ? pages[pageDeleteIndex].name.trim() ||
+                  `슬라이드 ${pageDeleteIndex + 1}`
                 : "이 슬라이드"}
-              」와 이 페이지에 있는 모든 위젯이 제거됩니다. 되돌리기(Ctrl+Z)로 복구할 수 있습니다.
+              」와 이 페이지에 있는 모든 위젯이 제거됩니다. 되돌리기(Ctrl+Z)로
+              복구할 수 있습니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel type="button">취소</AlertDialogCancel>
-            <Button type="button" variant="destructive" onClick={() => confirmRemovePageAt()}>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => confirmRemovePageAt()}
+            >
               삭제
             </Button>
           </AlertDialogFooter>

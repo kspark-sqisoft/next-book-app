@@ -1,11 +1,13 @@
-import { NextResponse } from "next/server";
 import { join } from "node:path";
-import { handleRouteError, jsonError } from "@/server/http/api-response";
-import { requireBearerPayload } from "@/server/http/request-auth";
+
+import { NextResponse } from "next/server";
+
 import { AVATARS_SUBDIR, UPLOAD_ROOT } from "@/server/env";
+import { handleRouteError, jsonError } from "@/server/http/api-response";
 import { HttpError } from "@/server/http/http-error";
-import { saveFormFileToDir, tryUnlink } from "@/server/uploads/write-file";
+import { requireBearerPayload } from "@/server/http/request-auth";
 import { UsersService } from "@/server/services/users.service";
+import { saveFormFileToDir, tryUnlink } from "@/server/uploads/write-file";
 import { UserRole } from "@/server/users/user-role";
 
 const AVATAR_MAX = 2 * 1024 * 1024;
@@ -58,11 +60,8 @@ export async function PATCH(request: Request) {
     const file = image instanceof File && image.size > 0 ? image : undefined;
     const remove =
       !file &&
-      (removeImage === "1" ||
-        removeImage === "true" ||
-        removeImage === "on");
-    const nameTrimmed =
-      typeof nameRaw === "string" ? nameRaw.trim() : "";
+      (removeImage === "1" || removeImage === "true" || removeImage === "on");
+    const nameTrimmed = typeof nameRaw === "string" ? nameRaw.trim() : "";
     const hasName = nameTrimmed.length > 0;
     const roleParsed = parsePatchMeRole(
       typeof roleRaw === "string" ? roleRaw : undefined,

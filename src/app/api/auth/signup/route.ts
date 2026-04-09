@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+
 import { handleRouteError } from "@/server/http/api-response";
 import { AuthService } from "@/server/services/auth.service";
 import { ensureUserBootstraps } from "@/server/services/bootstrap";

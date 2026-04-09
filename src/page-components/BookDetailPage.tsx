@@ -1,119 +1,48 @@
 "use client";
 
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { MonitorPlay, Save, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import {
+  type Dispatch,
+  type SetStateAction,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type Dispatch,
-  type SetStateAction,
 } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { MonitorPlay, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  deleteBook,
-  fetchBook,
-  updateBook,
-  uploadBookMedia,
-  type BookCanvasElement,
-  type BookDetail,
-  type BookPageDto,
-} from "@/lib/api";
-import {
-  applyAutoSlideNamesByIndex,
-  BOOK_CANVAS_DRAG_GRID_PX,
-  createBookShapeElement,
-  createEmptyEditorPage,
-  placeBookShapeElementAtPointer,
-  DEFAULT_BOOK_DIGITAL_CLOCK_HEIGHT,
-  DEFAULT_BOOK_DIGITAL_CLOCK_WIDTH,
-  DEFAULT_BOOK_NEWS_WIDGET_HEIGHT,
-  DEFAULT_BOOK_NEWS_WIDGET_WIDTH,
-  DEFAULT_BOOK_MEDIA_PLAYLIST_HEIGHT,
-  DEFAULT_BOOK_MEDIA_PLAYLIST_WIDTH,
-  DEFAULT_BOOK_WEATHER_WIDGET_HEIGHT,
-  DEFAULT_BOOK_WEATHER_WIDGET_WIDTH,
-  MEDIA_PLAYLIST_MAX_ITEMS,
-  DEFAULT_PAGE_BACKGROUND,
-  DEFAULT_SLIDE_HEIGHT,
-  DEFAULT_SLIDE_WIDTH,
-  duplicateBookEditorPage,
-  pageIndexAfterRemove,
-  pageIndexAfterReorder,
-  reorderBookElementsByDisplayIndex,
-  reorderElementsZ,
-  reorderPagesArray,
-  resolveEffectivePresentationTimingElementId,
-  toBookPagePayloads,
-  type BookEditorPageState,
-  type BookShapeKind,
-  type ElementZOrderOp,
-} from "@/lib/book-canvas";
-import {
-  clampBookPresentationTransitionMs,
-  normalizeBookPresentationTransition,
-  type BookPresentationTransitionId,
-} from "@/lib/book-presentation-transition";
-import { appendBookMediaLibraryItem } from "@/lib/book-media-library";
-import {
-  readFloatingMediaLibraryVisible,
-  readFloatingWidgetPaletteVisible,
-  writeFloatingMediaLibraryVisible,
-  writeFloatingWidgetPaletteVisible,
-} from "@/lib/book-floating-ui-prefs";
-import type { BookEditorLeftTab } from "@/lib/book-editor-panel-events";
-import {
-  instantiateBookSlideTemplate,
-  type BookSlideTemplateId,
-} from "@/lib/book-slide-templates";
-import { defaultTextWidgetBoxHeight } from "@/lib/book-text-widget";
-import { warmBookCanvasImagesForNeighborPages } from "@/lib/book-image-cache";
-import {
-  bookCanvasStageMatClass,
-  bookCanvasToolbarRowClass,
-  bookLeftDockContentColumnClass,
-  bookRightDockInspectorShellClass,
-} from "@/lib/book-workspace-ui";
-import { bookKeys } from "@/lib/query-keys";
-import {
-  BOOK_CANVAS_STAGE_DISPLAY_OPTS,
-  useBookCanvasDisplayScale,
-} from "@/lib/use-book-canvas-display-scale";
-import { useBookDocumentHistory } from "@/lib/use-book-document-history";
-import { useBookPageThumbnails } from "@/lib/use-book-page-thumbnails";
-import { canEditAsOwnerOrAdmin } from "@/lib/authz";
-import { useAuth } from "@/stores/auth-store";
+
+import { BookAiAssistantPanel } from "@/components/books/BookAiAssistantPanel";
 import { BookCanvasToolbar } from "@/components/books/BookCanvasToolbar";
+import { BookEditorToolRail } from "@/components/books/BookEditorToolRail";
+import { BookElementsPanel } from "@/components/books/BookElementsPanel";
 import { BookHeaderSlideDimensions } from "@/components/books/BookHeaderSlideDimensions";
 import { BookInspectorPanel } from "@/components/books/BookInspectorPanel";
 import { BookLayersPanel } from "@/components/books/BookLayersPanel";
-import { BookPagePropertiesPanel } from "@/components/books/BookPagePropertiesPanel";
-import { BookPageSidebar } from "@/components/books/BookPageSidebar";
-import { BookAiAssistantPanel } from "@/components/books/BookAiAssistantPanel";
-import { BookEditorToolRail } from "@/components/books/BookEditorToolRail";
-import { BookWidgetPalette } from "@/components/books/BookWidgetPalette";
 import { BookMediaLibraryPanel } from "@/components/books/BookMediaLibraryPanel";
-import { BookElementsPanel } from "@/components/books/BookElementsPanel";
-import { BookSlideDrawingPanel } from "@/components/books/BookSlideDrawingPanel";
-import { BookSlideTemplatesPanel } from "@/components/books/BookSlideTemplatesPanel";
 import { BookMediaLibraryPickDialog } from "@/components/books/BookMediaLibraryPickDialog";
 import type {
   BookMediaPlaylistPlaybackUiSnapshot,
   BookMediaPlaylistRemoteCommand,
 } from "@/components/books/BookMediaPlaylistWidgetOverlay";
+import { BookPagePropertiesPanel } from "@/components/books/BookPagePropertiesPanel";
+import { BookPageSidebar } from "@/components/books/BookPageSidebar";
 import {
-  BookSlideCanvas,
-  DEFAULT_BOOK_SLIDE_CENTER_GUIDE_THRESHOLD_PX,
   type BookCanvasSelectDetail,
   type BookDropWidgetKind,
   type BookLibraryDragPayload,
   type BookReplaceMediaFromFileRequest,
+  BookSlideCanvas,
+  DEFAULT_BOOK_SLIDE_CENTER_GUIDE_THRESHOLD_PX,
 } from "@/components/books/BookSlideCanvas";
+import { BookSlideDrawingPanel } from "@/components/books/BookSlideDrawingPanel";
+import { BookSlideTemplatesPanel } from "@/components/books/BookSlideTemplatesPanel";
+import { BookWidgetPalette } from "@/components/books/BookWidgetPalette";
 import { BookWorkspaceShell } from "@/components/books/BookWorkspaceShell";
+import { FormErrorAlert } from "@/components/forms/FormErrorAlert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -127,7 +56,79 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { FormErrorAlert } from "@/components/forms/FormErrorAlert";
+import {
+  type BookCanvasElement,
+  type BookDetail,
+  type BookPageDto,
+  deleteBook,
+  fetchBook,
+  updateBook,
+  uploadBookMedia,
+} from "@/lib/api";
+import { canEditAsOwnerOrAdmin } from "@/lib/authz";
+import {
+  applyAutoSlideNamesByIndex,
+  BOOK_CANVAS_DRAG_GRID_PX,
+  type BookEditorPageState,
+  type BookShapeKind,
+  createBookShapeElement,
+  createEmptyEditorPage,
+  DEFAULT_BOOK_DIGITAL_CLOCK_HEIGHT,
+  DEFAULT_BOOK_DIGITAL_CLOCK_WIDTH,
+  DEFAULT_BOOK_MEDIA_PLAYLIST_HEIGHT,
+  DEFAULT_BOOK_MEDIA_PLAYLIST_WIDTH,
+  DEFAULT_BOOK_NEWS_WIDGET_HEIGHT,
+  DEFAULT_BOOK_NEWS_WIDGET_WIDTH,
+  DEFAULT_BOOK_WEATHER_WIDGET_HEIGHT,
+  DEFAULT_BOOK_WEATHER_WIDGET_WIDTH,
+  DEFAULT_PAGE_BACKGROUND,
+  DEFAULT_SLIDE_HEIGHT,
+  DEFAULT_SLIDE_WIDTH,
+  duplicateBookEditorPage,
+  type ElementZOrderOp,
+  MEDIA_PLAYLIST_MAX_ITEMS,
+  pageIndexAfterRemove,
+  pageIndexAfterReorder,
+  placeBookShapeElementAtPointer,
+  reorderBookElementsByDisplayIndex,
+  reorderElementsZ,
+  reorderPagesArray,
+  resolveEffectivePresentationTimingElementId,
+  toBookPagePayloads,
+} from "@/lib/book-canvas";
+import type { BookEditorLeftTab } from "@/lib/book-editor-panel-events";
+import {
+  readFloatingMediaLibraryVisible,
+  readFloatingWidgetPaletteVisible,
+  writeFloatingMediaLibraryVisible,
+  writeFloatingWidgetPaletteVisible,
+} from "@/lib/book-floating-ui-prefs";
+import { warmBookCanvasImagesForNeighborPages } from "@/lib/book-image-cache";
+import { appendBookMediaLibraryItem } from "@/lib/book-media-library";
+import {
+  type BookPresentationTransitionId,
+  clampBookPresentationTransitionMs,
+  normalizeBookPresentationTransition,
+} from "@/lib/book-presentation-transition";
+import {
+  type BookSlideTemplateId,
+  instantiateBookSlideTemplate,
+} from "@/lib/book-slide-templates";
+import { defaultTextWidgetBoxHeight } from "@/lib/book-text-widget";
+import {
+  bookCanvasStageMatClass,
+  bookCanvasToolbarRowClass,
+  bookLeftDockContentColumnClass,
+  bookRightDockInspectorShellClass,
+} from "@/lib/book-workspace-ui";
+import { bookKeys } from "@/lib/query-keys";
+import {
+  BOOK_CANVAS_STAGE_DISPLAY_OPTS,
+  useBookCanvasDisplayScale,
+} from "@/lib/use-book-canvas-display-scale";
+import { useBookDocumentHistory } from "@/lib/use-book-document-history";
+import { useBookPageThumbnails } from "@/lib/use-book-page-thumbnails";
+import { useAuth } from "@/stores/auth-store";
 
 function mapServerPagesToLocal(pages: BookPageDto[]): BookEditorPageState[] {
   const sorted = [...pages].sort((a, b) => a.sortOrder - b.sortOrder);
@@ -167,7 +168,10 @@ function BookSlidePreviewOpenButton({ bookId }: { bookId: number }) {
       className="relative h-7 overflow-hidden border-0 bg-linear-to-br from-violet-600 via-fuchsia-600 to-rose-500 px-2.5 text-xs font-semibold leading-none text-white shadow-[0_2px_14px_-2px_rgba(124,58,237,0.55)] ring-1 ring-white/25 transition [text-shadow:0_1px_1px_rgba(0,0,0,0.2)] hover:brightness-110 hover:shadow-[0_4px_20px_-2px_rgba(168,85,247,0.55)] focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 dark:from-violet-500 dark:via-fuchsia-600 dark:to-rose-600 dark:shadow-[0_2px_18px_-4px_rgba(167,139,250,0.45)]"
     >
       <Link href={`/books/${bookId}/preview`} target="_blank" rel="noreferrer">
-        <MonitorPlay className="mr-1.5 size-3.5 shrink-0 drop-shadow-sm" aria-hidden />
+        <MonitorPlay
+          className="mr-1.5 size-3.5 shrink-0 drop-shadow-sm"
+          aria-hidden
+        />
         미리보기
       </Link>
     </Button>
@@ -179,7 +183,13 @@ function BookSlidePreviewOpenButton({ bookId }: { bookId: number }) {
  * 부모 `key`는 `book.id`만 씁니다. `updatedAt`까지 넣으면 저장·refetch 때마다 remount 되어
  * 삭제 확인 창·로컬 편집 상태가 날아갈 수 있습니다.
  */
-function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBook: BookDetail }) {
+function BookDetailOwnerView({
+  bookId,
+  serverBook,
+}: {
+  bookId: number;
+  serverBook: BookDetail;
+}) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [bookTitle, setBookTitle] = useState(serverBook.title);
@@ -249,15 +259,17 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
     ai: 288,
   }));
   /** 캔버스 플레이리스트별 재생 중 항목 인덱스 → 속성 목록 하이라이트 */
-  const [mediaPlaylistPlaybackByElementId, setMediaPlaylistPlaybackByElementId] = useState<
-    Record<string, number>
-  >({});
+  const [
+    mediaPlaylistPlaybackByElementId,
+    setMediaPlaylistPlaybackByElementId,
+  ] = useState<Record<string, number>>({});
   const [videoDurationByElementId, setVideoDurationByElementId] = useState<
     Record<string, number>
   >({});
-  const [mediaPlaylistPlaybackUiByElementId, setMediaPlaylistPlaybackUiByElementId] = useState<
-    Record<string, BookMediaPlaylistPlaybackUiSnapshot>
-  >({});
+  const [
+    mediaPlaylistPlaybackUiByElementId,
+    setMediaPlaylistPlaybackUiByElementId,
+  ] = useState<Record<string, BookMediaPlaylistPlaybackUiSnapshot>>({});
   const playlistRemoteSeqRef = useRef(0);
   const [playlistRemoteCmd, setPlaylistRemoteCmd] =
     useState<BookMediaPlaylistRemoteCommand | null>(null);
@@ -296,7 +308,8 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
       if (pg.presentationTimingElementId != null) {
         updatePages((d) => {
           const p = d[activePageIndex];
-          if (p && p.elements.length === 0) p.presentationTimingElementId = null;
+          if (p && p.elements.length === 0)
+            p.presentationTimingElementId = null;
         });
       }
       return;
@@ -309,10 +322,11 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
       updatePages((d) => {
         const p = d[activePageIndex];
         if (!p || p.elements.length === 0) return;
-        p.presentationTimingElementId = resolveEffectivePresentationTimingElementId(
-          p.elements,
-          p.presentationTimingElementId,
-        );
+        p.presentationTimingElementId =
+          resolveEffectivePresentationTimingElementId(
+            p.elements,
+            p.presentationTimingElementId,
+          );
       });
     }
   }, [
@@ -360,7 +374,10 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
     [],
   );
 
-  const clearPlaylistRemoteCmd = useCallback(() => setPlaylistRemoteCmd(null), []);
+  const clearPlaylistRemoteCmd = useCallback(
+    () => setPlaylistRemoteCmd(null),
+    [],
+  );
 
   const handleMediaPlaylistRemoteControl = useCallback(
     (elementId: string, kind: "prev" | "next" | "togglePause") => {
@@ -449,24 +466,22 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
     queueMicrotask(() => {
       setSelectedIds((prev) => {
         const next = prev.filter((id) => onPage.has(id));
-        if (next.length === prev.length && next.every((id, i) => id === prev[i])) return prev;
+        if (
+          next.length === prev.length &&
+          next.every((id, i) => id === prev[i])
+        )
+          return prev;
         return next;
       });
     });
   }, [activePage]);
 
-  const {
-    displayScale,
-    zoomPercent,
-    zoomIn,
-    zoomOut,
-    zoomReset,
-    handleWheel,
-  } = useBookCanvasDisplayScale(canvasWrapRef, {
-    slideWidth,
-    slideHeight,
-    ...BOOK_CANVAS_STAGE_DISPLAY_OPTS,
-  });
+  const { displayScale, zoomPercent, zoomIn, zoomOut, zoomReset, handleWheel } =
+    useBookCanvasDisplayScale(canvasWrapRef, {
+      slideWidth,
+      slideHeight,
+      ...BOOK_CANVAS_STAGE_DISPLAY_OPTS,
+    });
 
   useEffect(() => {
     warmBookCanvasImagesForNeighborPages(localPages, activePageIndex);
@@ -593,7 +608,8 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
         <AlertDialogHeader>
           <AlertDialogTitle>북을 삭제할까요?</AlertDialogTitle>
           <AlertDialogDescription>
-            “{bookTitle.trim() || "제목 없음"}” 북과 포함된 모든 페이지가 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
+            “{bookTitle.trim() || "제목 없음"}” 북과 포함된 모든 페이지가
+            삭제됩니다. 이 작업은 되돌릴 수 없습니다.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -606,7 +622,9 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
             disabled={deleteMutation.isPending}
             onClick={() => deleteMutation.mutate(bookId)}
           >
-            {deleteMutation.isPending ? <Spinner className="mr-2 size-4" /> : null}
+            {deleteMutation.isPending ? (
+              <Spinner className="mr-2 size-4" />
+            ) : null}
             삭제
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -643,7 +661,11 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
       updatePages((draft) => {
         const p = draft[activePageIndex];
         if (!p) return;
-        p.elements = reorderBookElementsByDisplayIndex(p.elements, fromDisplay, toDisplay);
+        p.elements = reorderBookElementsByDisplayIndex(
+          p.elements,
+          fromDisplay,
+          toDisplay,
+        );
       });
     },
     [activePageIndex, updatePages],
@@ -653,7 +675,9 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
     (elementId: string, visible: boolean) => {
       onElementChange(
         elementId,
-        visible ? ({ visible: undefined } as Partial<BookCanvasElement>) : { visible: false },
+        visible
+          ? ({ visible: undefined } as Partial<BookCanvasElement>)
+          : { visible: false },
       );
       if (!visible) {
         setSelectedIds((prev) => prev.filter((id) => id !== elementId));
@@ -666,7 +690,9 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
     (elementId: string, locked: boolean) => {
       onElementChange(
         elementId,
-        locked ? { locked: true } : ({ locked: undefined } as Partial<BookCanvasElement>),
+        locked
+          ? { locked: true }
+          : ({ locked: undefined } as Partial<BookCanvasElement>),
       );
     },
     [onElementChange],
@@ -678,7 +704,11 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
         toast.error("먼저 페이지를 추가하세요.");
         return;
       }
-      const nextElements = instantiateBookSlideTemplate(templateId, slideWidth, slideHeight);
+      const nextElements = instantiateBookSlideTemplate(
+        templateId,
+        slideWidth,
+        slideHeight,
+      );
       updatePages((draft) => {
         const p = draft[activePageIndex];
         if (!p) return;
@@ -687,7 +717,14 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
       setSelectedIds([]);
       toast.success("슬라이드 내용을 비우고 템플릿을 적용했습니다.");
     },
-    [activePage, activePageIndex, slideHeight, slideWidth, setSelectedIds, updatePages],
+    [
+      activePage,
+      activePageIndex,
+      slideHeight,
+      slideWidth,
+      setSelectedIds,
+      updatePages,
+    ],
   );
 
   const onAppendDrawingElement = useCallback(
@@ -713,7 +750,13 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
   const addShapeAt = useCallback(
     (x: number, y: number, kind: BookShapeKind) => {
       const base = createBookShapeElement(kind, slideWidth, slideHeight);
-      const placed = placeBookShapeElementAtPointer(base, x, y, slideWidth, slideHeight);
+      const placed = placeBookShapeElementAtPointer(
+        base,
+        x,
+        y,
+        slideWidth,
+        slideHeight,
+      );
       updatePages((draft) => {
         const p = draft[activePageIndex];
         if (p) p.elements.push(placed);
@@ -754,10 +797,11 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
           p.presentationTimingElementId = trimmed;
           return;
         }
-        p.presentationTimingElementId = resolveEffectivePresentationTimingElementId(
-          p.elements,
-          p.presentationTimingElementId,
-        );
+        p.presentationTimingElementId =
+          resolveEffectivePresentationTimingElementId(
+            p.elements,
+            p.presentationTimingElementId,
+          );
       });
     },
     [activePageIndex, updatePages],
@@ -996,21 +1040,26 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
         src: res.url,
         posterUrl: res.posterUrl,
       });
-      toast.success(kind === "image" ? "이미지를 넣었습니다." : "동영상을 넣었습니다.");
+      toast.success(
+        kind === "image" ? "이미지를 넣었습니다." : "동영상을 넣었습니다.",
+      );
     } catch (e) {
       setUploadError((e as Error).message);
     }
   };
 
-  const onRequestReplaceMediaFromFile = useCallback((req: BookReplaceMediaFromFileRequest) => {
-    replaceMediaElementIdRef.current = req.elementId;
-    pendingMediaKindRef.current = req.kind;
-    if (req.kind === "image") {
-      imageInputRef.current?.click();
-    } else {
-      videoInputRef.current?.click();
-    }
-  }, []);
+  const onRequestReplaceMediaFromFile = useCallback(
+    (req: BookReplaceMediaFromFileRequest) => {
+      replaceMediaElementIdRef.current = req.elementId;
+      pendingMediaKindRef.current = req.kind;
+      if (req.kind === "image") {
+        imageInputRef.current?.click();
+      } else {
+        videoInputRef.current?.click();
+      }
+    },
+    [],
+  );
 
   const onRequestPickLibraryMediaForReplace = useCallback(
     (req: { elementId: string }) => {
@@ -1066,7 +1115,9 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
           applied = true;
         });
         if (blockedFull) {
-          toast.error(`미디어 목록은 최대 ${MEDIA_PLAYLIST_MAX_ITEMS}개입니다.`);
+          toast.error(
+            `미디어 목록은 최대 ${MEDIA_PLAYLIST_MAX_ITEMS}개입니다.`,
+          );
           return;
         }
         if (!applied) return;
@@ -1156,20 +1207,11 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
         videoInputRef.current?.click();
       }
     },
-    [
-      addDigitalClockAt,
-      addMediaPlaylistAt,
-      addNewsAt,
-      addTextAt,
-      addWeatherAt,
-    ],
+    [addDigitalClockAt, addMediaPlaylistAt, addNewsAt, addTextAt, addWeatherAt],
   );
 
   const applyAiElements = useCallback(
-    (
-      elements: BookCanvasElement[],
-      opts?: { targetSlideNumber?: number },
-    ) => {
+    (elements: BookCanvasElement[], opts?: { targetSlideNumber?: number }) => {
       if (elements.length === 0) return;
       let navigatedIdx: number | null = null;
       updatePages((draft) => {
@@ -1177,7 +1219,10 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
         const idx =
           typeof opts?.targetSlideNumber === "number" &&
           Number.isFinite(opts.targetSlideNumber)
-            ? Math.min(maxIdx, Math.max(0, Math.round(opts.targetSlideNumber) - 1))
+            ? Math.min(
+                maxIdx,
+                Math.max(0, Math.round(opts.targetSlideNumber) - 1),
+              )
             : Math.min(Math.max(0, activePageIndex), maxIdx);
         const p = draft[idx];
         if (!p) return;
@@ -1216,8 +1261,10 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
 
   const applySlideDimensionsFromAi = useCallback(
     (partial: { slideWidth?: number; slideHeight?: number }) => {
-      if (typeof partial.slideWidth === "number") setSlideWidth(partial.slideWidth);
-      if (typeof partial.slideHeight === "number") setSlideHeight(partial.slideHeight);
+      if (typeof partial.slideWidth === "number")
+        setSlideWidth(partial.slideWidth);
+      if (typeof partial.slideHeight === "number")
+        setSlideHeight(partial.slideHeight);
     },
     [],
   );
@@ -1254,7 +1301,9 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
       });
       setSelectedIds([id]);
       toast.success(
-        payload.kind === "image" ? "이미지를 배치했습니다." : "동영상을 배치했습니다.",
+        payload.kind === "image"
+          ? "이미지를 배치했습니다."
+          : "동영상을 배치했습니다.",
       );
     },
     [activePageIndex, updatePages],
@@ -1274,7 +1323,9 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
         const idx = Math.max(0, Math.min(insertIndex, prev.length));
         const newPage = createEmptyEditorPage(0);
         const next = [...prev.slice(0, idx), newPage, ...prev.slice(idx)];
-        return applyAutoSlideNamesByIndex(next.map((p, i) => ({ ...p, sortOrder: i })));
+        return applyAutoSlideNamesByIndex(
+          next.map((p, i) => ({ ...p, sortOrder: i })),
+        );
       });
       setPageIndex(insertIndex);
       setSelectedIds([]);
@@ -1317,8 +1368,14 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
       commitPages((prev) => {
         if (index < 0 || index >= prev.length) return prev;
         const dup = duplicateBookEditorPage(prev[index]);
-        const next = [...prev.slice(0, index + 1), dup, ...prev.slice(index + 1)];
-        return applyAutoSlideNamesByIndex(next.map((p, i) => ({ ...p, sortOrder: i })));
+        const next = [
+          ...prev.slice(0, index + 1),
+          dup,
+          ...prev.slice(index + 1),
+        ];
+        return applyAutoSlideNamesByIndex(
+          next.map((p, i) => ({ ...p, sortOrder: i })),
+        );
       });
       setPageIndex(index + 1);
       setSelectedIds([]);
@@ -1334,10 +1391,11 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
         const p = draft[activePageIndex];
         if (!p) return;
         p.elements = p.elements.filter((e) => !idSet.has(e.id));
-        p.presentationTimingElementId = resolveEffectivePresentationTimingElementId(
-          p.elements,
-          p.presentationTimingElementId,
-        );
+        p.presentationTimingElementId =
+          resolveEffectivePresentationTimingElementId(
+            p.elements,
+            p.presentationTimingElementId,
+          );
       });
       setSelectedIds((prev) => prev.filter((id) => !idSet.has(id)));
     },
@@ -1393,7 +1451,11 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
   }, [selectedEl]);
 
   const onInspectorReplaceMediaFromFile = useCallback(() => {
-    if (!selectedEl || (selectedEl.type !== "image" && selectedEl.type !== "video")) return;
+    if (
+      !selectedEl ||
+      (selectedEl.type !== "image" && selectedEl.type !== "video")
+    )
+      return;
     onRequestReplaceMediaFromFile({
       elementId: selectedEl.id,
       kind: selectedEl.type,
@@ -1401,7 +1463,11 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
   }, [selectedEl, onRequestReplaceMediaFromFile]);
 
   const onInspectorPickMediaFromLibrary = useCallback(() => {
-    if (!selectedEl || (selectedEl.type !== "image" && selectedEl.type !== "video")) return;
+    if (
+      !selectedEl ||
+      (selectedEl.type !== "image" && selectedEl.type !== "video")
+    )
+      return;
     onRequestPickLibraryMediaForReplace({ elementId: selectedEl.id });
   }, [selectedEl, onRequestPickLibraryMediaForReplace]);
 
@@ -1444,7 +1510,11 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel type="button">취소</AlertDialogCancel>
-          <Button type="button" variant="destructive" onClick={() => confirmRemoveWidget()}>
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={() => confirmRemoveWidget()}
+          >
             삭제
           </Button>
         </AlertDialogFooter>
@@ -1454,7 +1524,8 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
 
   const pageDeleteTargetLabel =
     pageDeleteIndex != null && localPages[pageDeleteIndex]
-      ? localPages[pageDeleteIndex].name.trim() || `슬라이드 ${pageDeleteIndex + 1}`
+      ? localPages[pageDeleteIndex].name.trim() ||
+        `슬라이드 ${pageDeleteIndex + 1}`
       : "이 슬라이드";
 
   const pageDeleteDialog = (
@@ -1469,13 +1540,17 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
         <AlertDialogHeader>
           <AlertDialogTitle>슬라이드를 삭제할까요?</AlertDialogTitle>
           <AlertDialogDescription>
-            「{pageDeleteTargetLabel}」와 이 페이지에 있는 모든 위젯이 제거됩니다. 되돌리기(Ctrl+Z)로 복구할 수
-            있습니다.
+            「{pageDeleteTargetLabel}」와 이 페이지에 있는 모든 위젯이
+            제거됩니다. 되돌리기(Ctrl+Z)로 복구할 수 있습니다.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel type="button">취소</AlertDialogCancel>
-          <Button type="button" variant="destructive" onClick={() => confirmRemovePageAt()}>
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={() => confirmRemovePageAt()}
+          >
             삭제
           </Button>
         </AlertDialogFooter>
@@ -1484,7 +1559,10 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
   );
 
   const pageLabels = useMemo(() => localPages.map((p) => p.name), [localPages]);
-  const pageKeys = useMemo(() => localPages.map((p) => p.clientKey), [localPages]);
+  const pageKeys = useMemo(
+    () => localPages.map((p) => p.clientKey),
+    [localPages],
+  );
 
   const slideThumbnailSources = useMemo(
     () =>
@@ -1504,6 +1582,171 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
   if (localPages.length === 0) {
     return (
       <>
+        <BookWorkspaceShell
+          titleArea={
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:gap-x-3">
+              <Input
+                className="h-8 min-w-[10rem] max-w-md flex-1 rounded-md border-transparent bg-transparent pl-2.5 pr-2 text-sm font-semibold shadow-none transition-colors placeholder:text-muted-foreground/60 hover:bg-muted/25 focus-visible:bg-muted/20 focus-visible:ring-1 focus-visible:ring-ring/50 sm:text-base"
+                value={bookTitle}
+                onChange={(e) => setBookTitle(e.target.value)}
+                placeholder="북 제목"
+                maxLength={200}
+                aria-label="북 제목"
+              />
+              <BookHeaderSlideDimensions
+                slideWidth={slideWidth}
+                slideHeight={slideHeight}
+                onChangeSlideWidth={setSlideWidth}
+                onChangeSlideHeight={setSlideHeight}
+              />
+            </div>
+          }
+          actions={
+            <>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <BookSlidePreviewOpenButton bookId={bookId} />
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-7 border-transparent bg-blue-600 px-2.5 text-xs text-white hover:bg-blue-700 focus-visible:ring-blue-500/40 disabled:opacity-100"
+                  onClick={() => saveMutation.mutate()}
+                  disabled={saveMutation.isPending}
+                >
+                  {saveMutation.isPending ? (
+                    <Spinner className="mr-1.5 size-3.5 text-white" />
+                  ) : (
+                    <Save className="mr-1.5 size-3.5" />
+                  )}
+                  저장
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-7 border-transparent bg-red-600 px-2.5 text-xs text-white hover:bg-red-700 focus-visible:ring-red-500/40"
+                  disabled={deleteMutation.isPending}
+                  onClick={() => setDeleteConfirmOpen(true)}
+                >
+                  <Trash2 className="mr-1.5 size-3.5" />
+                  삭제
+                </Button>
+              </div>
+            </>
+          }
+          left={
+            <div className="flex h-full min-h-0 w-fit max-w-full flex-row">
+              <BookEditorToolRail
+                activeTab={leftDockTab}
+                onActiveTabChange={setLeftDockTab}
+                mediaLibraryEnabled
+              />
+              <div
+                className={bookLeftDockContentColumnClass(
+                  "border-s border-border/40",
+                  {
+                    slideWidth,
+                    slideHeight,
+                  },
+                )}
+              >
+                {leftDockTab === "page" ? (
+                  <BookPageSidebar
+                    fluid
+                    pageCount={0}
+                    activeIndex={0}
+                    onSelectPage={() => undefined}
+                    mode="edit"
+                    onAddPage={addPage}
+                    canRemovePage={false}
+                    slideWidth={slideWidth}
+                    slideHeight={slideHeight}
+                  />
+                ) : null}
+                {leftDockTab === "widgets" ? (
+                  <BookWidgetPalette
+                    variant="docked"
+                    className="min-h-0 flex-1"
+                    onRequestFloat={() => persistWidgetFloatingOpen(true)}
+                  />
+                ) : null}
+                {leftDockTab === "media" ? (
+                  <BookMediaLibraryPanel
+                    variant="docked"
+                    bookId={bookId}
+                    className="min-h-0 flex-1"
+                    onRequestFloat={() => persistMediaFloatingOpen(true)}
+                  />
+                ) : null}
+                {leftDockTab === "templates" ? (
+                  <BookSlideTemplatesPanel
+                    className="min-h-0 flex-1"
+                    onApplyTemplate={applySlideTemplate}
+                  />
+                ) : null}
+                {leftDockTab === "elements" ? (
+                  <BookElementsPanel
+                    className="min-h-0 flex-1"
+                    onAddShape={onAddShapeFromElementsPanel}
+                  />
+                ) : null}
+                {leftDockTab === "drawing" ? (
+                  <BookSlideDrawingPanel
+                    className="min-h-0 flex-1"
+                    strokeColor={drawingStrokeColor}
+                    strokeWidth={drawingStrokeWidth}
+                    onStrokeColorChange={setDrawingStrokeColor}
+                    onStrokeWidthChange={setDrawingStrokeWidth}
+                  />
+                ) : null}
+              </div>
+            </div>
+          }
+          center={
+            <>
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  페이지가 없습니다. 왼쪽에서 페이지를 추가하세요.
+                </p>
+                <Button type="button" onClick={addPage}>
+                  첫 페이지 추가
+                </Button>
+              </div>
+              {floatingWidgetPaletteOpen ? (
+                <BookWidgetPalette
+                  variant="floating"
+                  floatingStackZIndex={floatingPanelZ.widget}
+                  onRaiseFloatingStack={raiseFloatingWidgetStack}
+                  onClose={() => persistWidgetFloatingOpen(false)}
+                />
+              ) : null}
+              {floatingMediaLibraryOpen ? (
+                <BookMediaLibraryPanel
+                  bookId={bookId}
+                  variant="floating"
+                  floatingStackZIndex={floatingPanelZ.media}
+                  onRaiseFloatingStack={raiseFloatingMediaStack}
+                  onClose={() => persistMediaFloatingOpen(false)}
+                />
+              ) : null}
+            </>
+          }
+          right={
+            <aside className="flex w-80 shrink-0 flex-col border-l border-border bg-card/50 p-3">
+              <p className="text-sm text-muted-foreground">
+                페이지를 추가한 뒤 여기서 슬라이드 이름을 바꿀 수 있습니다.
+                크기는 헤더 캔버스 W·H를 사용하세요.
+              </p>
+            </aside>
+          }
+        />
+        {deleteBookDialog}
+        {widgetDeleteDialog}
+        {pageDeleteDialog}
+      </>
+    );
+  }
+
+  return (
+    <>
       <BookWorkspaceShell
         titleArea={
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:gap-x-3">
@@ -1562,23 +1805,38 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
               mediaLibraryEnabled
             />
             <div
-              className={bookLeftDockContentColumnClass("border-s border-border/40", {
-                slideWidth,
-                slideHeight,
-              })}
+              className={bookLeftDockContentColumnClass(
+                "border-s border-border/40",
+                {
+                  slideWidth,
+                  slideHeight,
+                },
+              )}
             >
               {leftDockTab === "page" ? (
-                <BookPageSidebar
-                  fluid
-                  pageCount={0}
-                  activeIndex={0}
-                  onSelectPage={() => undefined}
-                  mode="edit"
-                  onAddPage={addPage}
-                  canRemovePage={false}
-                  slideWidth={slideWidth}
-                  slideHeight={slideHeight}
-                />
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                  <BookPageSidebar
+                    fluid
+                    pageCount={localPages.length}
+                    pageKeys={pageKeys}
+                    thumbnailsByKey={slideThumbnails}
+                    activeIndex={activePageIndex}
+                    pageLabels={pageLabels}
+                    onSelectPage={(i) => {
+                      setPageIndex(i);
+                      setSelectedIds([]);
+                    }}
+                    mode="edit"
+                    onReorderPages={reorderPages}
+                    onAddPage={addPage}
+                    onAddPageAtInsertIndex={addPageAtInsertIndex}
+                    onRemovePageAtIndex={requestRemovePageAt}
+                    onDuplicatePageAtIndex={duplicatePageAt}
+                    canRemovePage={localPages.length > 1}
+                    slideWidth={slideWidth}
+                    slideHeight={slideHeight}
+                  />
+                </div>
               ) : null}
               {leftDockTab === "widgets" ? (
                 <BookWidgetPalette
@@ -1621,11 +1879,86 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
         }
         center={
           <>
-            <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-              <p className="text-sm text-muted-foreground">페이지가 없습니다. 왼쪽에서 페이지를 추가하세요.</p>
-              <Button type="button" onClick={addPage}>
-                첫 페이지 추가
-              </Button>
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <div className={bookCanvasToolbarRowClass()}>
+                <BookCanvasToolbar
+                  zoomPercent={zoomPercent}
+                  onZoomIn={zoomIn}
+                  onZoomOut={zoomOut}
+                  onZoomReset={zoomReset}
+                  showUndoRedo
+                  canUndo={canUndo}
+                  canRedo={canRedo}
+                  onUndo={undo}
+                  onRedo={redo}
+                  centerGuideThresholdPx={centerGuideThresholdPx}
+                  onCenterGuideThresholdPxChange={setCenterGuideThresholdPx}
+                  dragGridPx={dragGridPx}
+                  onDragGridPxChange={setDragGridPx}
+                />
+              </div>
+              <div
+                ref={canvasWrapRef}
+                className={bookCanvasStageMatClass(
+                  "relative flex min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden p-2",
+                )}
+                onWheel={handleWheel}
+                onPointerDown={(e) => {
+                  const slide = (e.currentTarget as HTMLElement).querySelector(
+                    "[data-book-slide-root]",
+                  );
+                  if (slide?.contains(e.target as Node)) return;
+                  setSelectedIds([]);
+                }}
+              >
+                <BookSlideCanvas
+                  pageWidth={slideWidth}
+                  pageHeight={slideHeight}
+                  pageBackgroundColor={
+                    activePage.backgroundColor?.trim() ||
+                    DEFAULT_PAGE_BACKGROUND
+                  }
+                  scale={displayScale}
+                  elements={activePage.elements}
+                  mode="edit"
+                  selectedIds={canvasSelectedIds}
+                  onSelect={handleCanvasSelect}
+                  onElementChange={onElementChange}
+                  onDropWidget={onDropWidget}
+                  onDropShape={onDropShape}
+                  onDropLibraryMedia={onDropLibraryMedia}
+                  onReorderZ={onReorderZ}
+                  onDeleteElement={requestRemoveWidget}
+                  centerGuideThresholdPx={centerGuideThresholdPx}
+                  dragGridPx={dragGridPx}
+                  editInteractionTool={
+                    leftDockTab === "drawing" ? "draw" : "default"
+                  }
+                  drawingStrokeColor={drawingStrokeColor}
+                  drawingStrokeWidth={drawingStrokeWidth}
+                  onAppendElement={onAppendDrawingElement}
+                  onRequestReplaceMediaFromFile={onRequestReplaceMediaFromFile}
+                  onRequestPickLibraryMediaForReplace={
+                    onRequestPickLibraryMediaForReplace
+                  }
+                  onRequestPlaylistAppendFromFile={
+                    onRequestPlaylistAppendFromFile
+                  }
+                  onRequestPlaylistAppendFromLibrary={
+                    onRequestPlaylistAppendFromLibrary
+                  }
+                  mediaLibraryReplaceEnabled
+                  onMediaPlaylistPlaybackIndexChange={
+                    handleMediaPlaylistPlaybackIndex
+                  }
+                  onMediaPlaylistPlaybackUiReport={
+                    handleMediaPlaylistPlaybackUiReport
+                  }
+                  mediaPlaylistRemoteCommand={playlistRemoteCmd}
+                  onMediaPlaylistRemoteCommandConsumed={clearPlaylistRemoteCmd}
+                  onVideoDurationKnown={handleVideoDurationKnown}
+                />
+              </div>
             </div>
             {floatingWidgetPaletteOpen ? (
               <BookWidgetPalette
@@ -1644,460 +1977,254 @@ function BookDetailOwnerView({ bookId, serverBook }: { bookId: number; serverBoo
                 onClose={() => persistMediaFloatingOpen(false)}
               />
             ) : null}
+            <BookAiAssistantPanel
+              bookId={bookId}
+              slideWidth={slideWidth}
+              slideHeight={slideHeight}
+              pageCount={localPages.length}
+              activePageIndex={activePageIndex}
+              onApplyElements={applyAiElements}
+              onApplyPageBackground={updateCurrentPageBackground}
+              onApplyPageTitle={applyPageTitleFromAi}
+              onApplyBookTitle={setBookTitle}
+              onAddPages={addPagesFromAi}
+              onUndo={undo}
+              onRedo={redo}
+              onRequestRemoveCurrentPage={requestRemoveCurrentPageForAi}
+              floatingStackZIndex={floatingPanelZ.ai}
+              onRaiseFloatingStack={raiseFloatingAiStack}
+              onApplySlideDimensions={applySlideDimensionsFromAi}
+              layoutAiMediaSelection={layoutAiMediaSelection}
+              onPatchBookElement={onElementChange}
+            />
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (pendingMediaKindRef.current !== "image") return;
+                if (!f) {
+                  replaceMediaElementIdRef.current = null;
+                  pendingMediaKindRef.current = null;
+                  return;
+                }
+                void handleMediaFile(f, "image");
+              }}
+            />
+            <input
+              ref={videoInputRef}
+              type="file"
+              accept="video/mp4,video/webm,video/quicktime"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (pendingMediaKindRef.current !== "video") return;
+                if (!f) {
+                  replaceMediaElementIdRef.current = null;
+                  pendingMediaKindRef.current = null;
+                  return;
+                }
+                void handleMediaFile(f, "video");
+              }}
+            />
+            <input
+              ref={playlistMediaInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (!f) {
+                  playlistAppendElementIdRef.current = null;
+                  return;
+                }
+                void handlePlaylistMediaFile(f);
+              }}
+            />
           </>
         }
         right={
-          <aside className="flex w-80 shrink-0 flex-col border-l border-border bg-card/50 p-3">
-            <p className="text-sm text-muted-foreground">
-              페이지를 추가한 뒤 여기서 슬라이드 이름을 바꿀 수 있습니다. 크기는 헤더 캔버스 W·H를 사용하세요.
-            </p>
+          <aside className="flex h-full min-h-0 w-96 shrink-0 flex-col overflow-hidden border-l border-border bg-card/50">
+            <BookLayersPanel
+              elements={activePage.elements}
+              selectedIds={canvasSelectedIds}
+              onSelect={handleLayerSelect}
+              onReorderZ={onReorderZ}
+              onLayerDragReorder={onLayerDragReorder}
+              onVisibilityChange={onLayerVisibilityChange}
+              onLockChange={onLayerLockChange}
+              onRequestDelete={requestRemoveWidget}
+              presentationTimingElementId={
+                activePage.presentationTimingElementId
+              }
+              onPresentationTimingElementIdChange={
+                updatePresentationTimingElementId
+              }
+              onPresentationHoldSecChange={(eid, sec) =>
+                onElementChange(eid, { presentationHoldSec: sec })
+              }
+              videoDurationSecByElementId={videoDurationByElementId}
+            />
+            <div className={bookRightDockInspectorShellClass()}>
+              {canvasSelectedIds.length >= 2 ? (
+                <BookInspectorPanel
+                  embedded
+                  selected={null}
+                  multiSelectionCount={canvasSelectedIds.length}
+                  slideWidth={slideWidth}
+                  slideHeight={slideHeight}
+                  onChange={onElementChange}
+                  onDelete={removeSelectedBulk}
+                  mediaHint={mediaHint}
+                />
+              ) : canvasSelectedIds.length === 1 ? (
+                <BookInspectorPanel
+                  embedded
+                  selected={selectedEl}
+                  slideWidth={slideWidth}
+                  slideHeight={slideHeight}
+                  onChange={onElementChange}
+                  onDelete={removeSelected}
+                  mediaHint={mediaHint}
+                  onReplaceMediaFromFile={onInspectorReplaceMediaFromFile}
+                  onPickMediaFromLibrary={onInspectorPickMediaFromLibrary}
+                  onRequestAppendPlaylistMediaFromFile={
+                    onRequestPlaylistAppendFromFile
+                  }
+                  onRequestAppendPlaylistMediaFromLibrary={
+                    onRequestPlaylistAppendFromLibrary
+                  }
+                  mediaLibraryReplaceEnabled
+                  mediaPlaylistPlaybackByElementId={
+                    mediaPlaylistPlaybackByElementId
+                  }
+                  mediaPlaylistPlaybackUiByElementId={
+                    mediaPlaylistPlaybackUiByElementId
+                  }
+                  onMediaPlaylistRemoteControl={
+                    handleMediaPlaylistRemoteControl
+                  }
+                  videoDurationSecByElementId={videoDurationByElementId}
+                  pagePresentationTimingElementId={
+                    activePage.presentationTimingElementId
+                  }
+                />
+              ) : (
+                <BookPagePropertiesPanel
+                  embedded
+                  pageIndex={activePageIndex}
+                  totalPages={localPages.length}
+                  name={activePage.name}
+                  onChangeName={updateCurrentPageName}
+                  backgroundColor={
+                    activePage.backgroundColor?.trim() ||
+                    DEFAULT_PAGE_BACKGROUND
+                  }
+                  onChangeBackgroundColor={updateCurrentPageBackground}
+                  elements={activePage.elements}
+                  presentationTimingElementId={
+                    activePage.presentationTimingElementId
+                  }
+                  onChangePresentationTimingElementId={
+                    updatePresentationTimingElementId
+                  }
+                  presentationLoop={presentationLoop}
+                  onChangePresentationLoop={setPresentationLoop}
+                  presentationTransition={normalizeBookPresentationTransition(
+                    activePage.presentationTransition,
+                  )}
+                  onChangePresentationTransition={updatePresentationTransition}
+                  presentationTransitionMs={clampBookPresentationTransitionMs(
+                    activePage.presentationTransitionMs,
+                  )}
+                  onChangePresentationTransitionMs={
+                    updatePresentationTransitionMs
+                  }
+                />
+              )}
+            </div>
           </aside>
         }
       />
       {deleteBookDialog}
       {widgetDeleteDialog}
       {pageDeleteDialog}
-      </>
-    );
-  }
-
-  return (
-    <>
-    <BookWorkspaceShell
-      titleArea={
-        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:gap-x-3">
-          <Input
-            className="h-8 min-w-[10rem] max-w-md flex-1 rounded-md border-transparent bg-transparent pl-2.5 pr-2 text-sm font-semibold shadow-none transition-colors placeholder:text-muted-foreground/60 hover:bg-muted/25 focus-visible:bg-muted/20 focus-visible:ring-1 focus-visible:ring-ring/50 sm:text-base"
-            value={bookTitle}
-            onChange={(e) => setBookTitle(e.target.value)}
-            placeholder="북 제목"
-            maxLength={200}
-            aria-label="북 제목"
-          />
-          <BookHeaderSlideDimensions
-            slideWidth={slideWidth}
-            slideHeight={slideHeight}
-            onChangeSlideWidth={setSlideWidth}
-            onChangeSlideHeight={setSlideHeight}
-          />
-        </div>
-      }
-      actions={
-        <>
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <BookSlidePreviewOpenButton bookId={bookId} />
-            <Button
-              type="button"
-              size="sm"
-              className="h-7 border-transparent bg-blue-600 px-2.5 text-xs text-white hover:bg-blue-700 focus-visible:ring-blue-500/40 disabled:opacity-100"
-              onClick={() => saveMutation.mutate()}
-              disabled={saveMutation.isPending}
-            >
-              {saveMutation.isPending ? (
-                <Spinner className="mr-1.5 size-3.5 text-white" />
-              ) : (
-                <Save className="mr-1.5 size-3.5" />
-              )}
-              저장
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              className="h-7 border-transparent bg-red-600 px-2.5 text-xs text-white hover:bg-red-700 focus-visible:ring-red-500/40"
-              disabled={deleteMutation.isPending}
-              onClick={() => setDeleteConfirmOpen(true)}
-            >
-              <Trash2 className="mr-1.5 size-3.5" />
-              삭제
-            </Button>
-          </div>
-        </>
-      }
-      left={
-        <div className="flex h-full min-h-0 w-fit max-w-full flex-row">
-          <BookEditorToolRail
-            activeTab={leftDockTab}
-            onActiveTabChange={setLeftDockTab}
-            mediaLibraryEnabled
-          />
-          <div
-            className={bookLeftDockContentColumnClass("border-s border-border/40", {
-              slideWidth,
-              slideHeight,
-            })}
-          >
-            {leftDockTab === "page" ? (
-              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                <BookPageSidebar
-                  fluid
-                  pageCount={localPages.length}
-                  pageKeys={pageKeys}
-                  thumbnailsByKey={slideThumbnails}
-                  activeIndex={activePageIndex}
-                  pageLabels={pageLabels}
-                  onSelectPage={(i) => {
-                    setPageIndex(i);
-                    setSelectedIds([]);
-                  }}
-                  mode="edit"
-                  onReorderPages={reorderPages}
-                  onAddPage={addPage}
-                  onAddPageAtInsertIndex={addPageAtInsertIndex}
-                  onRemovePageAtIndex={requestRemovePageAt}
-                  onDuplicatePageAtIndex={duplicatePageAt}
-                  canRemovePage={localPages.length > 1}
-                  slideWidth={slideWidth}
-                  slideHeight={slideHeight}
-                />
-              </div>
-            ) : null}
-            {leftDockTab === "widgets" ? (
-              <BookWidgetPalette
-                variant="docked"
-                className="min-h-0 flex-1"
-                onRequestFloat={() => persistWidgetFloatingOpen(true)}
-              />
-            ) : null}
-            {leftDockTab === "media" ? (
-              <BookMediaLibraryPanel
-                variant="docked"
-                bookId={bookId}
-                className="min-h-0 flex-1"
-                onRequestFloat={() => persistMediaFloatingOpen(true)}
-              />
-            ) : null}
-            {leftDockTab === "templates" ? (
-              <BookSlideTemplatesPanel
-                className="min-h-0 flex-1"
-                onApplyTemplate={applySlideTemplate}
-              />
-            ) : null}
-            {leftDockTab === "elements" ? (
-              <BookElementsPanel
-                className="min-h-0 flex-1"
-                onAddShape={onAddShapeFromElementsPanel}
-              />
-            ) : null}
-            {leftDockTab === "drawing" ? (
-              <BookSlideDrawingPanel
-                className="min-h-0 flex-1"
-                strokeColor={drawingStrokeColor}
-                strokeWidth={drawingStrokeWidth}
-                onStrokeColorChange={setDrawingStrokeColor}
-                onStrokeWidthChange={setDrawingStrokeWidth}
-              />
-            ) : null}
-          </div>
-        </div>
-      }
-      center={
-        <>
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div className={bookCanvasToolbarRowClass()}>
-              <BookCanvasToolbar
-                zoomPercent={zoomPercent}
-                onZoomIn={zoomIn}
-                onZoomOut={zoomOut}
-                onZoomReset={zoomReset}
-                showUndoRedo
-                canUndo={canUndo}
-                canRedo={canRedo}
-                onUndo={undo}
-                onRedo={redo}
-                centerGuideThresholdPx={centerGuideThresholdPx}
-                onCenterGuideThresholdPxChange={setCenterGuideThresholdPx}
-                dragGridPx={dragGridPx}
-                onDragGridPxChange={setDragGridPx}
-              />
-            </div>
-            <div
-              ref={canvasWrapRef}
-              className={bookCanvasStageMatClass(
-                "relative flex min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden p-2",
-              )}
-              onWheel={handleWheel}
-              onPointerDown={(e) => {
-                const slide = (e.currentTarget as HTMLElement).querySelector(
-                  "[data-book-slide-root]",
-                );
-                if (slide?.contains(e.target as Node)) return;
-                setSelectedIds([]);
-              }}
-            >
-              <BookSlideCanvas
-                pageWidth={slideWidth}
-                pageHeight={slideHeight}
-                pageBackgroundColor={
-                  activePage.backgroundColor?.trim() || DEFAULT_PAGE_BACKGROUND
-                }
-                scale={displayScale}
-                elements={activePage.elements}
-                mode="edit"
-                selectedIds={canvasSelectedIds}
-                onSelect={handleCanvasSelect}
-                onElementChange={onElementChange}
-                onDropWidget={onDropWidget}
-                onDropShape={onDropShape}
-                onDropLibraryMedia={onDropLibraryMedia}
-                onReorderZ={onReorderZ}
-                onDeleteElement={requestRemoveWidget}
-                centerGuideThresholdPx={centerGuideThresholdPx}
-                dragGridPx={dragGridPx}
-                editInteractionTool={leftDockTab === "drawing" ? "draw" : "default"}
-                drawingStrokeColor={drawingStrokeColor}
-                drawingStrokeWidth={drawingStrokeWidth}
-                onAppendElement={onAppendDrawingElement}
-                onRequestReplaceMediaFromFile={onRequestReplaceMediaFromFile}
-                onRequestPickLibraryMediaForReplace={onRequestPickLibraryMediaForReplace}
-                onRequestPlaylistAppendFromFile={onRequestPlaylistAppendFromFile}
-                onRequestPlaylistAppendFromLibrary={onRequestPlaylistAppendFromLibrary}
-                mediaLibraryReplaceEnabled
-                onMediaPlaylistPlaybackIndexChange={handleMediaPlaylistPlaybackIndex}
-                onMediaPlaylistPlaybackUiReport={handleMediaPlaylistPlaybackUiReport}
-                mediaPlaylistRemoteCommand={playlistRemoteCmd}
-                onMediaPlaylistRemoteCommandConsumed={clearPlaylistRemoteCmd}
-                onVideoDurationKnown={handleVideoDurationKnown}
-              />
-            </div>
-          </div>
-          {floatingWidgetPaletteOpen ? (
-            <BookWidgetPalette
-              variant="floating"
-              floatingStackZIndex={floatingPanelZ.widget}
-              onRaiseFloatingStack={raiseFloatingWidgetStack}
-              onClose={() => persistWidgetFloatingOpen(false)}
-            />
-          ) : null}
-          {floatingMediaLibraryOpen ? (
-            <BookMediaLibraryPanel
-              bookId={bookId}
-              variant="floating"
-              floatingStackZIndex={floatingPanelZ.media}
-              onRaiseFloatingStack={raiseFloatingMediaStack}
-              onClose={() => persistMediaFloatingOpen(false)}
-            />
-          ) : null}
-          <BookAiAssistantPanel
-            bookId={bookId}
-            slideWidth={slideWidth}
-            slideHeight={slideHeight}
-            pageCount={localPages.length}
-            activePageIndex={activePageIndex}
-            onApplyElements={applyAiElements}
-            onApplyPageBackground={updateCurrentPageBackground}
-            onApplyPageTitle={applyPageTitleFromAi}
-            onApplyBookTitle={setBookTitle}
-            onAddPages={addPagesFromAi}
-            onUndo={undo}
-            onRedo={redo}
-            onRequestRemoveCurrentPage={requestRemoveCurrentPageForAi}
-            floatingStackZIndex={floatingPanelZ.ai}
-            onRaiseFloatingStack={raiseFloatingAiStack}
-            onApplySlideDimensions={applySlideDimensionsFromAi}
-            layoutAiMediaSelection={layoutAiMediaSelection}
-            onPatchBookElement={onElementChange}
-          />
-          <input
-            ref={imageInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/gif,image/webp"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              e.target.value = "";
-              if (pendingMediaKindRef.current !== "image") return;
-              if (!f) {
-                replaceMediaElementIdRef.current = null;
-                pendingMediaKindRef.current = null;
-                return;
-              }
-              void handleMediaFile(f, "image");
-            }}
-          />
-          <input
-            ref={videoInputRef}
-            type="file"
-            accept="video/mp4,video/webm,video/quicktime"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              e.target.value = "";
-              if (pendingMediaKindRef.current !== "video") return;
-              if (!f) {
-                replaceMediaElementIdRef.current = null;
-                pendingMediaKindRef.current = null;
-                return;
-              }
-              void handleMediaFile(f, "video");
-            }}
-          />
-          <input
-            ref={playlistMediaInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              e.target.value = "";
-              if (!f) {
-                playlistAppendElementIdRef.current = null;
-                return;
-              }
-              void handlePlaylistMediaFile(f);
-            }}
-          />
-        </>
-      }
-      right={
-        <aside className="flex h-full min-h-0 w-96 shrink-0 flex-col overflow-hidden border-l border-border bg-card/50">
-          <BookLayersPanel
-            elements={activePage.elements}
-            selectedIds={canvasSelectedIds}
-            onSelect={handleLayerSelect}
-            onReorderZ={onReorderZ}
-            onLayerDragReorder={onLayerDragReorder}
-            onVisibilityChange={onLayerVisibilityChange}
-            onLockChange={onLayerLockChange}
-            onRequestDelete={requestRemoveWidget}
-            presentationTimingElementId={activePage.presentationTimingElementId}
-            onPresentationTimingElementIdChange={updatePresentationTimingElementId}
-            onPresentationHoldSecChange={(eid, sec) =>
-              onElementChange(eid, { presentationHoldSec: sec })
-            }
-            videoDurationSecByElementId={videoDurationByElementId}
-          />
-          <div className={bookRightDockInspectorShellClass()}>
-            {canvasSelectedIds.length >= 2 ? (
-              <BookInspectorPanel
-                embedded
-                selected={null}
-                multiSelectionCount={canvasSelectedIds.length}
-                slideWidth={slideWidth}
-                slideHeight={slideHeight}
-                onChange={onElementChange}
-                onDelete={removeSelectedBulk}
-                mediaHint={mediaHint}
-              />
-            ) : canvasSelectedIds.length === 1 ? (
-              <BookInspectorPanel
-                embedded
-                selected={selectedEl}
-                slideWidth={slideWidth}
-                slideHeight={slideHeight}
-                onChange={onElementChange}
-                onDelete={removeSelected}
-                mediaHint={mediaHint}
-                onReplaceMediaFromFile={onInspectorReplaceMediaFromFile}
-                onPickMediaFromLibrary={onInspectorPickMediaFromLibrary}
-                onRequestAppendPlaylistMediaFromFile={onRequestPlaylistAppendFromFile}
-                onRequestAppendPlaylistMediaFromLibrary={onRequestPlaylistAppendFromLibrary}
-                mediaLibraryReplaceEnabled
-                mediaPlaylistPlaybackByElementId={mediaPlaylistPlaybackByElementId}
-                mediaPlaylistPlaybackUiByElementId={mediaPlaylistPlaybackUiByElementId}
-                onMediaPlaylistRemoteControl={handleMediaPlaylistRemoteControl}
-                videoDurationSecByElementId={videoDurationByElementId}
-                pagePresentationTimingElementId={activePage.presentationTimingElementId}
-              />
-            ) : (
-              <BookPagePropertiesPanel
-                embedded
-                pageIndex={activePageIndex}
-                totalPages={localPages.length}
-                name={activePage.name}
-                onChangeName={updateCurrentPageName}
-                backgroundColor={
-                  activePage.backgroundColor?.trim() || DEFAULT_PAGE_BACKGROUND
-                }
-                onChangeBackgroundColor={updateCurrentPageBackground}
-                elements={activePage.elements}
-                presentationTimingElementId={activePage.presentationTimingElementId}
-                onChangePresentationTimingElementId={updatePresentationTimingElementId}
-                presentationLoop={presentationLoop}
-                onChangePresentationLoop={setPresentationLoop}
-                presentationTransition={normalizeBookPresentationTransition(
-                  activePage.presentationTransition,
-                )}
-                onChangePresentationTransition={updatePresentationTransition}
-                presentationTransitionMs={clampBookPresentationTransitionMs(
-                  activePage.presentationTransitionMs,
-                )}
-                onChangePresentationTransitionMs={updatePresentationTransitionMs}
-              />
-            )}
-          </div>
-        </aside>
-      }
-    />
-    {deleteBookDialog}
-    {widgetDeleteDialog}
-    {pageDeleteDialog}
-    {libraryPickAcceptKind ? (
-      <BookMediaLibraryPickDialog
-        open={libraryPick != null}
-        onOpenChange={(o) => {
-          if (!o) setLibraryPick(null);
-        }}
-        bookId={bookId}
-        acceptKind={libraryPickAcceptKind}
-        title={
-          libraryPick?.mode === "playlistAppend"
-            ? "라이브러리에서 미디어 선택"
-            : undefined
-        }
-        onPick={(item) => {
-          if (!libraryPick) return;
-          if (libraryPick.mode === "replace") {
-            if (item.kind === "image") {
-              onElementChange(libraryPick.elementId, { src: item.src });
-            } else {
-              onElementChange(libraryPick.elementId, {
-                src: item.src,
-                posterSrc: item.posterSrc,
-              });
-            }
-            toast.success("미디어를 바꿨습니다.");
-          } else {
-            const pageEl = activePage?.elements.find((e) => e.id === libraryPick.elementId);
-            if (!pageEl || pageEl.type !== "mediaPlaylist") {
-              setLibraryPick(null);
-              return;
-            }
-            const cur = pageEl.mediaPlaylistItems ?? [];
-            if (cur.length >= MEDIA_PLAYLIST_MAX_ITEMS) {
-              setLibraryPick(null);
-              toast.error(`미디어 목록은 최대 ${MEDIA_PLAYLIST_MAX_ITEMS}개입니다.`);
-              return;
-            }
-            if (item.kind === "image") {
-              onElementChange(libraryPick.elementId, {
-                mediaPlaylistItems: [
-                  ...cur,
-                  {
-                    id: crypto.randomUUID(),
-                    kind: "image",
-                    src: item.src,
-                  },
-                ],
-              });
-            } else {
-              onElementChange(libraryPick.elementId, {
-                mediaPlaylistItems: [
-                  ...cur,
-                  {
-                    id: crypto.randomUUID(),
-                    kind: "video",
-                    src: item.src,
-                    posterSrc: item.posterSrc ?? null,
-                  },
-                ],
-              });
-            }
-            toast.success("목록에 미디어를 추가했습니다.");
+      {libraryPickAcceptKind ? (
+        <BookMediaLibraryPickDialog
+          open={libraryPick != null}
+          onOpenChange={(o) => {
+            if (!o) setLibraryPick(null);
+          }}
+          bookId={bookId}
+          acceptKind={libraryPickAcceptKind}
+          title={
+            libraryPick?.mode === "playlistAppend"
+              ? "라이브러리에서 미디어 선택"
+              : undefined
           }
-          setLibraryPick(null);
-        }}
-      />
-    ) : null}
+          onPick={(item) => {
+            if (!libraryPick) return;
+            if (libraryPick.mode === "replace") {
+              if (item.kind === "image") {
+                onElementChange(libraryPick.elementId, { src: item.src });
+              } else {
+                onElementChange(libraryPick.elementId, {
+                  src: item.src,
+                  posterSrc: item.posterSrc,
+                });
+              }
+              toast.success("미디어를 바꿨습니다.");
+            } else {
+              const pageEl = activePage?.elements.find(
+                (e) => e.id === libraryPick.elementId,
+              );
+              if (!pageEl || pageEl.type !== "mediaPlaylist") {
+                setLibraryPick(null);
+                return;
+              }
+              const cur = pageEl.mediaPlaylistItems ?? [];
+              if (cur.length >= MEDIA_PLAYLIST_MAX_ITEMS) {
+                setLibraryPick(null);
+                toast.error(
+                  `미디어 목록은 최대 ${MEDIA_PLAYLIST_MAX_ITEMS}개입니다.`,
+                );
+                return;
+              }
+              if (item.kind === "image") {
+                onElementChange(libraryPick.elementId, {
+                  mediaPlaylistItems: [
+                    ...cur,
+                    {
+                      id: crypto.randomUUID(),
+                      kind: "image",
+                      src: item.src,
+                    },
+                  ],
+                });
+              } else {
+                onElementChange(libraryPick.elementId, {
+                  mediaPlaylistItems: [
+                    ...cur,
+                    {
+                      id: crypto.randomUUID(),
+                      kind: "video",
+                      src: item.src,
+                      posterSrc: item.posterSrc ?? null,
+                    },
+                  ],
+                });
+              }
+              toast.success("목록에 미디어를 추가했습니다.");
+            }
+            setLibraryPick(null);
+          }}
+        />
+      ) : null}
     </>
   );
 }
@@ -2145,7 +2272,10 @@ function BookDetailGuestBookView({
     ...BOOK_CANVAS_STAGE_DISPLAY_OPTS,
   });
 
-  const safeIndex = Math.min(pageIndex, Math.max(0, sortedPagesView.length - 1));
+  const safeIndex = Math.min(
+    pageIndex,
+    Math.max(0, sortedPagesView.length - 1),
+  );
   const viewPage = sortedPagesView[safeIndex];
 
   const guestPresentationTimingId = useMemo(
@@ -2169,9 +2299,12 @@ function BookDetailGuestBookView({
     <BookWorkspaceShell
       titleArea={
         <div className="min-w-0">
-          <h1 className="truncate text-base font-semibold leading-tight sm:text-lg">{data.title}</h1>
+          <h1 className="truncate text-base font-semibold leading-tight sm:text-lg">
+            {data.title}
+          </h1>
           <p className="truncate text-xs text-muted-foreground">
-            {data.author.name} · {sortedPagesView.length}페이지 · {safeIndex + 1}번째 보는 중
+            {data.author.name} · {sortedPagesView.length}페이지 ·{" "}
+            {safeIndex + 1}번째 보는 중
           </p>
         </div>
       }
@@ -2270,11 +2403,17 @@ export function BookDetailPage() {
   if (!Number.isFinite(id) || id <= 0) {
     return (
       <BookWorkspaceShell
-        titleArea={<span className="text-sm text-muted-foreground">잘못된 주소</span>}
-        left={<div className="w-52 shrink-0 border-r border-border bg-card/50" />}
+        titleArea={
+          <span className="text-sm text-muted-foreground">잘못된 주소</span>
+        }
+        left={
+          <div className="w-52 shrink-0 border-r border-border bg-card/50" />
+        }
         center={
           <div className="flex flex-1 flex-col items-center justify-center gap-2 p-4">
-            <p className="text-sm text-muted-foreground">목록에서 북을 다시 선택해 주세요.</p>
+            <p className="text-sm text-muted-foreground">
+              목록에서 북을 다시 선택해 주세요.
+            </p>
             <Button variant="outline" size="sm" asChild>
               <Link href="/books">목록</Link>
             </Button>
@@ -2287,8 +2426,14 @@ export function BookDetailPage() {
   if (isPending) {
     return (
       <BookWorkspaceShell
-        titleArea={<span className="truncate text-sm text-muted-foreground">불러오는 중…</span>}
-        left={<div className="w-52 shrink-0 border-r border-border bg-card/50" />}
+        titleArea={
+          <span className="truncate text-sm text-muted-foreground">
+            불러오는 중…
+          </span>
+        }
+        left={
+          <div className="w-52 shrink-0 border-r border-border bg-card/50" />
+        }
         center={
           <div className="flex flex-1 items-center justify-center">
             <Spinner className="size-10 text-muted-foreground" />
@@ -2305,7 +2450,9 @@ export function BookDetailPage() {
         left={<div className="w-52 shrink-0 border-r border-border" />}
         center={
           <div className="flex flex-1 items-center justify-center p-4">
-            <FormErrorAlert message={(error as Error)?.message ?? "불러오지 못했습니다."} />
+            <FormErrorAlert
+              message={(error as Error)?.message ?? "불러오지 못했습니다."}
+            />
           </div>
         }
       />
@@ -2319,11 +2466,19 @@ export function BookDetailPage() {
   if (!sortedPagesView.length) {
     return (
       <BookWorkspaceShell
-        titleArea={<h1 className="truncate text-base font-semibold sm:text-lg">{data.title}</h1>}
-        left={<div className="w-52 shrink-0 border-r border-border bg-card/50" />}
+        titleArea={
+          <h1 className="truncate text-base font-semibold sm:text-lg">
+            {data.title}
+          </h1>
+        }
+        left={
+          <div className="w-52 shrink-0 border-r border-border bg-card/50" />
+        }
         center={
           <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-            <p className="text-sm text-muted-foreground">이 북에는 페이지가 없습니다.</p>
+            <p className="text-sm text-muted-foreground">
+              이 북에는 페이지가 없습니다.
+            </p>
           </div>
         }
       />

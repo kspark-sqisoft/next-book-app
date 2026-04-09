@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { cn } from "@/lib/utils";
+
+import type { BookTextOverlayLiveFrame } from "@/components/books/BookTextWidgetOverlay";
 import {
+  type BookCanvasElement,
   bookElementOverlayTopLeftFromPivot,
   bookElementPivotKonva,
   bookWidgetBackdropChromeStyle,
@@ -12,9 +14,8 @@ import {
   resolveBookElementOutlineColor,
   resolveBookElementOutlineWidth,
   resolveBookElementRotation,
-  type BookCanvasElement,
 } from "@/lib/book-canvas";
-import type { BookTextOverlayLiveFrame } from "@/components/books/BookTextWidgetOverlay";
+import { cn } from "@/lib/utils";
 
 type Props = {
   el: Extract<BookCanvasElement, { type: "digitalClock" }>;
@@ -35,7 +36,13 @@ function useClockNow(showSeconds: boolean) {
   return now;
 }
 
-export function BookDigitalClockWidgetOverlay({ el, scale, mode, isSelected, liveFrame }: Props) {
+export function BookDigitalClockWidgetOverlay({
+  el,
+  scale,
+  mode,
+  isSelected,
+  liveFrame,
+}: Props) {
   const disp = resolveBookDigitalClockDisplay(el.clockDisplay);
   const now = useClockNow(disp.seconds);
 
@@ -64,7 +71,13 @@ export function BookDigitalClockWidgetOverlay({ el, scale, mode, isSelected, liv
   const h = el.height;
   const o = resolveBookElementOpacity(el.opacity);
   const rot = resolveBookElementRotation(el.rotation);
-  const pivot = bookElementPivotKonva({ x: el.x, y: el.y, width: w, height: h, rotation: el.rotation });
+  const pivot = bookElementPivotKonva({
+    x: el.x,
+    y: el.y,
+    width: w,
+    height: h,
+    rotation: el.rotation,
+  });
   const layoutOrigin = bookElementOverlayTopLeftFromPivot(pivot, w, h);
   const fx = liveFrame?.x ?? layoutOrigin.x;
   const fy = liveFrame?.y ?? layoutOrigin.y;
@@ -77,12 +90,16 @@ export function BookDigitalClockWidgetOverlay({ el, scale, mode, isSelected, liv
 
   const customBg = parseBookClockBackground(el.clockBackground);
   const customText = parseBookWidgetTextColor(el.clockTextColor);
-  const backdropChrome = customBg ? bookWidgetBackdropChromeStyle(customBg) : null;
+  const backdropChrome = customBg
+    ? bookWidgetBackdropChromeStyle(customBg)
+    : null;
   const brPx = Math.max(0, resolveBookElementBorderRadius(el) * scale);
   const ow = resolveBookElementOutlineWidth(el);
   const oc = resolveBookElementOutlineColor(el);
   const outlineRing =
-    mode === "edit" && ow > 0 ? `0 0 0 ${Math.max(0.5, ow * scale)}px ${oc}` : "";
+    mode === "edit" && ow > 0
+      ? `0 0 0 ${Math.max(0.5, ow * scale)}px ${oc}`
+      : "";
   const bgShadow = !customBg
     ? "0 12px 40px -8px rgba(0,0,0,0.45)"
     : customBg && backdropChrome && backdropChrome.boxShadow !== "none"
@@ -97,7 +114,9 @@ export function BookDigitalClockWidgetOverlay({ el, scale, mode, isSelected, liv
         !customBg &&
           mode === "edit" &&
           "border border-white/10 bg-linear-to-br from-slate-900 via-slate-800 to-slate-950",
-        !customBg && mode === "view" && "bg-linear-to-br from-slate-900 via-slate-800 to-slate-950",
+        !customBg &&
+          mode === "view" &&
+          "bg-linear-to-br from-slate-900 via-slate-800 to-slate-950",
         isSelected && mode === "edit" && "ring-2 ring-primary ring-offset-0",
       )}
       style={{

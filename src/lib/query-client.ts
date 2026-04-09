@@ -1,4 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
+
 import { installQueryCacheHitLogging } from "@/lib/install-query-cache-hit-logging";
 
 /** 앱 전역 단일 인스턴스 — `main`의 Provider와 스토어 등에서 동일 참조로 무효화할 때 사용 */

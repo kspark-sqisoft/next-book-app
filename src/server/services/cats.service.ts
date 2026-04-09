@@ -1,10 +1,15 @@
 import { unlink } from "node:fs/promises";
 import { join } from "node:path";
+
 import { asc, eq } from "drizzle-orm";
+
+import {
+  type AuthActor,
+  canMutateCatResource,
+} from "@/server/auth/auth-policy";
 import { getDb } from "@/server/db";
 import { studyCats } from "@/server/db/schema";
 import { CAT_IMAGES_SUBDIR, UPLOAD_ROOT } from "@/server/env";
-import { type AuthActor, canMutateCatResource } from "@/server/auth/auth-policy";
 import { HttpError } from "@/server/http/http-error";
 
 export type CatPublic = {

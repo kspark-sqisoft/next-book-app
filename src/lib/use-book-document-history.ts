@@ -1,10 +1,13 @@
-import { produce, type Draft } from "immer";
+import { type Draft, produce } from "immer";
 import { useCallback, useState } from "react";
+
 import type { BookEditorPageState } from "@/lib/book-canvas";
 
 const MAX_HISTORY = 80;
 
-export function cloneBookPages(pages: BookEditorPageState[]): BookEditorPageState[] {
+export function cloneBookPages(
+  pages: BookEditorPageState[],
+): BookEditorPageState[] {
   return structuredClone(pages);
 }
 
@@ -24,29 +27,35 @@ export function useBookDocumentHistory(initialPages: BookEditorPageState[]) {
     future: [],
   }));
 
-  const updatePages = useCallback((recipe: (draft: Draft<BookEditorPageState>[]) => void) => {
-    setDoc(({ pages, past, future }) => {
-      const next = produce(pages, recipe);
-      if (next === pages) return { pages, past, future };
-      return {
-        pages: next,
-        past: [...past.slice(-(MAX_HISTORY - 1)), cloneBookPages(pages)],
-        future: [],
-      };
-    });
-  }, []);
+  const updatePages = useCallback(
+    (recipe: (draft: Draft<BookEditorPageState>[]) => void) => {
+      setDoc(({ pages, past, future }) => {
+        const next = produce(pages, recipe);
+        if (next === pages) return { pages, past, future };
+        return {
+          pages: next,
+          past: [...past.slice(-(MAX_HISTORY - 1)), cloneBookPages(pages)],
+          future: [],
+        };
+      });
+    },
+    [],
+  );
 
-  const commitPages = useCallback((fn: (prev: BookEditorPageState[]) => BookEditorPageState[]) => {
-    setDoc(({ pages, past, future }) => {
-      const next = fn(pages);
-      if (next === pages) return { pages, past, future };
-      return {
-        pages: next,
-        past: [...past.slice(-(MAX_HISTORY - 1)), cloneBookPages(pages)],
-        future: [],
-      };
-    });
-  }, []);
+  const commitPages = useCallback(
+    (fn: (prev: BookEditorPageState[]) => BookEditorPageState[]) => {
+      setDoc(({ pages, past, future }) => {
+        const next = fn(pages);
+        if (next === pages) return { pages, past, future };
+        return {
+          pages: next,
+          past: [...past.slice(-(MAX_HISTORY - 1)), cloneBookPages(pages)],
+          future: [],
+        };
+      });
+    },
+    [],
+  );
 
   const undo = useCallback(() => {
     setDoc(({ pages, past, future }) => {

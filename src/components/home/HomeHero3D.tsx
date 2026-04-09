@@ -2,18 +2,27 @@
  * CodeSandbox [BestServedBold Christmas Baubles (zxpv7)](https://codesandbox.io/p/sandbox/zxpv7?file=%2Fsrc%2FApp.js)
  * 의 `App.js`를 TypeScript + 최신 R3F/Rapier API에 맞게 포팅했습니다.
  */
-import * as THREE from "three";
-import { Suspense, useRef } from "react";
-import { Canvas, useFrame, type RootState } from "@react-three/fiber";
 import { Environment, useGLTF } from "@react-three/drei";
+import { Canvas, type RootState, useFrame } from "@react-three/fiber";
 import { EffectComposer, N8AO } from "@react-three/postprocessing";
-import { BallCollider, Physics, RigidBody, CylinderCollider } from "@react-three/rapier";
 import type { RapierRigidBody } from "@react-three/rapier";
+import {
+  BallCollider,
+  CylinderCollider,
+  Physics,
+  RigidBody,
+} from "@react-three/rapier";
+import { Suspense, useRef } from "react";
+import * as THREE from "three";
+
 import { cn } from "@/lib/utils";
 
 THREE.ColorManagement.enabled = true;
 
-const baubleMaterial = new THREE.MeshLambertMaterial({ color: "#c0a0a0", emissive: "red" });
+const baubleMaterial = new THREE.MeshLambertMaterial({
+  color: "#c0a0a0",
+  emissive: "red",
+});
 const capMaterial = new THREE.MeshStandardMaterial({
   metalness: 0.75,
   roughness: 0.15,
@@ -62,8 +71,18 @@ function Bauble({
       colliders={false}
     >
       <BallCollider args={[scale]} />
-      <CylinderCollider rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 1.2 * scale]} args={[0.15 * scale, 0.275 * scale]} />
-      <mesh castShadow receiveShadow scale={scale} geometry={sphereGeometry} material={baubleMaterial} />
+      <CylinderCollider
+        rotation={[Math.PI / 2, 0, 0]}
+        position={[0, 0, 1.2 * scale]}
+        args={[0.15 * scale, 0.275 * scale]}
+      />
+      <mesh
+        castShadow
+        receiveShadow
+        scale={scale}
+        geometry={sphereGeometry}
+        material={baubleMaterial}
+      />
       <mesh
         castShadow
         scale={2.5 * scale}
@@ -82,7 +101,11 @@ const pointerSmooth = new THREE.Vector3();
 function Pointer() {
   const ref = useRef<RapierRigidBody>(null);
   useFrame(({ pointer, viewport }) => {
-    pointerTarget.set((pointer.x * viewport.width) / 2, (pointer.y * viewport.height) / 2, 0);
+    pointerTarget.set(
+      (pointer.x * viewport.width) / 2,
+      (pointer.y * viewport.height) / 2,
+      0,
+    );
     pointerSmooth.lerp(pointerTarget, 0.2);
     ref.current?.setNextKinematicTranslation({
       x: pointerSmooth.x,
@@ -91,7 +114,12 @@ function Pointer() {
     });
   });
   return (
-    <RigidBody position={[100, 100, 100]} type="kinematicPosition" colliders={false} ref={ref}>
+    <RigidBody
+      position={[100, 100, 100]}
+      type="kinematicPosition"
+      colliders={false}
+      ref={ref}
+    >
       <BallCollider args={[2]} />
     </RigidBody>
   );

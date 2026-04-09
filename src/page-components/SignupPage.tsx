@@ -1,13 +1,15 @@
 "use client";
 
-import { startTransition, useActionState, useEffect, useOptimistic } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { appLog } from "@/lib/app-log";
-import { formDataGetString } from "@/lib/form-data-utils";
-import { fieldErrorsFromZodIssues } from "@/lib/zod-form";
-import { signupSchema, type SignupFormValues } from "@/lib/schemas/forms";
-import { useAuth } from "@/stores/auth-store";
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useOptimistic,
+} from "react";
+import { toast } from "sonner";
+
 import { FormErrorAlert } from "@/components/forms/FormErrorAlert";
 import { FormFieldError } from "@/components/forms/FormFieldError";
 import { FormStatusSubmitButton } from "@/components/forms/FormStatusSubmitButton";
@@ -22,8 +24,12 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { appLog } from "@/lib/app-log";
+import { formDataGetString } from "@/lib/form-data-utils";
+import { type SignupFormValues, signupSchema } from "@/lib/schemas/forms";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { fieldErrorsFromZodIssues } from "@/lib/zod-form";
+import { useAuth } from "@/stores/auth-store";
 
 type SignupActionState = {
   serverError: string | null;
@@ -54,7 +60,9 @@ export function SignupPage() {
     if (!parsed.success) {
       return {
         serverError: null,
-        fieldErrors: fieldErrorsFromZodIssues<keyof SignupFormValues>(parsed.error.issues),
+        fieldErrors: fieldErrorsFromZodIssues<keyof SignupFormValues>(
+          parsed.error.issues,
+        ),
         redirectToLogin: false,
       };
     }
@@ -69,7 +77,8 @@ export function SignupPage() {
       toast.success("회원가입이 완료되었습니다. 로그인해 주세요.");
       return { serverError: null, fieldErrors: {}, redirectToLogin: true };
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "회원가입에 실패했습니다.";
+      const msg =
+        err instanceof Error ? err.message : "회원가입에 실패했습니다.";
       appLog("signup", "가입 실패", msg);
       toast.error(msg);
       return { serverError: msg, fieldErrors: {}, redirectToLogin: false };
@@ -124,7 +133,9 @@ export function SignupPage() {
                 name="name"
                 autoComplete="name"
                 aria-invalid={Boolean(optimisticState.fieldErrors.name)}
-                className={cn(optimisticState.fieldErrors.name && "border-destructive")}
+                className={cn(
+                  optimisticState.fieldErrors.name && "border-destructive",
+                )}
               />
               <FormFieldError message={optimisticState.fieldErrors.name} />
             </div>
@@ -135,7 +146,9 @@ export function SignupPage() {
                 name="email"
                 autoComplete="email"
                 aria-invalid={Boolean(optimisticState.fieldErrors.email)}
-                className={cn(optimisticState.fieldErrors.email && "border-destructive")}
+                className={cn(
+                  optimisticState.fieldErrors.email && "border-destructive",
+                )}
               />
               <FormFieldError message={optimisticState.fieldErrors.email} />
             </div>
@@ -147,16 +160,23 @@ export function SignupPage() {
                 type="password"
                 autoComplete="new-password"
                 aria-invalid={Boolean(optimisticState.fieldErrors.password)}
-                className={cn(optimisticState.fieldErrors.password && "border-destructive")}
+                className={cn(
+                  optimisticState.fieldErrors.password && "border-destructive",
+                )}
               />
               <FormFieldError message={optimisticState.fieldErrors.password} />
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-3 sm:flex-row sm:justify-between">
-            <FormStatusSubmitButton className="w-full sm:w-auto">가입하기</FormStatusSubmitButton>
+            <FormStatusSubmitButton className="w-full sm:w-auto">
+              가입하기
+            </FormStatusSubmitButton>
             <p className="text-center text-xs text-muted-foreground sm:text-right">
               이미 계정이 있나요?{" "}
-              <Link href="/login" className="text-primary underline-offset-4 hover:underline">
+              <Link
+                href="/login"
+                className="text-primary underline-offset-4 hover:underline"
+              >
                 로그인
               </Link>
             </p>

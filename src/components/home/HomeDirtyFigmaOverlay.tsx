@@ -3,7 +3,9 @@
  * `styles.css`의 `.full`(max-width: 568px에서 숨김) → `max-[568px]:hidden`.
  */
 
-const antonio = { fontFamily: "var(--font-antonio), Antonio, sans-serif" } as const;
+const antonio = {
+  fontFamily: "var(--font-antonio), Antonio, sans-serif",
+} as const;
 
 function Underlay() {
   return (
@@ -19,7 +21,9 @@ function Underlay() {
           PARK KEESOON
         </p>
         <div className="flex flex-[1_1_0%] gap-[2em]" />
-        <p className="h-[30px] flex-[1_1_0%] text-right text-[30px] leading-[30px]">⎑</p>
+        <p className="h-[30px] flex-[1_1_0%] text-right text-[30px] leading-[30px]">
+          ⎑
+        </p>
       </div>
 
       <div className="h-[60px]" />
@@ -50,9 +54,13 @@ function Underlay() {
         className="flex w-full max-[568px]:hidden min-h-0 flex-[1_1_0%] flex-row items-end justify-center"
         style={antonio}
       >
-        <p className="m-0 flex-[1_1_0%] text-[250px] leading-none tracking-[-10px]">X</p>
+        <p className="m-0 flex-[1_1_0%] text-[250px] leading-none tracking-[-10px]">
+          X
+        </p>
         <div className="w-2.5 shrink-0" />
-        <p className="m-0 flex-[1_1_0%] text-right text-[250px] leading-none tracking-[-10px]">_01</p>
+        <p className="m-0 flex-[1_1_0%] text-right text-[250px] leading-none tracking-[-10px]">
+          _01
+        </p>
       </div>
 
       <div className="h-[60px]" />

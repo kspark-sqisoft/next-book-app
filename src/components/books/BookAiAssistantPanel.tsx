@@ -1,5 +1,3 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import {
   Bot,
   ChevronLeft,
@@ -10,28 +8,31 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
+
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { fetchBookAiChat, requestBookLayoutAi } from "@/lib/api";
 import { appLog } from "@/lib/app-log";
 import {
   addPagesTotalCount,
+  type BookLayoutAiAction,
   bookTitleActions,
   pageBackgroundActions,
   pageTitleActions,
   slideDimensionsFromActions,
   widgetPlacementsFromLayoutAiActions,
-  type BookLayoutAiAction,
 } from "@/lib/book-ai-placement";
 import type { BookCanvasElement } from "@/lib/book-canvas";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import {
   floatingDockAiInsetStartClass,
   floatingDockBottomInsetClass,
   floatingDockFabButtonClass,
   floatingDockFabIconClass,
 } from "@/lib/floating-dock-chrome";
-  import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 type ChatLine = { role: "user" | "assistant"; text: string; lineKey: string };
 
@@ -79,11 +80,7 @@ const ASSISTANT_TIPS: { title: string; hints: string[] }[] = [
   },
   {
     title: "되돌리기·삭제",
-    hints: [
-      "방금 작업 되돌려줘",
-      "다시 실행해줘",
-      "이 페이지 지워줘",
-    ],
+    hints: ["방금 작업 되돌려줘", "다시 실행해줘", "이 페이지 지워줘"],
   },
   {
     title: "한 번에 여러 가지",
@@ -126,8 +123,14 @@ type BookAiAssistantPanelProps = {
     slideHeight?: number;
   }) => void;
   /** 이미지·비디오 하나만 선택된 경우에만 서버로 보냄 — «바꿔줘» 등이 replace로 이어짐 */
-  layoutAiMediaSelection?: { elementId: string; kind: "image" | "video" } | null;
-  onPatchBookElement?: (elementId: string, patch: Partial<BookCanvasElement>) => void;
+  layoutAiMediaSelection?: {
+    elementId: string;
+    kind: "image" | "video";
+  } | null;
+  onPatchBookElement?: (
+    elementId: string,
+    patch: Partial<BookCanvasElement>,
+  ) => void;
   floatingStackZIndex?: number;
   onRaiseFloatingStack?: () => void;
   className?: string;
@@ -211,7 +214,10 @@ export function BookAiAssistantPanel({
       typeof crypto !== "undefined" && "randomUUID" in crypto
         ? crypto.randomUUID()
         : `u-${Date.now()}`;
-    setLines((prev) => [...prev, { role: "user", text: msg, lineKey: userKey }]);
+    setLines((prev) => [
+      ...prev,
+      { role: "user", text: msg, lineKey: userKey },
+    ]);
     setPending(true);
     try {
       const { reply, actions } = await requestBookLayoutAi({
@@ -222,7 +228,10 @@ export function BookAiAssistantPanel({
         activeSlideIndex:
           pageCount <= 0
             ? 0
-            : Math.min(Math.max(0, activePageIndex), Math.max(0, pageCount - 1)),
+            : Math.min(
+                Math.max(0, activePageIndex),
+                Math.max(0, pageCount - 1),
+              ),
         ...(layoutAiMediaSelection
           ? { selection: layoutAiMediaSelection }
           : {}),
@@ -240,8 +249,7 @@ export function BookAiAssistantPanel({
           if (!src || !/^https:\/\//i.test(src)) continue;
           if (a.widget === "video") {
             const p = a.posterSrc?.trim();
-            const posterSrc =
-              p && /^https:\/\//i.test(p) ? p : null;
+            const posterSrc = p && /^https:\/\//i.test(p) ? p : null;
             onPatchBookElement(a.elementId, { src, posterSrc });
           } else {
             onPatchBookElement(a.elementId, { src });
@@ -291,7 +299,9 @@ export function BookAiAssistantPanel({
         (a): a is Extract<BookLayoutAiAction, { type: "add_widget" }> =>
           a.type === "add_widget" && a.widget === "video",
       );
-      const videoPlacements = placements.filter((p) => p.element.type === "video");
+      const videoPlacements = placements.filter(
+        (p) => p.element.type === "video",
+      );
       appLog("bookAi", "layout 응답 적용(개발 콘솔)", {
         videoActionsFromApi: videoActs.length,
         videoActionsWithHttpsSrc: videoActs.filter(
@@ -372,10 +382,14 @@ export function BookAiAssistantPanel({
       ) {
         const parts: string[] = [];
         if (undoSteps > 0) {
-          parts.push(undoSteps === 1 ? "한 단계 되돌림" : `되돌리기 ${undoSteps}회`);
+          parts.push(
+            undoSteps === 1 ? "한 단계 되돌림" : `되돌리기 ${undoSteps}회`,
+          );
         }
         if (redoSteps > 0) {
-          parts.push(redoSteps === 1 ? "다시 실행 1회" : `다시 실행 ${redoSteps}회`);
+          parts.push(
+            redoSteps === 1 ? "다시 실행 1회" : `다시 실행 ${redoSteps}회`,
+          );
         }
         if (removeRequests > 0) {
           parts.push(
@@ -386,7 +400,9 @@ export function BookAiAssistantPanel({
         }
         if (addCount > 0) {
           parts.push(
-            addCount === 1 ? "슬라이드 1장 추가" : `슬라이드 ${addCount}장 추가`,
+            addCount === 1
+              ? "슬라이드 1장 추가"
+              : `슬라이드 ${addCount}장 추가`,
           );
         }
         if (bgColors.length > 0) parts.push("배경 반영");
@@ -413,7 +429,10 @@ export function BookAiAssistantPanel({
         typeof crypto !== "undefined" && "randomUUID" in crypto
           ? crypto.randomUUID()
           : `a-${Date.now()}`;
-      setLines((prev) => [...prev, { role: "assistant", text: reply, lineKey: asKey }]);
+      setLines((prev) => [
+        ...prev,
+        { role: "assistant", text: reply, lineKey: asKey },
+      ]);
     } catch (e) {
       const m = e instanceof Error ? e.message : "요청에 실패했습니다.";
       toast.error(m);
@@ -421,7 +440,10 @@ export function BookAiAssistantPanel({
         typeof crypto !== "undefined" && "randomUUID" in crypto
           ? crypto.randomUUID()
           : `e-${Date.now()}`;
-      setLines((prev) => [...prev, { role: "assistant", text: m, lineKey: errKey }]);
+      setLines((prev) => [
+        ...prev,
+        { role: "assistant", text: m, lineKey: errKey },
+      ]);
     } finally {
       setPending(false);
       requestAnimationFrame(() => {
@@ -529,8 +551,8 @@ export function BookAiAssistantPanel({
               </Button>
               <div className="min-w-0 flex-1 rounded-md px-1 py-0.5">
                 <div className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-violet-600/90 dark:text-violet-400/90">
-                  <Lightbulb className="size-3 shrink-0" aria-hidden />
-                  팁 {tipIndex + 1} / {tipCount}
+                  <Lightbulb className="size-3 shrink-0" aria-hidden />팁{" "}
+                  {tipIndex + 1} / {tipCount}
                 </div>
                 <p className="mt-0.5 text-sm font-semibold leading-tight text-violet-950 dark:text-violet-50">
                   {currentTip.title}
@@ -560,7 +582,11 @@ export function BookAiAssistantPanel({
                 <ChevronRight className="size-4" aria-hidden />
               </Button>
             </div>
-            <div className="mt-1.5 flex justify-center gap-1.5" role="tablist" aria-label="팁 선택">
+            <div
+              className="mt-1.5 flex justify-center gap-1.5"
+              role="tablist"
+              aria-label="팁 선택"
+            >
               {ASSISTANT_TIPS.map((_, i) => (
                 <button
                   key={i}
@@ -652,12 +678,15 @@ export function BookAiAssistantPanel({
                 X-Client-Feature: book-layout-ai
               </code>
               로 찾을 수 있어요. 슬라이드 반영만 하고{" "}
-              <strong className="font-medium text-violet-950 dark:text-violet-100">북 저장은 따로</strong> 해야
-              서버(DB)에 남습니다.
+              <strong className="font-medium text-violet-950 dark:text-violet-100">
+                북 저장은 따로
+              </strong>{" "}
+              해야 서버(DB)에 남습니다.
               {bookId != null && bookId > 0 ? (
                 <>
                   {" "}
-                  성공한 AI 대화도 이 북에 저장되어, 패널을 접었다 펼쳐도 이어서 볼 수 있어요(북 작성자만).
+                  성공한 AI 대화도 이 북에 저장되어, 패널을 접었다 펼쳐도 이어서
+                  볼 수 있어요(북 작성자만).
                 </>
               ) : null}
             </p>
@@ -677,14 +706,20 @@ export function BookAiAssistantPanel({
           open && "shadow-xl shadow-violet-600/35 dark:shadow-violet-950/60",
         )}
         aria-expanded={open}
-        aria-label={open ? "AI 어시스턴트 패널 접기" : "AI 어시스턴트 패널 열기"}
+        aria-label={
+          open ? "AI 어시스턴트 패널 접기" : "AI 어시스턴트 패널 열기"
+        }
         title="AI 어시스턴트"
         onClick={() => {
           onRaiseFloatingStack?.();
           setOpen((o) => !o);
         }}
       >
-        <Bot className={floatingDockFabIconClass} strokeWidth={1.75} aria-hidden />
+        <Bot
+          className={floatingDockFabIconClass}
+          strokeWidth={1.75}
+          aria-hidden
+        />
       </Button>
     </div>
   );

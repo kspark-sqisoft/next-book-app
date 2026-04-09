@@ -1,12 +1,11 @@
-import { useId, useMemo, useState } from "react";
 import {
+  closestCenter,
   DndContext,
-  DragOverlay,
   type DragEndEvent,
+  DragOverlay,
   type DragStartEvent,
   KeyboardSensor,
   PointerSensor,
-  closestCenter,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -19,14 +18,11 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   ChevronDown,
-  ChevronUp,
   ChevronsDown,
   ChevronsUp,
+  ChevronUp,
   Clock,
   CloudSun,
-  Newspaper,
-  Pencil,
-  Shapes,
   Eye,
   EyeOff,
   GripVertical,
@@ -34,11 +30,19 @@ import {
   Layers,
   ListVideo,
   Lock,
+  Newspaper,
+  Pencil,
+  Shapes,
   Trash2,
   Type,
   Unlock,
   Video,
 } from "lucide-react";
+import { useId, useMemo, useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import {
   type BookCanvasElement,
   type ElementZOrderOp,
@@ -52,9 +56,6 @@ import {
   bookDockedPanelHeadingClass,
 } from "@/lib/book-workspace-ui";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 
 function bookElementLayerLabel(el: BookCanvasElement): string {
   switch (el.type) {
@@ -128,7 +129,9 @@ function LayerHoldSecInput({
           onCommit(n);
         } else {
           setDraft(
-            storedSec != null && Number.isInteger(storedSec) ? String(storedSec) : "",
+            storedSec != null && Number.isInteger(storedSec)
+              ? String(storedSec)
+              : "",
           );
         }
       }}
@@ -193,7 +196,10 @@ type LayerRowActionsProps = {
   /** 이 슬라이드의 미리보기 시간 기준 레이어 id */
   presentationTimingElementId?: string | null;
   onPresentationTimingElementIdChange?: (id: string | null) => void;
-  onPresentationHoldSecChange?: (elementId: string, sec: number | undefined) => void;
+  onPresentationHoldSecChange?: (
+    elementId: string,
+    sec: number | undefined,
+  ) => void;
   videoDurationSecByElementId?: Record<string, number>;
 };
 
@@ -236,7 +242,11 @@ function LayerRowActions({
           title={showing ? "보이는 레이어" : "숨긴 레이어"}
           aria-hidden
         >
-          {showing ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+          {showing ? (
+            <Eye className="size-3.5" />
+          ) : (
+            <EyeOff className="size-3.5" />
+          )}
         </span>
       ) : (
         <Button
@@ -266,7 +276,11 @@ function LayerRowActions({
           title={locked ? "잠긴 레이어" : "잠금 없음"}
           aria-hidden
         >
-          {locked ? <Lock className="size-3.5" /> : <Unlock className="size-3.5 opacity-40" />}
+          {locked ? (
+            <Lock className="size-3.5" />
+          ) : (
+            <Unlock className="size-3.5 opacity-40" />
+          )}
         </span>
       ) : (
         <Button
@@ -282,7 +296,10 @@ function LayerRowActions({
           }}
         >
           {locked ? (
-            <Lock className="size-3.5 text-amber-700 dark:text-amber-400" aria-hidden />
+            <Lock
+              className="size-3.5 text-amber-700 dark:text-amber-400"
+              aria-hidden
+            />
           ) : (
             <Unlock className="size-3.5 opacity-70" aria-hidden />
           )}
@@ -305,7 +322,9 @@ function LayerRowActions({
             className="size-4"
             aria-label={`${label}: 페이지 시간 기준`}
           />
-          <span className="text-[8px] leading-none text-muted-foreground">기준</span>
+          <span className="text-[8px] leading-none text-muted-foreground">
+            기준
+          </span>
         </div>
       )}
       {el.type === "mediaPlaylist" ? (
@@ -314,7 +333,9 @@ function LayerRowActions({
           title="미디어 목록 항목 시간 합"
         >
           <span className="text-[9px] text-muted-foreground">합</span>
-          <span className="text-[10px] font-mono tabular-nums text-foreground/90">{displaySec}s</span>
+          <span className="text-[10px] font-mono tabular-nums text-foreground/90">
+            {displaySec}s
+          </span>
         </span>
       ) : readOnly || !onPresentationHoldSecChange ? (
         <span
@@ -334,7 +355,9 @@ function LayerRowActions({
       {readOnly ? (
         <div className="flex min-w-0 flex-1 basis-0 items-center gap-2 px-1 py-1 text-xs">
           <LayerTypeIcon el={el} />
-          <span className="min-w-0 flex-1 truncate font-medium text-foreground">{label}</span>
+          <span className="min-w-0 flex-1 truncate font-medium text-foreground">
+            {label}
+          </span>
         </div>
       ) : (
         <button
@@ -442,7 +465,14 @@ function LayerRowActions({
 function SortableLayerRow(props: LayerPanelRowProps) {
   const { selected, ...actionsProps } = props;
   const { el, locked, readOnly, showing } = actionsProps;
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
     id: el.id,
     disabled: locked || readOnly,
   });
@@ -474,11 +504,18 @@ function SortableLayerRow(props: LayerPanelRowProps) {
             )}
             disabled={locked}
             aria-label={`${bookElementLayerLabel(el)} 순서 이동`}
-            title={locked ? "잠긴 레이어는 순서를 바꿀 수 없습니다" : "드래그해 위·아래로 순서 변경"}
+            title={
+              locked
+                ? "잠긴 레이어는 순서를 바꿀 수 없습니다"
+                : "드래그해 위·아래로 순서 변경"
+            }
             {...attributes}
             {...listeners}
           >
-            <GripVertical className="size-3.5 text-muted-foreground" aria-hidden />
+            <GripVertical
+              className="size-3.5 text-muted-foreground"
+              aria-hidden
+            />
           </Button>
         ) : null}
         <LayerRowActions {...actionsProps} />
@@ -507,9 +544,14 @@ function LayerDragOverlay({ el }: { el: BookCanvasElement }) {
         "flex min-w-[200px] max-w-[min(100vw-2rem,18rem)] items-center gap-2 rounded-md border border-primary/40 bg-card px-2 py-1.5 shadow-lg",
       )}
     >
-      <GripVertical className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+      <GripVertical
+        className="size-3.5 shrink-0 text-muted-foreground"
+        aria-hidden
+      />
       <LayerTypeIcon el={el} />
-      <span className="min-w-0 truncate text-xs font-medium text-foreground">{label}</span>
+      <span className="min-w-0 truncate text-xs font-medium text-foreground">
+        {label}
+      </span>
     </div>
   );
 }
@@ -520,7 +562,10 @@ export type BookLayersPanelProps = {
   onSelect: (id: string, shiftKey?: boolean) => void;
   onReorderZ?: (elementId: string, op: ElementZOrderOp) => void;
   /** 편집: 패널 표시 순서(위=앞) 기준으로 드래그 이동 */
-  onLayerDragReorder?: (fromDisplayIndex: number, toDisplayIndex: number) => void;
+  onLayerDragReorder?: (
+    fromDisplayIndex: number,
+    toDisplayIndex: number,
+  ) => void;
   onVisibilityChange?: (elementId: string, visible: boolean) => void;
   onLockChange?: (elementId: string, locked: boolean) => void;
   onRequestDelete?: (elementId: string) => void;
@@ -529,7 +574,10 @@ export type BookLayersPanelProps = {
   className?: string;
   presentationTimingElementId?: string | null;
   onPresentationTimingElementIdChange?: (id: string | null) => void;
-  onPresentationHoldSecChange?: (elementId: string, sec: number | undefined) => void;
+  onPresentationHoldSecChange?: (
+    elementId: string,
+    sec: number | undefined,
+  ) => void;
   videoDurationSecByElementId?: Record<string, number>;
 };
 
@@ -563,7 +611,9 @@ export function BookLayersPanel({
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
   );
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -585,7 +635,9 @@ export function BookLayersPanel({
     setActiveDragId(null);
   };
 
-  const activeOverlayEl = activeDragId ? rev.find((e) => e.id === activeDragId) : null;
+  const activeOverlayEl = activeDragId
+    ? rev.find((e) => e.id === activeDragId)
+    : null;
 
   const rowPropsBase = {
     revLength: rev.length,
@@ -650,7 +702,8 @@ export function BookLayersPanel({
       >
         {rev.length === 0 ? (
           <p className="px-3 py-5 text-center text-xs leading-relaxed text-muted-foreground">
-            이 슬라이드에 위젯이 없습니다. 왼쪽에서 위젯을 끌어 오거나 템플릿을 적용해 보세요.
+            이 슬라이드에 위젯이 없습니다. 왼쪽에서 위젯을 끌어 오거나 템플릿을
+            적용해 보세요.
           </p>
         ) : dragSortEnabled ? (
           <DndContext
@@ -660,11 +713,21 @@ export function BookLayersPanel({
             onDragEnd={handleDragEnd}
             onDragCancel={handleDragCancel}
           >
-            <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+            <SortableContext
+              items={sortableIds}
+              strategy={verticalListSortingStrategy}
+            >
               {listUl}
             </SortableContext>
-            <DragOverlay dropAnimation={{ duration: 200, easing: "cubic-bezier(0.25, 1, 0.5, 1)" }}>
-              {activeOverlayEl ? <LayerDragOverlay el={activeOverlayEl} /> : null}
+            <DragOverlay
+              dropAnimation={{
+                duration: 200,
+                easing: "cubic-bezier(0.25, 1, 0.5, 1)",
+              }}
+            >
+              {activeOverlayEl ? (
+                <LayerDragOverlay el={activeOverlayEl} />
+              ) : null}
             </DragOverlay>
           </DndContext>
         ) : (

@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
+
+import { REFRESH_TOKEN_COOKIE } from "@/server/env";
 import { handleRouteError } from "@/server/http/api-response";
 import {
   clearRefreshTokenCookieHeader,
   getRequestCookie,
 } from "@/server/http/cookies";
-import { REFRESH_TOKEN_COOKIE } from "@/server/env";
 import { AuthService } from "@/server/services/auth.service";
 
 export async function POST(request: Request) {

@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Label } from "@/components/ui/label";
+
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type BookHeaderSlideDimensionsProps = {
   slideWidth: number;
@@ -54,12 +55,17 @@ export function BookHeaderSlideDimensions({
       className="flex flex-wrap items-center gap-x-2 gap-y-0.5 border-l border-border/70 pl-2 sm:gap-x-3 sm:pl-3"
       title={`슬라이드 캔버스 크기(px). ${DIM_MIN}~${DIM_MAX}. 입력 후 Enter 또는 포커스 이동.`}
     >
-      <span className="text-[11px] font-semibold tracking-tight text-foreground/80 sm:text-xs">캔버스</span>
+      <span className="text-[11px] font-semibold tracking-tight text-foreground/80 sm:text-xs">
+        캔버스
+      </span>
       <div className="flex items-center gap-1.5">
         <Label htmlFor="book-hdr-slide-w" className="sr-only">
           너비 픽셀
         </Label>
-        <span className="text-muted-foreground tabular-nums text-xs" aria-hidden>
+        <span
+          className="text-muted-foreground tabular-nums text-xs"
+          aria-hidden
+        >
           W
         </span>
         <Input
@@ -81,7 +87,10 @@ export function BookHeaderSlideDimensions({
         <Label htmlFor="book-hdr-slide-h" className="sr-only">
           높이 픽셀
         </Label>
-        <span className="text-muted-foreground tabular-nums text-xs" aria-hidden>
+        <span
+          className="text-muted-foreground tabular-nums text-xs"
+          aria-hidden
+        >
           H
         </span>
         <Input

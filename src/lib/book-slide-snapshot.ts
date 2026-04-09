@@ -1,5 +1,6 @@
 import Konva from "konva";
 import type { SceneContext } from "konva/lib/Context";
+
 import { publicAssetUrl } from "@/lib/api";
 import type { BookCanvasElement } from "@/lib/book-canvas";
 import {
@@ -18,7 +19,11 @@ import {
   resolveBookElementOutlineWidth,
 } from "@/lib/book-canvas";
 import { computeKonvaFittedImageLayout } from "@/lib/book-media-layout";
-import { getTextWidgetDisplayHtml, richHtmlToPlainText, textWidgetHitHeight } from "@/lib/book-text-widget";
+import {
+  getTextWidgetDisplayHtml,
+  richHtmlToPlainText,
+  textWidgetHitHeight,
+} from "@/lib/book-text-widget";
 
 export type BookSlideSnapshotPage = {
   backgroundColor: string;
@@ -28,7 +33,9 @@ export type BookSlideSnapshotPage = {
 /** 사이드바 필름스트립(넓은 썸)에 맞춘 캡처 너비 */
 const THUMB_MAX_WIDTH = 140;
 
-function loadImageFromDataUrl(dataUrl: string): Promise<HTMLImageElement | null> {
+function loadImageFromDataUrl(
+  dataUrl: string,
+): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     const im = new Image();
     im.onload = () => resolve(im);
@@ -41,7 +48,9 @@ function loadImageFromDataUrl(dataUrl: string): Promise<HTMLImageElement | null>
  * 썸네일 합성용 이미지. 직접 URL을 img에 넣고 `crossOrigin` 없이 로드하면 캔버스가 taint 되어
  * `toDataURL`이 실패할 수 있으므로, http(s)는 `fetch`(+ CORS 성공) 후 Data URL로만 넣습니다.
  */
-async function loadImageForSnapshot(src: string): Promise<HTMLImageElement | null> {
+async function loadImageForSnapshot(
+  src: string,
+): Promise<HTMLImageElement | null> {
   const u = publicAssetUrl(src) ?? src;
   if (!u) return null;
 
@@ -69,7 +78,10 @@ async function loadImageForSnapshot(src: string): Promise<HTMLImageElement | nul
  * 포스터가 없을 때 비디오 첫 프레임(또는 근처)을 캔버스로 뽑아 썸네일에 사용합니다.
  * CORS 실패 시 crossOrigin 없이 한 번 더 시도합니다.
  */
-function loadVideoFrameAsImage(videoSrc: string, tryCors: boolean): Promise<HTMLImageElement | null> {
+function loadVideoFrameAsImage(
+  videoSrc: string,
+  tryCors: boolean,
+): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     const u = publicAssetUrl(videoSrc) ?? videoSrc;
     if (!u) {
@@ -203,18 +215,22 @@ function appendBookShapeElementToSnapshotLayer(
     ? Math.min(32, Math.max(0, Math.round(rawShapeSw)))
     : 3;
   if (
-    (el.shapeKind === "line" || el.shapeKind === "arrow" || el.shapeKind === "cross") &&
+    (el.shapeKind === "line" ||
+      el.shapeKind === "arrow" ||
+      el.shapeKind === "cross") &&
     logicalSw <= 0
   ) {
     return;
   }
   const fillRaw = el.fill?.trim();
-  const fill =
-    fillRaw && fillRaw !== "transparent" ? fillRaw : undefined;
+  const fill = fillRaw && fillRaw !== "transparent" ? fillRaw : undefined;
   const stroke =
-    logicalSw > 0 ? (el.stroke?.trim() ? el.stroke.trim() : "#1e293b") : undefined;
-  const strokeW =
-    logicalSw > 0 ? Math.max(0.5, sx(logicalSw)) : 0;
+    logicalSw > 0
+      ? el.stroke?.trim()
+        ? el.stroke.trim()
+        : "#1e293b"
+      : undefined;
+  const strokeW = logicalSw > 0 ? Math.max(0.5, sx(logicalSw)) : 0;
   const innerCr =
     el.shapeKind === "rect" || el.shapeKind === "roundRect"
       ? Math.min(Math.max(0, sx(el.cornerRadius ?? 0)), fw / 2, fh / 2)
@@ -318,18 +334,7 @@ function appendBookShapeElementToSnapshotLayer(
       const inset = fw * 0.38;
       g.add(
         new Konva.Line({
-          points: [
-            ox,
-            oy,
-            ox + inset,
-            oy,
-            -ox,
-            0,
-            ox + inset,
-            -oy,
-            ox,
-            -oy,
-          ],
+          points: [ox, oy, ox + inset, oy, -ox, 0, ox + inset, -oy, ox, -oy],
           closed: true,
           fill: fill ?? "transparent",
           stroke,
@@ -410,16 +415,7 @@ function appendBookShapeElementToSnapshotLayer(
       const inset = fw * 0.2;
       g.add(
         new Konva.Line({
-          points: [
-            ox + inset,
-            oy,
-            -ox - inset,
-            oy,
-            -ox,
-            -oy,
-            ox,
-            -oy,
-          ],
+          points: [ox + inset, oy, -ox - inset, oy, -ox, -oy, ox, -oy],
           closed: true,
           fill: fill ?? "transparent",
           stroke,
@@ -433,16 +429,7 @@ function appendBookShapeElementToSnapshotLayer(
       const skew = fw * 0.28;
       g.add(
         new Konva.Line({
-          points: [
-            ox + skew,
-            oy,
-            -ox + skew,
-            oy,
-            -ox,
-            -oy,
-            ox,
-            -oy,
-          ],
+          points: [ox + skew, oy, -ox + skew, oy, -ox, -oy, ox, -oy],
           closed: true,
           fill: fill ?? "transparent",
           stroke,
@@ -636,7 +623,7 @@ export async function captureBookSlideToDataURL(
             height: th,
             text: plain,
             fontSize: Math.max(4, el.fontSize * scale),
-            fontFamily: 'Geist Variable, ui-sans-serif, system-ui, sans-serif',
+            fontFamily: "Geist Variable, ui-sans-serif, system-ui, sans-serif",
             fill: el.fill?.trim() ? el.fill : "#111827",
             lineHeight: 1.35,
             wrap: "word",
@@ -740,7 +727,8 @@ export async function captureBookSlideToDataURL(
               cornerRadius: fbBr,
               fill: "#e5e7eb",
               stroke: fbOw > 0 ? fbOc : "#94a3b8",
-              strokeWidth: fbOw > 0 ? Math.max(0.5, sx(fbOw)) : Math.max(0.5, scale),
+              strokeWidth:
+                fbOw > 0 ? Math.max(0.5, sx(fbOw)) : Math.max(0.5, scale),
               opacity: elOp,
             }),
           );
@@ -846,16 +834,20 @@ export async function captureBookSlideToDataURL(
           typeof el.cityQuery === "string" && el.cityQuery.trim()
             ? el.cityQuery.trim().slice(0, 20)
             : "날씨";
-        const weatherFill = parseBookWeatherBackground(el.weatherBackground) ?? "#e0f2fe";
+        const weatherFill =
+          parseBookWeatherBackground(el.weatherBackground) ?? "#e0f2fe";
         const weatherStrokeA = bookWidgetBackdropAlphaFromCss(weatherFill);
         const weatherStrokeW = weatherStrokeA < 0.02 ? 0 : Math.max(0.5, scale);
         const weatherStroke =
-          weatherStrokeW === 0 ? "transparent" : `rgba(14,165,233,${weatherStrokeA * 0.85})`;
+          weatherStrokeW === 0
+            ? "transparent"
+            : `rgba(14,165,233,${weatherStrokeA * 0.85})`;
         const wUserOw = resolveBookElementOutlineWidth(el);
         const wUserOc = resolveBookElementOutlineColor(el);
         const wCorner = sx(resolveBookElementBorderRadius(el));
         const wStroke = wUserOw > 0 ? wUserOc : weatherStroke;
-        const wStrokeW = wUserOw > 0 ? Math.max(0.5, sx(wUserOw)) : weatherStrokeW;
+        const wStrokeW =
+          wUserOw > 0 ? Math.max(0.5, sx(wUserOw)) : weatherStrokeW;
         layer.add(
           new Konva.Rect({
             x: wp.cx,
@@ -872,7 +864,8 @@ export async function captureBookSlideToDataURL(
             opacity: elOp,
           }),
         );
-        const wTextFill = parseBookWidgetTextColor(el.weatherTextColor) ?? "#0369a1";
+        const wTextFill =
+          parseBookWidgetTextColor(el.weatherTextColor) ?? "#0369a1";
         layer.add(
           new Konva.Text({
             x: wp.cx,
@@ -901,11 +894,14 @@ export async function captureBookSlideToDataURL(
           height: nh,
           rotation: el.rotation,
         });
-        const newsFill = parseBookWeatherBackground(el.newsBackground) ?? "#172554";
+        const newsFill =
+          parseBookWeatherBackground(el.newsBackground) ?? "#172554";
         const newsStrokeA = bookWidgetBackdropAlphaFromCss(newsFill);
         const newsStrokeW = newsStrokeA < 0.02 ? 0 : Math.max(0.5, scale);
         const newsStroke =
-          newsStrokeW === 0 ? "transparent" : `rgba(99,102,241,${newsStrokeA * 0.85})`;
+          newsStrokeW === 0
+            ? "transparent"
+            : `rgba(99,102,241,${newsStrokeA * 0.85})`;
         const nUserOw = resolveBookElementOutlineWidth(el);
         const nUserOc = resolveBookElementOutlineColor(el);
         const nCorner = sx(resolveBookElementBorderRadius(el));
@@ -927,7 +923,8 @@ export async function captureBookSlideToDataURL(
             opacity: elOp,
           }),
         );
-        const nTextFill = parseBookWidgetTextColor(el.newsTextColor) ?? "#e0e7ff";
+        const nTextFill =
+          parseBookWidgetTextColor(el.newsTextColor) ?? "#e0e7ff";
         layer.add(
           new Konva.Text({
             x: np.cx,
@@ -1032,9 +1029,12 @@ export async function captureBookSlideToDataURL(
           const mStrokeA = bookWidgetBackdropAlphaFromCss(mf);
           const mStrokeW = mStrokeA < 0.02 ? 0 : Math.max(0.5, scale);
           const mStroke =
-            mStrokeW === 0 ? "transparent" : `rgba(56,189,248,${mStrokeA * 0.75})`;
+            mStrokeW === 0
+              ? "transparent"
+              : `rgba(56,189,248,${mStrokeA * 0.75})`;
           const mStrokeUse = mUserOw > 0 ? mUserOc : mStroke;
-          const mStrokeWUse = mUserOw > 0 ? Math.max(0.5, sx(mUserOw)) : mStrokeW;
+          const mStrokeWUse =
+            mUserOw > 0 ? Math.max(0.5, sx(mUserOw)) : mStrokeW;
           layer.add(
             new Konva.Rect({
               x: mp.cx,
@@ -1062,7 +1062,8 @@ export async function captureBookSlideToDataURL(
               rotation: mp.rotation,
               text: plist.length > 1 ? `미디어 (${plist.length})` : "미디어",
               fontSize: Math.max(7, 11 * scale),
-              fontFamily: "Geist Variable, ui-sans-serif, system-ui, sans-serif",
+              fontFamily:
+                "Geist Variable, ui-sans-serif, system-ui, sans-serif",
               fill: "#e2e8f0",
               align: "center",
               verticalAlign: "middle",
@@ -1096,16 +1097,20 @@ export async function captureBookSlideToDataURL(
             })
           : "";
         const thumbLabel = dateStr ? `${timeStr}\n${dateStr}` : timeStr;
-        const thumbBg = parseBookClockBackground(el.clockBackground) ?? "#0f172a";
+        const thumbBg =
+          parseBookClockBackground(el.clockBackground) ?? "#0f172a";
         const clockStrokeA = bookWidgetBackdropAlphaFromCss(thumbBg);
         const clockStrokeW = clockStrokeA < 0.02 ? 0 : Math.max(0.5, scale);
         const clockStroke =
-          clockStrokeW === 0 ? "transparent" : `rgba(148,163,184,${clockStrokeA * 0.62})`;
+          clockStrokeW === 0
+            ? "transparent"
+            : `rgba(148,163,184,${clockStrokeA * 0.62})`;
         const cUserOw = resolveBookElementOutlineWidth(el);
         const cUserOc = resolveBookElementOutlineColor(el);
         const cCorner = sx(resolveBookElementBorderRadius(el));
         const cStroke = cUserOw > 0 ? cUserOc : clockStroke;
-        const cStrokeW = cUserOw > 0 ? Math.max(0.5, sx(cUserOw)) : clockStrokeW;
+        const cStrokeW =
+          cUserOw > 0 ? Math.max(0.5, sx(cUserOw)) : clockStrokeW;
         layer.add(
           new Konva.Rect({
             x: cp.cx,
@@ -1122,7 +1127,8 @@ export async function captureBookSlideToDataURL(
             opacity: elOp,
           }),
         );
-        const cTextFill = parseBookWidgetTextColor(el.clockTextColor) ?? "#e2e8f0";
+        const cTextFill =
+          parseBookWidgetTextColor(el.clockTextColor) ?? "#e2e8f0";
         layer.add(
           new Konva.Text({
             x: cp.cx,

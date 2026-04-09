@@ -4,6 +4,7 @@
  */
 
 import DOMPurify from "dompurify";
+
 import type { BookCanvasElement } from "@/lib/book-canvas";
 
 const BOOK_TEXT_RICH_ALLOWED_TAGS = [
@@ -55,7 +56,10 @@ function isSafeFontSizeValue(val: string): boolean {
 export function sanitizeBlockTextAlignStyle(raw: string): string | null {
   const s = raw.trim();
   if (!s) return null;
-  const parts = s.split(";").map((x) => x.trim()).filter(Boolean);
+  const parts = s
+    .split(";")
+    .map((x) => x.trim())
+    .filter(Boolean);
   for (const part of parts) {
     const m = /^text-align\s*:\s*(.+)$/i.exec(part);
     if (!m) continue;
@@ -85,7 +89,10 @@ const BLOCK_TAGS_ALLOW_TEXT_ALIGN = new Set([
 function sanitizeSpanStyle(raw: string): string | null {
   const s = raw.trim();
   if (!s) return null;
-  const parts = s.split(";").map((x) => x.trim()).filter(Boolean);
+  const parts = s
+    .split(";")
+    .map((x) => x.trim())
+    .filter(Boolean);
   const kept: string[] = [];
   for (const part of parts) {
     const colorM = /^color\s*:\s*(.+)$/i.exec(part);
@@ -119,7 +126,10 @@ function isSafeCssColorValue(val: string): boolean {
 function bookRichHtmlPostProcessStyle(html: string): string {
   if (typeof document === "undefined") return html;
   try {
-    const doc = new DOMParser().parseFromString(`<div>${html}</div>`, "text/html");
+    const doc = new DOMParser().parseFromString(
+      `<div>${html}</div>`,
+      "text/html",
+    );
     const wrap = doc.body.firstElementChild as HTMLDivElement | null;
     if (!wrap) return html;
     wrap.querySelectorAll("[style]").forEach((el) => {
@@ -209,10 +219,7 @@ export function richHtmlToPlainText(html: string, maxLen = 8000): string {
   }
   const d = document.createElement("div");
   d.innerHTML = html;
-  return (d.textContent || "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, maxLen);
+  return (d.textContent || "").replace(/\s+/g, " ").trim().slice(0, maxLen);
 }
 
 export function getTextWidgetDisplayHtml(

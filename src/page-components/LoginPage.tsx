@@ -1,13 +1,15 @@
 "use client";
 
-import { startTransition, useActionState, useEffect, useOptimistic } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { appLog } from "@/lib/app-log";
-import { formDataGetString } from "@/lib/form-data-utils";
-import { fieldErrorsFromZodIssues } from "@/lib/zod-form";
-import { loginSchema, type LoginFormValues } from "@/lib/schemas/forms";
-import { useAuth } from "@/stores/auth-store";
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useOptimistic,
+} from "react";
+import { toast } from "sonner";
+
 import { FormErrorAlert } from "@/components/forms/FormErrorAlert";
 import { FormFieldError } from "@/components/forms/FormFieldError";
 import { FormStatusSubmitButton } from "@/components/forms/FormStatusSubmitButton";
@@ -23,8 +25,12 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { appLog } from "@/lib/app-log";
+import { formDataGetString } from "@/lib/form-data-utils";
+import { type LoginFormValues, loginSchema } from "@/lib/schemas/forms";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { fieldErrorsFromZodIssues } from "@/lib/zod-form";
+import { useAuth } from "@/stores/auth-store";
 
 type LoginActionState = {
   serverError: string | null;
@@ -52,7 +58,9 @@ export function LoginPage() {
     if (!parsed.success) {
       return {
         serverError: null,
-        fieldErrors: fieldErrorsFromZodIssues<keyof LoginFormValues>(parsed.error.issues),
+        fieldErrors: fieldErrorsFromZodIssues<keyof LoginFormValues>(
+          parsed.error.issues,
+        ),
       };
     }
 
@@ -121,7 +129,9 @@ export function LoginPage() {
                 name="email"
                 autoComplete="email"
                 aria-invalid={Boolean(optimisticState.fieldErrors.email)}
-                className={cn(optimisticState.fieldErrors.email && "border-destructive")}
+                className={cn(
+                  optimisticState.fieldErrors.email && "border-destructive",
+                )}
               />
               <FormFieldError message={optimisticState.fieldErrors.email} />
             </div>
@@ -133,16 +143,23 @@ export function LoginPage() {
                 type="password"
                 autoComplete="current-password"
                 aria-invalid={Boolean(optimisticState.fieldErrors.password)}
-                className={cn(optimisticState.fieldErrors.password && "border-destructive")}
+                className={cn(
+                  optimisticState.fieldErrors.password && "border-destructive",
+                )}
               />
               <FormFieldError message={optimisticState.fieldErrors.password} />
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-3 sm:flex-row sm:justify-between">
-            <FormStatusSubmitButton className="w-full sm:w-auto">로그인</FormStatusSubmitButton>
+            <FormStatusSubmitButton className="w-full sm:w-auto">
+              로그인
+            </FormStatusSubmitButton>
             <p className="text-center text-xs text-muted-foreground sm:text-right">
               계정이 없으신가요?{" "}
-              <Link href="/signup" className="text-primary underline-offset-4 hover:underline">
+              <Link
+                href="/signup"
+                className="text-primary underline-offset-4 hover:underline"
+              >
                 회원가입
               </Link>
             </p>

@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join, normalize, resolve } from "node:path";
+
 import { UPLOAD_ROOT } from "@/server/env";
 
 function contentTypeForPath(rel: string): string {

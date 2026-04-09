@@ -1,9 +1,10 @@
 import useEmblaCarousel from "embla-carousel-react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import type { PostMediaItem } from "@/lib/api";
+
 import { Button } from "@/components/ui/button";
 import { SafeImage } from "@/components/ui/safe-image";
+import type { PostMediaItem } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 type Props = {

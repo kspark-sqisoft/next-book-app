@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+
 import { handleRouteError } from "@/server/http/api-response";
 import { refreshTokenCookieHeader } from "@/server/http/cookies";
 import { AuthService } from "@/server/services/auth.service";
@@ -7,7 +8,10 @@ import { ensureUserBootstraps } from "@/server/services/bootstrap";
 export async function POST(request: Request) {
   try {
     await ensureUserBootstraps();
-    const body = (await request.json()) as { email?: string; password?: string };
+    const body = (await request.json()) as {
+      email?: string;
+      password?: string;
+    };
     const auth = new AuthService();
     const { access_token, refresh_token } = await auth.signin(
       body.email ?? "",

@@ -1,38 +1,40 @@
 import { asc, eq } from "drizzle-orm";
+
 import type { AuthActor } from "@/server/auth/auth-policy";
 import { getDb } from "@/server/db";
 import { bookAiChatMessage } from "@/server/db/schema";
 import { HttpError } from "@/server/http/http-error";
+
 import { BOOK_AI_USER_GUIDE_BLOCK } from "./book-ai-user-guide";
 import { BooksService } from "./books.service";
 import { PexelsService } from "./pexels.service";
 
-const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
+const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
 const ANCHORS = new Set([
-  'topLeft',
-  'topCenter',
-  'topRight',
-  'middleLeft',
-  'center',
-  'middleRight',
-  'bottomLeft',
-  'bottomCenter',
-  'bottomRight',
+  "topLeft",
+  "topCenter",
+  "topRight",
+  "middleLeft",
+  "center",
+  "middleRight",
+  "bottomLeft",
+  "bottomCenter",
+  "bottomRight",
 ]);
 
 const WIDGETS = new Set([
-  'weather',
-  'digitalClock',
-  'news',
-  'text',
-  'image',
-  'video',
+  "weather",
+  "digitalClock",
+  "news",
+  "text",
+  "image",
+  "video",
 ]);
 
 export type BookLayoutAiAddWidgetAction = {
-  type: 'add_widget';
-  widget: 'weather' | 'digitalClock' | 'news' | 'text' | 'image' | 'video';
+  type: "add_widget";
+  widget: "weather" | "digitalClock" | "news" | "text" | "image" | "video";
   anchor: string;
   /** 왼쪽 목록 기준 1번째 슬라이드에 배치. 생략 시 «현재 보고 있는» 슬라이드 */
   slideNumber?: number;
@@ -65,9 +67,9 @@ export type BookLayoutAiAddWidgetAction = {
 
 /** 선택된 이미지·비디오 위젯의 src만 교체(같은 id·위치 유지). 클라이언트가 selection을 보낸 경우에만 유효 */
 export type BookLayoutAiReplaceWidgetMediaAction = {
-  type: 'replace_widget_media';
+  type: "replace_widget_media";
   elementId: string;
-  widget: 'image' | 'video';
+  widget: "image" | "video";
   imageSearchQuery?: string;
   imageUrl?: string;
   videoSearchQuery?: string;
@@ -81,12 +83,12 @@ export type BookLayoutAiReplaceWidgetMediaAction = {
 };
 
 export type BookLayoutAiSetBackgroundAction = {
-  type: 'set_page_background';
+  type: "set_page_background";
   backgroundColor: string;
 };
 
 export type BookLayoutAiSetPageTitleAction = {
-  type: 'set_page_title';
+  type: "set_page_title";
   title: string;
   /** 왼쪽 목록 기준 1번째 슬라이드 = 1. 생략 시 «현재 보고 있는» 슬라이드 */
   slideNumber?: number;
@@ -94,26 +96,26 @@ export type BookLayoutAiSetPageTitleAction = {
 
 /** 워크스페이스 상단 «북» 문서 제목(책 전체). 슬라이드 탭 이름과 다름. */
 export type BookLayoutAiSetBookTitleAction = {
-  type: 'set_book_title';
+  type: "set_book_title";
   title: string;
 };
 
 /** 맨 뒤에 빈 슬라이드 추가. count 생략 시 1. */
 export type BookLayoutAiAddPageAction = {
-  type: 'add_page';
+  type: "add_page";
   count?: number;
 };
 
-export type BookLayoutAiUndoAction = { type: 'undo' };
-export type BookLayoutAiRedoAction = { type: 'redo' };
+export type BookLayoutAiUndoAction = { type: "undo" };
+export type BookLayoutAiRedoAction = { type: "redo" };
 /** 보고 있는 슬라이드 삭제 — UI에서 확인 창을 띄움. 페이지가 1장뿐이면 삭제 안 됨. */
 export type BookLayoutAiRemoveCurrentPageAction = {
-  type: 'remove_current_page';
+  type: "remove_current_page";
 };
 
 /** 북 전체 슬라이드 캔버스 해상도(px). 헤더 «캔버스» W/H와 동일. */
 export type BookLayoutAiSetSlideDimensionsAction = {
-  type: 'set_slide_dimensions';
+  type: "set_slide_dimensions";
   slideWidth?: number;
   slideHeight?: number;
 };
@@ -154,50 +156,50 @@ export class BookAiService {
     /** 현재 보고 있는 슬라이드, 0-based */
     activeSlideIndex: number;
     /** 단일 이미지·비디오 선택 시 — «바꿔줘» 등은 replace_widget_media로 */
-    selection?: { elementId: string; kind: 'image' | 'video' };
+    selection?: { elementId: string; kind: "image" | "video" };
   }): Promise<BookLayoutAiResult> {
     const apiKey = process.env.OPENAI_API_KEY?.trim();
     if (!apiKey) {
-      throw new HttpError(503,
-        'OPENAI_API_KEY가 설정되지 않았습니다. 백엔드 .env에 키를 추가하세요.',
+      throw new HttpError(
+        503,
+        "OPENAI_API_KEY가 설정되지 않았습니다. 백엔드 .env에 키를 추가하세요.",
       );
     }
 
-    const model =
-      process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
+    const model = process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
 
     const msg = input.message?.trim();
     if (!msg || msg.length > 4000) {
-      throw new HttpError(400,'message는 1~4000자여야 합니다.');
+      throw new HttpError(400, "message는 1~4000자여야 합니다.");
     }
 
     const w = input.slideWidth;
     const h = input.slideHeight;
     if (!Number.isFinite(w) || w < 100 || w > 4096) {
-      throw new HttpError(400,'slideWidth가 올바르지 않습니다.');
+      throw new HttpError(400, "slideWidth가 올바르지 않습니다.");
     }
     if (!Number.isFinite(h) || h < 100 || h > 4096) {
-      throw new HttpError(400,'slideHeight가 올바르지 않습니다.');
+      throw new HttpError(400, "slideHeight가 올바르지 않습니다.");
     }
 
     const pageCount = Math.floor(Number(input.pageCount));
     const activeIdx = Math.floor(Number(input.activeSlideIndex));
     if (!Number.isFinite(pageCount) || pageCount < 1 || pageCount > 500) {
-      throw new HttpError(400,'pageCount는 1~500이어야 합니다.');
+      throw new HttpError(400, "pageCount는 1~500이어야 합니다.");
     }
     if (
       !Number.isFinite(activeIdx) ||
       activeIdx < 0 ||
       activeIdx >= pageCount
     ) {
-      throw new HttpError(400,'activeSlideIndex가 올바르지 않습니다.');
+      throw new HttpError(400, "activeSlideIndex가 올바르지 않습니다.");
     }
     const viewingOneBased = activeIdx + 1;
 
     const sel = input.selection;
     const selectionBlock = sel
       ? `WIDGET SELECTION (single selected widget on the slide the user is viewing): elementId="${sel.elementId}" kind="${sel.kind}". If they ask to change/replace/swap THIS widget's image or video (e.g. 바꿔줘, 다른 걸로, 교체, 다른 동영상, 다른 사진, replace, swap, change to), emit replace_widget_media (schema J) with this EXACT elementId and widget "${sel.kind}" plus English imageSearchQuery/videoSearchQuery or https URL. Do NOT use add_widget for that. If the request is about book title, slide tab name, background, pages, undo, canvas size, or unrelated topics, ignore this selection.`
-      : 'No WIDGET SELECTION — never emit replace_widget_media (no target id). Use add_widget for new image/video widgets.';
+      : "No WIDGET SELECTION — never emit replace_widget_media (no target id). Use add_widget for new image/video widgets.";
 
     const system = `You are a layout assistant for a Korean slide/book editor. Respond ONLY with one JSON object (no markdown).
 
@@ -340,32 +342,30 @@ ${msg}`;
     let res: Response;
     try {
       res = await fetch(OPENAI_URL, {
-        method: 'POST',
+        method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           model,
           temperature: 0.2,
-          response_format: { type: 'json_object' },
+          response_format: { type: "json_object" },
           messages: [
-            { role: 'system', content: system },
-            { role: 'user', content: user },
+            { role: "system", content: system },
+            { role: "user", content: user },
           ],
         }),
       });
     } catch (e) {
       console.warn(`OpenAI fetch failed: ${(e as Error).message}`);
-      throw new HttpError(503,'OpenAI 연결에 실패했습니다.');
+      throw new HttpError(503, "OpenAI 연결에 실패했습니다.");
     }
 
     if (!res.ok) {
-      const errText = await res.text().catch(() => '');
+      const errText = await res.text().catch(() => "");
       console.warn(`OpenAI HTTP ${res.status}: ${errText.slice(0, 500)}`);
-      throw new HttpError(503,
-        'OpenAI 요청이 거절되었거나 오류가 났습니다.',
-      );
+      throw new HttpError(503, "OpenAI 요청이 거절되었거나 오류가 났습니다.");
     }
 
     const data = (await res.json()) as {
@@ -373,14 +373,14 @@ ${msg}`;
     };
     const raw = data.choices?.[0]?.message?.content?.trim();
     if (!raw) {
-      throw new HttpError(503,'모델 응답이 비어 있습니다.');
+      throw new HttpError(503, "모델 응답이 비어 있습니다.");
     }
 
     let parsed: unknown;
     try {
       parsed = JSON.parse(raw) as unknown;
     } catch {
-      throw new HttpError(503,'모델 JSON 파싱에 실패했습니다.');
+      throw new HttpError(503, "모델 JSON 파싱에 실패했습니다.");
     }
 
     const preliminary = this.normalizeLayoutResult(
@@ -391,7 +391,7 @@ ${msg}`;
     );
     if (preliminary.actions.length === 0) {
       console.warn(
-        '[layout-ai] 모델이 actions=[] 만 돌려줌 — 폴백·보정으로 채울 수 있으면 이어서 처리',
+        "[layout-ai] 모델이 actions=[] 만 돌려줌 — 폴백·보정으로 채울 수 있으면 이어서 처리",
       );
     }
     preliminary.actions = this.coerceImageActionsToVideoWhenUserAskedVideo(
@@ -432,33 +432,33 @@ ${msg}`;
     const preview =
       userMessage.length > 100 ? `${userMessage.slice(0, 100)}…` : userMessage;
     const adds = result.actions.filter(
-      (a): a is BookLayoutAiAddWidgetAction => a.type === 'add_widget',
+      (a): a is BookLayoutAiAddWidgetAction => a.type === "add_widget",
     );
     const replaces = result.actions.filter(
       (a): a is BookLayoutAiReplaceWidgetMediaAction =>
-        a.type === 'replace_widget_media',
+        a.type === "replace_widget_media",
     );
-    const videos = adds.filter((a) => a.widget === 'video');
+    const videos = adds.filter((a) => a.widget === "video");
     const hasHttpsSrc = (a: BookLayoutAiAddWidgetAction) =>
-      typeof a.src === 'string' && /^https:\/\//i.test(a.src.trim());
+      typeof a.src === "string" && /^https:\/\//i.test(a.src.trim());
     const replaceHttps = replaces.filter(
-      (a) => typeof a.src === 'string' && /^https:\/\//i.test(a.src.trim()),
+      (a) => typeof a.src === "string" && /^https:\/\//i.test(a.src.trim()),
     );
     console.log(
       `[layout-ai] 응답 digest viewingSlide=${viewingOneBased} actions=${result.actions.length} add_widget=${adds.length} replace_widget_media=${replaces.length} replace_https_src=${replaceHttps.length} video=${videos.length} video_https_src=${videos.filter(hasHttpsSrc).length} user="${preview}"`,
     );
     videos.forEach((v, i) => {
       const ok = hasHttpsSrc(v);
-      let host = '—';
+      let host = "—";
       if (ok && v.src) {
         try {
           host = new URL(v.src).hostname;
         } catch {
-          host = 'bad-url';
+          host = "bad-url";
         }
       }
       console.log(
-        `[layout-ai]   video[${i}] src=${ok ? 'OK' : 'MISSING'} host=${host} slideNumber=${v.slideNumber ?? 'omit'} anchor=${v.anchor}`,
+        `[layout-ai]   video[${i}] src=${ok ? "OK" : "MISSING"} host=${host} slideNumber=${v.slideNumber ?? "omit"} anchor=${v.anchor}`,
       );
     });
   }
@@ -489,13 +489,13 @@ ${msg}`;
   ): BookLayoutAiAction[] {
     if (this.userMessageSpecifiesTargetSlideIndex(userMessage)) {
       console.log(
-        '[layout-ai] add_widget slideNumber 유지(사용자가 장 번호·서수 등으로 지정)',
+        "[layout-ai] add_widget slideNumber 유지(사용자가 장 번호·서수 등으로 지정)",
       );
       return actions;
     }
     let stripped = 0;
     const next = actions.map((act) => {
-      if (act.type !== 'add_widget' || act.slideNumber == null) return act;
+      if (act.type !== "add_widget" || act.slideNumber == null) return act;
       stripped += 1;
       const copy: BookLayoutAiAddWidgetAction = { ...act };
       delete copy.slideNumber;
@@ -555,7 +555,7 @@ ${msg}`;
     let last: string | null = null;
     let mm: RegExpExecArray | null;
     while ((mm = segment.exec(s)) !== null) {
-      const t = mm[1].replace(/\s+$/u, '').trim();
+      const t = mm[1].replace(/\s+$/u, "").trim();
       if (t.length > 0) last = t.slice(0, 4000);
     }
     return last;
@@ -588,40 +588,40 @@ ${msg}`;
 
     const hasTextWithContent = actions.some(
       (a) =>
-        a.type === 'add_widget' &&
-        a.widget === 'text' &&
+        a.type === "add_widget" &&
+        a.widget === "text" &&
         Boolean(a.text?.trim()),
     );
     if (hasTextWithContent) return actions;
 
     const emptyIdx = actions
       .map((a, i) =>
-        a.type === 'add_widget' && a.widget === 'text' && !a.text?.trim()
+        a.type === "add_widget" && a.widget === "text" && !a.text?.trim()
           ? i
           : -1,
       )
       .filter((i) => i >= 0);
     if (emptyIdx.length > 0) {
       console.warn(
-        `[layout-ai] 텍스트 위젯 본문 폴백: 빈 text 위젯에 "${literal.slice(0, 60)}${literal.length > 60 ? '…' : ''}"`,
+        `[layout-ai] 텍스트 위젯 본문 폴백: 빈 text 위젯에 "${literal.slice(0, 60)}${literal.length > 60 ? "…" : ""}"`,
       );
       const fill = new Set(emptyIdx);
       return actions.map((a, i) => {
         if (!fill.has(i)) return a;
-        if (a.type !== 'add_widget' || a.widget !== 'text') return a;
+        if (a.type !== "add_widget" || a.widget !== "text") return a;
         return { ...a, text: literal };
       });
     }
 
     console.warn(
-      `[layout-ai] 텍스트 위젯 폴백 add_widget text="${literal.slice(0, 60)}${literal.length > 60 ? '…' : ''}"`,
+      `[layout-ai] 텍스트 위젯 폴백 add_widget text="${literal.slice(0, 60)}${literal.length > 60 ? "…" : ""}"`,
     );
     return [
       ...actions,
       {
-        type: 'add_widget',
-        widget: 'text',
-        anchor: 'center',
+        type: "add_widget",
+        widget: "text",
+        anchor: "center",
         text: literal,
       },
     ];
@@ -658,7 +658,7 @@ ${msg}`;
   private ensureReplaceWidgetMediaWhenSelected(
     userMessage: string,
     actions: BookLayoutAiAction[],
-    selection?: { elementId: string; kind: 'image' | 'video' },
+    selection?: { elementId: string; kind: "image" | "video" },
   ): BookLayoutAiAction[] {
     if (!selection) return actions;
     const m = userMessage.trim();
@@ -666,30 +666,30 @@ ${msg}`;
 
     const hasReplace = actions.some(
       (a) =>
-        a.type === 'replace_widget_media' &&
+        a.type === "replace_widget_media" &&
         a.elementId === selection.elementId,
     );
     if (hasReplace) return actions;
 
     const hasMediaAdd = actions.some(
       (a) =>
-        a.type === 'add_widget' &&
-        (a.widget === 'image' || a.widget === 'video'),
+        a.type === "add_widget" &&
+        (a.widget === "image" || a.widget === "video"),
     );
     if (hasMediaAdd) return actions;
 
-    if (selection.kind === 'video') {
+    if (selection.kind === "video") {
       const q = this.koreanToEnglishVideoStockQuery(m);
       if (!q) return actions;
       console.warn(
-        `[layout-ai] 선택 비디오 교체 폴백 replace_widget_media videoSearchQuery="${q.slice(0, 80)}${q.length > 80 ? '…' : ''}"`,
+        `[layout-ai] 선택 비디오 교체 폴백 replace_widget_media videoSearchQuery="${q.slice(0, 80)}${q.length > 80 ? "…" : ""}"`,
       );
       return [
         ...actions,
         {
-          type: 'replace_widget_media',
+          type: "replace_widget_media",
           elementId: selection.elementId,
-          widget: 'video',
+          widget: "video",
           videoSearchQuery: q,
         },
       ];
@@ -698,14 +698,14 @@ ${msg}`;
     const q = this.koreanToEnglishPhotoStockQuery(m);
     if (!q) return actions;
     console.warn(
-      `[layout-ai] 선택 이미지 교체 폴백 replace_widget_media imageSearchQuery="${q.slice(0, 80)}${q.length > 80 ? '…' : ''}"`,
+      `[layout-ai] 선택 이미지 교체 폴백 replace_widget_media imageSearchQuery="${q.slice(0, 80)}${q.length > 80 ? "…" : ""}"`,
     );
     return [
       ...actions,
       {
-        type: 'replace_widget_media',
+        type: "replace_widget_media",
         elementId: selection.elementId,
-        widget: 'image',
+        widget: "image",
         imageSearchQuery: q,
       },
     ];
@@ -714,12 +714,12 @@ ${msg}`;
   private ensureVideoWidgetWhenUserAskedButNoVideoAction(
     userMessage: string,
     actions: BookLayoutAiAction[],
-    selection?: { elementId: string; kind: 'image' | 'video' },
+    selection?: { elementId: string; kind: "image" | "video" },
   ): BookLayoutAiAction[] {
     const m = userMessage.trim();
     if (!m) return actions;
     if (
-      selection?.kind === 'video' &&
+      selection?.kind === "video" &&
       this.userMessageSuggestsMediaReplace(m)
     ) {
       return actions;
@@ -733,8 +733,8 @@ ${msg}`;
 
     const hasVideoIntentAction = actions.some(
       (a) =>
-        a.type === 'add_widget' &&
-        a.widget === 'video' &&
+        a.type === "add_widget" &&
+        a.widget === "video" &&
         (Boolean(a.videoSearchQuery?.trim()) || Boolean(a.videoUrl?.trim())),
     );
     if (hasVideoIntentAction) return actions;
@@ -743,14 +743,14 @@ ${msg}`;
     if (!q) return actions;
 
     console.warn(
-      `[layout-ai] 비디오 요청인데 모델에 video 액션 없음 → 폴백 add_widget 합성 videoSearchQuery="${q.slice(0, 100)}${q.length > 100 ? '…' : ''}"`,
+      `[layout-ai] 비디오 요청인데 모델에 video 액션 없음 → 폴백 add_widget 합성 videoSearchQuery="${q.slice(0, 100)}${q.length > 100 ? "…" : ""}"`,
     );
     return [
       ...actions,
       {
-        type: 'add_widget',
-        widget: 'video',
-        anchor: 'center',
+        type: "add_widget",
+        widget: "video",
+        anchor: "center",
         videoSearchQuery: q,
       },
     ];
@@ -761,22 +761,22 @@ ${msg}`;
     const parts: string[] = [];
 
     const tokens: [RegExp, string][] = [
-      [/스위스|switzerland/i, 'Switzerland'],
-      [/일본|japan/i, 'Japan'],
-      [/제주|jeju/i, 'Jeju island Korea'],
-      [/한국|korea(?!\s*bbq)/i, 'Korea'],
-      [/파리|paris/i, 'Paris France'],
-      [/미국|usa|america|뉴욕|new\s*york/i, 'USA'],
-      [/유럽|europe/i, 'Europe'],
-      [/바다|해양|파도|ocean|sea(?!\s*food)/i, 'ocean sea waves'],
-      [/산|알프스|mountain|설산/i, 'mountains alpine'],
-      [/숲|forest|woods/i, 'forest woods'],
-      [/도시|city|urban|야경/i, 'city urban'],
-      [/밤|night|야경/i, 'night'],
-      [/눈|snow|겨울|winter/i, 'snow winter'],
-      [/사막|desert/i, 'desert'],
-      [/폭포|waterfall/i, 'waterfall'],
-      [/드론|aerial|항공/i, 'aerial drone'],
+      [/스위스|switzerland/i, "Switzerland"],
+      [/일본|japan/i, "Japan"],
+      [/제주|jeju/i, "Jeju island Korea"],
+      [/한국|korea(?!\s*bbq)/i, "Korea"],
+      [/파리|paris/i, "Paris France"],
+      [/미국|usa|america|뉴욕|new\s*york/i, "USA"],
+      [/유럽|europe/i, "Europe"],
+      [/바다|해양|파도|ocean|sea(?!\s*food)/i, "ocean sea waves"],
+      [/산|알프스|mountain|설산/i, "mountains alpine"],
+      [/숲|forest|woods/i, "forest woods"],
+      [/도시|city|urban|야경/i, "city urban"],
+      [/밤|night|야경/i, "night"],
+      [/눈|snow|겨울|winter/i, "snow winter"],
+      [/사막|desert/i, "desert"],
+      [/폭포|waterfall/i, "waterfall"],
+      [/드론|aerial|항공/i, "aerial drone"],
     ];
 
     for (const [re, term] of tokens) {
@@ -785,16 +785,16 @@ ${msg}`;
 
     if (/풍경|경치|자연|nature|landscape|scenic|뷰|전경/i.test(m)) {
       if (!parts.some((p) => /landscape|nature|scenic/i.test(p))) {
-        parts.push('landscape nature scenic');
+        parts.push("landscape nature scenic");
       }
     }
 
     if (parts.length === 0) {
-      parts.push('beautiful nature scenic');
+      parts.push("beautiful nature scenic");
     }
 
-    parts.push('b-roll short clip');
-    const q = parts.join(' ').replace(/\s+/g, ' ').trim().slice(0, 200);
+    parts.push("b-roll short clip");
+    const q = parts.join(" ").replace(/\s+/g, " ").trim().slice(0, 200);
     return q;
   }
 
@@ -802,36 +802,36 @@ ${msg}`;
   private koreanToEnglishPhotoStockQuery(m: string): string {
     const parts: string[] = [];
     const tokens: [RegExp, string][] = [
-      [/스위스|switzerland/i, 'Switzerland'],
-      [/일본|japan/i, 'Japan'],
-      [/제주|jeju/i, 'Jeju island Korea'],
-      [/한국|korea(?!\s*bbq)/i, 'Korea'],
-      [/파리|paris/i, 'Paris France'],
-      [/미국|usa|america|뉴욕|new\s*york/i, 'USA'],
-      [/유럽|europe/i, 'Europe'],
-      [/바다|해양|파도|ocean|sea(?!\s*food)/i, 'ocean sea waves'],
-      [/산|알프스|mountain|설산/i, 'mountains alpine'],
-      [/숲|forest|woods/i, 'forest woods'],
-      [/도시|city|urban|야경/i, 'city urban'],
-      [/밤|night|야경/i, 'night'],
-      [/눈|snow|겨울|winter/i, 'snow winter'],
-      [/사막|desert/i, 'desert'],
-      [/폭포|waterfall/i, 'waterfall'],
-      [/드론|aerial|항공/i, 'aerial drone'],
+      [/스위스|switzerland/i, "Switzerland"],
+      [/일본|japan/i, "Japan"],
+      [/제주|jeju/i, "Jeju island Korea"],
+      [/한국|korea(?!\s*bbq)/i, "Korea"],
+      [/파리|paris/i, "Paris France"],
+      [/미국|usa|america|뉴욕|new\s*york/i, "USA"],
+      [/유럽|europe/i, "Europe"],
+      [/바다|해양|파도|ocean|sea(?!\s*food)/i, "ocean sea waves"],
+      [/산|알프스|mountain|설산/i, "mountains alpine"],
+      [/숲|forest|woods/i, "forest woods"],
+      [/도시|city|urban|야경/i, "city urban"],
+      [/밤|night|야경/i, "night"],
+      [/눈|snow|겨울|winter/i, "snow winter"],
+      [/사막|desert/i, "desert"],
+      [/폭포|waterfall/i, "waterfall"],
+      [/드론|aerial|항공/i, "aerial drone"],
     ];
     for (const [re, term] of tokens) {
       if (re.test(m) && !parts.includes(term)) parts.push(term);
     }
     if (/풍경|경치|자연|nature|landscape|scenic|뷰|전경/i.test(m)) {
       if (!parts.some((p) => /landscape|nature|scenic/i.test(p))) {
-        parts.push('landscape nature scenic');
+        parts.push("landscape nature scenic");
       }
     }
     if (parts.length === 0) {
-      parts.push('beautiful nature scenic');
+      parts.push("beautiful nature scenic");
     }
-    parts.push('high quality photo');
-    return parts.join(' ').replace(/\s+/g, ' ').trim().slice(0, 200);
+    parts.push("high quality photo");
+    return parts.join(" ").replace(/\s+/g, " ").trim().slice(0, 200);
   }
 
   /**
@@ -853,15 +853,15 @@ ${msg}`;
     if (askedImageAlso) return actions;
 
     return actions.map((act) => {
-      if (act.type !== 'add_widget') return act;
-      if (act.widget !== 'image') return act;
+      if (act.type !== "add_widget") return act;
+      if (act.widget !== "image") return act;
       if (act.imageUrl?.trim()) return act;
       const q = act.imageSearchQuery?.trim();
       if (!q) return act;
 
       const next: BookLayoutAiAddWidgetAction = {
-        type: 'add_widget',
-        widget: 'video',
+        type: "add_widget",
+        widget: "video",
         anchor: act.anchor,
         videoSearchQuery: q,
       };
@@ -900,46 +900,46 @@ ${msg}`;
 
   private normalizeLayoutResult(
     parsed: unknown,
-    selection?: { elementId: string; kind: 'image' | 'video' },
+    selection?: { elementId: string; kind: "image" | "video" },
     slideW = 960,
     slideH = 540,
   ): BookLayoutAiResult {
-    if (!parsed || typeof parsed !== 'object') {
-      throw new HttpError(503,'모델 응답 형식이 잘못되었습니다.');
+    if (!parsed || typeof parsed !== "object") {
+      throw new HttpError(503, "모델 응답 형식이 잘못되었습니다.");
     }
     const o = parsed as Record<string, unknown>;
     const reply =
-      typeof o.reply === 'string' && o.reply.trim()
+      typeof o.reply === "string" && o.reply.trim()
         ? o.reply.trim().slice(0, 2000)
-        : '처리했습니다.';
+        : "처리했습니다.";
     const rawActions = o.actions;
     const actions: BookLayoutAiAction[] = [];
     if (Array.isArray(rawActions)) {
       for (const item of rawActions.slice(0, 60)) {
-        if (!item || typeof item !== 'object') continue;
+        if (!item || typeof item !== "object") continue;
         const a = item as Record<string, unknown>;
         const t = a.type;
 
-        if (t === 'set_page_background') {
+        if (t === "set_page_background") {
           const bg = a.backgroundColor;
-          if (typeof bg !== 'string') continue;
+          if (typeof bg !== "string") continue;
           const c = bg.trim().slice(0, 120);
           if (!c || /[<>]/.test(c)) continue;
-          actions.push({ type: 'set_page_background', backgroundColor: c });
+          actions.push({ type: "set_page_background", backgroundColor: c });
           continue;
         }
 
-        if (t === 'set_page_title') {
+        if (t === "set_page_title") {
           const title = a.title;
-          if (typeof title !== 'string') continue;
+          if (typeof title !== "string") continue;
           const s = title.trim().slice(0, 200);
           if (!s) continue;
           const act: BookLayoutAiSetPageTitleAction = {
-            type: 'set_page_title',
+            type: "set_page_title",
             title: s,
           };
           if (
-            typeof a.slideNumber === 'number' &&
+            typeof a.slideNumber === "number" &&
             Number.isFinite(a.slideNumber)
           ) {
             const sn = Math.round(a.slideNumber);
@@ -949,48 +949,48 @@ ${msg}`;
           continue;
         }
 
-        if (t === 'set_book_title') {
+        if (t === "set_book_title") {
           const title = a.title;
-          if (typeof title !== 'string') continue;
+          if (typeof title !== "string") continue;
           const s = title.trim().slice(0, 200);
           if (!s) continue;
-          actions.push({ type: 'set_book_title', title: s });
+          actions.push({ type: "set_book_title", title: s });
           continue;
         }
 
-        if (t === 'add_page') {
+        if (t === "add_page") {
           let c = 1;
-          if (typeof a.count === 'number' && Number.isFinite(a.count)) {
+          if (typeof a.count === "number" && Number.isFinite(a.count)) {
             c = Math.floor(a.count);
             c = Math.min(10, Math.max(1, c));
           }
-          actions.push({ type: 'add_page', count: c });
+          actions.push({ type: "add_page", count: c });
           continue;
         }
 
-        if (t === 'undo') {
-          actions.push({ type: 'undo' });
+        if (t === "undo") {
+          actions.push({ type: "undo" });
           continue;
         }
 
-        if (t === 'redo') {
-          actions.push({ type: 'redo' });
+        if (t === "redo") {
+          actions.push({ type: "redo" });
           continue;
         }
 
-        if (t === 'remove_current_page') {
-          actions.push({ type: 'remove_current_page' });
+        if (t === "remove_current_page") {
+          actions.push({ type: "remove_current_page" });
           continue;
         }
 
-        if (t === 'set_slide_dimensions') {
+        if (t === "set_slide_dimensions") {
           const sw = a.slideWidth;
           const sh = a.slideHeight;
-          const hasW = typeof sw === 'number' && Number.isFinite(sw);
-          const hasH = typeof sh === 'number' && Number.isFinite(sh);
+          const hasW = typeof sw === "number" && Number.isFinite(sw);
+          const hasH = typeof sh === "number" && Number.isFinite(sh);
           if (!hasW && !hasH) continue;
           const act: BookLayoutAiSetSlideDimensionsAction = {
-            type: 'set_slide_dimensions',
+            type: "set_slide_dimensions",
           };
           if (hasW) {
             act.slideWidth = Math.min(4000, Math.max(100, Math.round(sw)));
@@ -1002,39 +1002,39 @@ ${msg}`;
           continue;
         }
 
-        if (t === 'replace_widget_media') {
+        if (t === "replace_widget_media") {
           if (!selection) continue;
           const elementId =
-            typeof a.elementId === 'string'
+            typeof a.elementId === "string"
               ? a.elementId.trim().slice(0, 80)
-              : '';
+              : "";
           if (!elementId || elementId !== selection.elementId) continue;
           const widget = a.widget;
-          if (widget !== 'image' && widget !== 'video') continue;
+          if (widget !== "image" && widget !== "video") continue;
           if (widget !== selection.kind) continue;
 
           const act: BookLayoutAiReplaceWidgetMediaAction = {
-            type: 'replace_widget_media',
+            type: "replace_widget_media",
             elementId,
             widget,
           };
           if (
-            typeof a.imageSearchQuery === 'string' &&
+            typeof a.imageSearchQuery === "string" &&
             a.imageSearchQuery.trim()
           ) {
             act.imageSearchQuery = a.imageSearchQuery.trim().slice(0, 200);
           }
-          if (typeof a.imageUrl === 'string' && a.imageUrl.trim()) {
+          if (typeof a.imageUrl === "string" && a.imageUrl.trim()) {
             const u = a.imageUrl.trim().slice(0, 2000);
             if (/^https:\/\//i.test(u)) act.imageUrl = u;
           }
           if (
-            typeof a.videoSearchQuery === 'string' &&
+            typeof a.videoSearchQuery === "string" &&
             a.videoSearchQuery.trim()
           ) {
             act.videoSearchQuery = a.videoSearchQuery.trim().slice(0, 200);
           }
-          if (typeof a.videoUrl === 'string' && a.videoUrl.trim()) {
+          if (typeof a.videoUrl === "string" && a.videoUrl.trim()) {
             const u = a.videoUrl.trim().slice(0, 2000);
             if (/^https:\/\//i.test(u)) act.videoUrl = u;
           }
@@ -1042,36 +1042,36 @@ ${msg}`;
           continue;
         }
 
-        if (t !== 'add_widget') continue;
+        if (t !== "add_widget") continue;
         const widget = a.widget;
         const anchorRaw = a.anchor;
-        if (typeof widget !== 'string' || !WIDGETS.has(widget)) continue;
+        if (typeof widget !== "string" || !WIDGETS.has(widget)) continue;
 
         const hasExplicitBox =
-          typeof a.x === 'number' &&
+          typeof a.x === "number" &&
           Number.isFinite(a.x) &&
-          typeof a.y === 'number' &&
+          typeof a.y === "number" &&
           Number.isFinite(a.y) &&
-          typeof a.width === 'number' &&
+          typeof a.width === "number" &&
           Number.isFinite(a.width) &&
-          typeof a.height === 'number' &&
+          typeof a.height === "number" &&
           Number.isFinite(a.height);
 
         if (
           !hasExplicitBox &&
-          (typeof anchorRaw !== 'string' || !ANCHORS.has(anchorRaw))
+          (typeof anchorRaw !== "string" || !ANCHORS.has(anchorRaw))
         ) {
           continue;
         }
 
         const anchor =
-          typeof anchorRaw === 'string' && ANCHORS.has(anchorRaw)
+          typeof anchorRaw === "string" && ANCHORS.has(anchorRaw)
             ? anchorRaw
-            : 'topLeft';
+            : "topLeft";
 
         const act: BookLayoutAiAddWidgetAction = {
-          type: 'add_widget',
-          widget: widget as BookLayoutAiAddWidgetAction['widget'],
+          type: "add_widget",
+          widget: widget as BookLayoutAiAddWidgetAction["widget"],
           anchor,
         };
 
@@ -1090,39 +1090,39 @@ ${msg}`;
           act.height = r.height;
         }
         if (
-          typeof a.slideNumber === 'number' &&
+          typeof a.slideNumber === "number" &&
           Number.isFinite(a.slideNumber)
         ) {
           const sn = Math.round(a.slideNumber);
           if (sn >= 1 && sn <= 500) act.slideNumber = sn;
         }
-        if (typeof a.cityQuery === 'string' && a.cityQuery.trim()) {
+        if (typeof a.cityQuery === "string" && a.cityQuery.trim()) {
           act.cityQuery = a.cityQuery.trim().slice(0, 120);
         }
-        if (typeof a.text === 'string' && a.text.trim()) {
+        if (typeof a.text === "string" && a.text.trim()) {
           act.text = a.text.trim().slice(0, 4000);
         }
-        if (typeof a.fontSize === 'number' && Number.isFinite(a.fontSize)) {
+        if (typeof a.fontSize === "number" && Number.isFinite(a.fontSize)) {
           const fs = Math.round(a.fontSize);
           if (fs >= 10 && fs <= 120) act.fontSize = fs;
         }
         if (
-          typeof a.imageSearchQuery === 'string' &&
+          typeof a.imageSearchQuery === "string" &&
           a.imageSearchQuery.trim()
         ) {
           act.imageSearchQuery = a.imageSearchQuery.trim().slice(0, 200);
         }
-        if (typeof a.imageUrl === 'string' && a.imageUrl.trim()) {
+        if (typeof a.imageUrl === "string" && a.imageUrl.trim()) {
           const u = a.imageUrl.trim().slice(0, 2000);
           if (/^https:\/\//i.test(u)) act.imageUrl = u;
         }
         if (
-          typeof a.videoSearchQuery === 'string' &&
+          typeof a.videoSearchQuery === "string" &&
           a.videoSearchQuery.trim()
         ) {
           act.videoSearchQuery = a.videoSearchQuery.trim().slice(0, 200);
         }
-        if (typeof a.videoUrl === 'string' && a.videoUrl.trim()) {
+        if (typeof a.videoUrl === "string" && a.videoUrl.trim()) {
           const u = a.videoUrl.trim().slice(0, 2000);
           if (/^https:\/\//i.test(u)) act.videoUrl = u;
         }
@@ -1139,8 +1139,8 @@ ${msg}`;
     const out: BookLayoutAiAction[] = [];
 
     for (const act of result.actions) {
-      if (act.type === 'replace_widget_media') {
-        if (act.widget === 'image') {
+      if (act.type === "replace_widget_media") {
+        if (act.widget === "image") {
           let src = act.imageUrl?.trim();
           if (src && !/^https:\/\//i.test(src)) {
             src = undefined;
@@ -1158,13 +1158,11 @@ ${msg}`;
                 imageHeight: hit.height,
               });
             } else {
-              const hasKey = Boolean(
-                process.env.PEXELS_API_KEY?.trim(),
-              );
+              const hasKey = Boolean(process.env.PEXELS_API_KEY?.trim());
               notes.push(
                 hasKey
                   ? `이미지 검색에 결과가 없습니다: "${act.imageSearchQuery}"`
-                  : '이미지 검색을 쓰려면 서버에 PEXELS_API_KEY를 설정하세요.',
+                  : "이미지 검색을 쓰려면 서버에 PEXELS_API_KEY를 설정하세요.",
               );
             }
             continue;
@@ -1176,12 +1174,12 @@ ${msg}`;
           }
 
           notes.push(
-            '선택 이미지 교체에 검색어(imageSearchQuery) 또는 https URL(imageUrl)이 필요합니다.',
+            "선택 이미지 교체에 검색어(imageSearchQuery) 또는 https URL(imageUrl)이 필요합니다.",
           );
           continue;
         }
 
-        if (act.widget === 'video') {
+        if (act.widget === "video") {
           let src = act.videoUrl?.trim();
           if (src && !/^https:\/\//i.test(src)) {
             src = undefined;
@@ -1191,7 +1189,7 @@ ${msg}`;
             ? act.videoSearchQuery.trim().length > 64
               ? `${act.videoSearchQuery.trim().slice(0, 64)}…`
               : act.videoSearchQuery.trim()
-            : '—';
+            : "—";
           console.log(
             `[layout-ai] replace video enrich videoSearchQuery="${qPrev}" videoUrl=${Boolean(src)} elementId=${act.elementId}`,
           );
@@ -1203,11 +1201,11 @@ ${msg}`;
             );
             const ms = Date.now() - t0;
             if (hit) {
-              let host = '';
+              let host = "";
               try {
                 host = new URL(hit.videoUrl).hostname;
               } catch {
-                host = '?';
+                host = "?";
               }
               console.log(
                 `[layout-ai] replace video Pexels OK ${ms}ms srcHost=${host}`,
@@ -1220,27 +1218,25 @@ ${msg}`;
                 videoHeight: hit.height,
               });
             } else {
-              const hasKey = Boolean(
-                process.env.PEXELS_API_KEY?.trim(),
-              );
+              const hasKey = Boolean(process.env.PEXELS_API_KEY?.trim());
               console.warn(
                 `[layout-ai] replace video Pexels MISS ${ms}ms hasApiKey=${hasKey} query="${act.videoSearchQuery?.trim().slice(0, 80)}"`,
               );
               notes.push(
                 hasKey
                   ? `동영상 검색에 결과가 없습니다: "${act.videoSearchQuery}"`
-                  : '동영상 검색을 쓰려면 서버에 PEXELS_API_KEY를 설정하세요.',
+                  : "동영상 검색을 쓰려면 서버에 PEXELS_API_KEY를 설정하세요.",
               );
             }
             continue;
           }
 
           if (src) {
-            let host = '';
+            let host = "";
             try {
               host = new URL(src).hostname;
             } catch {
-              host = '?';
+              host = "?";
             }
             console.log(`[layout-ai] replace video 직접 URL host=${host}`);
             out.push({
@@ -1255,21 +1251,21 @@ ${msg}`;
           }
 
           notes.push(
-            '선택 동영상 교체에 검색어(videoSearchQuery) 또는 https URL(videoUrl)이 필요합니다.',
+            "선택 동영상 교체에 검색어(videoSearchQuery) 또는 https URL(videoUrl)이 필요합니다.",
           );
           continue;
         }
 
-        notes.push('replace_widget_media: image 또는 video만 지원합니다.');
+        notes.push("replace_widget_media: image 또는 video만 지원합니다.");
         continue;
       }
 
-      if (act.type !== 'add_widget') {
+      if (act.type !== "add_widget") {
         out.push(act);
         continue;
       }
 
-      if (act.widget === 'image') {
+      if (act.widget === "image") {
         let src = act.imageUrl?.trim();
         if (src && !/^https:\/\//i.test(src)) {
           src = undefined;
@@ -1285,13 +1281,11 @@ ${msg}`;
               imageHeight: hit.height,
             });
           } else {
-            const hasKey = Boolean(
-              process.env.PEXELS_API_KEY?.trim(),
-            );
+            const hasKey = Boolean(process.env.PEXELS_API_KEY?.trim());
             notes.push(
               hasKey
                 ? `이미지 검색에 결과가 없습니다: "${act.imageSearchQuery}"`
-                : '이미지 검색을 쓰려면 서버에 PEXELS_API_KEY를 설정하세요.',
+                : "이미지 검색을 쓰려면 서버에 PEXELS_API_KEY를 설정하세요.",
             );
           }
           continue;
@@ -1303,12 +1297,12 @@ ${msg}`;
         }
 
         notes.push(
-          '이미지 위젯에 검색어(imageSearchQuery) 또는 https URL(imageUrl)이 필요합니다.',
+          "이미지 위젯에 검색어(imageSearchQuery) 또는 https URL(imageUrl)이 필요합니다.",
         );
         continue;
       }
 
-      if (act.widget === 'video') {
+      if (act.widget === "video") {
         let src = act.videoUrl?.trim();
         if (src && !/^https:\/\//i.test(src)) {
           src = undefined;
@@ -1318,9 +1312,9 @@ ${msg}`;
           ? act.videoSearchQuery.trim().length > 64
             ? `${act.videoSearchQuery.trim().slice(0, 64)}…`
             : act.videoSearchQuery.trim()
-          : '—';
+          : "—";
         console.log(
-          `[layout-ai] video enrich 입력 videoSearchQuery="${qPrev}" videoUrl=${Boolean(src)} slideNumber=${act.slideNumber ?? 'omit'}`,
+          `[layout-ai] video enrich 입력 videoSearchQuery="${qPrev}" videoUrl=${Boolean(src)} slideNumber=${act.slideNumber ?? "omit"}`,
         );
 
         if (!src && act.videoSearchQuery?.trim()) {
@@ -1328,11 +1322,11 @@ ${msg}`;
           const hit = await this.pexels.searchFirstVideo(act.videoSearchQuery);
           const ms = Date.now() - t0;
           if (hit) {
-            let host = '';
+            let host = "";
             try {
               host = new URL(hit.videoUrl).hostname;
             } catch {
-              host = '?';
+              host = "?";
             }
             console.log(
               `[layout-ai] video Pexels enrich OK ${ms}ms srcHost=${host} (클라이언트 재생 시 CDN 추가 요청·버퍼링은 네트워크 탭으로 확인)`,
@@ -1345,27 +1339,25 @@ ${msg}`;
               videoHeight: hit.height,
             });
           } else {
-            const hasKey = Boolean(
-              process.env.PEXELS_API_KEY?.trim(),
-            );
+            const hasKey = Boolean(process.env.PEXELS_API_KEY?.trim());
             console.warn(
               `[layout-ai] video Pexels enrich MISS ${ms}ms hasApiKey=${hasKey} query="${act.videoSearchQuery?.trim().slice(0, 80)}"`,
             );
             notes.push(
               hasKey
                 ? `동영상 검색에 결과가 없습니다: "${act.videoSearchQuery}"`
-                : '동영상 검색을 쓰려면 서버에 PEXELS_API_KEY를 설정하세요.',
+                : "동영상 검색을 쓰려면 서버에 PEXELS_API_KEY를 설정하세요.",
             );
           }
           continue;
         }
 
         if (src) {
-          let host = '';
+          let host = "";
           try {
             host = new URL(src).hostname;
           } catch {
-            host = '?';
+            host = "?";
           }
           console.log(`[layout-ai] video 직접 URL 사용 host=${host}`);
           out.push({
@@ -1380,10 +1372,10 @@ ${msg}`;
         }
 
         console.warn(
-          '[layout-ai] video enrich 불가: videoSearchQuery·videoUrl 둘 다 없음',
+          "[layout-ai] video enrich 불가: videoSearchQuery·videoUrl 둘 다 없음",
         );
         notes.push(
-          '동영상 위젯에 검색어(videoSearchQuery) 또는 https URL(videoUrl)이 필요합니다.',
+          "동영상 위젯에 검색어(videoSearchQuery) 또는 https URL(videoUrl)이 필요합니다.",
         );
         continue;
       }
@@ -1393,7 +1385,7 @@ ${msg}`;
 
     let reply = result.reply;
     if (notes.length > 0) {
-      reply = `${reply}\n\n※ ${notes.join(' ')}`.slice(0, 2500);
+      reply = `${reply}\n\n※ ${notes.join(" ")}`.slice(0, 2500);
     }
 
     return { reply, actions: out };
@@ -1417,10 +1409,12 @@ ${msg}`;
     const u = userMessage.trim().slice(0, 4000);
     const a = assistantReply.trim().slice(0, 12000);
     if (!u || !a) return;
-    await this.db().insert(bookAiChatMessage).values([
-      { bookId, role: "user", body: u },
-      { bookId, role: "assistant", body: a },
-    ]);
+    await this.db()
+      .insert(bookAiChatMessage)
+      .values([
+        { bookId, role: "user", body: u },
+        { bookId, role: "assistant", body: a },
+      ]);
   }
 
   async listLayoutChat(
@@ -1429,7 +1423,7 @@ ${msg}`;
   ): Promise<
     {
       id: number;
-      role: 'user' | 'assistant';
+      role: "user" | "assistant";
       text: string;
       createdAt: string;
     }[]

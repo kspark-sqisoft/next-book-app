@@ -1,9 +1,10 @@
 import { useState } from "react";
+
 import {
   BOOK_TEMPLATE_STOCK_IMAGE_PATHS,
-  getBookSlideTemplatePreviewLayers,
   type BookSlideTemplateId,
   type BookSlideTemplatePreviewLayer,
+  getBookSlideTemplatePreviewLayers,
 } from "@/lib/book-slide-templates";
 import { cn } from "@/lib/utils";
 
@@ -12,7 +13,9 @@ function stockUrl(stockIndex: number): string {
   return p[stockIndex % p.length] ?? "/cards/img1.jpg";
 }
 
-function toneClass(tone: Extract<BookSlideTemplatePreviewLayer, { kind: "text" }>["tone"]) {
+function toneClass(
+  tone: Extract<BookSlideTemplatePreviewLayer, { kind: "text" }>["tone"],
+) {
   switch (tone) {
     case "title":
       return "bg-slate-800/88 dark:bg-slate-200/85";
@@ -60,7 +63,9 @@ function PreviewImageLayer({
         />
       ) : (
         <div className="flex h-full w-full items-center justify-center">
-          <span className="text-[6px] font-medium text-muted-foreground/80">IMG</span>
+          <span className="text-[6px] font-medium text-muted-foreground/80">
+            IMG
+          </span>
         </div>
       )}
     </div>
@@ -93,7 +98,9 @@ export function BookSlideTemplatePreview({
               key={`${templateId}-img-${i}`}
               layer={layer}
               broken={Boolean(brokenImages[i])}
-              onBroken={() => setBrokenImages((prev) => ({ ...prev, [i]: true }))}
+              onBroken={() =>
+                setBrokenImages((prev) => ({ ...prev, [i]: true }))
+              }
             />
           );
         }

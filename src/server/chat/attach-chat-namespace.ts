@@ -1,5 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 import type { Namespace, Socket } from "socket.io";
+
 import { verifyAccessToken } from "@/server/auth/jwt";
 import type { JwtPayload } from "@/server/auth/jwt-payload";
 import { getDb } from "@/server/db";
@@ -153,7 +154,9 @@ export function attachChatNamespace(nsp: Namespace) {
           .where(eq(chatRoom.roomId, roomId))
           .limit(1);
         if (existing.length === 0) {
-          const ownerName = userPayload.name.trim().slice(0, 80) || userPayload.email.slice(0, 80);
+          const ownerName =
+            userPayload.name.trim().slice(0, 80) ||
+            userPayload.email.slice(0, 80);
           await db.insert(chatRoom).values({
             roomId,
             ownerId: userPayload.sub,
@@ -198,17 +201,25 @@ export function attachChatNamespace(nsp: Namespace) {
         const text = typeof p?.text === "string" ? p.text.trim() : "";
         if (!roomId || !text) return;
         if (text.length > MAX_BODY) {
-          socket.emit("chatError", { message: `메시지는 ${MAX_BODY}자 이하로 보내 주세요.` });
+          socket.emit("chatError", {
+            message: `메시지는 ${MAX_BODY}자 이하로 보내 주세요.`,
+          });
           return;
         }
         const active = currentRoomBySocket.get(socket.id);
         if (active !== roomId) {
-          socket.emit("chatError", { message: "현재 방에서만 메시지를 보낼 수 있습니다." });
+          socket.emit("chatError", {
+            message: "현재 방에서만 메시지를 보낼 수 있습니다.",
+          });
           return;
         }
 
         const profile = await loadUserProfile(db, userPayload.sub);
-        const authorName = (profile.name || userPayload.name || userPayload.email).slice(0, 80);
+        const authorName = (
+          profile.name ||
+          userPayload.name ||
+          userPayload.email
+        ).slice(0, 80);
 
         const inserted = await db
           .insert(chatMessage)

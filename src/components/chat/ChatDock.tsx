@@ -1,14 +1,20 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { io, type Socket } from "socket.io-client";
-import { apiOrigin } from "@/lib/api";
 import { LogOut, MessageCircle, Send, Trash2, X } from "lucide-react";
-import { useAuth } from "@/stores/auth-store";
-import { getAccessToken } from "@/lib/api";
-import { appLog } from "@/lib/app-log";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import { io, type Socket } from "socket.io-client";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { SafeImage } from "@/components/ui/safe-image";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { apiOrigin } from "@/lib/api";
+import { getAccessToken } from "@/lib/api";
+import { appLog } from "@/lib/app-log";
 import {
   floatingDockChatInsetEndClass,
   floatingDockFabButtonClass,
@@ -16,6 +22,7 @@ import {
   floatingDockVerticalInsetClass,
 } from "@/lib/floating-dock-chrome";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/stores/auth-store";
 
 type ChatMessageEvt = {
   id: string;
@@ -46,13 +53,13 @@ type RoomListEntry = {
 type FeedItem =
   | { kind: "msg"; key: string; data: ChatMessageEvt }
   | {
-    kind: "sys";
-    key: string;
-    text: string;
-    at: string;
-    userName: string;
-    userImageUrl?: string | null;
-  };
+      kind: "sys";
+      key: string;
+      text: string;
+      at: string;
+      userName: string;
+      userImageUrl?: string | null;
+    };
 
 function roomLabel(roomId: string): string {
   return roomId === "lobby" ? "로비 (전체)" : roomId;
@@ -92,7 +99,11 @@ function ChatAvatar({
     <SafeImage
       src={imageUrl}
       alt=""
-      className={cn(box, "shrink-0 rounded-full object-cover ring-1 ring-border", className)}
+      className={cn(
+        box,
+        "shrink-0 rounded-full object-cover ring-1 ring-border",
+        className,
+      )}
       placeholderLabel={`${name} 프로필`}
       fallback={
         <span
@@ -179,7 +190,9 @@ export function ChatDock() {
   const [open, setOpen] = useState(false);
   const [connected, setConnected] = useState(false);
   const [activeRoom, setActiveRoom] = useState("lobby");
-  const [rooms, setRooms] = useState<RoomListEntry[]>([{ id: "lobby", members: 0 }]);
+  const [rooms, setRooms] = useState<RoomListEntry[]>([
+    { id: "lobby", members: 0 },
+  ]);
   const [roomDraft, setRoomDraft] = useState("");
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [draft, setDraft] = useState("");
@@ -411,8 +424,12 @@ export function ChatDock() {
           >
             <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-muted/30 px-3 py-2">
               <div className="min-w-0">
-                <p className="text-xs font-medium text-muted-foreground">채팅</p>
-                <p className="truncate text-sm font-semibold">{roomLabel(activeRoom)}</p>
+                <p className="text-xs font-medium text-muted-foreground">
+                  채팅
+                </p>
+                <p className="truncate text-sm font-semibold">
+                  {roomLabel(activeRoom)}
+                </p>
                 {activeRoom !== "lobby" && activeRoomMeta?.ownerName ? (
                   <p className="truncate text-[11px] text-muted-foreground">
                     방장 {activeRoomMeta.ownerName}
@@ -436,7 +453,9 @@ export function ChatDock() {
                 <span
                   className={cn(
                     "text-[10px] font-medium",
-                    connected ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground",
+                    connected
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-muted-foreground",
                   )}
                   title={connected ? "연결됨" : "연결 끊김"}
                 >
@@ -494,7 +513,9 @@ export function ChatDock() {
                         )}
                       >
                         <span className="flex items-center justify-between gap-2">
-                          <span className="min-w-0 truncate">{roomLabel(r.id)}</span>
+                          <span className="min-w-0 truncate">
+                            {roomLabel(r.id)}
+                          </span>
                           <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground">
                             {r.members}명
                           </span>
@@ -542,7 +563,12 @@ export function ChatDock() {
                     }
                   }}
                 />
-                <Button type="button" size="sm" className="h-8 shrink-0 px-2 text-xs" onClick={goRoom}>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-8 shrink-0 px-2 text-xs"
+                  onClick={goRoom}
+                >
                   만들기/입장
                 </Button>
               </div>
@@ -626,16 +652,22 @@ export function ChatDock() {
               className={cn(
                 floatingDockFabButtonClass,
                 "shadow-lg",
-                unread > 0 && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+                unread > 0 &&
+                  "ring-2 ring-primary ring-offset-2 ring-offset-background",
               )}
-              aria-label={unread > 0 ? `채팅 열기 (읽지 않음 ${unread})` : "채팅 열기"}
+              aria-label={
+                unread > 0 ? `채팅 열기 (읽지 않음 ${unread})` : "채팅 열기"
+              }
               aria-expanded={false}
               onClick={() => {
                 setUnread(0);
                 setOpen(true);
               }}
             >
-              <MessageCircle className={floatingDockFabIconClass} strokeWidth={1.75} />
+              <MessageCircle
+                className={floatingDockFabIconClass}
+                strokeWidth={1.75}
+              />
             </Button>
             {unread > 0 ? (
               <span

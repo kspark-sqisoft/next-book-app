@@ -1,5 +1,12 @@
-import { Blocks, FileStack, ImagePlus, LayoutTemplate, Pencil, Shapes } from "lucide-react";
-import type { BookEditorLeftTab } from "@/lib/book-editor-panel-events";
+import {
+  Blocks,
+  FileStack,
+  ImagePlus,
+  LayoutTemplate,
+  Pencil,
+  Shapes,
+} from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -7,6 +14,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import type { BookEditorLeftTab } from "@/lib/book-editor-panel-events";
 import { cn } from "@/lib/utils";
 
 const railBtn = cn(
@@ -94,7 +102,11 @@ export function BookEditorToolRail({
           </Button>
         </RailTooltip>
 
-        <div className="my-1 h-px w-8 bg-border/60" role="separator" aria-hidden />
+        <div
+          className="my-1 h-px w-8 bg-border/60"
+          role="separator"
+          aria-hidden
+        />
 
         <RailTooltip label="템플릿 — 슬라이드에 제목·본문 등 예시 블록 추가">
           <Button
@@ -137,7 +149,13 @@ export function BookEditorToolRail({
   );
 }
 
-function RailTooltip({ label, children }: { label: string; children: React.ReactNode }) {
+function RailTooltip({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>{children}</TooltipTrigger>

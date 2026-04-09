@@ -1,4 +1,9 @@
-import type { Query, QueryCacheNotifyEvent, QueryClient } from "@tanstack/react-query";
+import type {
+  Query,
+  QueryCacheNotifyEvent,
+  QueryClient,
+} from "@tanstack/react-query";
+
 import { appLog } from "@/lib/app-log";
 
 /**
@@ -33,7 +38,10 @@ export function installQueryCacheHitLogging(queryClient: QueryClient): void {
     const query = event.query as Query;
     queueMicrotask(() => {
       if (skipCacheHitForHashes.has(query.queryHash)) return;
-      if (query.state.status !== "success" || query.state.fetchStatus !== "idle")
+      if (
+        query.state.status !== "success" ||
+        query.state.fetchStatus !== "idle"
+      )
         return;
       if (query.state.data === undefined) return;
 
@@ -41,12 +49,16 @@ export function installQueryCacheHitLogging(queryClient: QueryClient): void {
       if (lastCacheHitSignature.get(query.queryHash) === sig) return;
       lastCacheHitSignature.set(query.queryHash, sig);
 
-      appLog("rq-cache", "[RQ-CACHE HIT] 캐시에서 데이터 반환 (queryFn 미실행)", {
-        queryKey: query.queryKey,
-        queryHash: query.queryHash,
-        dataUpdatedAt: query.state.dataUpdatedAt,
-        isStale: query.isStale(),
-      });
+      appLog(
+        "rq-cache",
+        "[RQ-CACHE HIT] 캐시에서 데이터 반환 (queryFn 미실행)",
+        {
+          queryKey: query.queryKey,
+          queryHash: query.queryHash,
+          dataUpdatedAt: query.state.dataUpdatedAt,
+          isStale: query.isStale(),
+        },
+      );
     });
   });
 }

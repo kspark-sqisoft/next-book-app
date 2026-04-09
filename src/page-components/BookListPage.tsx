@@ -1,38 +1,40 @@
 "use client";
 
 import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { Plus, Search, X } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+  startTransition,
   useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
-  startTransition,
 } from "react";
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, X } from "lucide-react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { useAuth } from "@/stores/auth-store";
-import {
-  BOOK_PAGE_DEFAULT,
-  createBook,
-  fetchBooksPage,
-  type BookListItem as BookListItemModel,
-} from "@/lib/api";
-import { SITE_APP_MAIN_SCROLL_ID } from "@/lib/app-layout-scroll";
-import { appLog } from "@/lib/app-log";
-import {
-  DEFAULT_SLIDE_HEIGHT,
-  DEFAULT_SLIDE_WIDTH,
-} from "@/lib/book-canvas";
-import { useBookPageThumbnails } from "@/lib/use-book-page-thumbnails";
-import { bookKeys } from "@/lib/query-keys";
+
 import { BookListItem } from "@/components/books/BookListItem";
+import { FormErrorAlert } from "@/components/forms/FormErrorAlert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { FormErrorAlert } from "@/components/forms/FormErrorAlert";
+import {
+  BOOK_PAGE_DEFAULT,
+  type BookListItem as BookListItemModel,
+  createBook,
+  fetchBooksPage,
+} from "@/lib/api";
+import { SITE_APP_MAIN_SCROLL_ID } from "@/lib/app-layout-scroll";
+import { appLog } from "@/lib/app-log";
+import { DEFAULT_SLIDE_HEIGHT, DEFAULT_SLIDE_WIDTH } from "@/lib/book-canvas";
+import { bookKeys } from "@/lib/query-keys";
+import { useBookPageThumbnails } from "@/lib/use-book-page-thumbnails";
+import { useAuth } from "@/stores/auth-store";
 
 /** 뷰포트 하단에서 이 픽셀 안이면 “다음 페이지”로 간주 */
 const NEAR_BOTTOM_PX = 280;
@@ -126,7 +128,9 @@ export function BookListPage() {
   const initialLoadingRef = useRef(false);
   const scrollArmedRef = useRef(false);
 
-  const loadMoreDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadMoreDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const hasMore = Boolean(hasNextPage);
 
@@ -238,7 +242,11 @@ export function BookListPage() {
       if (t === null) return;
       if (itemsRef.current.length >= t) return;
 
-      const { scrollHeight: fullHeight, scrollTop, clientHeight } = scrollMetrics();
+      const {
+        scrollHeight: fullHeight,
+        scrollTop,
+        clientHeight,
+      } = scrollMetrics();
       const viewBottom = scrollTop + clientHeight;
       const shortPage = fullHeight <= clientHeight + NEAR_BOTTOM_PX;
       const nearBottom = viewBottom >= fullHeight - NEAR_BOTTOM_PX;
@@ -254,7 +262,9 @@ export function BookListPage() {
 
     const main = scrollRoot();
     const scrollTarget: EventTarget = main ?? window;
-    scrollTarget.addEventListener("scroll", onUserScrollIntent, { passive: true });
+    scrollTarget.addEventListener("scroll", onUserScrollIntent, {
+      passive: true,
+    });
     window.addEventListener("wheel", onUserScrollIntent, { passive: true });
     window.addEventListener("touchmove", onUserScrollIntent, { passive: true });
     return () => {
@@ -307,10 +317,13 @@ export function BookListPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0 flex-1 space-y-3">
           <div>
-            <h1 className="font-heading text-2xl font-semibold tracking-tight">북</h1>
+            <h1 className="font-heading text-2xl font-semibold tracking-tight">
+              북
+            </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              제목으로 검색할 수 있습니다. 처음 {BOOK_PAGE_DEFAULT}개만 불러오며, 더 보기·스크롤로 이어서
-              불러옵니다. 슬라이드 페이지에 텍스트·이미지·동영상 등을 배치합니다.
+              제목으로 검색할 수 있습니다. 처음 {BOOK_PAGE_DEFAULT}개만
+              불러오며, 더 보기·스크롤로 이어서 불러옵니다. 슬라이드 페이지에
+              텍스트·이미지·동영상 등을 배치합니다.
             </p>
           </div>
           <div className="relative max-w-md">
@@ -350,7 +363,9 @@ export function BookListPage() {
           {searchQuery && !isPending && total !== null ? (
             <p className="text-sm text-muted-foreground" aria-live="polite">
               검색 결과{" "}
-              <span className="font-semibold tabular-nums text-foreground">{total}</span>
+              <span className="font-semibold tabular-nums text-foreground">
+                {total}
+              </span>
               건
               {items.length < total ? (
                 <>
@@ -443,13 +458,21 @@ export function BookListPage() {
           {searchQuery ? (
             <>
               &quot;{searchQuery}&quot; · 총{" "}
-              <span className="tabular-nums text-foreground">{total}</span>건 · 표시{" "}
-              <span className="tabular-nums text-foreground">{items.length}</span>건
+              <span className="tabular-nums text-foreground">{total}</span>건 ·
+              표시{" "}
+              <span className="tabular-nums text-foreground">
+                {items.length}
+              </span>
+              건
             </>
           ) : (
             <>
-              총 <span className="tabular-nums text-foreground">{total}</span>건 · 표시{" "}
-              <span className="tabular-nums text-foreground">{items.length}</span>건
+              총 <span className="tabular-nums text-foreground">{total}</span>건
+              · 표시{" "}
+              <span className="tabular-nums text-foreground">
+                {items.length}
+              </span>
+              건
             </>
           )}
           {!hasMore && total > 0 ? " (전부 불러옴)" : ""}

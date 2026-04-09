@@ -1,6 +1,7 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { join, extname } from "node:path";
 import { randomUUID } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
+import { extname, join } from "node:path";
+
 import {
   POST_IMAGES_SUBDIR,
   POST_VIDEO_POSTERS_SUBDIR,
@@ -52,10 +53,7 @@ async function saveAttachmentLike(
 
   if (isPosterField) {
     if (!posterMime.has(mimetype)) {
-      throw new HttpError(
-        400,
-        "동영상 썸네일은 JPEG, PNG, WebP만 가능합니다.",
-      );
+      throw new HttpError(400, "동영상 썸네일은 JPEG, PNG, WebP만 가능합니다.");
     }
     if (buf.length > POST_MEDIA_POSTER_MAX_BYTES) {
       throw new HttpError(400, "동영상 썸네일은 파일당 2MB 이하여야 합니다.");
@@ -96,7 +94,8 @@ export async function parsePostCreateMultipart(formData: FormData): Promise<{
   const title = String(formData.get("title") ?? "").trim();
   const content = String(formData.get("content") ?? "");
   const cat = formData.get("category");
-  const category = cat != null && String(cat).trim() !== "" ? String(cat) : undefined;
+  const category =
+    cat != null && String(cat).trim() !== "" ? String(cat) : undefined;
 
   const rawAtt = formData
     .getAll("attachments")
@@ -153,8 +152,7 @@ export async function parsePostPatchMultipart(formData: FormData): Promise<{
     titleF != null && String(titleF).trim() !== ""
       ? String(titleF).trim()
       : undefined;
-  const content =
-    contentF != null ? String(contentF) : undefined;
+  const content = contentF != null ? String(contentF) : undefined;
   const category =
     categoryF != null && String(categoryF).trim() !== ""
       ? String(categoryF)

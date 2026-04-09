@@ -1,16 +1,17 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useAuth } from "@/stores/auth-store";
-import { deletePost, fetchPost } from "@/lib/api";
-import { appLog } from "@/lib/app-log";
-import { postKeys } from "@/lib/query-keys";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+
+import { FormErrorAlert } from "@/components/forms/FormErrorAlert";
+import { CenteredSpinner } from "@/components/layout/CenteredSpinner";
 import { AuthorAvatarInline } from "@/components/posts/AuthorAvatarInline";
-import { PostLikeButton } from "@/components/posts/PostLikeButton";
 import { PostCommentsSection } from "@/components/posts/PostCommentsSection";
+import { PostLikeButton } from "@/components/posts/PostLikeButton";
+import { PostMediaCarousel } from "@/components/posts/PostMediaCarousel";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,16 +22,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { FormErrorAlert } from "@/components/forms/FormErrorAlert";
-import { CenteredSpinner } from "@/components/layout/CenteredSpinner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { POST_CATEGORY_LABELS, isPostCategoryId } from "@/lib/post-categories";
-import { PostMediaCarousel } from "@/components/posts/PostMediaCarousel";
-import { formatDateFullShort } from "@/lib/format-date";
-import { postBodyHtmlForRender } from "@/lib/post-html";
-import { toast } from "sonner";
+import { deletePost, fetchPost } from "@/lib/api";
+import { appLog } from "@/lib/app-log";
 import { canEditAsOwnerOrAdmin } from "@/lib/authz";
+import { formatDateFullShort } from "@/lib/format-date";
+import { isPostCategoryId, POST_CATEGORY_LABELS } from "@/lib/post-categories";
+import { postBodyHtmlForRender } from "@/lib/post-html";
+import { postKeys } from "@/lib/query-keys";
+import { useAuth } from "@/stores/auth-store";
 
 /** 공개 상세; 작성자·관리자에게 수정·삭제 버튼 */
 export function PostDetailPage() {
@@ -140,7 +141,9 @@ export function PostDetailPage() {
               {post.title}
             </h1>
             {isPostCategoryId(post.category) ? (
-              <Badge variant="secondary">{POST_CATEGORY_LABELS[post.category]}</Badge>
+              <Badge variant="secondary">
+                {POST_CATEGORY_LABELS[post.category]}
+              </Badge>
             ) : null}
           </div>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -156,9 +159,17 @@ export function PostDetailPage() {
               likedByMe={post.likedByMe}
               onApplied={(state) => {
                 queryClient.setQueryData(detailKey, (p) =>
-                  p ? { ...p, likeCount: state.likeCount, likedByMe: state.likedByMe } : p,
+                  p
+                    ? {
+                        ...p,
+                        likeCount: state.likeCount,
+                        likedByMe: state.likedByMe,
+                      }
+                    : p,
                 );
-                void queryClient.invalidateQueries({ queryKey: postKeys.lists() });
+                void queryClient.invalidateQueries({
+                  queryKey: postKeys.lists(),
+                });
               }}
               onSyncError={(msg) => {
                 toast.error(msg);
@@ -196,7 +207,9 @@ export function PostDetailPage() {
         <div className="rounded-xl border border-border/90 bg-muted/25 p-5 shadow-sm ring-1 ring-black/[0.03] dark:border-border dark:bg-muted/20 dark:ring-white/[0.05] sm:p-7 md:p-8">
           <div
             className="post-body text-[15px] leading-[1.75] text-foreground sm:text-base sm:leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: postBodyHtmlForRender(post.content) }}
+            dangerouslySetInnerHTML={{
+              __html: postBodyHtmlForRender(post.content),
+            }}
           />
         </div>
       </section>
@@ -223,7 +236,9 @@ export function PostDetailPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>이 글을 삭제할까요?</AlertDialogTitle>
-            <AlertDialogDescription>이 작업은 되돌릴 수 없습니다.</AlertDialogDescription>
+            <AlertDialogDescription>
+              이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleteBusy}>취소</AlertDialogCancel>

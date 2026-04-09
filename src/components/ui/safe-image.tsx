@@ -1,11 +1,15 @@
 "use client";
 
 import { ImageOff } from "lucide-react";
-import { useState, type ImgHTMLAttributes, type ReactNode } from "react";
+import { type ImgHTMLAttributes, type ReactNode, useState } from "react";
+
 import { publicAssetUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-export type SafeImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, "src"> & {
+export type SafeImageProps = Omit<
+  ImgHTMLAttributes<HTMLImageElement>,
+  "src"
+> & {
   src: string | null | undefined;
   /** 빈·깨진 URL일 때 대체 UI. 없으면 아이콘 플레이스홀더( className 동일 적용 ) */
   fallback?: ReactNode;
@@ -43,7 +47,11 @@ function SafeImageBody({
         role="img"
         aria-label={placeholderLabel || alt || "이미지를 불러올 수 없습니다"}
       >
-        <ImageOff className="size-7 shrink-0 opacity-40" strokeWidth={1.25} aria-hidden />
+        <ImageOff
+          className="size-7 shrink-0 opacity-40"
+          strokeWidth={1.25}
+          aria-hidden
+        />
       </div>
     );
   }
@@ -72,6 +80,8 @@ function SafeImageBody({
  */
 export function SafeImage({ src, ...rest }: SafeImageProps) {
   const trimmed = typeof src === "string" ? src.trim() : "";
-  const resolved = trimmed ? publicAssetUrl(trimmed) ?? trimmed : "";
-  return <SafeImageBody key={trimmed || "__empty__"} trimmed={resolved} {...rest} />;
+  const resolved = trimmed ? (publicAssetUrl(trimmed) ?? trimmed) : "";
+  return (
+    <SafeImageBody key={trimmed || "__empty__"} trimmed={resolved} {...rest} />
+  );
 }

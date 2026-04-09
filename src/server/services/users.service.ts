@@ -1,7 +1,9 @@
 import { existsSync } from "node:fs";
 import { unlink } from "node:fs/promises";
 import { join } from "node:path";
+
 import { eq, sql } from "drizzle-orm";
+
 import { getDb, user as userTable } from "@/server/db";
 import {
   AVATARS_SUBDIR,
@@ -213,9 +215,7 @@ export class UsersService {
     await db
       .update(userTable)
       .set({ role: UserRole.User })
-      .where(
-        sql`(${userTable.role} IS NULL OR TRIM(${userTable.role}) = '')`,
-      );
+      .where(sql`(${userTable.role} IS NULL OR TRIM(${userTable.role}) = '')`);
   }
 
   async ensureBootstrapAdminRoles(): Promise<void> {

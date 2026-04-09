@@ -1,41 +1,46 @@
 "use client";
 
 import {
+  type InfiniteData,
+  useInfiniteQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { Search, X } from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+  startTransition,
   useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
-  startTransition,
 } from "react";
-import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
-import { Search, X } from "lucide-react";
-import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@/stores/auth-store";
+import { toast } from "sonner";
+
+import { FormErrorAlert } from "@/components/forms/FormErrorAlert";
+import { PostListItem } from "@/components/posts/PostListItem";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
 import {
   fetchPostsPage,
-  POST_PAGE_DEFAULT,
   type Post,
+  POST_PAGE_DEFAULT,
   type PostLikeState,
   type PostsPageResponse,
 } from "@/lib/api";
+import { SITE_APP_MAIN_SCROLL_ID } from "@/lib/app-layout-scroll";
+import { appLog } from "@/lib/app-log";
 import {
   isPostCategoryId,
   POST_CATEGORY_LABELS,
   POST_CATEGORY_VALUES,
 } from "@/lib/post-categories";
-import { SITE_APP_MAIN_SCROLL_ID } from "@/lib/app-layout-scroll";
-import { appLog } from "@/lib/app-log";
-import { toast } from "sonner";
 import { postKeys } from "@/lib/query-keys";
-import { PostListItem } from "@/components/posts/PostListItem";
-import { FormErrorAlert } from "@/components/forms/FormErrorAlert";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Spinner } from "@/components/ui/spinner";
+import { useAuth } from "@/stores/auth-store";
 
 /** 뷰포트 하단에서 이 픽셀 안이면 “다음 페이지”로 간주 */
 const NEAR_BOTTOM_PX = 280;
@@ -66,8 +71,11 @@ export function PostListPage() {
     [searchParams, router, pathname],
   );
   const urlSearchRaw = searchParams.get("search") ?? "";
-  const urlCategoryRaw = searchParams.get("category")?.trim().toLowerCase() ?? "";
-  const categoryFilterParam = isPostCategoryId(urlCategoryRaw) ? urlCategoryRaw : "";
+  const urlCategoryRaw =
+    searchParams.get("category")?.trim().toLowerCase() ?? "";
+  const categoryFilterParam = isPostCategoryId(urlCategoryRaw)
+    ? urlCategoryRaw
+    : "";
 
   const [loadMoreScheduled, setLoadMoreScheduled] = useState(false);
   const [likeActionError, setLikeActionError] = useState<string | null>(null);
@@ -115,10 +123,7 @@ export function PostListPage() {
     () => data?.pages.flatMap((p) => p.items) ?? [],
     [data],
   );
-  const total = useMemo(
-    () => data?.pages[0]?.total ?? null,
-    [data],
-  );
+  const total = useMemo(() => data?.pages[0]?.total ?? null, [data]);
   const error =
     isError && queryError instanceof Error
       ? queryError.message
@@ -140,7 +145,9 @@ export function PostListPage() {
   /** 스크롤/휠/터치 전에는 추가 로드하지 않음 (첫 화면에서 감시 요소가 보여도 자동 연속 요청 방지) */
   const scrollArmedRef = useRef(false);
 
-  const loadMoreDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadMoreDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const hasMore = Boolean(hasNextPage);
 
@@ -225,20 +232,27 @@ export function PostListPage() {
 
   const onLikeApplied = useCallback(
     (postId: number, state: PostLikeState) => {
-      queryClient.setQueryData<InfiniteData<PostsPageResponse>>(listQueryKey, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          pages: old.pages.map((page) => ({
-            ...page,
-            items: page.items.map((p) =>
-              p.id === postId
-                ? { ...p, likeCount: state.likeCount, likedByMe: state.likedByMe }
-                : p,
-            ),
-          })),
-        };
-      });
+      queryClient.setQueryData<InfiniteData<PostsPageResponse>>(
+        listQueryKey,
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page) => ({
+              ...page,
+              items: page.items.map((p) =>
+                p.id === postId
+                  ? {
+                      ...p,
+                      likeCount: state.likeCount,
+                      likedByMe: state.likedByMe,
+                    }
+                  : p,
+              ),
+            })),
+          };
+        },
+      );
     },
     [queryClient, listQueryKey],
   );
@@ -271,7 +285,11 @@ export function PostListPage() {
 
       if (!hasNextPageRef.current) return;
 
-      const { scrollHeight: fullHeight, scrollTop, clientHeight } = scrollMetrics();
+      const {
+        scrollHeight: fullHeight,
+        scrollTop,
+        clientHeight,
+      } = scrollMetrics();
       const viewBottom = scrollTop + clientHeight;
       /** 스크롤이 거의 없는 짧은 페이지: 휠/터치 한 번이면 다음 페이지 허용 */
       const shortPage = fullHeight <= clientHeight + NEAR_BOTTOM_PX;
@@ -288,7 +306,9 @@ export function PostListPage() {
 
     const main = scrollRoot();
     const scrollTarget: EventTarget = main ?? window;
-    scrollTarget.addEventListener("scroll", onUserScrollIntent, { passive: true });
+    scrollTarget.addEventListener("scroll", onUserScrollIntent, {
+      passive: true,
+    });
     window.addEventListener("wheel", onUserScrollIntent, { passive: true });
     window.addEventListener("touchmove", onUserScrollIntent, { passive: true });
     return () => {
@@ -303,10 +323,12 @@ export function PostListPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0 flex-1 space-y-3">
           <div>
-            <h1 className="font-heading text-2xl font-semibold tracking-tight">글 목록</h1>
+            <h1 className="font-heading text-2xl font-semibold tracking-tight">
+              글 목록
+            </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              카테고리·제목·본문으로 좁힐 수 있습니다. 처음 {POST_PAGE_DEFAULT}개만 불러오며, 더 보기·스크롤로
-              이어서 불러옵니다.
+              카테고리·제목·본문으로 좁힐 수 있습니다. 처음 {POST_PAGE_DEFAULT}
+              개만 불러오며, 더 보기·스크롤로 이어서 불러옵니다.
             </p>
           </div>
           <div className="relative max-w-md">
@@ -344,7 +366,10 @@ export function PostListPage() {
             ) : null}
           </div>
           <div className="flex max-w-md flex-col gap-1.5">
-            <Label htmlFor="post-list-category" className="text-muted-foreground">
+            <Label
+              htmlFor="post-list-category"
+              className="text-muted-foreground"
+            >
               카테고리
             </Label>
             <select
@@ -371,7 +396,9 @@ export function PostListPage() {
           {searchQuery && !isPending && total !== null ? (
             <p className="text-sm text-muted-foreground" aria-live="polite">
               검색 결과{" "}
-              <span className="font-semibold tabular-nums text-foreground">{total}</span>
+              <span className="font-semibold tabular-nums text-foreground">
+                {total}
+              </span>
               건
               {posts.length < total ? (
                 <>
@@ -464,13 +491,21 @@ export function PostListPage() {
           {searchQuery ? (
             <>
               &quot;{searchQuery}&quot; · 총{" "}
-              <span className="tabular-nums text-foreground">{total}</span>건 · 표시{" "}
-              <span className="tabular-nums text-foreground">{posts.length}</span>건
+              <span className="tabular-nums text-foreground">{total}</span>건 ·
+              표시{" "}
+              <span className="tabular-nums text-foreground">
+                {posts.length}
+              </span>
+              건
             </>
           ) : (
             <>
-              총 <span className="tabular-nums text-foreground">{total}</span>건 · 표시{" "}
-              <span className="tabular-nums text-foreground">{posts.length}</span>건
+              총 <span className="tabular-nums text-foreground">{total}</span>건
+              · 표시{" "}
+              <span className="tabular-nums text-foreground">
+                {posts.length}
+              </span>
+              건
             </>
           )}
           {!hasMore && total > 0 ? " (전부 불러옴)" : ""}

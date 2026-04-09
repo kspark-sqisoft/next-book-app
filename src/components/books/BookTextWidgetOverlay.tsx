@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from "react";
-import { cn } from "@/lib/utils";
+
 import {
+  type BookCanvasElement,
   bookElementOverlayTopLeftFromPivot,
   bookElementPivotKonva,
   resolveBookElementBorderRadius,
@@ -8,9 +9,12 @@ import {
   resolveBookElementOutlineColor,
   resolveBookElementOutlineWidth,
   resolveBookElementRotation,
-  type BookCanvasElement,
 } from "@/lib/book-canvas";
-import { getTextWidgetDisplayHtml, textWidgetHitHeight } from "@/lib/book-text-widget";
+import {
+  getTextWidgetDisplayHtml,
+  textWidgetHitHeight,
+} from "@/lib/book-text-widget";
+import { cn } from "@/lib/utils";
 
 /** 드래그·트랜스폼 중 Konva와 동일(논리 좌표: 회전 전 박스 왼쪽 위·크기·도) */
 export type BookTextOverlayLiveFrame = {
@@ -54,7 +58,13 @@ export function BookTextWidgetOverlay({
   const h = textWidgetHitHeight(el);
   const o = resolveBookElementOpacity(el.opacity);
   const rot = resolveBookElementRotation(el.rotation);
-  const pivot = bookElementPivotKonva({ x: el.x, y: el.y, width: w, height: h, rotation: el.rotation });
+  const pivot = bookElementPivotKonva({
+    x: el.x,
+    y: el.y,
+    width: w,
+    height: h,
+    rotation: el.rotation,
+  });
   const layoutOrigin = bookElementOverlayTopLeftFromPivot(pivot, w, h);
   const fx = liveFrame?.x ?? layoutOrigin.x;
   const fy = liveFrame?.y ?? layoutOrigin.y;
@@ -87,7 +97,16 @@ export function BookTextWidgetOverlay({
     const ro = new ResizeObserver(() => measure());
     ro.observe(node);
     return () => ro.disconnect();
-  }, [html, scale, mode, onReportLogicalHeight, w, fh, liveFrame, el.verticalAlign]);
+  }, [
+    html,
+    scale,
+    mode,
+    onReportLogicalHeight,
+    w,
+    fh,
+    liveFrame,
+    el.verticalAlign,
+  ]);
 
   return (
     <div

@@ -1,14 +1,15 @@
 import { Video } from "lucide-react";
 import Link from "next/link";
-import type { Post, PostLikeState } from "@/lib/api";
-import { formatDateMediumShort } from "@/lib/format-date";
-import { plainTextFromPostHtml } from "@/lib/post-html";
+
 import { AuthorAvatarInline } from "@/components/posts/AuthorAvatarInline";
 import { PostLikeButton } from "@/components/posts/PostLikeButton";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { POST_CATEGORY_LABELS, isPostCategoryId } from "@/lib/post-categories";
 import { SafeImage } from "@/components/ui/safe-image";
+import type { Post, PostLikeState } from "@/lib/api";
+import { formatDateMediumShort } from "@/lib/format-date";
+import { isPostCategoryId, POST_CATEGORY_LABELS } from "@/lib/post-categories";
+import { plainTextFromPostHtml } from "@/lib/post-html";
 
 type Props = {
   post: Post;
@@ -76,7 +77,10 @@ export function PostListItem({
                   {post.title}
                 </h3>
                 {isPostCategoryId(post.category) ? (
-                  <Badge variant="secondary" className="shrink-0 text-[10px] font-medium">
+                  <Badge
+                    variant="secondary"
+                    className="shrink-0 text-[10px] font-medium"
+                  >
                     {POST_CATEGORY_LABELS[post.category]}
                   </Badge>
                 ) : null}

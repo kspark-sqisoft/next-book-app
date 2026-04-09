@@ -12,7 +12,10 @@ export type BookLeftDockSlideDims = {
  */
 
 export function bookDockedPanelRootClass(className?: string) {
-  return cn("flex h-full min-h-0 flex-col overflow-hidden bg-card/50", className);
+  return cn(
+    "flex h-full min-h-0 flex-col overflow-hidden bg-card/50",
+    className,
+  );
 }
 
 /** 오른쪽 독: 레이어 아래 **페이지·위젯 속성** 영역 — 배경으로 레이어 블록과 구분 */
@@ -57,7 +60,10 @@ const bookLeftDockWidthClass = {
     "w-[min(calc(11rem*2/3*1.12),calc(100vw-5rem))] sm:w-[calc(17rem*2/3*1.12)] lg:w-[calc(20rem*2/3*1.12)]",
 } as const;
 
-function bookLeftDockWidthTier(sw: number, sh: number): keyof typeof bookLeftDockWidthClass {
+function bookLeftDockWidthTier(
+  sw: number,
+  sh: number,
+): keyof typeof bookLeftDockWidthClass {
   const w = Math.max(1, sw);
   const h = Math.max(1, sh);
   if (h > w) return "portrait";

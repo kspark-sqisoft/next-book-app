@@ -1,5 +1,5 @@
-import type { JwtPayload } from "@/server/auth/jwt-payload";
 import { verifyAccessToken } from "@/server/auth/jwt";
+import type { JwtPayload } from "@/server/auth/jwt-payload";
 import { HttpError } from "@/server/http/http-error";
 import { UserRole } from "@/server/users/user-role";
 

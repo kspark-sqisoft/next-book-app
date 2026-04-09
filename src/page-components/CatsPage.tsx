@@ -1,25 +1,29 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
 import Link from "next/link";
-import { useAuth } from "@/stores/auth-store";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+
 import {
-  createCat,
-  deleteCat,
-  fetchCats,
-  uploadCatImage,
-} from "@/lib/api";
-import { appLog } from "@/lib/app-log";
-import { formDataGetString } from "@/lib/form-data-utils";
-import { fieldErrorsFromZodIssues } from "@/lib/zod-form";
-import {
-  catCreateSchema,
-  type CatCreateFormValues,
-} from "@/lib/schemas/forms";
-import { catKeys } from "@/lib/query-keys";
+  createCatAction,
+  deleteCatAction,
+  listCatsAction,
+  uploadCatImageAction,
+} from "@/actions/cats";
 import { FormErrorAlert } from "@/components/forms/FormErrorAlert";
 import { FormFieldError } from "@/components/forms/FormFieldError";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -32,6 +36,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SafeImage } from "@/components/ui/safe-image";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Table,
   TableBody,
@@ -40,25 +45,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { formatDateMediumShort } from "@/lib/format-date";
-import { Spinner } from "@/components/ui/spinner";
-import { toast } from "sonner";
+import { getAccessToken } from "@/lib/api";
+import { appLog } from "@/lib/app-log";
 import { canEditCatAsOwnerOrAdmin } from "@/lib/authz";
+import { formDataGetString } from "@/lib/form-data-utils";
+import { formatDateMediumShort } from "@/lib/format-date";
+import { catKeys } from "@/lib/query-keys";
+import { type CatCreateFormValues, catCreateSchema } from "@/lib/schemas/forms";
+import { fieldErrorsFromZodIssues } from "@/lib/zod-form";
+import { useAuth } from "@/stores/auth-store";
+
+/** 공부용: 목록 로드 후 상세 경로를 너무 많이 두드리지 않도록 상한만 둡니다. */
+const CAT_DETAIL_PREFETCH_CAP = 12;
 
 /**
- * 고양이 목록은 누구나 조회. 등록·삭제·사진 업로드는 로그인 사용자만 (백엔드 JwtAuthGuard와 동일).
+ * 고양이 목록은 누구나 조회. 등록·삭제·사진 업로드는 로그인 사용자만 (서버 액션에서 JWT 검증).
  */
 export function CatsPage() {
+  const router = useRouter();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const listKey = catKeys.list();
@@ -69,7 +73,9 @@ export function CatsPage() {
   const [createFieldErrors, setCreateFieldErrors] = useState<
     Partial<Record<keyof CatCreateFormValues, string>>
   >({});
-  const [createServerError, setCreateServerError] = useState<string | null>(null);
+  const [createServerError, setCreateServerError] = useState<string | null>(
+    null,
+  );
 
   const {
     data: cats = [],
@@ -79,14 +85,28 @@ export function CatsPage() {
   } = useQuery({
     queryKey: listKey,
     queryFn: async () => {
-      const items = await fetchCats();
+      const { cats: items } = await listCatsAction();
       appLog("cats", "목록 로드", { count: items.length });
       return items;
     },
   });
 
+  // 공부용: React Query로 목록을 받은 뒤 App Router `router.prefetch`로 상세 세그먼트를 백그라운드 프리패치합니다.
+  useEffect(() => {
+    if (cats.length === 0) return;
+    const slice = cats.slice(0, CAT_DETAIL_PREFETCH_CAP);
+    for (const c of slice) {
+      router.prefetch(`/cats/${c.id}`);
+    }
+    appLog("cats", "공부용 prefetch", { count: slice.length });
+  }, [cats, router]);
+
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => deleteCat(id),
+    mutationFn: async (id: number) => {
+      const token = getAccessToken();
+      if (!token) throw new Error("로그인이 필요합니다.");
+      await deleteCatAction(token, id);
+    },
     onSuccess: (_data, deletedId) => {
       toast.success("삭제되었습니다.");
       void queryClient.invalidateQueries({ queryKey: catKeys.all });
@@ -105,7 +125,9 @@ export function CatsPage() {
       breed?: string;
       image: File | null;
     }) => {
-      const cat = await createCat({
+      const token = getAccessToken();
+      if (!token) throw new Error("로그인이 필요합니다.");
+      const cat = await createCatAction(token, {
         name: input.name,
         ...(input.age !== undefined ? { age: input.age } : {}),
         ...(input.breed !== undefined && input.breed !== ""
@@ -113,7 +135,9 @@ export function CatsPage() {
           : {}),
       });
       if (input.image && input.image.size > 0) {
-        return uploadCatImage(cat.id, input.image);
+        const fd = new FormData();
+        fd.append("image", input.image);
+        return uploadCatImageAction(token, cat.id, fd);
       }
       return cat;
     },
@@ -127,8 +151,7 @@ export function CatsPage() {
       appLog("cats", "등록 성공");
     },
     onError: (err) => {
-      const msg =
-        err instanceof Error ? err.message : "등록에 실패했습니다.";
+      const msg = err instanceof Error ? err.message : "등록에 실패했습니다.";
       setCreateServerError(msg);
       toast.error(msg);
     },
@@ -158,9 +181,7 @@ export function CatsPage() {
       ...(parsed.data.age.trim()
         ? { age: Number(parsed.data.age.trim()) }
         : {}),
-      ...(parsed.data.breed.trim()
-        ? { breed: parsed.data.breed.trim() }
-        : {}),
+      ...(parsed.data.breed.trim() ? { breed: parsed.data.breed.trim() } : {}),
       image: file && file.size > 0 ? file : null,
     });
   }
@@ -179,7 +200,8 @@ export function CatsPage() {
           Cats (학습)
         </h1>
         <p className="text-sm text-muted-foreground">
-          목록·상세는 공개입니다. 등록은 로그인 사용자만, 삭제·수정은 해당 고양이를 등록한 사람 또는 관리자만 할 수 있습니다.
+          목록·상세는 공개입니다. 등록은 로그인 사용자만, 삭제·수정은 해당
+          고양이를 등록한 사람 또는 관리자만 할 수 있습니다.
         </p>
       </div>
 
@@ -188,8 +210,9 @@ export function CatsPage() {
           <CardHeader>
             <CardTitle className="text-lg">고양이 등록</CardTitle>
             <CardDescription>
-              이름은 필수입니다. 나이·품종은 선택(나이 비우면 서버 기본값 1, 품종 비우면 mixed).
-              사진은 선택(JPEG·PNG·GIF·WebP, 최대 3MB) — 등록 직후 같은 요청 흐름에서 업로드됩니다.
+              이름은 필수입니다. 나이·품종은 선택(나이 비우면 서버 기본값 1,
+              품종 비우면 mixed). 사진은 선택(JPEG·PNG·GIF·WebP, 최대 3MB) —
+              등록 직후 같은 요청 흐름에서 업로드됩니다.
             </CardDescription>
           </CardHeader>
           <form ref={formRef} onSubmit={onSubmitCreate}>
@@ -294,12 +317,8 @@ export function CatsPage() {
                   <TableHead>이름</TableHead>
                   <TableHead className="w-16">나이</TableHead>
                   <TableHead>품종</TableHead>
-                  <TableHead className="hidden sm:table-cell">
-                    등록일
-                  </TableHead>
-                  <TableHead className="w-32 text-right">
-                    동작
-                  </TableHead>
+                  <TableHead className="hidden sm:table-cell">등록일</TableHead>
+                  <TableHead className="w-32 text-right">동작</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -308,6 +327,7 @@ export function CatsPage() {
                     <TableCell className="py-2">
                       <Link
                         href={`/cats/${c.id}`}
+                        prefetch
                         className="block size-11 overflow-hidden rounded-md bg-muted ring-1 ring-border"
                         aria-label={`${c.name} 사진`}
                       >
@@ -336,6 +356,7 @@ export function CatsPage() {
                     <TableCell className="font-medium">
                       <Link
                         href={`/cats/${c.id}`}
+                        prefetch
                         className="text-primary underline-offset-4 hover:underline"
                       >
                         {c.name}
@@ -382,7 +403,8 @@ export function CatsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>이 고양이를 삭제할까요?</AlertDialogTitle>
             <AlertDialogDescription>
-              번호 {deleteTargetId ?? ""}번 항목이 삭제됩니다. 되돌릴 수 없습니다.
+              번호 {deleteTargetId ?? ""}번 항목이 삭제됩니다. 되돌릴 수
+              없습니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

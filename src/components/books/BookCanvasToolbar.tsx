@@ -1,4 +1,5 @@
 import { Minus, Plus, Redo2, Undo2 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -48,7 +49,8 @@ export function BookCanvasToolbar({
     typeof onCenterGuideThresholdPxChange === "function";
   const showDragGridControl =
     typeof dragGridPx === "number" && typeof onDragGridPxChange === "function";
-  const showSnapControlsDividerBeforeZoom = showCenterGuideControl || showDragGridControl;
+  const showSnapControlsDividerBeforeZoom =
+    showCenterGuideControl || showDragGridControl;
 
   return (
     <div
@@ -92,7 +94,9 @@ export function BookCanvasToolbar({
         <div className="flex items-center gap-1.5 px-0.5">
           {showCenterGuideControl ? (
             <label className="flex items-center gap-1">
-              <span className="shrink-0 text-xs text-muted-foreground">중앙선</span>
+              <span className="shrink-0 text-xs text-muted-foreground">
+                중앙선
+              </span>
               <Input
                 type="number"
                 inputMode="numeric"
@@ -120,7 +124,9 @@ export function BookCanvasToolbar({
           ) : null}
           {showDragGridControl ? (
             <label className="flex items-center gap-1">
-              <span className="shrink-0 text-xs text-muted-foreground">그리드</span>
+              <span className="shrink-0 text-xs text-muted-foreground">
+                그리드
+              </span>
               <Input
                 type="number"
                 inputMode="numeric"

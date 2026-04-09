@@ -1,9 +1,4 @@
 import {
-  type DragEvent,
-  useCallback,
-  useRef,
-} from "react";
-import {
   AppWindow,
   ArrowRight,
   ChevronRight,
@@ -26,8 +21,10 @@ import {
   TriangleRight,
   X,
 } from "lucide-react";
-import { Label } from "@/components/ui/label";
+import { type DragEvent, useCallback, useRef } from "react";
+
 import { setShapeDragData } from "@/components/books/BookSlideCanvas";
+import { Label } from "@/components/ui/label";
 import type { BookShapeKind } from "@/lib/book-canvas";
 import {
   bookDockedPanelHeaderIconClass,
@@ -77,10 +74,13 @@ export function BookElementsPanel({
 }) {
   const dragRef = useRef(false);
 
-  const onDragStart = useCallback((e: DragEvent<HTMLDivElement>, kind: BookShapeKind) => {
-    dragRef.current = true;
-    setShapeDragData(e, kind);
-  }, []);
+  const onDragStart = useCallback(
+    (e: DragEvent<HTMLDivElement>, kind: BookShapeKind) => {
+      dragRef.current = true;
+      setShapeDragData(e, kind);
+    },
+    [],
+  );
 
   const onDragEnd = useCallback(() => {
     window.setTimeout(() => {

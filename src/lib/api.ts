@@ -1,6 +1,30 @@
-import axios, { isAxiosError, type InternalAxiosRequestConfig } from "axios";
-import type { BookCanvasElement } from "@/lib/book-canvas";
+import axios, { type InternalAxiosRequestConfig, isAxiosError } from "axios";
+
+import {
+  createBookAction,
+  deleteBookAction,
+  fetchBookAiChatAction,
+  getBookAction,
+  listBooksAction,
+  requestBookLayoutAiAction,
+  updateBookAction,
+  uploadBookMediaAction,
+} from "@/actions/books";
+import {
+  createPostAction,
+  createPostCommentAction,
+  deletePostAction,
+  deletePostCommentAction,
+  fetchPostCommentsAction,
+  getPostAction,
+  likePostAction,
+  listPostsAction,
+  unlikePostAction,
+  updatePostAction,
+} from "@/actions/posts";
 import { appLog } from "@/lib/app-log";
+import type { BookCanvasElement } from "@/lib/book-canvas";
+import type { CreateBookDto, UpdateBookDto } from "@/server/services/books-types";
 
 type RetryableRequest = InternalAxiosRequestConfig & { _retry?: boolean };
 
@@ -366,45 +390,28 @@ export async function fetchPostsPage(params?: {
   /** tech | life | study | chat | general */
   category?: string;
 }): Promise<PostsPageResponse> {
-  try {
-    const search = params?.search?.trim();
-    const category = params?.category?.trim();
-    const { data } = await api.get<PostsPageResponse>("/posts", {
-      params: {
-        take: params?.take ?? POST_PAGE_DEFAULT,
-        ...(params?.cursor ? { cursor: params.cursor } : {}),
-        ...(search ? { search } : {}),
-        ...(category ? { category } : {}),
-      },
-    });
-    return data;
-  } catch (e) {
-    rethrowAsApiError(e);
-  }
+  const search = params?.search?.trim();
+  const category = params?.category?.trim();
+  return listPostsAction(getAccessToken(), {
+    take: params?.take ?? POST_PAGE_DEFAULT,
+    ...(params?.cursor ? { cursor: params.cursor } : {}),
+    ...(search ? { search } : {}),
+    ...(category ? { category } : {}),
+  });
 }
 
 export { POST_PAGE_DEFAULT };
 
 /** 단일 글 상세(공개) */
 export async function fetchPost(id: number): Promise<Post> {
-  try {
-    const { data } = await api.get<Post>(`/posts/${id}`);
-    return data;
-  } catch (e) {
-    rethrowAsApiError(e);
-  }
+  return getPostAction(getAccessToken(), id);
 }
 
 /** 글 댓글 트리(공개) */
 export async function fetchPostComments(
   postId: number,
 ): Promise<PostComment[]> {
-  try {
-    const { data } = await api.get<PostComment[]>(`/posts/${postId}/comments`);
-    return data;
-  } catch (e) {
-    rethrowAsApiError(e);
-  }
+  return fetchPostCommentsAction(postId);
 }
 
 /** JWT 필요; 새 댓글·대댓글(parentId) */
@@ -412,15 +419,9 @@ export async function createPostComment(
   postId: number,
   input: { content: string; parentId?: number },
 ): Promise<PostComment> {
-  try {
-    const { data } = await api.post<PostComment>(`/posts/${postId}/comments`, {
-      content: input.content,
-      ...(input.parentId != null ? { parentId: input.parentId } : {}),
-    });
-    return data;
-  } catch (e) {
-    rethrowAsApiError(e);
-  }
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  return createPostCommentAction(token, postId, input);
 }
 
 /** JWT·작성자만 */
@@ -428,31 +429,23 @@ export async function deletePostComment(
   postId: number,
   commentId: number,
 ): Promise<void> {
-  try {
-    await api.delete(`/posts/${postId}/comments/${commentId}`);
-  } catch (e) {
-    rethrowAsApiError(e);
-  }
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  await deletePostCommentAction(token, postId, commentId);
 }
 
 /** JWT 필요; 응답으로 최종 좋아요 수·내 좋아요 여부 */
 export async function likePost(id: number): Promise<PostLikeState> {
-  try {
-    const { data } = await api.post<PostLikeState>(`/posts/${id}/like`);
-    return data;
-  } catch (e) {
-    rethrowAsApiError(e);
-  }
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  return likePostAction(token, id);
 }
 
 /** JWT 필요 */
 export async function unlikePost(id: number): Promise<PostLikeState> {
-  try {
-    const { data } = await api.delete<PostLikeState>(`/posts/${id}/like`);
-    return data;
-  } catch (e) {
-    rethrowAsApiError(e);
-  }
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  return unlikePostAction(token, id);
 }
 
 /** JWT 필요; 첨부 순서 = attachmentFiles 순서, posterFiles = 동영상 개수와 동일 */
@@ -475,12 +468,9 @@ export async function createPost(input: {
   for (const f of input.posterFiles) {
     fd.append("posters", f);
   }
-  try {
-    const { data } = await api.post<Post>("/posts", fd);
-    return data;
-  } catch (e) {
-    rethrowAsApiError(e);
-  }
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  return createPostAction(token, fd);
 }
 
 /** JWT·작성자만; mediaPlan 없으면 첨부 유지 */
@@ -512,21 +502,16 @@ export async function updatePost(
   for (const f of input.newPosters ?? []) {
     fd.append("newPosters", f);
   }
-  try {
-    const { data } = await api.patch<Post>(`/posts/${id}`, fd);
-    return data;
-  } catch (e) {
-    rethrowAsApiError(e);
-  }
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  return updatePostAction(token, id, fd);
 }
 
 /** JWT·작성자만 */
 export async function deletePost(id: number): Promise<void> {
-  try {
-    await api.delete(`/posts/${id}`);
-  } catch (e) {
-    rethrowAsApiError(e);
-  }
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  await deletePostAction(token, id);
 }
 
 // --- Weather (OpenWeatherMap, 서울 — API 키는 백엔드) ---
@@ -598,7 +583,7 @@ export async function fetchNewsHeadlines(params?: {
   }
 }
 
-// --- Cats (학습용 API; 목록·상세는 공개, 등록·삭제는 JWT) ---
+// --- Cats (학습용; UI는 `src/actions/cats.ts` 서버 액션) ---
 
 export type Cat = {
   id: number;
@@ -612,97 +597,6 @@ export type Cat = {
   createdAt: string;
   updatedAt: string;
 };
-
-/** 공개: 목록 */
-export async function fetchCats(): Promise<Cat[]> {
-  appLog("cats-api", "[CATS-C01] GET /cats → 요청 (브라우저→프록시/백엔드)");
-  try {
-    const { data } = await api.get<{ cats: Cat[] }>("/cats");
-    const cats = data.cats ?? [];
-    appLog("cats-api", "[CATS-C02] GET /cats ← 응답", { count: cats.length });
-    return cats;
-  } catch (e) {
-    appLog("cats-api", "[CATS-CERR] GET /cats 실패", e);
-    rethrowAsApiError(e);
-  }
-}
-
-/** 공개: 단건 */
-export async function fetchCat(id: number): Promise<Cat> {
-  appLog("cats-api", `[CATS-C03] GET /cats/${id} → 요청`);
-  try {
-    const { data } = await api.get<Cat>(`/cats/${id}`);
-    appLog("cats-api", `[CATS-C04] GET /cats/${id} ← 응답`, {
-      id: data.id,
-      name: data.name,
-    });
-    return data;
-  } catch (e) {
-    appLog("cats-api", `[CATS-CERR] GET /cats/${id} 실패`, e);
-    rethrowAsApiError(e);
-  }
-}
-
-/** JWT 필요 */
-export async function createCat(input: {
-  name: string;
-  age?: number;
-  breed?: string;
-}): Promise<Cat> {
-  appLog("cats-api", "[CATS-C05] POST /cats → 요청 | Bearer 자동", {
-    body: input,
-  });
-  try {
-    const { data } = await api.post<Cat>("/cats", input);
-    appLog("cats-api", "[CATS-C06] POST /cats ← 응답 | 등록됨", {
-      id: data.id,
-    });
-    return data;
-  } catch (e) {
-    appLog("cats-api", "[CATS-CERR] POST /cats 실패", e);
-    rethrowAsApiError(e);
-  }
-}
-
-/** JWT 필요. `name`·`age`·`breed` 중 최소 하나. */
-export async function patchCat(
-  id: number,
-  body: { name?: string; age?: number; breed?: string },
-): Promise<Cat> {
-  try {
-    const { data } = await api.patch<Cat>(`/cats/${id}`, body);
-    return data;
-  } catch (e) {
-    rethrowAsApiError(e);
-  }
-}
-
-/** JWT 필요. `image` 필드로 JPEG/PNG/GIF/WebP (최대 3MB). */
-export async function uploadCatImage(id: number, file: File): Promise<Cat> {
-  appLog("cats-api", `[CATS-C09] POST /cats/${id}/image → 요청`);
-  try {
-    const body = new FormData();
-    body.append("image", file);
-    const { data } = await api.post<Cat>(`/cats/${id}/image`, body);
-    appLog("cats-api", `[CATS-C10] POST /cats/${id}/image ← 응답`);
-    return data;
-  } catch (e) {
-    appLog("cats-api", `[CATS-CERR] POST /cats/${id}/image 실패`, e);
-    rethrowAsApiError(e);
-  }
-}
-
-/** JWT 필요 */
-export async function deleteCat(id: number): Promise<void> {
-  appLog("cats-api", `[CATS-C07] DELETE /cats/${id} → 요청`);
-  try {
-    await api.delete(`/cats/${id}`);
-    appLog("cats-api", `[CATS-C08] DELETE /cats/${id} ← 완료`);
-  } catch (e) {
-    appLog("cats-api", `[CATS-CERR] DELETE /cats/${id} 실패`, e);
-    rethrowAsApiError(e);
-  }
-}
 
 // --- Books (슬라이드 / Konva) ---
 
@@ -778,30 +672,18 @@ export async function fetchBooksPage(params?: {
   take?: number;
   search?: string;
 }): Promise<BooksPageResponse> {
-  try {
-    const search = params?.search?.trim();
-    const { data } = await api.get<BooksPageResponse>("/books", {
-      params: {
-        skip: params?.skip ?? 0,
-        take: params?.take ?? BOOK_PAGE_DEFAULT,
-        ...(search ? { search } : {}),
-      },
-    });
-    return data;
-  } catch (e) {
-    rethrowAsApiError(e);
-  }
+  const search = params?.search?.trim();
+  return listBooksAction({
+    skip: params?.skip ?? 0,
+    take: params?.take ?? BOOK_PAGE_DEFAULT,
+    ...(search ? { search } : {}),
+  });
 }
 
 export { BOOK_PAGE_DEFAULT };
 
 export async function fetchBook(id: number): Promise<BookDetail> {
-  try {
-    const { data } = await api.get<BookDetail>(`/books/${id}`);
-    return data;
-  } catch (e) {
-    rethrowAsApiError(e);
-  }
+  return getBookAction(id);
 }
 
 export async function createBook(input: {
@@ -811,12 +693,9 @@ export async function createBook(input: {
   slideHeight?: number;
   presentationLoop?: boolean;
 }): Promise<BookDetail> {
-  try {
-    const { data } = await api.post<BookDetail>("/books", input);
-    return data;
-  } catch (e) {
-    rethrowAsApiError(e);
-  }
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  return createBookAction(token, input as CreateBookDto);
 }
 
 export type BookLayoutAiAddWidgetDto = {
@@ -912,15 +791,13 @@ export type BookAiChatLineDto = {
 };
 
 /** 저장된 북 편집기에서 AI 패널을 다시 열 때 이전 대화(작성자만). */
-export async function fetchBookAiChat(bookId: number): Promise<BookAiChatLineDto[]> {
-  try {
-    const { data } = await api.get<BookAiChatLineDto[]>("/books/ai/chat", {
-      params: { bookId },
-    });
-    return Array.isArray(data) ? data : [];
-  } catch (e) {
-    rethrowAsApiError(e);
-  }
+export async function fetchBookAiChat(
+  bookId: number,
+): Promise<BookAiChatLineDto[]> {
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  const lines = await fetchBookAiChatAction(token, bookId);
+  return Array.isArray(lines) ? lines : [];
 }
 
 /** 로그인 필요. 서버에서 OpenAI로 북 편집용 자연어 → 액션 JSON을 해석합니다. */
@@ -935,17 +812,9 @@ export async function requestBookLayoutAi(body: {
   /** 저장된 북 id — 넣으면 성공한 한 턴을 DB에 남김(작성자만). OpenAI 토큰은 증가하지 않음. */
   bookId?: number;
 }): Promise<BookLayoutAiResponse> {
-  try {
-    const { data } = await api.post<BookLayoutAiResponse>("/books/ai/layout", body, {
-      headers: {
-        /** DevTools 네트워크에서 `book-layout-ai`로 필터하기 쉽게 */
-        "X-Client-Feature": "book-layout-ai",
-      },
-    });
-    return data;
-  } catch (e) {
-    rethrowAsApiError(e);
-  }
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  return requestBookLayoutAiAction(token, body);
 }
 
 export async function updateBook(
@@ -958,20 +827,15 @@ export async function updateBook(
     presentationLoop?: boolean;
   },
 ): Promise<BookDetail> {
-  try {
-    const { data } = await api.patch<BookDetail>(`/books/${id}`, input);
-    return data;
-  } catch (e) {
-    rethrowAsApiError(e);
-  }
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  return updateBookAction(token, id, input as UpdateBookDto);
 }
 
 export async function deleteBook(id: number): Promise<void> {
-  try {
-    await api.delete(`/books/${id}`);
-  } catch (e) {
-    rethrowAsApiError(e);
-  }
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  await deleteBookAction(token, id);
 }
 
 export type BookUploadResult = {
@@ -985,16 +849,10 @@ export async function uploadBookMedia(
   file: File,
   poster?: File | null,
 ): Promise<BookUploadResult> {
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
   const fd = new FormData();
   fd.append("file", file);
   if (poster) fd.append("poster", poster);
-  try {
-    const { data } = await api.post<BookUploadResult>(
-      `/books/${bookId}/upload`,
-      fd,
-    );
-    return data;
-  } catch (e) {
-    rethrowAsApiError(e);
-  }
+  return uploadBookMediaAction(token, bookId, fd);
 }

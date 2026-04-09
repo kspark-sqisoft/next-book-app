@@ -1,9 +1,10 @@
-import { useOptimistic, useTransition, type MouseEvent } from "react";
 import { Heart } from "lucide-react";
-import { useAuth } from "@/stores/auth-store";
-import { likePost, unlikePost, type PostLikeState } from "@/lib/api";
+import { type MouseEvent, useOptimistic, useTransition } from "react";
+
 import { Button } from "@/components/ui/button";
+import { likePost, type PostLikeState, unlikePost } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/stores/auth-store";
 
 type Props = {
   postId: number;
@@ -48,10 +49,13 @@ export function PostLikeButton({
     startTransition(async () => {
       addOptimistic({ likeCount: nextCount, likedByMe: nextLiked });
       try {
-        const state = nextLiked ? await likePost(postId) : await unlikePost(postId);
+        const state = nextLiked
+          ? await likePost(postId)
+          : await unlikePost(postId);
         onApplied(state);
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "좋아요 처리에 실패했습니다.";
+        const msg =
+          e instanceof Error ? e.message : "좋아요 처리에 실패했습니다.";
         onSyncError?.(msg);
       }
     });
@@ -76,7 +80,9 @@ export function PostLikeButton({
         )}
         aria-hidden
       />
-      <span className="tabular-nums text-xs font-medium">{optimistic.likeCount}</span>
+      <span className="tabular-nums text-xs font-medium">
+        {optimistic.likeCount}
+      </span>
     </Button>
   );
 }

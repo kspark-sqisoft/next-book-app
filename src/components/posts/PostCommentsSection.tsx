@@ -1,3 +1,4 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   useActionState,
   useEffect,
@@ -5,27 +6,27 @@ import {
   useState,
   useTransition,
 } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  createPostComment,
-  deletePostComment,
-  fetchPostComments,
-  type AuthUser,
-  type PostComment,
-} from "@/lib/api";
-import { postKeys } from "@/lib/query-keys";
-import { formatDateMediumShort } from "@/lib/format-date";
-import { formDataGetString } from "@/lib/form-data-utils";
-import { AuthorAvatarInline } from "@/components/posts/AuthorAvatarInline";
-import { appLog } from "@/lib/app-log";
+import { toast } from "sonner";
+
 import { FormErrorAlert } from "@/components/forms/FormErrorAlert";
 import { FormFieldError } from "@/components/forms/FormFieldError";
 import { FormStatusSubmitButton } from "@/components/forms/FormStatusSubmitButton";
+import { AuthorAvatarInline } from "@/components/posts/AuthorAvatarInline";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
-import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  type AuthUser,
+  createPostComment,
+  deletePostComment,
+  fetchPostComments,
+  type PostComment,
+} from "@/lib/api";
+import { appLog } from "@/lib/app-log";
 import { canEditAsOwnerOrAdmin } from "@/lib/authz";
+import { formDataGetString } from "@/lib/form-data-utils";
+import { formatDateMediumShort } from "@/lib/format-date";
+import { postKeys } from "@/lib/query-keys";
 
 type CommentFormState = {
   error: string | null;
@@ -84,7 +85,10 @@ function CommentItem({
     }
   }
 
-  const [replyState, replyFormAction] = useActionState(replyAction, initialReply);
+  const [replyState, replyFormAction] = useActionState(
+    replyAction,
+    initialReply,
+  );
   const [optimisticReply, addOptimisticReply] = useOptimistic(
     replyState,
     (current, next: Partial<CommentFormState>) => ({ ...current, ...next }),
@@ -213,7 +217,10 @@ type PostCommentsSectionProps = {
   user: AuthUser | null;
 };
 
-export function PostCommentsSection({ postId, user }: PostCommentsSectionProps) {
+export function PostCommentsSection({
+  postId,
+  user,
+}: PostCommentsSectionProps) {
   const queryClient = useQueryClient();
   const commentsKey = postKeys.comments(postId);
 
@@ -276,7 +283,10 @@ export function PostCommentsSection({ postId, user }: PostCommentsSectionProps) 
     }
   }
 
-  const [rootState, rootFormAction] = useActionState(rootCommentAction, initialRoot);
+  const [rootState, rootFormAction] = useActionState(
+    rootCommentAction,
+    initialRoot,
+  );
   const [optimisticRoot, addOptimisticRoot] = useOptimistic(
     rootState,
     (current, next: Partial<CommentFormState>) => ({ ...current, ...next }),
@@ -286,7 +296,9 @@ export function PostCommentsSection({ postId, user }: PostCommentsSectionProps) 
 
   return (
     <section className="border-t border-border pt-8" aria-label="댓글">
-      <h2 className="font-heading text-lg font-semibold tracking-tight">댓글</h2>
+      <h2 className="font-heading text-lg font-semibold tracking-tight">
+        댓글
+      </h2>
 
       <FormErrorAlert message={displayError} className="mt-4" />
 

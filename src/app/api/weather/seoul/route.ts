@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+
 import { handleRouteError } from "@/server/http/api-response";
 import { WeatherService } from "@/server/services/weather.service";
 

@@ -1,5 +1,6 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+
 import {
   DB_HOST,
   DB_NAME,
@@ -7,6 +8,7 @@ import {
   DB_PORT,
   DB_USERNAME,
 } from "@/server/env";
+
 import * as schema from "./schema";
 
 const globalForDb = globalThis as unknown as {

@@ -72,7 +72,9 @@ export function computeKonvaFittedImageLayout(
 }
 
 /** `<video>` / Tailwind `object-*` */
-export function mediaObjectFitToCssClass(fitRaw: BookMediaObjectFit | undefined): string {
+export function mediaObjectFitToCssClass(
+  fitRaw: BookMediaObjectFit | undefined,
+): string {
   const fit = resolveBookMediaObjectFit(fitRaw);
   switch (fit) {
     case "contain":

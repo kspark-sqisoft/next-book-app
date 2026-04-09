@@ -35,7 +35,9 @@ export type NewsHeadlinesRefetchParams = {
  * - pageSize가 클수록 한 응답에 정보가 많아 소폭 간격을 늘림(과도한 요청 완화).
  * - 카테고리가 좁을수록 헤드라인 변화가 상대적으로 느릴 수 있어 소폭 간격을 늘림.
  */
-export function computeNewsHeadlinesRefetchIntervalMs(p: NewsHeadlinesRefetchParams): number {
+export function computeNewsHeadlinesRefetchIntervalMs(
+  p: NewsHeadlinesRefetchParams,
+): number {
   const key = `${p.country}|${p.category}|${p.pageSize}`;
   let ms = BASE_REFETCH_MS;
   ms += Math.min(5, Math.max(1, p.pageSize)) * 25_000;
@@ -60,7 +62,9 @@ export function newsHeadlinesGcTimeMs(refetchIntervalMs: number): number {
 /** 백그라운드 탭에서는 폴링을 멈추고, 다시 보이면 주기·포커스 refetch로 맞춤 */
 export function useTabVisibleForNewsPolling(): boolean {
   const [visible, setVisible] = useState(() =>
-    typeof document !== "undefined" ? document.visibilityState === "visible" : true,
+    typeof document !== "undefined"
+      ? document.visibilityState === "visible"
+      : true,
   );
   useEffect(() => {
     const sync = () => setVisible(document.visibilityState === "visible");

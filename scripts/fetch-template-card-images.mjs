@@ -20,5 +20,7 @@ for (let i = 1; i <= 10; i += 1) {
   }
   const buf = Buffer.from(await res.arrayBuffer());
   await writeFile(join(outDir, `img${i}.jpg`), buf);
-  process.stdout.write(`wrote public/cards/img${i}.jpg (${buf.length} bytes)\n`);
+  process.stdout.write(
+    `wrote public/cards/img${i}.jpg (${buf.length} bytes)\n`,
+  );
 }
