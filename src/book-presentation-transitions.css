@@ -1,0 +1,128 @@
+/* 북 슬라이드쇼(/books/:id/preview) 진입 전용 — BookPresentationPage 래퍼에만 사용 */
+
+.book-pres-enter {
+  animation-fill-mode: both;
+  will-change: opacity, transform, filter;
+}
+
+.book-pres-enter--fade {
+  animation-name: book-pres-fade-in;
+  animation-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+.book-pres-enter--slideLeft {
+  animation-name: book-pres-in-slide-left;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.book-pres-enter--slideRight {
+  animation-name: book-pres-in-slide-right;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.book-pres-enter--slideUp {
+  animation-name: book-pres-in-slide-up;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.book-pres-enter--slideDown {
+  animation-name: book-pres-in-slide-down;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.book-pres-enter--zoomIn {
+  animation-name: book-pres-zoom-in;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.book-pres-enter--blurIn {
+  animation-name: book-pres-blur-in;
+  animation-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+@keyframes book-pres-fade-in {
+  from {
+    opacity: 0.02;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes book-pres-in-slide-left {
+  from {
+    opacity: 0;
+    transform: translateX(2.75rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes book-pres-in-slide-right {
+  from {
+    opacity: 0;
+    transform: translateX(-2.75rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes book-pres-in-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(2.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes book-pres-in-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-2.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes book-pres-zoom-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes book-pres-blur-in {
+  from {
+    opacity: 0;
+    filter: blur(14px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+/* 브라우저 전체 화면 유휴 시 — Konva·Tailwind 자식 cursor보다 우선 */
+.book-pres-fs-hide-cursor,
+.book-pres-fs-hide-cursor * {
+  cursor: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .book-pres-enter {
+    animation: none !important;
+  }
+}

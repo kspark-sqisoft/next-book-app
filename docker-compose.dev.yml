@@ -1,0 +1,47 @@
+# Development: PostgreSQL + Next dev server (hot reload). Run: docker compose -f docker-compose.dev.yml up
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: reactauth
+      POSTGRES_PASSWORD: reactauth
+      POSTGRES_DB: reactauth
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reactauth -d reactauth"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  next:
+    image: node:22-bookworm-slim
+    working_dir: /app
+    command: >
+      sh -c "npm ci && npx drizzle-kit push && npm run dev"
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - next_node_modules:/app/node_modules
+      - uploads_dev:/app/uploads
+    environment:
+      HOSTNAME: 0.0.0.0
+      PORT: 3000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USERNAME: reactauth
+      DB_PASSWORD: reactauth
+      DB_NAME: reactauth
+      UPLOAD_ROOT: /app/uploads
+      WATCHPACK_POLLING: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata_dev: {}
+  next_node_modules: {}
+  uploads_dev: {}

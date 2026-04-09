@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Custom `server.ts` runs Next + Socket.IO on one port; standalone bundle targets the default server only.
 };
 
 export default nextConfig;
