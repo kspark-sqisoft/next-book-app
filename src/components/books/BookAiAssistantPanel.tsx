@@ -1,3 +1,4 @@
+// 북 레이아웃 AI 채팅 UI: 서버 액션 스트리밍·Pexels 제안
 import {
   Bot,
   ChevronLeft,

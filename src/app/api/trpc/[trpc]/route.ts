@@ -1,3 +1,4 @@
+// App Router용 tRPC HTTP 어댑터(단일 엔드포인트)
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 
 import { createTRPCContext } from "@/server/trpc/context";

@@ -1,10 +1,11 @@
+// 클라이언트 권한 헬퍼: JWT user.role·sub 와 작성자 id 비교
 import type { AuthUser } from "@/lib/api";
 
 export function isAdminUser(user: AuthUser | null | undefined): boolean {
   return user?.role === "admin";
 }
 
-/** 글·북·댓글 등: 작성자 또는 관리자 */
+// 글·북·댓글: 본인 또는 admin
 export function canEditAsOwnerOrAdmin(
   user: AuthUser | null,
   authorId: number,
@@ -14,13 +15,13 @@ export function canEditAsOwnerOrAdmin(
   return Number(user.sub) === Number(authorId);
 }
 
-/** Cats: ownerId 없는 레거시 행은 관리자만 */
+// Cats UI 버튼 표시용: 로그인·관리자·소유자만 true
 export function canEditCatAsOwnerOrAdmin(
   user: AuthUser | null,
   ownerId: number | null | undefined,
 ): boolean {
-  if (!user) return false;
+  if (!user) return false; // 비로그인
   if (isAdminUser(user)) return true;
-  if (ownerId == null) return false;
-  return Number(user.sub) === Number(ownerId);
+  if (ownerId == null) return false; // 레거시 행은 관리자만(위에서 처리)
+  return Number(user.sub) === Number(ownerId); // JWT sub와 owner 일치
 }

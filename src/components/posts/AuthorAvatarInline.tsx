@@ -1,3 +1,4 @@
+// 작성자 아바타+이름 인라인(이미지 없으면 이름만)
 import type { ReactNode } from "react";
 
 import { SafeImage } from "@/components/ui/safe-image";
@@ -15,7 +16,6 @@ const sizeClass: Record<Size, string> = {
   md: "size-11",
 };
 
-/** 글·댓글 메타: 프로필 이미지가 있을 때만 이름 앞에 원형으로 표시 */
 export function AuthorAvatarInline({
   author,
   size = "sm",

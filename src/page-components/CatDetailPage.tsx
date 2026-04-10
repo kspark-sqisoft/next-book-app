@@ -47,14 +47,12 @@ import { type CatCreateFormValues, catCreateSchema } from "@/lib/schemas/forms";
 import { fieldErrorsFromZodIssues } from "@/lib/zod-form";
 import { useAuth } from "@/stores/auth-store";
 
-/**
- * 서버에서 cat이 바뀔 때마다 `key`로 리마운트되어 폼 초기값이 맞춰짐 (effect 동기화 불필요).
- */
+// cat·updatedAt이 바뀔 때마다 리마운트되어 로컬 state가 서버 값과 동기화됨
 function CatDetailEditor({ cat, id }: { cat: Cat; id: number }) {
   const queryClient = useQueryClient();
-  const imageInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null); // 숨김 file input 트리거
   const [editName, setEditName] = useState(cat.name);
-  const [editAge, setEditAge] = useState(String(cat.age));
+  const [editAge, setEditAge] = useState(String(cat.age)); // 입력은 문자열로 통일
   const [editBreed, setEditBreed] = useState(cat.breed);
   const [editFieldErrors, setEditFieldErrors] = useState<
     Partial<Record<keyof CatCreateFormValues, string>>
@@ -84,7 +82,7 @@ function CatDetailEditor({ cat, id }: { cat: Cat; id: number }) {
       const token = getAccessToken();
       if (!token) throw new Error("로그인이 필요합니다.");
       const fd = new FormData();
-      fd.append("image", file);
+      fd.append("image", file); // 액션이 기대하는 필드명
       return uploadCatImageAction(token, id, fd);
     },
     onSuccess: () => {
@@ -113,7 +111,7 @@ function CatDetailEditor({ cat, id }: { cat: Cat; id: number }) {
     }
     setEditFieldErrors({});
     const ageStr = parsed.data.age.trim();
-    const ageNum = ageStr ? Number(ageStr) : cat.age;
+    const ageNum = ageStr ? Number(ageStr) : cat.age; // 비우면 기존 서버 나이 유지
     updateMutation.mutate({
       name: parsed.data.name,
       age: ageNum,
@@ -183,7 +181,7 @@ function CatDetailEditor({ cat, id }: { cat: Cat; id: number }) {
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
-            e.target.value = "";
+            e.target.value = ""; // 같은 파일 연속 선택 가능하게
             if (f && f.size > 0) uploadImageMutation.mutate(f);
           }}
         />
@@ -213,14 +211,14 @@ function CatDetailEditor({ cat, id }: { cat: Cat; id: number }) {
   );
 }
 
-/** 공개 상세. 로그인 시 삭제·사진·정보 수정 가능. */
+// URL의 [id]로 단건 로드; 공개 조회
 export function CatDetailPage() {
-  const { id: idParam } = useParams();
-  const id = idParam ? Number(idParam) : NaN;
+  const { id: idParam } = useParams(); // 동적 세그먼트 문자열
+  const id = idParam ? Number(idParam) : NaN; // 숫자 파싱
   const { user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false); // 삭제 확인창
 
   const {
     data: cat,
@@ -230,11 +228,11 @@ export function CatDetailPage() {
   } = useQuery({
     queryKey: catKeys.detail(id),
     queryFn: async () => {
-      const c = await getCatAction(id);
+      const c = await getCatAction(id); // 공개 액션
       appLog("cats", "상세 로드", { id: c.id });
       return c;
     },
-    enabled: Number.isFinite(id),
+    enabled: Number.isFinite(id), // 잘못된 id면 쿼리 비활성
   });
 
   const deleteMutation = useMutation({
@@ -247,7 +245,7 @@ export function CatDetailPage() {
       toast.success("삭제되었습니다.");
       void queryClient.invalidateQueries({ queryKey: catKeys.all });
       setDeleteOpen(false);
-      router.replace("/cats");
+      router.replace("/cats"); // 상세 삭제 후 목록으로
     },
     onError: (e) => {
       toast.error(e instanceof Error ? e.message : "삭제에 실패했습니다.");
@@ -261,7 +259,7 @@ export function CatDetailPage() {
     toast.error(msg);
   }, [id, isError, queryError]);
 
-  // 공부용: 상세 페이지에 있을 때 목록 `/cats`를 `router.prefetch`로 미리 당겨 옵니다.
+  // 상세 체류 중 목록 페이지 prefetch
   useEffect(() => {
     if (!Number.isFinite(id)) return;
     router.prefetch("/cats");
@@ -305,7 +303,7 @@ export function CatDetailPage() {
     );
   }
 
-  const canMutateCat = canEditCatAsOwnerOrAdmin(user, cat.ownerId ?? null);
+  const canMutateCat = canEditCatAsOwnerOrAdmin(user, cat.ownerId ?? null); // UI 권한 플래그
 
   return (
     <div className="space-y-6">
@@ -345,7 +343,7 @@ export function CatDetailPage() {
 
         {user && canMutateCat ? (
           <CatDetailEditor
-            key={`${cat.id}-${cat.updatedAt}`}
+            key={`${cat.id}-${cat.updatedAt}`} // 서버 갱신 시 폼 리셋
             cat={cat}
             id={id}
           />

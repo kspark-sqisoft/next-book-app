@@ -1,3 +1,4 @@
+// 슬라이드 썸네일 사이드바: dnd-kit 로 페이지 순서 변경
 import {
   closestCorners,
   DndContext,

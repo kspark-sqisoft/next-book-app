@@ -1,3 +1,4 @@
+// 북 날씨 위젯: OWM 쿼리·아이콘 매핑·표시 옵션
 import { useQuery } from "@tanstack/react-query";
 import {
   CloudFog,

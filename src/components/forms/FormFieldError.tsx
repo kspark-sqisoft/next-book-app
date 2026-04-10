@@ -1,3 +1,4 @@
+// 필드 아래 한 줄 에러 텍스트
 type Props = {
   message: string | null | undefined;
 };

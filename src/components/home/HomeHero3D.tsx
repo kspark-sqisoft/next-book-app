@@ -2,6 +2,7 @@
  * CodeSandbox [BestServedBold Christmas Baubles (zxpv7)](https://codesandbox.io/p/sandbox/zxpv7?file=%2Fsrc%2FApp.js)
  * 의 `App.js`를 TypeScript + 최신 R3F/Rapier API에 맞게 포팅했습니다.
  */
+// 보블+Rapier 물리 히어로(zxpv7 포팅)
 import { Environment, useGLTF } from "@react-three/drei";
 import { Canvas, type RootState, useFrame } from "@react-three/fiber";
 import { EffectComposer, N8AO } from "@react-three/postprocessing";

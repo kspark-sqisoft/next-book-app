@@ -1,10 +1,10 @@
+// next-themes: SSR 깜빡임 방지를 위해 mounted 전엔 비활성 플레이스홀더
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { startTransition, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
-/** 헤더용 라이트/다크 전환 (next-themes + html.dark) */
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);

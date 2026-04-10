@@ -1,3 +1,4 @@
+// 뉴스 헤드라인: country, category, pageSize 쿼리
 import { NextResponse } from "next/server";
 
 import { handleRouteError } from "@/server/http/api-response";

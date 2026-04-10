@@ -1,3 +1,4 @@
+// 서울 고정 날씨(위젯용 단축 경로)
 import { NextResponse } from "next/server";
 
 import { handleRouteError } from "@/server/http/api-response";

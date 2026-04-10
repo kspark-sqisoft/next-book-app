@@ -1,3 +1,4 @@
+// 북 에디터 업로드: 이미지·동영상·포스터를 디스크에 저장
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { extname, join } from "node:path";

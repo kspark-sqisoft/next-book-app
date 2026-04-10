@@ -1,5 +1,6 @@
 "use server";
 
+// 북 CRUD·미디어 업로드·레이아웃 AI 관련 서버 액션
 import {
   assertPositiveIntId,
   requireUserFromToken,
@@ -20,6 +21,7 @@ import type {
   UpdateBookDto,
 } from "@/server/services/books-types";
 
+// offset 페이지네이션; 검색어 optional
 export async function listBooksAction(params?: {
   skip?: number;
   take?: number;
@@ -94,6 +96,7 @@ export async function deleteBookAction(
   }
 }
 
+// 슬라이드에 넣을 이미지/동영상 + 동영상일 때 포스터 파일
 export async function uploadBookMediaAction(
   accessToken: string | null | undefined,
   bookId: number,
@@ -129,6 +132,7 @@ export async function uploadBookMediaAction(
   }
 }
 
+// 북별 레이아웃 AI 대화 기록
 export async function fetchBookAiChatAction(
   accessToken: string | null | undefined,
   bookId: number,
@@ -147,6 +151,7 @@ export async function fetchBookAiChatAction(
   }
 }
 
+// 자연어 → 배치 JSON 등; bookId 있으면 턴을 DB에 남김
 export async function requestBookLayoutAiAction(
   accessToken: string | null | undefined,
   body: {
@@ -182,7 +187,7 @@ export async function requestBookLayoutAiAction(
             body.message ?? "",
             result.reply,
           )
-          .catch(() => undefined);
+          .catch(() => undefined); // 저장 실패해도 응답은 반환
       }
     }
 

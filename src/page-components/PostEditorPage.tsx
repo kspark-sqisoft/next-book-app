@@ -1,5 +1,6 @@
 "use client";
 
+// 글 에디터: /posts/new·/posts/:id/edit 공통, 첨부·동영상 포스터·PostRichEditor, useActionState 저장
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -90,7 +91,6 @@ type PostEditorActionState = {
   redirectTo: string | null;
 };
 
-/** `/posts/new` 또는 `/posts/:id/edit`; 로그인·작성자 검증 후 multipart 저장 */
 export function PostEditorPage() {
   const { id: idParam } = useParams();
   const isEdit = idParam !== undefined;

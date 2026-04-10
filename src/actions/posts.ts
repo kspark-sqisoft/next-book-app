@@ -1,5 +1,6 @@
 "use server";
 
+// 글·댓글·좋아요 서버 액션 — 클라이언트는 주로 React Query와 함께 호출
 import {
   assertPositiveIntId,
   getUserFromTokenOptional,
@@ -24,6 +25,7 @@ import {
   type UploadedPostFile,
 } from "@/server/services/posts.service";
 
+// 수정 폼에서 미디어 순서·유지 여부를 JSON 문자열로 넘김
 function parseMediaPlan(
   mediaPlanRaw: string | undefined,
 ): Array<{ t: "e"; id: number } | { t: "n"; i: number }> | undefined {
@@ -37,9 +39,9 @@ function parseMediaPlan(
       if (!x || typeof x !== "object") throw new Error();
       const o = x as { t?: string; id?: number; i?: number };
       if (o.t === "e" && typeof o.id === "number")
-        return { t: "e" as const, id: o.id };
+        return { t: "e" as const, id: o.id }; // 기존 첨부
       if (o.t === "n" && typeof o.i === "number")
-        return { t: "n" as const, i: o.i };
+        return { t: "n" as const, i: o.i }; // 새 파일 인덱스
       throw new Error();
     });
   } catch (e) {
@@ -51,7 +53,7 @@ function parseMediaPlan(
   }
 }
 
-/** 공개 목록(커서 페이지네이션). Bearer 있으면 likedByMe 등 반영 */
+// 커서 기반 페이지네이션; 토큰 있으면 좋아요 여부 등 개인화
 export async function listPostsAction(
   accessToken: string | null | undefined,
   params?: {
@@ -63,7 +65,7 @@ export async function listPostsAction(
 ): Promise<PostsPageResponse> {
   try {
     const takeRaw = Number(params?.take ?? 12);
-    const take = Math.min(50, Math.max(1, takeRaw));
+    const take = Math.min(50, Math.max(1, takeRaw)); // 서버 상한
     const search = params?.search?.trim();
     const category = params?.category?.trim();
     const cursor = params?.cursor;
@@ -95,6 +97,7 @@ export async function getPostAction(
   }
 }
 
+// 댓글 트리(대댓글) 공개 조회
 export async function fetchPostCommentsAction(
   postId: number,
 ): Promise<PostComment[]> {
@@ -173,7 +176,7 @@ export async function createPostAction(
   accessToken: string | null | undefined,
   formData: FormData,
 ): Promise<Post> {
-  let toClean: UploadedPostFile[] = [];
+  let toClean: UploadedPostFile[] = []; // 실패 시 디스크 롤백 목록
   try {
     const user = await requireUserFromToken(accessToken);
     const parsed = await parsePostCreateMultipart(formData);

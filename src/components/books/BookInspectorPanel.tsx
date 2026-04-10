@@ -1,3 +1,4 @@
+// 선택 요소 속성 패널: 위젯 종류별 폼·미디어·플레이리스트·날씨 등 세부 편집
 import {
   ChevronDown,
   ChevronUp,

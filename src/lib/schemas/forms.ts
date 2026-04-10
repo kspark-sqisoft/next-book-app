@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-/** 로그인 */
+// 이메일·비밀번호 클라이언트 검증(서버도 별도 검증)
 export const loginSchema = z.object({
   email: z.pipe(
     z.string().min(1, "이메일을 입력해 주세요."),
@@ -11,7 +11,6 @@ export const loginSchema = z.object({
 
 export type LoginFormValues = z.infer<typeof loginSchema>;
 
-/** 회원가입 */
 export const signupSchema = z.object({
   name: z.string().min(1, "이름을 입력해 주세요."),
   email: z.pipe(
@@ -23,8 +22,9 @@ export const signupSchema = z.object({
 
 export type SignupFormValues = z.infer<typeof signupSchema>;
 
-const POST_CONTENT_MAX = 200_000;
+const POST_CONTENT_MAX = 200_000; // HTML 포함 최대 길이
 
+// 태그 제거 후 실질 글자 수(빈 본문 방지)
 function postContentPlainLen(html: string): number {
   return html
     .replace(/<[^>]*>/g, "")
@@ -35,7 +35,7 @@ function postContentPlainLen(html: string): number {
 
 const postCategoryEnum = z.enum(["tech", "life", "study", "chat", "general"]);
 
-/** 글 작성·수정(제목·본문·카테고리; 첨부는 별도 state). 본문은 리치 HTML 문자열 */
+// 첨부·썸네일은 폼 밖 state; 여기선 텍스트 필드만
 export const postEditorSchema = z.object({
   title: z
     .string()
@@ -51,17 +51,17 @@ export const postEditorSchema = z.object({
 
 export type PostEditorFormValues = z.infer<typeof postEditorSchema>;
 
-/** Cats 등록(백엔드 ParseCreateCatPipe·DTO와 규칙 맞춤) */
+// Cats 등록 폼: 서버 parseCreateCatBody·DTO와 동일한 범위로 맞춤
 export const catCreateSchema = z
   .object({
-    name: z.string().trim().min(1, "이름을 입력해 주세요."),
-    breed: z.string(),
-    age: z.string(),
+    name: z.string().trim().min(1, "이름을 입력해 주세요."), // 필수
+    breed: z.string(), // 빈 문자열 허용 → 서버에서 mixed
+    age: z.string(), // 빈 문자열 = 서버 기본 나이 1
   })
   .superRefine((val, ctx) => {
-    const t = val.age.trim();
-    if (t === "") return;
-    const n = Number(t);
+    const t = val.age.trim(); // 비우면 refine 스킵
+    if (t === "") return; // 서버가 기본값 처리
+    const n = Number(t); // 숫자 아닌 문자열은 NaN
     if (!Number.isInteger(n) || n < 0 || n > 40) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -71,4 +71,5 @@ export const catCreateSchema = z
     }
   });
 
+// 폼 필드 키 타입(에러 맵 등에 사용)
 export type CatCreateFormValues = z.infer<typeof catCreateSchema>;

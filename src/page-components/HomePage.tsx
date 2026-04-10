@@ -1,5 +1,6 @@
 "use client";
 
+// 홈: 3종 3D 히어로 lazy 전환, 첫 번째만 Figma 타이포 오버레이
 import { lazy, Suspense, useState } from "react";
 
 import { HomeDirtyFigmaOverlay } from "@/components/home/HomeDirtyFigmaOverlay";
@@ -25,9 +26,6 @@ const HomeHeroEnvmap3D = lazy(() =>
 
 const HERO_COUNT = 3;
 
-/**
- * 홈: 보블 히어로(zxpv7)일 때만 `DirtyFigmaExport` 타이포 오버레이. 그라데이션은 원본 `styles.css`에 맞춤.
- */
 export function HomePage() {
   const [heroIndex, setHeroIndex] = useState(0);
 

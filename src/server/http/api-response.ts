@@ -1,7 +1,9 @@
+// App Router Route Handler용 JSON 응답 헬퍼
 import { NextResponse } from "next/server";
 
 import { HttpError } from "@/server/http/http-error";
 
+// Nest 스타일 error 필드용 짧은 영문 라벨
 function statusText(status: number): string {
   if (status === 400) return "Bad Request";
   if (status === 401) return "Unauthorized";
@@ -13,6 +15,7 @@ function statusText(status: number): string {
   return "Error";
 }
 
+// 일관된 에러 JSON 바디 + status 코드
 export function jsonError(
   status: number,
   message: string | string[],
@@ -30,6 +33,7 @@ export function jsonError(
   );
 }
 
+// try/catch 끝에서 unknown → NextResponse
 export function handleRouteError(e: unknown): NextResponse {
   if (e instanceof HttpError) {
     return jsonError(e.status, e.message);

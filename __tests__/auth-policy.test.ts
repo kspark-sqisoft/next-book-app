@@ -18,6 +18,7 @@ test("canMutateOwnedResource", () => {
   expect(canMutateOwnedResource({ id: 9, role: UserRole.Admin }, 1)).toBe(true);
 });
 
+// Cats 레거시 행(ownerId null): 유저는 거부, 관리자만 허용
 test("canMutateCatResource: owner null 이면 일반 사용자 불가", () => {
   expect(canMutateCatResource({ id: 1, role: UserRole.User }, null)).toBe(
     false,

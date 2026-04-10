@@ -1,3 +1,4 @@
+// Socket.IO 네임스페이스: JWT 검증 후 방·히스토리·브로드캐스트
 import { desc, eq } from "drizzle-orm";
 import type { Namespace, Socket } from "socket.io";
 

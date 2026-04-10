@@ -1,4 +1,4 @@
-/** Drag 상수·타입·헬퍼는 편집기용으로 `BookSlideCanvas`와 같은 모듈에서 export 합니다. */
+// Konva 기반 슬라이드: 요소 렌더·히트·위젯별 오버레이; 드래그/스냅 상수·타입도 이 파일에서 re-export
 import type Konva from "konva";
 import { FolderOpen, Library, Pause, Play, Square } from "lucide-react";
 import {

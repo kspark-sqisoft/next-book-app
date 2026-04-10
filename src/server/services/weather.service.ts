@@ -1,3 +1,4 @@
+// OpenWeather: 지오코딩·현재 날씨·서울 단축
 import { HttpError } from "@/server/http/http-error";
 
 const SEOUL_LAT = 37.5665;

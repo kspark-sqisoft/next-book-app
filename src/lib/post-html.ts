@@ -1,3 +1,4 @@
+// 글 본문 HTML: DOMPurify 표시용 / 목록용 plain 텍스트 추출
 import type { Config } from "dompurify";
 import DOMPurify from "dompurify";
 

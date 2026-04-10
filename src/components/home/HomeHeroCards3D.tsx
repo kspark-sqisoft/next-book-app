@@ -1,6 +1,7 @@
 /**
  * CodeSandbox [Cards (dc5fjy)](https://codesandbox.io/p/sandbox/dc5fjy) `App.js` 와 동일한 시즌 배치·ActiveCard 프리뷰.
  */
+// 카드 스크롤 3D 히어로(CodeSandbox dc5fjy 포팅)
 import {
   Billboard,
   Image as DreiImage,

@@ -1,3 +1,4 @@
+// 글 본문: TipTap 툴바·정렬·코드; HTML 저장
 import Placeholder from "@tiptap/extension-placeholder";
 import TextAlign from "@tiptap/extension-text-align";
 import { Color, FontSize, TextStyle } from "@tiptap/extension-text-style";

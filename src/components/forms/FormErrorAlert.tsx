@@ -1,3 +1,4 @@
+// 폼 전역 서버/검증 오류 한 덩어리
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type Props = {

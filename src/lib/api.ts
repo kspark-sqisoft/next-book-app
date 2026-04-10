@@ -1,3 +1,5 @@
+// 브라우저용 HTTP 클라이언트: axios + 서버 액션 브리지, 401 시 refresh·재시도
+// 상단: 베이스 URL·인터셉터 / 이하: posts·books·users·댓글·좋아요 등 편의 함수
 import axios, { type InternalAxiosRequestConfig, isAxiosError } from "axios";
 
 import {
@@ -28,11 +30,7 @@ import type { CreateBookDto, UpdateBookDto } from "@/server/services/books-types
 
 type RetryableRequest = InternalAxiosRequestConfig & { _retry?: boolean };
 
-/**
- * 빌드 시 `.env.production` 등에 `VITE_API_BASE_URL=http://localhost:3000` 처럼 넣으면
- * `serve`로 프론트만 띄워도 API·쿠키 대상이 백엔드 오리진이 됩니다.
- * 비우면 상대 경로(개발: Vite 프록시 / 단일 오리진 배포)를 씁니다.
- */
+// NEXT_PUBLIC_API_BASE_URL 이 절대 URL 이면 별도 오리진 API, 비우면 상대 /api
 function normalizeApiBase(raw: unknown): string {
   if (typeof raw !== "string") return "";
   const t = raw.trim();
@@ -40,11 +38,11 @@ function normalizeApiBase(raw: unknown): string {
   return t.replace(/\/$/, "");
 }
 
-/** 단일 Next 앱: 기본 `/api` (Nest 루트 경로와 동일한 하위 경로) */
+// 기본값 `/api` — App Router Route Handlers
 export const API_BASE_URL =
   normalizeApiBase(process.env.NEXT_PUBLIC_API_BASE_URL) || "/api";
 
-/** 채팅 소켓 등 “API 서버 오리진” (프론트와 포트가 다를 때 `VITE_API_BASE_URL` 사용) */
+// WebSocket 등 절대 URL 이 필요할 때 API 호스트만 추출
 export function apiOrigin(): string {
   if (
     API_BASE_URL.startsWith("http://") ||
@@ -585,17 +583,16 @@ export async function fetchNewsHeadlines(params?: {
 
 // --- Cats (학습용; UI는 `src/actions/cats.ts` 서버 액션) ---
 
+// 서버 액션 직렬화 결과와 동일한 클라이언트용 고양이 DTO
 export type Cat = {
-  id: number;
-  name: string;
-  age: number;
-  breed: string;
-  /** `/uploads/cat-images/...` 또는 null */
-  imageUrl: string | null;
-  /** 등록자; 레거시 데이터는 null */
-  ownerId: number | null;
-  createdAt: string;
-  updatedAt: string;
+  id: number; // DB PK
+  name: string; // 표시 이름
+  age: number; // 0~40
+  breed: string; // 품종(빈 값은 서버에서 mixed)
+  imageUrl: string | null; // `/uploads/cat-images/...` 또는 null
+  ownerId: number | null; // 등록자 user id; 레거시 행은 null
+  createdAt: string; // ISO 8601 (서버에서 toISOString)
+  updatedAt: string; // ISO 8601
 };
 
 // --- Books (슬라이드 / Konva) ---

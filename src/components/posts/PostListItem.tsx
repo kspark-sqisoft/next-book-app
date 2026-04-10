@@ -1,3 +1,4 @@
+// 글 목록 카드: 요약·카테고리·좋아요
 import { Video } from "lucide-react";
 import Link from "next/link";
 

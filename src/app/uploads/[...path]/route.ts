@@ -1,8 +1,10 @@
+// 업로드 정적 파일 서빙: UPLOAD_ROOT 기준, 경로 탈출 차단
 import { readFile } from "node:fs/promises";
 import { join, normalize, resolve } from "node:path";
 
 import { UPLOAD_ROOT } from "@/server/env";
 
+// 확장자별 Content-Type (스트리밍 없이 버퍼 전체 읽기)
 function contentTypeForPath(rel: string): string {
   const lower = rel.toLowerCase();
   if (lower.endsWith(".png")) return "image/png";

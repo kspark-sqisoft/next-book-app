@@ -1,3 +1,4 @@
+// 플로팅 채팅: socket.io-client, 방 전환·히스토리·apiOrigin 연결
 import { LogOut, MessageCircle, Send, Trash2, X } from "lucide-react";
 import {
   useCallback,

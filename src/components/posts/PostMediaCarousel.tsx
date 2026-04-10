@@ -1,3 +1,4 @@
+// 글 상세 첨부 슬라이드(비디오 컨트롤은 드래그 제외)
 import useEmblaCarousel from "embla-carousel-react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";

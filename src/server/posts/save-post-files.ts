@@ -1,3 +1,4 @@
+// 글 첨부 파일을 업로드 루트 하위에 저장
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { extname, join } from "node:path";

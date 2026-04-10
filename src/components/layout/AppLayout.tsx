@@ -1,5 +1,6 @@
 "use client";
 
+// 사이트 공통 레이아웃: 네비·푸터·테마·채팅 독, 북 워크스페이스/홈에 맞춘 main 폭·패딩·헤더 접힘.
 import { ChevronDown, ChevronUp } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -310,6 +311,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <NavLink href="/books" className={footerNavClass}>
                 북
               </NavLink>
+              {/* 푸터에서도 Cats 라우트 full prefetch(헤더와 동일) */}
               <NavLink href="/cats" prefetch className={footerNavClass}>
                 Cats
               </NavLink>

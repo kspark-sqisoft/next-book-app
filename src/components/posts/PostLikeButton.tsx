@@ -1,3 +1,4 @@
+// 좋아요 토글: 낙관적 UI + API
 import { Heart } from "lucide-react";
 import { type MouseEvent, useOptimistic, useTransition } from "react";
 
@@ -18,7 +19,6 @@ type Props = {
   className?: string;
 };
 
-/** `useOptimistic` + `useTransition`: 클릭 직시 UI 반영, 실패 시 자동으로 props 기준으로 복귀 */
 export function PostLikeButton({
   postId,
   likeCount,

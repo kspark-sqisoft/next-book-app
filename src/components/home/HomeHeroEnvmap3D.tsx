@@ -10,6 +10,7 @@
  * Porsche 911 (930 Turbo 1975): GitHub MIT — Utkarsh Pathrabe
  * https://github.com/UtkarshPathrabe/Porche-911-930-Turbo-1975-3D-Model · `public/porsche-911-930-turbo/scene.gltf`
  */
+// 동적 envmap + 차량 GLB 히어로; 원본·모델 출처는 위 블록
 import {
   ContactShadows,
   Environment,

@@ -1,3 +1,4 @@
+// 회원가입: 비밀번호 해시·사용자 행 생성(부트스트랩 후)
 import { NextResponse } from "next/server";
 
 import { handleRouteError } from "@/server/http/api-response";

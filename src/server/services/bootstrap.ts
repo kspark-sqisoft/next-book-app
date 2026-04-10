@@ -1,9 +1,9 @@
+// 앱 첫 요청 시 한 번: 역할 기본값·환경변수 부트스트랩 관리자
 import { UsersService } from "@/server/services/users.service";
 
 const usersService = new UsersService();
 let done = false;
 
-/** TypeORM 앱의 UsersModule onModuleInit 과 동일: role 기본값·bootstrap admin */
 export async function ensureUserBootstraps(): Promise<void> {
   if (done) return;
   done = true;

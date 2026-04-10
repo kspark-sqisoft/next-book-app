@@ -6,30 +6,20 @@ import type {
 
 import { appLog } from "@/lib/app-log";
 
-/**
- * React Query(TanStack Query)에서 **queryFn이 돌지 않고** 캐시된 성공 데이터가
- * 옵저버에 전달될 때만 로그를 남깁니다.
- *
- * 동작 요지:
- * - 한 배치 안에서는 `observerResultsUpdated`가 `updated`+`success`보다 먼저 처리되므로,
- *   `updated`+`success`에서 queryHash를 Set에 넣고, 같은 턴의 microtask에서 옵저버 쪽을 판별합니다.
- * - `fetchStatus === 'fetching'` 인 동안은 캐시 히트로 보지 않습니다.
- */
+// queryFn 없이 캐시만으로 화면이 채워질 때만 DEV 로그
 export function installQueryCacheHitLogging(queryClient: QueryClient): void {
   if (process.env.NODE_ENV === "production") return;
 
   const cache = queryClient.getQueryCache();
-  /** 이번 배치에서 네트워크(또는 queryFn) 성공으로 갱신된 쿼리 — 캐시 히트 로그 제외 */
-  const skipCacheHitForHashes = new Set<string>();
-  /** 동일 데이터 시그니처로 중복 로그 방지 */
-  const lastCacheHitSignature = new Map<string, string>();
+  const skipCacheHitForHashes = new Set<string>(); // 방금 네트워크로 갱신된 해시
+  const lastCacheHitSignature = new Map<string, string>(); // 중복 로그 방지
 
   cache.subscribe((event: QueryCacheNotifyEvent) => {
     if (event.type === "updated" && event.action.type === "success") {
       skipCacheHitForHashes.add(event.query.queryHash);
       const hash = event.query.queryHash;
       queueMicrotask(() => {
-        skipCacheHitForHashes.delete(hash);
+        skipCacheHitForHashes.delete(hash); // 같은 틱의 가짜 히트 방지
       });
     }
 
@@ -42,7 +32,7 @@ export function installQueryCacheHitLogging(queryClient: QueryClient): void {
         query.state.status !== "success" ||
         query.state.fetchStatus !== "idle"
       )
-        return;
+        return; // fetching 중이면 진짜 히트 아님
       if (query.state.data === undefined) return;
 
       const sig = `${query.state.dataUpdatedAt}:${query.state.dataUpdateCount}`;

@@ -1,3 +1,4 @@
+// 글 댓글: 목록 쿼리·작성/삭제 액션·낙관적 UI
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   useActionState,

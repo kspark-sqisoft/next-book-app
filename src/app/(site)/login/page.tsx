@@ -1,3 +1,4 @@
+// 로그인: useSearchParams 때문에 Suspense 경계 필요
 import { Suspense } from "react";
 
 import { CenteredSpinner } from "@/components/layout/CenteredSpinner";

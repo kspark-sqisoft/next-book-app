@@ -1,5 +1,6 @@
 "use client";
 
+// 북 목록: 검색 디바운스·무한 스크롤·새 북 생성
 import {
   useInfiniteQuery,
   useMutation,
@@ -45,9 +46,6 @@ const LOAD_MORE_DEBOUNCE_MS = 400;
 /** 검색어 입력 후 API 호출까지 대기 */
 const SEARCH_DEBOUNCE_MS = 400;
 
-/**
- * 북 목록 + 제목 검색(디바운스) + 무한 스크롤(글 목록과 동일 패턴).
- */
 export function BookListPage() {
   const { user } = useAuth();
   const router = useRouter();

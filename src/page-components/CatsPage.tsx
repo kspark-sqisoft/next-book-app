@@ -1,11 +1,13 @@
 "use client";
 
+// 서버 액션 호출 결과 캐싱·뮤테이션
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+// Cats 전용 서버 액션
 import {
   createCatAction,
   deleteCatAction,
@@ -55,61 +57,59 @@ import { type CatCreateFormValues, catCreateSchema } from "@/lib/schemas/forms";
 import { fieldErrorsFromZodIssues } from "@/lib/zod-form";
 import { useAuth } from "@/stores/auth-store";
 
-/** 공부용: 목록 로드 후 상세 경로를 너무 많이 두드리지 않도록 상한만 둡니다. */
+// 상세 경로 prefetch 남발 방지(학습용 상한)
 const CAT_DETAIL_PREFETCH_CAP = 12;
 
-/**
- * 고양이 목록은 누구나 조회. 등록·삭제·사진 업로드는 로그인 사용자만 (서버 액션에서 JWT 검증).
- */
+// 목록 공개 / 쓰기는 JWT·서버에서 재검증
 export function CatsPage() {
-  const router = useRouter();
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const listKey = catKeys.list();
-  const formRef = useRef<HTMLFormElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter(); // App Router 네비게이션·prefetch
+  const { user } = useAuth(); // 클라이언트 세션(버튼 노출만; 실제 권한은 서버)
+  const queryClient = useQueryClient(); // 캐시 무효화용
+  const listKey = catKeys.list(); // 목록 쿼리 키
+  const formRef = useRef<HTMLFormElement>(null); // 등록 성공 시 reset
+  const imageInputRef = useRef<HTMLInputElement>(null); // 파일 input 직접 비우기
 
-  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null); // 확인 대화상자 대상 id
   const [createFieldErrors, setCreateFieldErrors] = useState<
     Partial<Record<keyof CatCreateFormValues, string>>
-  >({});
+  >({}); // Zod 필드 에러
   const [createServerError, setCreateServerError] = useState<string | null>(
     null,
-  );
+  ); // 액션 실패 메시지
 
   const {
-    data: cats = [],
+    data: cats = [], // 로딩 전 기본 빈 배열
     isPending: listPending,
     isError: listError,
     error: listQueryError,
   } = useQuery({
     queryKey: listKey,
     queryFn: async () => {
-      const { cats: items } = await listCatsAction();
+      const { cats: items } = await listCatsAction(); // 서버 액션(공개)
       appLog("cats", "목록 로드", { count: items.length });
       return items;
     },
   });
 
-  // 공부용: React Query로 목록을 받은 뒤 App Router `router.prefetch`로 상세 세그먼트를 백그라운드 프리패치합니다.
+  // 목록 로드 후 상세 RSC 세그먼트 백그라운드 prefetch
   useEffect(() => {
     if (cats.length === 0) return;
-    const slice = cats.slice(0, CAT_DETAIL_PREFETCH_CAP);
+    const slice = cats.slice(0, CAT_DETAIL_PREFETCH_CAP); // 앞쪽 N마리만
     for (const c of slice) {
-      router.prefetch(`/cats/${c.id}`);
+      router.prefetch(`/cats/${c.id}`); // 클릭 전 번들·데이터 준비
     }
     appLog("cats", "공부용 prefetch", { count: slice.length });
   }, [cats, router]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const token = getAccessToken();
+      const token = getAccessToken(); // 쿠키/스토리지에서 JWT
       if (!token) throw new Error("로그인이 필요합니다.");
       await deleteCatAction(token, id);
     },
     onSuccess: (_data, deletedId) => {
       toast.success("삭제되었습니다.");
-      void queryClient.invalidateQueries({ queryKey: catKeys.all });
+      void queryClient.invalidateQueries({ queryKey: catKeys.all }); // 목록·상세 모두 갱신
       setDeleteTargetId(null);
       appLog("cats", "삭제 완료", { id: deletedId });
     },
@@ -137,7 +137,7 @@ export function CatsPage() {
       if (input.image && input.image.size > 0) {
         const fd = new FormData();
         fd.append("image", input.image);
-        return uploadCatImageAction(token, cat.id, fd);
+        return uploadCatImageAction(token, cat.id, fd); // 생성 직후 사진 연결
       }
       return cat;
     },
@@ -146,7 +146,7 @@ export function CatsPage() {
       setCreateFieldErrors({});
       setCreateServerError(null);
       formRef.current?.reset();
-      if (imageInputRef.current) imageInputRef.current.value = "";
+      if (imageInputRef.current) imageInputRef.current.value = ""; // 같은 파일 재선택 허용
       void queryClient.invalidateQueries({ queryKey: catKeys.all });
       appLog("cats", "등록 성공");
     },
@@ -396,7 +396,7 @@ export function CatsPage() {
       <AlertDialog
         open={deleteTargetId != null}
         onOpenChange={(open) => {
-          if (!open) setDeleteTargetId(null);
+          if (!open) setDeleteTargetId(null); // 닫을 때 대상 초기화
         }}
       >
         <AlertDialogContent>
@@ -415,7 +415,7 @@ export function CatsPage() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={deleteMutation.isPending || deleteTargetId == null}
               onClick={(e) => {
-                e.preventDefault();
+                e.preventDefault(); // 기본 닫힘만 하지 않고 뮤테이션 실행
                 if (deleteTargetId != null) {
                   deleteMutation.mutate(deleteTargetId);
                 }

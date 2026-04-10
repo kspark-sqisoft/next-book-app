@@ -3,6 +3,7 @@
  * `styles.css`의 `.full`(max-width: 568px에서 숨김) → `max-[568px]:hidden`.
  */
 
+// 홈 첫 히어로 위 타이포·그리드 오버레이(Figma export 스타일)
 const antonio = {
   fontFamily: "var(--font-antonio), Antonio, sans-serif",
 } as const;

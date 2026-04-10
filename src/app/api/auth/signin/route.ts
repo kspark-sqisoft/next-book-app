@@ -1,3 +1,4 @@
+// 로그인: 액세스 JWT 는 JSON, 리프레시는 httpOnly Set-Cookie
 import { NextResponse } from "next/server";
 
 import { handleRouteError } from "@/server/http/api-response";

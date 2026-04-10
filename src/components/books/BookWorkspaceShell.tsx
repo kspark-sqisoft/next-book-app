@@ -1,5 +1,6 @@
 "use client";
 
+// 북 편집/보기 3열 뼈대: 좌 썸네일·중앙 캔버스·우 패널, 패널 접기
 import {
   ArrowLeft,
   PanelLeftClose,

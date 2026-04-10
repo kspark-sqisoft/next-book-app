@@ -1,5 +1,6 @@
 "use client";
 
+// 내 정보: 프로필 PATCH, 관리자면 사용자 목록·역할 변경
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   startTransition,
@@ -46,7 +47,6 @@ import { useAuth } from "@/stores/auth-store";
 
 const DISPLAY_NAME_MAX = 100;
 
-/** 로그인 사용자 프로필; 표시 이름·프로필 이미지 */
 export function MyInfoPage() {
   const { user, applyServerUser } = useAuth();
   const queryClient = useQueryClient();

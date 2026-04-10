@@ -1,3 +1,4 @@
+// 글·첨부·좋아요·목록: Drizzle + 업로드 디스크 정리, auth-policy 로 소유/관리자 검사
 import { existsSync } from "node:fs";
 import { unlink } from "node:fs/promises";
 import { join } from "node:path";

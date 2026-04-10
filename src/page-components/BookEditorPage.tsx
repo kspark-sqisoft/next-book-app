@@ -1,5 +1,6 @@
 "use client";
 
+// 새 북 작성: 빈 문서로 워크스페이스 열고 createBook 저장, 상세와 동일 패널·캔버스 구성
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Save } from "lucide-react";
 import { useRouter } from "next/navigation";

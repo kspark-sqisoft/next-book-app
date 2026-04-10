@@ -1,3 +1,4 @@
+// 레이어 목록: z-order·잠금·발표 타이밍 요소 선택
 import {
   closestCenter,
   DndContext,

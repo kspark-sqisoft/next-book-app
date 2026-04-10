@@ -1,3 +1,4 @@
+// 로그아웃: 리프레시 토큰 폐기 후 httpOnly 쿠키 삭제
 import { NextResponse } from "next/server";
 
 import { REFRESH_TOKEN_COOKIE } from "@/server/env";

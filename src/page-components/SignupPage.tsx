@@ -1,5 +1,6 @@
 "use client";
 
+// 회원가입: signUp API 후 로그인 화면으로, registered=1 로 안내
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -37,7 +38,6 @@ type SignupActionState = {
   redirectToLogin: boolean;
 };
 
-/** 가입 API만 호출 후 로그인 화면으로 보내고, `registered` 플래그로 안내 문구 표시 */
 export function SignupPage() {
   const { user, isReady, signUp } = useAuth();
   const router = useRouter();

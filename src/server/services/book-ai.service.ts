@@ -1,3 +1,4 @@
+// 북 편집용 OpenAI 채팅·툴(Pexels)·히스토리 영속
 import { asc, eq } from "drizzle-orm";
 
 import type { AuthActor } from "@/server/auth/auth-policy";

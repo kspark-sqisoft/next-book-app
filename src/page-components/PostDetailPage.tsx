@@ -1,5 +1,6 @@
 "use client";
 
+// 글 상세: 본문 HTML, 미디어, 댓글, 작성자/관리자 삭제
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -33,7 +34,6 @@ import { postBodyHtmlForRender } from "@/lib/post-html";
 import { postKeys } from "@/lib/query-keys";
 import { useAuth } from "@/stores/auth-store";
 
-/** 공개 상세; 작성자·관리자에게 수정·삭제 버튼 */
 export function PostDetailPage() {
   const { id: idParam } = useParams();
   const id = idParam ? Number(idParam) : NaN;

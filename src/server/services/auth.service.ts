@@ -1,3 +1,4 @@
+// 가입·로그인·리프레시 로테이션·bcrypt·JWT
 import * as bcrypt from "bcrypt";
 import { and, eq } from "drizzle-orm";
 

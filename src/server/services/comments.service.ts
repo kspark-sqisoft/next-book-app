@@ -1,3 +1,4 @@
+// 글 댓글 트리·작성/삭제 권한
 import { and, asc, eq } from "drizzle-orm";
 
 import {

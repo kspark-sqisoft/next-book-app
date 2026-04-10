@@ -1,5 +1,6 @@
 "use client";
 
+// 북 상세·편집: 서버 페이지 → 로컬 히스토리, 소유자는 BookDetailOwnerView / 비로그인·타인은 읽기 전용 게스트 뷰
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MonitorPlay, Save, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -130,6 +131,7 @@ import { useBookDocumentHistory } from "@/lib/use-book-document-history";
 import { useBookPageThumbnails } from "@/lib/use-book-page-thumbnails";
 import { useAuth } from "@/stores/auth-store";
 
+// API 페이지 DTO 를 편집기 로컬 페이지 배열로 정렬·정규화
 function mapServerPagesToLocal(pages: BookPageDto[]): BookEditorPageState[] {
   const sorted = [...pages].sort((a, b) => a.sortOrder - b.sortOrder);
   return applyAutoSlideNamesByIndex(
@@ -158,7 +160,7 @@ function mapServerPagesToLocal(pages: BookPageDto[]): BookEditorPageState[] {
   );
 }
 
-/** 워크스페이스 헤더: 슬라이드쇼 미리보기(새 탭) — 저장·삭제 옆에서 눈에 띄게 */
+// 헤더 액션: /preview 새 탭
 function BookSlidePreviewOpenButton({ bookId }: { bookId: number }) {
   return (
     <Button
@@ -178,11 +180,7 @@ function BookSlidePreviewOpenButton({ bookId }: { bookId: number }) {
   );
 }
 
-/**
- * 북 진입 시 곧바로 편집 UI(위젯·저장).
- * 부모 `key`는 `book.id`만 씁니다. `updatedAt`까지 넣으면 저장·refetch 때마다 remount 되어
- * 삭제 확인 창·로컬 편집 상태가 날아갈 수 있습니다.
- */
+// 소유자·관리자 전용 편집 워크스페이스; 부모 key 는 book.id 만(리마운트로 상태 유실 방지)
 function BookDetailOwnerView({
   bookId,
   serverBook,
@@ -2229,6 +2227,7 @@ function BookDetailOwnerView({
   );
 }
 
+// 편집 권한 없을 때: 캔버스·사이드바·레이어 패널은 읽기 전용
 function BookDetailGuestBookView({
   data,
   sortedPagesView,
@@ -2378,6 +2377,7 @@ function BookDetailGuestBookView({
   );
 }
 
+// 데이터 로드 후 canEdit 에 따라 소유자 편집 UI 또는 게스트 뷰
 export function BookDetailPage() {
   const { id: idParam } = useParams();
   const id = Number(idParam);

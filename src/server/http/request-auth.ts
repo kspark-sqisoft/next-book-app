@@ -1,3 +1,4 @@
+// Route Handler·tRPC: Authorization 헤더에서 액세스 JWT 추출
 import { verifyAccessToken } from "@/server/auth/jwt";
 import type { JwtPayload } from "@/server/auth/jwt-payload";
 import { HttpError } from "@/server/http/http-error";
@@ -8,7 +9,7 @@ export async function getBearerPayload(
 ): Promise<JwtPayload | null> {
   const h = request.headers.get("authorization");
   if (!h?.startsWith("Bearer ")) return null;
-  const token = h.slice(7).trim();
+  const token = h.slice(7).trim(); // "Bearer ".length === 7
   if (!token) return null;
   try {
     return await verifyAccessToken(token);
@@ -27,6 +28,7 @@ export async function requireBearerPayload(
   return p;
 }
 
+// 관리자 API용 가드
 export async function requireAdmin(request: Request): Promise<JwtPayload> {
   const p = await requireBearerPayload(request);
   if (p.role !== UserRole.Admin) {

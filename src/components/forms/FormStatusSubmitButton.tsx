@@ -1,3 +1,4 @@
+// react-dom useFormStatus: 제출 중 비활성·스피너
 import type { ComponentProps, ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 
@@ -20,7 +21,6 @@ export type FormStatusSubmitButtonProps = Omit<
   spinnerClassName?: string;
 };
 
-/** 같은 `<form>` 안에서만 사용하세요 (`useFormStatus`). */
 export function FormStatusSubmitButton({
   children,
   pendingLabel = "진행 중…",

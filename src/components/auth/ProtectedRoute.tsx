@@ -7,6 +7,7 @@ import { CenteredSpinner } from "@/components/layout/CenteredSpinner";
 import { appLog } from "@/lib/app-log";
 import { useAuth } from "@/stores/auth-store";
 
+// hydrate 전·리다이렉트 중에는 스피너만
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isReady } = useAuth();
   const router = useRouter();
@@ -20,7 +21,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isReady && !user) {
       const path = `${window.location.pathname}${window.location.search}`;
-      router.replace(`/login?from=${encodeURIComponent(path)}`);
+      router.replace(`/login?from=${encodeURIComponent(path)}`); // 돌아올 URL 보존
     }
   }, [isReady, user, router]);
 
@@ -29,7 +30,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
-    return <CenteredSpinner />;
+    return <CenteredSpinner />; // replace 직전 한 프레임
   }
 
   return <>{children}</>;

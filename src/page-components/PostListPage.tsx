@@ -1,5 +1,6 @@
 "use client";
 
+// 글 목록: 카테고리·검색·무한 스크롤, 좋아요 낙관적 캐시 키
 import {
   type InfiniteData,
   useInfiniteQuery,
@@ -51,9 +52,6 @@ const LOAD_MORE_DEBOUNCE_MS = 400;
 /** 검색어 입력 후 API 호출까지 대기 */
 const SEARCH_DEBOUNCE_MS = 400;
 
-/**
- * 공개 목록 + 무한 스크롤(사용자 스크롤 의도 후 하단 근접 시 추가 로드).
- */
 export function PostListPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();

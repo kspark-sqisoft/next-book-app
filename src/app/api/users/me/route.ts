@@ -1,3 +1,4 @@
+// 현재 사용자: GET 프로필, PATCH multipart 로 이름·역할·아바타
 import { join } from "node:path";
 
 import { NextResponse } from "next/server";
@@ -10,6 +11,7 @@ import { UsersService } from "@/server/services/users.service";
 import { saveFormFileToDir, tryUnlink } from "@/server/uploads/write-file";
 import { UserRole } from "@/server/users/user-role";
 
+// 프로필 이미지 업로드 상한(바이트)
 const AVATAR_MAX = 2 * 1024 * 1024;
 const avatarMime = new Set([
   "image/jpeg",
@@ -18,6 +20,7 @@ const avatarMime = new Set([
   "image/webp",
 ]);
 
+// 폼 필드 role 문자열 → UserRole (없으면 변경 없음)
 function parsePatchMeRole(raw: string | undefined): UserRole | undefined {
   if (raw === undefined || raw === null) return undefined;
   const t = raw.trim().toLowerCase();

@@ -1,3 +1,4 @@
+// 전역 대기 UI: hydrate·리다이렉트 직전 등
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
@@ -6,7 +7,6 @@ type Props = {
   spinnerClassName?: string;
 };
 
-/** 인증 hydrate·에디터 초기 로드 등 공통 대기 UI */
 export function CenteredSpinner({
   className,
   spinnerClassName = "size-8 text-muted-foreground",

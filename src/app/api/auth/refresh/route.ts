@@ -1,3 +1,4 @@
+// 액세스 토큰 갱신: 쿠키의 리프레시로 로테이션
 import { NextResponse } from "next/server";
 
 import { REFRESH_TOKEN_COOKIE } from "@/server/env";

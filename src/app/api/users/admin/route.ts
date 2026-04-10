@@ -1,3 +1,4 @@
+// 관리자 전용 사용자 목록
 import { NextResponse } from "next/server";
 
 import { handleRouteError } from "@/server/http/api-response";

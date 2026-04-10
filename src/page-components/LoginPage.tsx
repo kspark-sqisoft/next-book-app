@@ -1,5 +1,6 @@
 "use client";
 
+// 로그인 폼: useActionState + authStore.signIn, 성공 시 ?from 또는 /me
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -37,7 +38,6 @@ type LoginActionState = {
   fieldErrors: Partial<Record<keyof LoginFormValues, string>>;
 };
 
-/** 로그인 성공 시 `?from=` 또는 기본 `/me`로 이동 */
 export function LoginPage() {
   const { user, isReady, signIn } = useAuth();
   const router = useRouter();

@@ -1,3 +1,4 @@
+// 이메일로 역할(user/admin) 지정
 import { NextResponse } from "next/server";
 
 import { handleRouteError } from "@/server/http/api-response";

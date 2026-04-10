@@ -1,5 +1,6 @@
 "use client";
 
+// 북 발표 모드: 슬라이드 자동 진행·전환 CSS·전체화면, UI 는 portal 로 body
 import "@/book-presentation-transitions.css";
 
 import { useQuery } from "@tanstack/react-query";

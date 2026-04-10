@@ -111,13 +111,14 @@ export const bookAiChatMessage = pgTable("book_ai_chat_message", {
   createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
 });
 
+// 학습용 Cats CRUD 테이블(`CatsService`가 사용)
 export const studyCats = pgTable("study_cats", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  age: integer("age").notNull().default(1),
-  breed: varchar("breed", { length: 255 }).notNull().default("mixed"),
-  ownerId: integer("ownerId"),
-  imageFilename: varchar("imageFilename", { length: 255 }),
+  id: serial("id").primaryKey(), // 자동 증가 PK
+  name: varchar("name", { length: 255 }).notNull(), // 고양이 이름
+  age: integer("age").notNull().default(1), // 생략 시 1
+  breed: varchar("breed", { length: 255 }).notNull().default("mixed"), // 품종
+  ownerId: integer("ownerId"), // user.id FK; 옛 데이터는 null 가능
+  imageFilename: varchar("imageFilename", { length: 255 }), // 디스크 파일명만 저장
   createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
   updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
 });
@@ -185,6 +186,7 @@ export const bookPageRelations = relations(bookPage, ({ one }) => ({
   book: one(book, { fields: [bookPage.bookId], references: [book.id] }),
 }));
 
+// studyCats.ownerId → user 행(선택 관계)
 export const studyCatsRelations = relations(studyCats, ({ one }) => ({
   owner: one(user, { fields: [studyCats.ownerId], references: [user.id] }),
 }));

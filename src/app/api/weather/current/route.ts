@@ -1,3 +1,4 @@
+// 날씨: 쿼리 q(도시명 등) 선택적
 import { NextResponse } from "next/server";
 
 import { handleRouteError } from "@/server/http/api-response";
