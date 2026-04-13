@@ -3,7 +3,7 @@
 // 사이트 공통 레이아웃: 네비·푸터·테마·채팅 독, 북 워크스페이스/홈에 맞춘 main 폭·패딩·헤더 접힘.
 import { ChevronDown, ChevronUp } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { startTransition, useEffect, useRef, useState } from "react";
 
 import { ChatDock } from "@/components/chat/ChatDock";
@@ -68,6 +68,7 @@ function footerNavClass({ isActive }: { isActive: boolean }) {
 /** 공통 헤더·푸터와 자식 페이지를 감쌉니다. */
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, signOut } = useAuth();
+  const router = useRouter();
   const location = { pathname: usePathname() };
   /** 북 워크스페이스(상세·새 북 편집)만 넓게; `/books` 목록은 글 목록과 동일 `max-w-3xl` */
   const wideMain =
@@ -94,6 +95,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     readBookChromeCollapsed(BOOK_WORKSPACE_CHROME_FOOTER_KEY),
   );
   const bookDetailChromeEnteredRef = useRef(false);
+
+  // 메뉴 첫 클릭이 RSC 페치 대기로 “안 먹는 것처럼” 느껴지는 것 완화 — 주요 탭은 백그라운드 프리패치
+  useEffect(() => {
+    const paths = ["/", "/posts", "/books", "/cats", "/login", "/signup"] as const;
+    for (const p of paths) {
+      void router.prefetch(p);
+    }
+  }, [router]);
+
+  useEffect(() => {
+    if (user) void router.prefetch("/me");
+  }, [user, router]);
 
   useEffect(() => {
     if (!bookDetailChromeRoute) {
@@ -142,7 +155,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       )}
     >
       {showBookSiteHeader ? (
-        <header className="shrink-0 border-b border-border bg-card/40 backdrop-blur-sm">
+        <header className="relative z-280 shrink-0 border-b border-border bg-card/40 backdrop-blur-sm">
           <div
             className={cn(
               "mx-auto flex h-12 w-full items-center justify-between gap-4 px-4",
@@ -155,16 +168,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             )}
           >
             <nav className="flex items-center gap-2 text-sm font-medium sm:gap-3">
-              <NavLink href="/" end className={headerNavClass}>
+              <NavLink href="/" end prefetch className={headerNavClass}>
                 홈
               </NavLink>
-              <NavLink href="/posts" className={headerNavClass}>
+              <NavLink href="/posts" prefetch className={headerNavClass}>
                 글
               </NavLink>
-              <NavLink href="/books" className={headerNavClass}>
+              <NavLink href="/books" prefetch className={headerNavClass}>
                 북
               </NavLink>
-              {/** 공부용: Cats만 명시적 full RSC 프리패치 (`prefetch={true}`). 다른 탭은 Link 기본 동작. */}
               <NavLink href="/cats" prefetch className={headerNavClass}>
                 Cats
               </NavLink>
@@ -175,6 +187,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <>
                   <Link
                     href="/me"
+                    prefetch
                     aria-label="내 정보"
                     className="flex min-w-0 max-w-[min(12rem,calc(100vw-7rem))] items-center gap-2 rounded-md py-1 pl-0.5 pr-1 text-left outline-none transition-colors hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   >
@@ -221,10 +234,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               ) : (
                 <>
                   <Button asChild variant="ghost" size="sm">
-                    <Link href="/login">로그인</Link>
+                    <Link href="/login" prefetch>
+                      로그인
+                    </Link>
                   </Button>
                   <Button asChild size="sm">
-                    <Link href="/signup">회원가입</Link>
+                    <Link href="/signup" prefetch>
+                      회원가입
+                    </Link>
                   </Button>
                   {bookDetailChromeRoute ? (
                     <Button
@@ -277,7 +294,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       {showBookSiteFooter ? (
-        <footer className="shrink-0 border-t border-border bg-card/40 backdrop-blur-sm">
+        <footer className="relative z-280 shrink-0 border-t border-border bg-card/40 backdrop-blur-sm">
           <div
             className={cn(
               "mx-auto flex w-full flex-col gap-2 px-4 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:py-2.5",
@@ -302,29 +319,28 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-medium text-muted-foreground sm:text-xs"
               aria-label="푸터 내비게이션"
             >
-              <NavLink href="/" end className={footerNavClass}>
+              <NavLink href="/" end prefetch className={footerNavClass}>
                 홈
               </NavLink>
-              <NavLink href="/posts" className={footerNavClass}>
+              <NavLink href="/posts" prefetch className={footerNavClass}>
                 글
               </NavLink>
-              <NavLink href="/books" className={footerNavClass}>
+              <NavLink href="/books" prefetch className={footerNavClass}>
                 북
               </NavLink>
-              {/* 푸터에서도 Cats 라우트 full prefetch(헤더와 동일) */}
               <NavLink href="/cats" prefetch className={footerNavClass}>
                 Cats
               </NavLink>
               {user ? (
-                <NavLink href="/me" className={footerNavClass}>
+                <NavLink href="/me" prefetch className={footerNavClass}>
                   내 정보
                 </NavLink>
               ) : (
                 <>
-                  <NavLink href="/login" className={footerNavClass}>
+                  <NavLink href="/login" prefetch className={footerNavClass}>
                     로그인
                   </NavLink>
-                  <NavLink href="/signup" className={footerNavClass}>
+                  <NavLink href="/signup" prefetch className={footerNavClass}>
                     회원가입
                   </NavLink>
                 </>
