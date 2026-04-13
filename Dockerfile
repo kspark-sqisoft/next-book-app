@@ -29,6 +29,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/server.ts ./server.ts
 COPY --from=builder --chown=nextjs:nodejs /app/next.config.ts ./next.config.ts
 COPY --from=builder --chown=nextjs:nodejs /app/tsconfig.json ./tsconfig.json
 COPY --from=builder --chown=nextjs:nodejs /app/postcss.config.mjs ./postcss.config.mjs
+COPY --from=builder --chown=nextjs:nodejs /app/drizzle.config.mjs ./drizzle.config.mjs
 
 RUN mkdir -p /app/uploads && chown nextjs:nodejs /app/uploads
 
@@ -37,4 +38,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 ENV UPLOAD_ROOT=/app/uploads
-CMD ["npx", "tsx", "server.ts"]
+# Apply schema to Postgres (empty volume on first run). Matches dev: docker-compose.dev.yml drizzle-kit push.
+CMD ["sh", "-c", "./node_modules/.bin/drizzle-kit push --config drizzle.config.mjs && exec npx tsx server.ts"]

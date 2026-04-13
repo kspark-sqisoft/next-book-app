@@ -26,7 +26,10 @@ import {
 } from "@/actions/posts";
 import { appLog } from "@/lib/app-log";
 import type { BookCanvasElement } from "@/lib/book-canvas";
-import type { CreateBookDto, UpdateBookDto } from "@/server/services/books-types";
+import type {
+  CreateBookDto,
+  UpdateBookDto,
+} from "@/server/services/books-types";
 
 type RetryableRequest = InternalAxiosRequestConfig & { _retry?: boolean };
 

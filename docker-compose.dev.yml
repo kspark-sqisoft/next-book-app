@@ -20,7 +20,7 @@ services:
     image: node:22-bookworm-slim
     working_dir: /app
     command: >
-      sh -c "npm ci && npx drizzle-kit push && npm run dev"
+      sh -c "npm ci && npx drizzle-kit push --config drizzle.config.mjs && npm run dev"
     ports:
       - "3000:3000"
     volumes:

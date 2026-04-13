@@ -76,7 +76,11 @@ export async function updateBookAction(
     const user = await requireUserFromToken(accessToken);
     const id = assertPositiveIntId(bookId);
     const books = new BooksService();
-    return (await books.update(id, { id: user.sub, role: user.role }, body)) as unknown as BookDetail;
+    return (await books.update(
+      id,
+      { id: user.sub, role: user.role },
+      body,
+    )) as unknown as BookDetail;
   } catch (e) {
     rethrowActionError(e, "books-actions");
   }

@@ -216,19 +216,15 @@ export async function updatePostAction(
     const mediaPlan = parseMediaPlan(body.mediaPlanRaw);
 
     const posts = new PostsService();
-    return (await posts.updatePost(
-      { id: user.sub, role: user.role },
-      id,
-      {
-        title: body.title,
-        content: body.content,
-        category: body.category,
-        clearAllMedia: clearAllMedia || undefined,
-        mediaPlan,
-        newFiles: body.newFiles,
-        newPosters: body.newPosters,
-      },
-    )) as unknown as Post;
+    return (await posts.updatePost({ id: user.sub, role: user.role }, id, {
+      title: body.title,
+      content: body.content,
+      category: body.category,
+      clearAllMedia: clearAllMedia || undefined,
+      mediaPlan,
+      newFiles: body.newFiles,
+      newPosters: body.newPosters,
+    })) as unknown as Post;
   } catch (e) {
     await cleanupPostUploadedFiles(toClean);
     rethrowActionError(e, "posts-actions");

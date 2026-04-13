@@ -56,8 +56,7 @@ export async function listCatsAction(): Promise<CatsListActionResult> {
   try {
     const h = await headers();
     const xf = h.get("x-forwarded-for"); // 체인의 첫 IP가 원 클라이언트에 가깝다는 관례
-    const ip =
-      xf?.split(",")[0]?.trim() ?? h.get("x-real-ip") ?? ""; // 단일 프록시 환경 대비
+    const ip = xf?.split(",")[0]?.trim() ?? h.get("x-real-ip") ?? ""; // 단일 프록시 환경 대비
     const userAgent = h.get("user-agent") ?? "";
     const cats = new CatsService();
     const list = await cats.findAll();
