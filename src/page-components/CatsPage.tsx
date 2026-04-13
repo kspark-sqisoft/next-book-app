@@ -4,7 +4,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 // Cats 전용 서버 액션
@@ -57,9 +57,6 @@ import { type CatCreateFormValues, catCreateSchema } from "@/lib/schemas/forms";
 import { fieldErrorsFromZodIssues } from "@/lib/zod-form";
 import { useAuth } from "@/stores/auth-store";
 
-// 상세 경로 prefetch 남발 방지(학습용 상한)
-const CAT_DETAIL_PREFETCH_CAP = 12;
-
 // 목록 공개 / 쓰기는 JWT·서버에서 재검증
 export function CatsPage() {
   const router = useRouter(); // App Router 네비게이션·prefetch
@@ -111,15 +108,14 @@ export function CatsPage() {
     };
   }, []);
 
-  // 목록 로드 후 상세 RSC 세그먼트 백그라운드 prefetch
-  useEffect(() => {
-    if (cats.length === 0) return;
-    const slice = cats.slice(0, CAT_DETAIL_PREFETCH_CAP); // 앞쪽 N마리만
-    for (const c of slice) {
-      router.prefetch(`/cats/${c.id}`); // 클릭 전 번들·데이터 준비
-    }
-    appLog("cats", "공부용 prefetch", { count: slice.length });
-  }, [cats, router]);
+  // 상세는 뷰포트 자동 prefetch 안 함(prefetch={false}) → 행 호버 시에만 router.prefetch (네트워크 탭에서 확인하기 쉬움)
+
+  const prefetchCatDetail = useCallback(
+    (id: number) => {
+      void router.prefetch(`/cats/${id}`);
+    },
+    [router],
+  );
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -372,11 +368,14 @@ export function CatsPage() {
               </TableHeader>
               <TableBody>
                 {cats.map((c) => (
-                  <TableRow key={c.id}>
+                  <TableRow
+                    key={c.id}
+                    onMouseEnter={() => prefetchCatDetail(c.id)}
+                  >
                     <TableCell className="py-2">
                       <Link
                         href={`/cats/${c.id}`}
-                        prefetch
+                        prefetch={false}
                         className="block size-11 overflow-hidden rounded-md bg-muted ring-1 ring-border"
                         aria-label={`${c.name} 사진`}
                       >
@@ -405,7 +404,7 @@ export function CatsPage() {
                     <TableCell className="font-medium">
                       <Link
                         href={`/cats/${c.id}`}
-                        prefetch
+                        prefetch={false}
                         className="text-primary underline-offset-4 hover:underline"
                       >
                         {c.name}

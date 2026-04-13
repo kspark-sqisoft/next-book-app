@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   startTransition,
   useActionState,
+  useCallback,
   useEffect,
   useOptimistic,
 } from "react";
@@ -38,6 +39,11 @@ type LoginActionState = {
   fieldErrors: Partial<Record<keyof LoginFormValues, string>>;
 };
 
+const LOGIN_INITIAL_STATE: LoginActionState = {
+  serverError: null,
+  fieldErrors: {},
+};
+
 export function LoginPage() {
   const { user, isReady, signIn } = useAuth();
   const router = useRouter();
@@ -45,39 +51,44 @@ export function LoginPage() {
   const from = searchParams.get("from") ?? "/me";
   const justRegistered = searchParams.get("registered") === "1";
 
-  const initialState: LoginActionState = { serverError: null, fieldErrors: {} };
+  const loginAction = useCallback(
+    async (
+      _prevState: LoginActionState,
+      formData: FormData,
+    ): Promise<LoginActionState> => {
+      const parsed = loginSchema.safeParse({
+        email: formDataGetString(formData, "email"),
+        password: formDataGetString(formData, "password"),
+      });
+      if (!parsed.success) {
+        return {
+          serverError: null,
+          fieldErrors: fieldErrorsFromZodIssues<keyof LoginFormValues>(
+            parsed.error.issues,
+          ),
+        };
+      }
 
-  async function loginAction(
-    _prevState: LoginActionState,
-    formData: FormData,
-  ): Promise<LoginActionState> {
-    const parsed = loginSchema.safeParse({
-      email: formDataGetString(formData, "email"),
-      password: formDataGetString(formData, "password"),
-    });
-    if (!parsed.success) {
-      return {
-        serverError: null,
-        fieldErrors: fieldErrorsFromZodIssues<keyof LoginFormValues>(
-          parsed.error.issues,
-        ),
-      };
-    }
+      try {
+        await signIn(parsed.data.email.trim(), parsed.data.password);
+        appLog("login", "폼 제출 후 signIn 성공", { redirectTo: from });
+        toast.success("로그인되었습니다.");
+        return { serverError: null, fieldErrors: {} };
+      } catch (err) {
+        const msg =
+          err instanceof Error ? err.message : "로그인에 실패했습니다.";
+        appLog("login", "폼 제출 실패", msg);
+        toast.error(msg);
+        return { serverError: msg, fieldErrors: {} };
+      }
+    },
+    [signIn, from],
+  );
 
-    try {
-      await signIn(parsed.data.email.trim(), parsed.data.password);
-      appLog("login", "폼 제출 후 signIn 성공", { redirectTo: from });
-      toast.success("로그인되었습니다.");
-      return { serverError: null, fieldErrors: {} };
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "로그인에 실패했습니다.";
-      appLog("login", "폼 제출 실패", msg);
-      toast.error(msg);
-      return { serverError: msg, fieldErrors: {} };
-    }
-  }
-
-  const [formState, formAction] = useActionState(loginAction, initialState);
+  const [formState, formAction] = useActionState(
+    loginAction,
+    LOGIN_INITIAL_STATE,
+  );
   const [optimisticState, addOptimistic] = useOptimistic(
     formState,
     (current, next: Partial<LoginActionState>) => ({ ...current, ...next }),
