@@ -16,6 +16,13 @@ export const floatingDockChatInsetEndClass = "end-4 sm:end-7";
 export const floatingDockAiInsetStartClass = "start-4 sm:start-7";
 
 /**
+ * `ChatDock` 전역 플로팅 레이어. `AppLayout` 헤더·푸터(`z-280`), 북 접힘 스트립(`z-[250]`·`z-[260]`),
+ * `BookWorkspaceShell` 바(`z-[250]`), 에디터 툴 레일 팝오버(`z-[500]`), 북 플로팅 패널(~280+)보다 위 —
+ * 알럿·다이얼로그(`z-[10000]`+) 아래.
+ */
+export const floatingDockChatZIndexClass = "z-[3500]";
+
+/**
  * `AppLayout` 북 라우트 사이트 헤더·푸터 **접기·펼치기** 공통 겉모습.
  * `Button`은 `variant="outline"` `size="icon-sm"`(로그아웃 `size="sm"` 과 동일 `h-7`·`w-7`) 과 함께 쓴다.
  */

@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import type { BookMediaPlaylistPlaybackUiSnapshot } from "@/components/books/BookMediaPlaylistWidgetOverlay";
+import { BookNumericIntField } from "@/components/books/BookNumericIntField";
 import { BookTextRichEditor } from "@/components/books/BookTextRichEditor";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -121,121 +122,32 @@ type BookInspectorPanelProps = {
   pagePresentationTimingElementId?: string | null;
 };
 
-/** 캐러셀 간격: 입력 중 1→10처럼 잠깐 범위 밖이 되므로 blur까지 draft만 두고 커밋 */
-function NewsCarouselIntervalInputInner({
-  elementId,
-  seconds,
-  onChange,
-}: {
-  elementId: string;
-  seconds: number | undefined;
-  onChange: BookInspectorPanelProps["onChange"];
-}) {
-  const [draft, setDraft] = useState(() =>
-    seconds != null && Number.isInteger(seconds) ? String(seconds) : "",
-  );
-
-  return (
-    <div className="space-y-1">
-      <Input
-        id="insp-news-iv"
-        type="text"
-        inputMode="numeric"
-        autoComplete="off"
-        placeholder="기본 5"
-        className="font-mono"
-        value={draft}
-        onChange={(e) => {
-          const t = e.target.value.replace(/\D/g, "").slice(0, 3);
-          setDraft(t);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
-        }}
-        onBlur={() => {
-          if (draft.trim() === "") {
-            onChange(elementId, { newsCarouselIntervalSec: undefined });
-            return;
-          }
-          const n = Number(draft);
-          if (Number.isInteger(n) && n >= 3 && n <= 120) {
-            onChange(elementId, { newsCarouselIntervalSec: n });
-          } else {
-            setDraft(
-              seconds != null && Number.isInteger(seconds)
-                ? String(seconds)
-                : "",
-            );
-          }
-        }}
-      />
-      <p className="text-[11px] text-muted-foreground leading-snug">
-        3~120초, 비우면 5초
-      </p>
-    </div>
-  );
-}
-
 function NewsCarouselIntervalInput(props: {
   elementId: string;
   seconds: number | undefined;
   onChange: BookInspectorPanelProps["onChange"];
 }) {
-  const k = `${props.elementId}:${props.seconds == null ? "u" : props.seconds}`;
-  return <NewsCarouselIntervalInputInner key={k} {...props} />;
-}
-
-function InspectorPresentationHoldInputInner({
-  elementId,
-  value,
-  onChange,
-}: {
-  elementId: string;
-  value: number | undefined;
-  onChange: BookInspectorPanelProps["onChange"];
-}) {
-  const [draft, setDraft] = useState(() =>
-    value != null && Number.isInteger(value) ? String(value) : "",
-  );
-
   return (
-    <div className="space-y-1">
-      <Label className="text-[11px]">표시 시간(초)</Label>
-      <Input
-        id={`insp-pres-hold-${elementId}`}
-        type="text"
-        inputMode="numeric"
-        autoComplete="off"
-        placeholder={`기본 ${DEFAULT_WIDGET_PRESENTATION_SEC}`}
-        className="h-8 font-mono"
-        value={draft}
-        onChange={(e) => {
-          const t = e.target.value.replace(/\D/g, "").slice(0, 4);
-          setDraft(t);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
-        }}
-        onBlur={() => {
-          if (draft.trim() === "") {
-            onChange(elementId, { presentationHoldSec: undefined });
-            return;
-          }
-          const n = Number(draft);
-          if (Number.isInteger(n) && n >= 1 && n <= 3600) {
-            onChange(elementId, { presentationHoldSec: n });
-          } else {
-            setDraft(
-              value != null && Number.isInteger(value) ? String(value) : "",
-            );
-          }
-        }}
-      />
-      <p className="text-[10px] leading-snug text-muted-foreground">
-        1~3600초. 비우면 기본 {DEFAULT_WIDGET_PRESENTATION_SEC}초(또는 동영상
-        메타 길이)를 씁니다.
-      </p>
-    </div>
+    <BookNumericIntField
+      fieldKey={`${props.elementId}:news-carousel-iv`}
+      htmlId="insp-news-iv"
+      hideLabel
+      optional
+      commitPolicy="reject"
+      value={props.seconds}
+      min={3}
+      max={120}
+      maxDigits={3}
+      placeholder="기본 5"
+      onCommit={(n) =>
+        props.onChange(props.elementId, { newsCarouselIntervalSec: n })
+      }
+      helperBelow={
+        <p className="text-[11px] text-muted-foreground leading-snug">
+          3~120초, 비우면 5초
+        </p>
+      }
+    />
   );
 }
 
@@ -244,8 +156,29 @@ function InspectorPresentationHoldInput(props: {
   value: number | undefined;
   onChange: BookInspectorPanelProps["onChange"];
 }) {
-  const k = `${props.elementId}:${props.value == null ? "u" : props.value}`;
-  return <InspectorPresentationHoldInputInner key={k} {...props} />;
+  return (
+    <BookNumericIntField
+      fieldKey={`${props.elementId}:pres-hold`}
+      htmlId={`insp-pres-hold-${props.elementId}`}
+      label={<span className="text-[11px]">표시 시간(초)</span>}
+      optional
+      commitPolicy="reject"
+      value={props.value}
+      min={1}
+      max={3600}
+      maxDigits={4}
+      placeholder={`기본 ${DEFAULT_WIDGET_PRESENTATION_SEC}`}
+      onCommit={(n) =>
+        props.onChange(props.elementId, { presentationHoldSec: n })
+      }
+      helperBelow={
+        <p className="text-[10px] leading-snug text-muted-foreground">
+          1~3600초. 비우면 기본 {DEFAULT_WIDGET_PRESENTATION_SEC}초(또는 동영상
+          메타 길이)를 씁니다.
+        </p>
+      }
+    />
+  );
 }
 
 function InspectorPresentationTimingSection({
@@ -365,65 +298,6 @@ function bookShapeKindLabelKo(k: BookShapeKind): string {
     default:
       return k;
   }
-}
-
-/** `type="number"`는 빈 칸·자리수 수정이 어려워 텍스트 draft + blur 시 확정 */
-function InspectorStrokeWidthPxInput({
-  inputId,
-  label,
-  value,
-  min,
-  max,
-  onCommit,
-}: {
-  inputId: string;
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  onCommit: (n: number) => void;
-}) {
-  const [draft, setDraft] = useState(() => String(Math.round(value)));
-  return (
-    <div className="space-y-1">
-      <Label htmlFor={inputId}>{label}</Label>
-      <Input
-        id={inputId}
-        type="text"
-        inputMode="numeric"
-        autoComplete="off"
-        className="font-mono tabular-nums"
-        value={draft}
-        onChange={(e) => {
-          const t = e.target.value.replace(/\D/g, "").slice(0, 3);
-          setDraft(t);
-        }}
-        onBlur={() => {
-          if (draft.trim() === "") {
-            setDraft(String(Math.round(value)));
-            return;
-          }
-          const n = Number(draft);
-          if (!Number.isFinite(n)) {
-            setDraft(String(Math.round(value)));
-            return;
-          }
-          const clamped = Math.min(max, Math.max(min, Math.round(n)));
-          onCommit(clamped);
-          setDraft(String(clamped));
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
-        }}
-      />
-    </div>
-  );
-}
-
-function num(v: string, fallback: number, min: number, max: number) {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(max, Math.max(min, n));
 }
 
 function InspectorMediaSourceSection({
@@ -851,38 +725,31 @@ function ElementShapeChromeFields({
     <div className="space-y-2 border-t border-border pt-3">
       <Label className="text-xs font-medium">모양</Label>
       <p className="text-[11px] text-muted-foreground">{typeHint}</p>
-      <div className="space-y-1">
-        <Label htmlFor={`insp-br-${el.id}`}>모서리 반지름 (px)</Label>
-        <Input
-          id={`insp-br-${el.id}`}
-          type="number"
-          min={0}
-          max={2000}
-          value={br}
-          onChange={(e) =>
-            onChange(el.id, {
-              borderRadius: num(e.target.value, br, 0, 2000),
-            })
-          }
-        />
-      </div>
-      <div className="space-y-1">
-        <Label htmlFor={`insp-ow-${el.id}`}>외곽선 두께 (px)</Label>
-        <Input
-          id={`insp-ow-${el.id}`}
-          type="number"
-          min={0}
-          max={32}
-          value={ow}
-          onChange={(e) => {
-            const v = num(e.target.value, ow, 0, 32);
-            onChange(el.id, {
-              outlineWidth: v > 0 ? v : undefined,
-              ...(v <= 0 ? { outlineColor: undefined } : {}),
-            });
-          }}
-        />
-      </div>
+      <BookNumericIntField
+        fieldKey={`${el.id}:insp-br`}
+        htmlId={`insp-br-${el.id}`}
+        label="모서리 반지름 (px)"
+        value={br}
+        min={0}
+        max={2000}
+        maxDigits={4}
+        onCommit={(n) => onChange(el.id, { borderRadius: n })}
+      />
+      <BookNumericIntField
+        fieldKey={`${el.id}:insp-ow`}
+        htmlId={`insp-ow-${el.id}`}
+        label="외곽선 두께 (px)"
+        value={ow}
+        min={0}
+        max={32}
+        maxDigits={2}
+        onCommit={(n) => {
+          onChange(el.id, {
+            outlineWidth: n > 0 ? n : undefined,
+            ...(n <= 0 ? { outlineColor: undefined } : {}),
+          });
+        }}
+      />
       {ow > 0 ? (
         <div className="flex flex-wrap items-center gap-2">
           <Input
@@ -1350,32 +1217,24 @@ function MediaPlaylistInspectorBody({
                       />
                     </div>
                     {it.kind === "image" ? (
-                      <div className="space-y-1">
-                        <Label className="text-[11px]">표시 시간(초)</Label>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={600}
-                          placeholder={`기본 ${DEFAULT_MEDIA_PLAYLIST_IMAGE_DURATION_SEC}`}
-                          value={
-                            typeof it.durationSec === "number" &&
-                            it.durationSec >= 1
-                              ? it.durationSec
-                              : ""
-                          }
-                          onChange={(e) => {
-                            const t = e.target.value.trim();
-                            if (t === "") {
-                              updateItem(i, { durationSec: undefined });
-                              return;
-                            }
-                            const n = Number(t);
-                            if (Number.isInteger(n) && n >= 1 && n <= 600) {
-                              updateItem(i, { durationSec: n });
-                            }
-                          }}
-                        />
-                      </div>
+                      <BookNumericIntField
+                        fieldKey={`${el.id}:pl-dur-${i}`}
+                        htmlId={`insp-pl-dur-${el.id}-${i}`}
+                        label={<span className="text-[11px]">표시 시간(초)</span>}
+                        optional
+                        commitPolicy="reject"
+                        value={
+                          typeof it.durationSec === "number" &&
+                          it.durationSec >= 1
+                            ? it.durationSec
+                            : undefined
+                        }
+                        min={1}
+                        max={600}
+                        maxDigits={3}
+                        placeholder={`기본 ${DEFAULT_MEDIA_PLAYLIST_IMAGE_DURATION_SEC}`}
+                        onCommit={(n) => updateItem(i, { durationSec: n })}
+                      />
                     ) : (
                       <div className="space-y-1">
                         <Label className="text-[11px]">포스터 URL (선택)</Label>
@@ -1880,25 +1739,18 @@ export function BookInspectorPanel({
                         </Select>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-1">
-                          <Label htmlFor="insp-news-ps">기사 수 (1~10)</Label>
-                          <Input
-                            id="insp-news-ps"
-                            type="number"
-                            min={1}
-                            max={10}
-                            value={selected.newsPageSize ?? 5}
-                            onChange={(e) => {
-                              const n = Number(e.target.value);
-                              onChange(selected.id, {
-                                newsPageSize:
-                                  Number.isInteger(n) && n >= 1 && n <= 10
-                                    ? n
-                                    : undefined,
-                              });
-                            }}
-                          />
-                        </div>
+                        <BookNumericIntField
+                          fieldKey={`${selected.id}:news-ps`}
+                          htmlId="insp-news-ps"
+                          label="기사 수 (1~10)"
+                          value={selected.newsPageSize ?? 5}
+                          min={1}
+                          max={10}
+                          maxDigits={2}
+                          onCommit={(n) =>
+                            onChange(selected.id, { newsPageSize: n })
+                          }
+                        />
                         <div className="space-y-1">
                           <Label htmlFor="insp-news-iv">캐러셀 간격(초)</Label>
                           <NewsCarouselIntervalInput
@@ -2025,120 +1877,70 @@ export function BookInspectorPanel({
                         </p>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-1">
-                          <Label htmlFor="insp-news-title-fs">
-                            제목 글자(px)
-                          </Label>
-                          <Input
-                            id="insp-news-title-fs"
-                            type="number"
-                            min={10}
-                            max={32}
-                            placeholder="자동"
-                            value={selected.newsTitleFontSize ?? ""}
-                            onChange={(e) => {
-                              const raw = e.target.value;
-                              if (raw === "") {
-                                onChange(selected.id, {
-                                  newsTitleFontSize: undefined,
-                                });
-                                return;
-                              }
-                              const n = Number(raw);
-                              onChange(selected.id, {
-                                newsTitleFontSize:
-                                  Number.isInteger(n) && n >= 10 && n <= 32
-                                    ? n
-                                    : undefined,
-                              });
-                            }}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label htmlFor="insp-news-meta-fs">
-                            보조 글자(px)
-                          </Label>
-                          <Input
-                            id="insp-news-meta-fs"
-                            type="number"
-                            min={8}
-                            max={22}
-                            placeholder="자동"
-                            value={selected.newsMetaFontSize ?? ""}
-                            onChange={(e) => {
-                              const raw = e.target.value;
-                              if (raw === "") {
-                                onChange(selected.id, {
-                                  newsMetaFontSize: undefined,
-                                });
-                                return;
-                              }
-                              const n = Number(raw);
-                              onChange(selected.id, {
-                                newsMetaFontSize:
-                                  Number.isInteger(n) && n >= 8 && n <= 22
-                                    ? n
-                                    : undefined,
-                              });
-                            }}
-                          />
-                        </div>
+                        <BookNumericIntField
+                          fieldKey={`${selected.id}:news-title-fs`}
+                          htmlId="insp-news-title-fs"
+                          label="제목 글자(px)"
+                          optional
+                          commitPolicy="reject"
+                          value={selected.newsTitleFontSize}
+                          min={10}
+                          max={32}
+                          maxDigits={2}
+                          placeholder="자동"
+                          onCommit={(n) =>
+                            onChange(selected.id, { newsTitleFontSize: n })
+                          }
+                        />
+                        <BookNumericIntField
+                          fieldKey={`${selected.id}:news-meta-fs`}
+                          htmlId="insp-news-meta-fs"
+                          label="보조 글자(px)"
+                          optional
+                          commitPolicy="reject"
+                          value={selected.newsMetaFontSize}
+                          min={8}
+                          max={22}
+                          maxDigits={2}
+                          placeholder="자동"
+                          onCommit={(n) =>
+                            onChange(selected.id, { newsMetaFontSize: n })
+                          }
+                        />
                       </div>
                       <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-1">
-                          <Label htmlFor="insp-news-clamp">제목 줄 수</Label>
-                          <Input
-                            id="insp-news-clamp"
-                            type="number"
-                            min={1}
-                            max={6}
-                            placeholder="목록3·캐4"
-                            value={selected.newsTitleLineClamp ?? ""}
-                            onChange={(e) => {
-                              const raw = e.target.value;
-                              if (raw === "") {
-                                onChange(selected.id, {
-                                  newsTitleLineClamp: undefined,
-                                });
-                                return;
-                              }
-                              const n = Number(raw);
-                              onChange(selected.id, {
-                                newsTitleLineClamp:
-                                  Number.isInteger(n) && n >= 1 && n <= 6
-                                    ? n
-                                    : undefined,
-                              });
-                            }}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label htmlFor="insp-news-pad">안쪽 여백(px)</Label>
-                          <Input
-                            id="insp-news-pad"
-                            type="number"
-                            min={4}
-                            max={40}
-                            placeholder="자동"
-                            value={selected.newsContentPaddingPx ?? ""}
-                            onChange={(e) => {
-                              const raw = e.target.value;
-                              if (raw === "") {
-                                onChange(selected.id, {
-                                  newsContentPaddingPx: undefined,
-                                });
-                                return;
-                              }
-                              const n = Number(raw);
-                              onChange(selected.id, {
-                                newsContentPaddingPx:
-                                  Number.isInteger(n) && n >= 4 && n <= 40
-                                    ? n
-                                    : undefined,
-                              });
-                            }}
-                          />
-                        </div>
+                        <BookNumericIntField
+                          fieldKey={`${selected.id}:news-clamp`}
+                          htmlId="insp-news-clamp"
+                          label="제목 줄 수"
+                          optional
+                          commitPolicy="reject"
+                          value={selected.newsTitleLineClamp}
+                          min={1}
+                          max={6}
+                          maxDigits={1}
+                          placeholder="목록3·캐4"
+                          onCommit={(n) =>
+                            onChange(selected.id, { newsTitleLineClamp: n })
+                          }
+                        />
+                        <BookNumericIntField
+                          fieldKey={`${selected.id}:news-pad`}
+                          htmlId="insp-news-pad"
+                          label="안쪽 여백(px)"
+                          optional
+                          commitPolicy="reject"
+                          value={selected.newsContentPaddingPx}
+                          min={4}
+                          max={40}
+                          maxDigits={2}
+                          placeholder="자동"
+                          onCommit={(n) =>
+                            onChange(selected.id, {
+                              newsContentPaddingPx: n,
+                            })
+                          }
+                        />
                       </div>
                       <ElementOpacitySlider
                         elementId={selected.id}
@@ -2272,13 +2074,14 @@ export function BookInspectorPanel({
                           aria-label="선 색 직접 선택"
                         />
                       </div>
-                      <InspectorStrokeWidthPxInput
-                        key={`${selected.id}-insp-draw-sw-${Math.round(selected.strokeWidth)}`}
-                        inputId="insp-draw-sw"
+                      <BookNumericIntField
+                        fieldKey={`${selected.id}:draw-sw`}
+                        htmlId="insp-draw-sw"
                         label="선 굵기 (px)"
                         value={selected.strokeWidth}
                         min={1}
                         max={48}
+                        maxDigits={2}
                         onCommit={(n) =>
                           onChange(selected.id, { strokeWidth: n })
                         }
@@ -2321,28 +2124,18 @@ export function BookInspectorPanel({
                       </div>
                       {selected.shapeKind === "rect" ||
                       selected.shapeKind === "roundRect" ? (
-                        <div className="space-y-1">
-                          <Label htmlFor="insp-shape-cr">
-                            모서리 둥글기 (px)
-                          </Label>
-                          <Input
-                            id="insp-shape-cr"
-                            type="number"
-                            min={0}
-                            max={200}
-                            value={Math.round(selected.cornerRadius ?? 0)}
-                            onChange={(e) =>
-                              onChange(selected.id, {
-                                cornerRadius: num(
-                                  e.target.value,
-                                  selected.cornerRadius ?? 0,
-                                  0,
-                                  200,
-                                ),
-                              })
-                            }
-                          />
-                        </div>
+                        <BookNumericIntField
+                          fieldKey={`${selected.id}:shape-cr`}
+                          htmlId="insp-shape-cr"
+                          label="모서리 둥글기 (px)"
+                          value={Math.round(selected.cornerRadius ?? 0)}
+                          min={0}
+                          max={200}
+                          maxDigits={3}
+                          onCommit={(n) =>
+                            onChange(selected.id, { cornerRadius: n })
+                          }
+                        />
                       ) : null}
                       <div className="space-y-2">
                         <Label className="text-xs text-muted-foreground">
@@ -2451,13 +2244,14 @@ export function BookInspectorPanel({
                       </div>
                       <div className="flex flex-wrap items-end gap-2">
                         <div className="min-w-0 flex-1">
-                          <InspectorStrokeWidthPxInput
-                            key={`${selected.id}-insp-shape-sw-${Math.round(selected.strokeWidth)}`}
-                            inputId="insp-shape-sw"
+                          <BookNumericIntField
+                            fieldKey={`${selected.id}:shape-sw`}
+                            htmlId="insp-shape-sw"
                             label="선 굵기 (px) · 0이면 테두리 없음"
                             value={selected.strokeWidth}
                             min={0}
                             max={32}
+                            maxDigits={2}
                             onCommit={(n) =>
                               onChange(selected.id, { strokeWidth: n })
                             }
@@ -2671,62 +2465,8 @@ export function BookInspectorPanel({
 }
 
 /**
- * 너비·높이: 매 글자마다 min(24) 클램프하면 56→5 입력 시 24로 튀는 문제가 있어 blur·Enter에만 반영.
+ * 너비·높이·글자 크기 등: blur·Enter에 확정 (매 글자마다 클램프하지 않음).
  */
-function InspectorClampedSizeInputInner({
-  value,
-  min,
-  max,
-  htmlId,
-  label,
-  onCommit,
-}: {
-  value: number;
-  min: number;
-  max: number;
-  htmlId: string;
-  label: string;
-  onCommit: (n: number) => void;
-}) {
-  const [draft, setDraft] = useState(() => String(Math.round(value)));
-
-  const commit = () => {
-    if (draft.trim() === "") {
-      setDraft(String(Math.round(value)));
-      return;
-    }
-    const n = Number(draft);
-    if (!Number.isFinite(n) || !Number.isInteger(n)) {
-      setDraft(String(Math.round(value)));
-      return;
-    }
-    const clamped = Math.min(max, Math.max(min, n));
-    onCommit(clamped);
-    setDraft(String(clamped));
-  };
-
-  return (
-    <div className="space-y-1">
-      <Label htmlFor={htmlId}>{label}</Label>
-      <Input
-        id={htmlId}
-        type="text"
-        inputMode="numeric"
-        autoComplete="off"
-        className="font-mono tabular-nums"
-        value={draft}
-        onChange={(e) =>
-          setDraft(e.target.value.replace(/\D/g, "").slice(0, 5))
-        }
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
-        }}
-      />
-    </div>
-  );
-}
-
 function InspectorClampedSizeInput(props: {
   elementId: string;
   value: number;
@@ -2734,11 +2474,21 @@ function InspectorClampedSizeInput(props: {
   max: number;
   htmlId: string;
   label: string;
+  maxDigits?: number;
   onCommit: (n: number) => void;
 }) {
-  const { elementId, ...rest } = props;
-  const k = `${elementId}:${props.htmlId}:${Math.round(props.value)}`;
-  return <InspectorClampedSizeInputInner key={k} {...rest} />;
+  return (
+    <BookNumericIntField
+      fieldKey={`${props.elementId}:${props.htmlId}`}
+      htmlId={props.htmlId}
+      label={props.label}
+      value={props.value}
+      min={props.min}
+      max={props.max}
+      maxDigits={props.maxDigits}
+      onCommit={props.onCommit}
+    />
+  );
 }
 
 function PositionSizeFields({
@@ -2751,28 +2501,26 @@ function PositionSizeFields({
   const rotDeg = Math.round(resolveBookElementRotation(el.rotation));
   return (
     <div className="grid grid-cols-2 gap-2">
-      <div className="space-y-1">
-        <Label htmlFor="insp-x">X</Label>
-        <Input
-          id="insp-x"
-          type="number"
-          value={Math.round(el.x)}
-          onChange={(e) =>
-            onChange(el.id, { x: num(e.target.value, el.x, 0, 4000) })
-          }
-        />
-      </div>
-      <div className="space-y-1">
-        <Label htmlFor="insp-y">Y</Label>
-        <Input
-          id="insp-y"
-          type="number"
-          value={Math.round(el.y)}
-          onChange={(e) =>
-            onChange(el.id, { y: num(e.target.value, el.y, 0, 4000) })
-          }
-        />
-      </div>
+      <BookNumericIntField
+        fieldKey={`${el.id}:insp-x`}
+        htmlId="insp-x"
+        label="X"
+        value={Math.round(el.x)}
+        min={0}
+        max={4000}
+        maxDigits={4}
+        onCommit={(n) => onChange(el.id, { x: n })}
+      />
+      <BookNumericIntField
+        fieldKey={`${el.id}:insp-y`}
+        htmlId="insp-y"
+        label="Y"
+        value={Math.round(el.y)}
+        min={0}
+        max={4000}
+        maxDigits={4}
+        onCommit={(n) => onChange(el.id, { y: n })}
+      />
       {el.type !== "text" ? (
         <>
           <InspectorClampedSizeInput
@@ -2780,6 +2528,7 @@ function PositionSizeFields({
             value={el.width}
             min={24}
             max={4000}
+            maxDigits={4}
             htmlId="insp-w"
             label="너비"
             onCommit={(n) => onChange(el.id, { width: n })}
@@ -2789,6 +2538,7 @@ function PositionSizeFields({
             value={el.height}
             min={24}
             max={4000}
+            maxDigits={4}
             htmlId="insp-h"
             label="높이"
             onCommit={(n) => onChange(el.id, { height: n })}
@@ -2802,27 +2552,27 @@ function PositionSizeFields({
           </div>
         </>
       )}
-      <div className="col-span-2 space-y-1">
-        <Label htmlFor="insp-rot">회전 (°)</Label>
-        <Input
-          id="insp-rot"
-          type="number"
+      <div className="col-span-2">
+        <BookNumericIntField
+          fieldKey={`${el.id}:insp-rot`}
+          htmlId="insp-rot"
+          label="회전 (°)"
+          value={rotDeg}
           min={-360}
           max={360}
-          step={1}
-          value={rotDeg}
-          onChange={(e) => {
-            const n = Number(e.target.value);
-            if (!Number.isFinite(n)) return;
-            const clamped = Math.min(360, Math.max(-360, Math.round(n)));
+          allowNegative
+          maxDigits={3}
+          onCommit={(n) =>
             onChange(el.id, {
-              rotation: clamped === 0 ? undefined : clamped,
-            });
-          }}
+              rotation: n === 0 ? undefined : n,
+            })
+          }
+          helperBelow={
+            <p className="text-[11px] text-muted-foreground">
+              시계 방향이 양수입니다. 변형 핸들로도 돌릴 수 있습니다.
+            </p>
+          }
         />
-        <p className="text-[11px] text-muted-foreground">
-          시계 방향이 양수입니다. 변형 핸들로도 돌릴 수 있습니다.
-        </p>
       </div>
     </div>
   );

@@ -1,6 +1,4 @@
-import { useState } from "react";
-
-import { Input } from "@/components/ui/input";
+import { BookNumericIntField } from "@/components/books/BookNumericIntField";
 import { Label } from "@/components/ui/label";
 
 type BookHeaderSlideDimensionsProps = {
@@ -26,30 +24,6 @@ export function BookHeaderSlideDimensions({
   onChangeSlideWidth,
   onChangeSlideHeight,
 }: BookHeaderSlideDimensionsProps) {
-  const [wEdit, setWEdit] = useState<string | null>(null);
-  const [hEdit, setHEdit] = useState<string | null>(null);
-
-  const wShown = wEdit !== null ? wEdit : String(slideWidth);
-  const hShown = hEdit !== null ? hEdit : String(slideHeight);
-
-  const commitWidth = () => {
-    const raw = (wEdit ?? String(slideWidth)).trim();
-    setWEdit(null);
-    if (raw === "") return;
-    const n = Number(raw);
-    if (!Number.isFinite(n)) return;
-    onChangeSlideWidth(clampDim(n));
-  };
-
-  const commitHeight = () => {
-    const raw = (hEdit ?? String(slideHeight)).trim();
-    setHEdit(null);
-    if (raw === "") return;
-    const n = Number(raw);
-    if (!Number.isFinite(n)) return;
-    onChangeSlideHeight(clampDim(n));
-  };
-
   return (
     <div
       className="flex flex-wrap items-center gap-x-2 gap-y-0.5 border-l border-border/70 pl-2 sm:gap-x-3 sm:pl-3"
@@ -68,19 +42,17 @@ export function BookHeaderSlideDimensions({
         >
           W
         </span>
-        <Input
-          id="book-hdr-slide-w"
-          type="text"
-          inputMode="numeric"
-          autoComplete="off"
-          className="h-7 w-16 px-1.5 text-[11px] tabular-nums sm:w-[4.25rem] sm:text-xs"
-          value={wShown}
-          onFocus={() => setWEdit(String(slideWidth))}
-          onChange={(e) => setWEdit(e.target.value.replace(/\D/g, ""))}
-          onBlur={commitWidth}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") e.currentTarget.blur();
-          }}
+        <BookNumericIntField
+          fieldKey="book-hdr-slide-w"
+          htmlId="book-hdr-slide-w"
+          hideLabel
+          value={slideWidth}
+          min={DIM_MIN}
+          max={DIM_MAX}
+          maxDigits={4}
+          className="space-y-0"
+          inputClassName="h-7 w-16 px-1.5 text-[11px] tabular-nums sm:w-[4.25rem] sm:text-xs"
+          onCommit={(n) => onChangeSlideWidth(clampDim(n))}
         />
       </div>
       <div className="flex items-center gap-1.5">
@@ -93,19 +65,17 @@ export function BookHeaderSlideDimensions({
         >
           H
         </span>
-        <Input
-          id="book-hdr-slide-h"
-          type="text"
-          inputMode="numeric"
-          autoComplete="off"
-          className="h-7 w-16 px-1.5 text-[11px] tabular-nums sm:w-[4.25rem] sm:text-xs"
-          value={hShown}
-          onFocus={() => setHEdit(String(slideHeight))}
-          onChange={(e) => setHEdit(e.target.value.replace(/\D/g, ""))}
-          onBlur={commitHeight}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") e.currentTarget.blur();
-          }}
+        <BookNumericIntField
+          fieldKey="book-hdr-slide-h"
+          htmlId="book-hdr-slide-h"
+          hideLabel
+          value={slideHeight}
+          min={DIM_MIN}
+          max={DIM_MAX}
+          maxDigits={4}
+          className="space-y-0"
+          inputClassName="h-7 w-16 px-1.5 text-[11px] tabular-nums sm:w-[4.25rem] sm:text-xs"
+          onCommit={(n) => onChangeSlideHeight(clampDim(n))}
         />
       </div>
     </div>

@@ -39,11 +39,11 @@ import {
   Unlock,
   Video,
 } from "lucide-react";
-import { useId, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
+import { BookNumericIntField } from "@/components/books/BookNumericIntField";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import {
   type BookCanvasElement,
   type ElementZOrderOp,
@@ -87,56 +87,41 @@ function bookElementLayerLabel(el: BookCanvasElement): string {
 }
 
 function LayerHoldSecInput({
+  elementId,
   storedSec,
   resolvedSec,
   onCommit,
 }: {
+  elementId: string;
   storedSec: number | undefined;
   resolvedSec: number;
   onCommit: (sec: number | undefined) => void;
 }) {
-  const holdInputId = useId();
-  const [draft, setDraft] = useState(() =>
-    storedSec != null && Number.isInteger(storedSec) ? String(storedSec) : "",
-  );
-
   return (
-    <Input
-      id={holdInputId}
-      aria-label="슬라이드쇼 표시 초"
-      title="미리보기 표시 시간(초). 비우면 기본값"
-      type="text"
-      inputMode="numeric"
-      autoComplete="off"
-      placeholder={String(resolvedSec)}
-      className="h-7 w-11 shrink-0 px-1 text-center font-mono text-[10px] tabular-nums"
-      value={draft}
+    <div
+      className="shrink-0"
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
-      onChange={(e) => {
-        const t = e.target.value.replace(/\D/g, "").slice(0, 4);
-        setDraft(t);
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
-      }}
-      onBlur={() => {
-        if (draft.trim() === "") {
-          onCommit(undefined);
-          return;
-        }
-        const n = Number(draft);
-        if (Number.isInteger(n) && n >= 1 && n <= 3600) {
-          onCommit(n);
-        } else {
-          setDraft(
-            storedSec != null && Number.isInteger(storedSec)
-              ? String(storedSec)
-              : "",
-          );
-        }
-      }}
-    />
+    >
+      <BookNumericIntField
+        fieldKey={`${elementId}:layer-hold`}
+        htmlId={`layer-hold-${elementId}`}
+        hideLabel
+        optional
+        commitPolicy="reject"
+        showSpinners={false}
+        value={storedSec}
+        min={1}
+        max={3600}
+        maxDigits={4}
+        placeholder={String(resolvedSec)}
+        className="space-y-0"
+        inputClassName="h-7 w-11 shrink-0 px-1 text-center font-mono text-[10px] tabular-nums"
+        onCommit={onCommit}
+        aria-label="슬라이드쇼 표시 초"
+        title="미리보기 표시 시간(초). 비우면 기본값"
+      />
+    </div>
   );
 }
 
@@ -347,7 +332,7 @@ function LayerRowActions({
         </span>
       ) : (
         <LayerHoldSecInput
-          key={`${el.id}-hold-${el.presentationHoldSec ?? ""}`}
+          elementId={el.id}
           storedSec={el.presentationHoldSec}
           resolvedSec={displaySec}
           onCommit={(sec) => onPresentationHoldSecChange(el.id, sec)}

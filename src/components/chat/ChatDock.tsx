@@ -18,6 +18,7 @@ import { getAccessToken } from "@/lib/api";
 import { appLog } from "@/lib/app-log";
 import {
   floatingDockChatInsetEndClass,
+  floatingDockChatZIndexClass,
   floatingDockFabButtonClass,
   floatingDockFabIconClass,
   floatingDockVerticalInsetClass,
@@ -407,7 +408,8 @@ export function ChatDock() {
   return (
     <div
       className={cn(
-        "pointer-events-none fixed z-[240] flex min-h-0 flex-col",
+        "pointer-events-none fixed flex min-h-0 flex-col",
+        floatingDockChatZIndexClass,
         floatingDockVerticalInsetClass,
         floatingDockChatInsetEndClass,
       )}

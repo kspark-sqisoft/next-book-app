@@ -1,7 +1,7 @@
 import { Minus, Plus, Redo2, Undo2 } from "lucide-react";
 
+import { BookNumericIntField } from "@/components/books/BookNumericIntField";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 const CENTER_GUIDE_THRESHOLD_MIN = 1;
@@ -97,23 +97,18 @@ export function BookCanvasToolbar({
               <span className="shrink-0 text-xs text-muted-foreground">
                 중앙선
               </span>
-              <Input
-                type="number"
-                inputMode="numeric"
+              <BookNumericIntField
+                fieldKey="toolbar-center-guide-px"
+                htmlId="toolbar-center-guide-px"
+                hideLabel
+                showSpinners={false}
+                value={centerGuideThresholdPx}
                 min={CENTER_GUIDE_THRESHOLD_MIN}
                 max={CENTER_GUIDE_THRESHOLD_MAX}
-                step={1}
-                value={centerGuideThresholdPx}
-                onChange={(e) => {
-                  const n = Number(e.target.value);
-                  if (!Number.isFinite(n)) return;
-                  const clamped = Math.min(
-                    CENTER_GUIDE_THRESHOLD_MAX,
-                    Math.max(CENTER_GUIDE_THRESHOLD_MIN, Math.round(n)),
-                  );
-                  onCenterGuideThresholdPxChange(clamped);
-                }}
-                className="h-7 w-11 min-w-0 px-1 py-0 text-center text-xs leading-none tabular-nums md:text-xs"
+                maxDigits={3}
+                className="space-y-0"
+                inputClassName="h-7 w-11 min-w-0 px-1 py-0 text-center text-xs leading-none tabular-nums md:text-xs"
+                onCommit={onCenterGuideThresholdPxChange!}
                 aria-label="가운데 기준선이 나타나는 거리(논리 픽셀)"
                 title="드래그할 때, 위젯 가운데가 슬라이드 가운데에서 이 거리 안이면 분홍 기준선이 보입니다"
               />
@@ -127,23 +122,18 @@ export function BookCanvasToolbar({
               <span className="shrink-0 text-xs text-muted-foreground">
                 그리드
               </span>
-              <Input
-                type="number"
-                inputMode="numeric"
+              <BookNumericIntField
+                fieldKey="toolbar-drag-grid-px"
+                htmlId="toolbar-drag-grid-px"
+                hideLabel
+                showSpinners={false}
+                value={dragGridPx}
                 min={DRAG_GRID_PX_MIN}
                 max={DRAG_GRID_PX_MAX}
-                step={1}
-                value={dragGridPx}
-                onChange={(e) => {
-                  const n = Number(e.target.value);
-                  if (!Number.isFinite(n)) return;
-                  const clamped = Math.min(
-                    DRAG_GRID_PX_MAX,
-                    Math.max(DRAG_GRID_PX_MIN, Math.round(n)),
-                  );
-                  onDragGridPxChange(clamped);
-                }}
-                className="h-7 w-11 min-w-0 px-1 py-0 text-center text-xs leading-none tabular-nums md:text-xs"
+                maxDigits={3}
+                className="space-y-0"
+                inputClassName="h-7 w-11 min-w-0 px-1 py-0 text-center text-xs leading-none tabular-nums md:text-xs"
+                onCommit={onDragGridPxChange!}
                 aria-label="드래그 스냅 그리드 간격(논리 픽셀)"
                 title="드래그할 때 위치가 이 간격(논리 px)의 배수로 맞춰집니다"
               />

@@ -1,6 +1,7 @@
 import { LayoutTemplate } from "lucide-react";
 import { useMemo } from "react";
 
+import { BookNumericIntField } from "@/components/books/BookNumericIntField";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -223,25 +224,23 @@ export function BookPagePropertiesPanel({
                   ))}
                 </SelectContent>
               </Select>
-              <div className="flex flex-wrap items-center gap-2">
-                <Label htmlFor="pres-trans-ms" className="shrink-0 text-[11px]">
-                  전환 시간(ms)
-                </Label>
-                <Input
-                  id="pres-trans-ms"
-                  type="number"
+              <div className="flex flex-wrap items-end gap-2">
+                <BookNumericIntField
+                  fieldKey={`page-${pageIndex}-pres-trans-ms`}
+                  htmlId="pres-trans-ms"
+                  label={
+                    <span className="text-[11px]">전환 시간(ms)</span>
+                  }
+                  value={presentationTransitionMs}
                   min={80}
                   max={2500}
                   step={10}
-                  className="h-8 w-[5.5rem] font-mono text-xs"
-                  value={presentationTransitionMs}
-                  onChange={(e) => {
-                    const n = Number(e.target.value);
-                    if (!Number.isFinite(n)) return;
-                    onChangePresentationTransitionMs(n);
-                  }}
+                  maxDigits={4}
+                  className="space-y-1"
+                  inputClassName="h-8 w-[5.5rem] font-mono text-xs"
+                  onCommit={onChangePresentationTransitionMs}
                 />
-                <span className="text-[10px] text-muted-foreground">
+                <span className="pb-2 text-[10px] text-muted-foreground">
                   80–2500
                 </span>
               </div>
