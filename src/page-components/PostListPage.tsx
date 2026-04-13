@@ -74,6 +74,7 @@ export function PostListPage() {
   const categoryFilterParam = isPostCategoryId(urlCategoryRaw)
     ? urlCategoryRaw
     : "";
+  const searchParamsSnapshot = searchParams.toString();
 
   const [loadMoreScheduled, setLoadMoreScheduled] = useState(false);
   const [likeActionError, setLikeActionError] = useState<string | null>(null);
@@ -159,16 +160,22 @@ export function PostListPage() {
 
   useEffect(() => {
     const id = window.setTimeout(() => {
-      const trimmed = searchInput.trim();
-      setSearchQuery(trimmed);
-      skipUrlToStateSyncRef.current = true;
-      commitSearchParams((p) => {
-        if (trimmed) p.set("search", trimmed);
-        else p.delete("search");
-      });
+      setSearchQuery(searchInput.trim());
     }, SEARCH_DEBOUNCE_MS);
     return () => window.clearTimeout(id);
-  }, [searchInput, commitSearchParams]);
+  }, [searchInput]);
+
+  useEffect(() => {
+    const sp = new URLSearchParams(searchParamsSnapshot);
+    const current = (sp.get("search") ?? "").trim();
+    if (searchQuery === current) return;
+    skipUrlToStateSyncRef.current = true;
+    const p = new URLSearchParams(searchParamsSnapshot);
+    if (searchQuery) p.set("search", searchQuery);
+    else p.delete("search");
+    const q = p.toString();
+    router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
+  }, [searchQuery, pathname, router, searchParamsSnapshot]);
 
   /** 브라우저 뒤로가기 등으로 URL만 바뀐 때 입력·쿼리 복원 */
   useEffect(() => {
@@ -241,10 +248,10 @@ export function PostListPage() {
               items: page.items.map((p) =>
                 p.id === postId
                   ? {
-                      ...p,
-                      likeCount: state.likeCount,
-                      likedByMe: state.likedByMe,
-                    }
+                    ...p,
+                    likeCount: state.likeCount,
+                    likedByMe: state.likedByMe,
+                  }
                   : p,
               ),
             })),

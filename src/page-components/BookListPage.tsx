@@ -63,6 +63,8 @@ export function BookListPage() {
     [searchParams, router, pathname],
   );
   const urlSearchRaw = searchParams.get("search") ?? "";
+  /** `useSearchParams()` 참조는 자주 바뀔 수 있어, 의존성은 직렬화 문자열만 씀 */
+  const searchParamsSnapshot = searchParams.toString();
 
   const [loadMoreScheduled, setLoadMoreScheduled] = useState(false);
   const [searchInput, setSearchInput] = useState(urlSearchRaw);
@@ -140,18 +142,25 @@ export function BookListPage() {
     setLoadMoreScheduled(false);
   }, []);
 
+  // 입력만 디바운스 — URL 동기화는 아래 effect에서 “실제로 달라질 때만” replace (불필요한 GET /books 방지)
   useEffect(() => {
     const id = window.setTimeout(() => {
-      const trimmed = searchInput.trim();
-      setSearchQuery(trimmed);
-      skipUrlToStateSyncRef.current = true;
-      commitSearchParams((p) => {
-        if (trimmed) p.set("search", trimmed);
-        else p.delete("search");
-      });
+      setSearchQuery(searchInput.trim());
     }, SEARCH_DEBOUNCE_MS);
     return () => window.clearTimeout(id);
-  }, [searchInput, commitSearchParams]);
+  }, [searchInput]);
+
+  useEffect(() => {
+    const sp = new URLSearchParams(searchParamsSnapshot);
+    const current = (sp.get("search") ?? "").trim();
+    if (searchQuery === current) return;
+    skipUrlToStateSyncRef.current = true;
+    const p = new URLSearchParams(searchParamsSnapshot);
+    if (searchQuery) p.set("search", searchQuery);
+    else p.delete("search");
+    const q = p.toString();
+    router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
+  }, [searchQuery, pathname, router, searchParamsSnapshot]);
 
   useEffect(() => {
     if (skipUrlToStateSyncRef.current) {
