@@ -70,6 +70,10 @@ export function CatsPage() {
   const imageInputRef = useRef<HTMLInputElement>(null); // 파일 input 직접 비우기
 
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null); // 확인 대화상자 대상 id
+  const [createImagePreviewUrl, setCreateImagePreviewUrl] = useState<
+    string | null
+  >(null); // 파일 선택 직후 미리보기(blob URL)
+  const createImagePreviewRef = useRef<string | null>(null);
   const [createFieldErrors, setCreateFieldErrors] = useState<
     Partial<Record<keyof CatCreateFormValues, string>>
   >({}); // Zod 필드 에러
@@ -90,6 +94,22 @@ export function CatsPage() {
       return items;
     },
   });
+
+  function replaceCreateImagePreview(next: string | null) {
+    if (createImagePreviewRef.current) {
+      URL.revokeObjectURL(createImagePreviewRef.current);
+    }
+    createImagePreviewRef.current = next;
+    setCreateImagePreviewUrl(next);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (createImagePreviewRef.current) {
+        URL.revokeObjectURL(createImagePreviewRef.current);
+      }
+    };
+  }, []);
 
   // 목록 로드 후 상세 RSC 세그먼트 백그라운드 prefetch
   useEffect(() => {
@@ -145,6 +165,7 @@ export function CatsPage() {
       toast.success("고양이를 등록했습니다.");
       setCreateFieldErrors({});
       setCreateServerError(null);
+      replaceCreateImagePreview(null);
       formRef.current?.reset();
       if (imageInputRef.current) imageInputRef.current.value = ""; // 같은 파일 재선택 허용
       void queryClient.invalidateQueries({ queryKey: catKeys.all });
@@ -261,8 +282,36 @@ export function CatsPage() {
                   name="image"
                   type="file"
                   accept="image/jpeg,image/png,image/gif,image/webp"
-                  className="cursor-pointer text-sm file:me-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-xs file:font-medium mb-4"
+                  className="mb-4 cursor-pointer text-sm file:me-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-xs file:font-medium"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (!f || f.size === 0) {
+                      replaceCreateImagePreview(null);
+                      return;
+                    }
+                    // 일부 OS/브라우저는 이미지인데도 File.type 이 비어 있음 → 미리보기만 막히던 문제
+                    const mimeOk = f.type.startsWith("image/");
+                    const extOk = /\.(jpe?g|png|gif|webp)$/i.test(f.name);
+                    if (!mimeOk && f.type.trim() !== "" && !extOk) {
+                      replaceCreateImagePreview(null);
+                      return;
+                    }
+                    replaceCreateImagePreview(URL.createObjectURL(f));
+                  }}
                 />
+                {createImagePreviewUrl ? (
+                  <div className="overflow-hidden rounded-lg border border-border bg-muted/40 p-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- 로컬 blob 미리보기 */}
+                    <img
+                      src={createImagePreviewUrl}
+                      alt="선택한 사진 미리보기"
+                      className="mx-auto max-h-48 w-auto max-w-full object-contain"
+                    />
+                    <p className="mt-2 text-center text-xs text-muted-foreground">
+                      등록 버튼을 누르면 서버에 올라갑니다.
+                    </p>
+                  </div>
+                ) : null}
               </div>
             </CardContent>
             <CardFooter>
@@ -371,7 +420,7 @@ export function CatsPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       {user &&
-                      canEditCatAsOwnerOrAdmin(user, c.ownerId ?? null) ? (
+                        canEditCatAsOwnerOrAdmin(user, c.ownerId ?? null) ? (
                         <Button
                           type="button"
                           variant="ghost"

@@ -19,13 +19,26 @@ services:
   next:
     image: node:22-bookworm-slim
     working_dir: /app
-    command: >
-      sh -c "npm ci && npx drizzle-kit push --config drizzle.config.mjs && npm run dev"
+    # npm ci only when lock changed or first run (stamp in node_modules volume). Saves minutes on repeat `up`.
+    command:
+      - sh
+      - -c
+      - |
+          set -e
+          STAMP="/app/node_modules/.docker-dev-install-stamp"
+          if [ ! -f "$$STAMP" ] || [ "/app/package-lock.json" -nt "$$STAMP" ]; then
+            npm ci
+            touch "$$STAMP"
+          fi
+          npx drizzle-kit push --config drizzle.config.mjs
+          npm run dev
     ports:
       - "3000:3000"
     volumes:
       - .:/app
       - next_node_modules:/app/node_modules
+      # .next on bind mounts (esp. Windows) often breaks Turbopack chunk delivery → ChunkLoadError
+      - next_dot_next:/app/.next
       - uploads_dev:/app/uploads
     environment:
       HOSTNAME: 0.0.0.0
@@ -37,6 +50,8 @@ services:
       DB_NAME: reactauth
       UPLOAD_ROOT: /app/uploads
       WATCHPACK_POLLING: "true"
+      # webpack HMR이 chokidar 경로를 탈 때(일부 환경) 보조
+      CHOKIDAR_USEPOLLING: "true"
     depends_on:
       db:
         condition: service_healthy
@@ -44,4 +59,5 @@ services:
 volumes:
   pgdata_dev: {}
   next_node_modules: {}
+  next_dot_next: {}
   uploads_dev: {}

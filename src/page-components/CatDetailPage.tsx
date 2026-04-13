@@ -48,7 +48,16 @@ import { fieldErrorsFromZodIssues } from "@/lib/zod-form";
 import { useAuth } from "@/stores/auth-store";
 
 // cat·updatedAt이 바뀔 때마다 리마운트되어 로컬 state가 서버 값과 동기화됨
-function CatDetailEditor({ cat, id }: { cat: Cat; id: number }) {
+function CatDetailEditor({
+  cat,
+  id,
+  onLocalPreviewChange,
+}: {
+  cat: Cat;
+  id: number;
+  /** 파일 선택 시 큰 사진 영역에 blob 미리보기 표시; null이면 해제(메모리 revoke는 부모에서) */
+  onLocalPreviewChange: (objectUrl: string | null) => void;
+}) {
   const queryClient = useQueryClient();
   const imageInputRef = useRef<HTMLInputElement>(null); // 숨김 file input 트리거
   const [editName, setEditName] = useState(cat.name);
@@ -87,6 +96,7 @@ function CatDetailEditor({ cat, id }: { cat: Cat; id: number }) {
     },
     onSuccess: () => {
       toast.success("사진을 올렸습니다.");
+      onLocalPreviewChange(null);
       void queryClient.invalidateQueries({ queryKey: catKeys.all });
     },
     onError: (e) => {
@@ -182,7 +192,18 @@ function CatDetailEditor({ cat, id }: { cat: Cat; id: number }) {
           onChange={(e) => {
             const f = e.target.files?.[0];
             e.target.value = ""; // 같은 파일 연속 선택 가능하게
-            if (f && f.size > 0) uploadImageMutation.mutate(f);
+            if (!f || f.size === 0) {
+              onLocalPreviewChange(null);
+              return;
+            }
+            const mimeOk = f.type.startsWith("image/");
+            const extOk = /\.(jpe?g|png|gif|webp)$/i.test(f.name);
+            if (!mimeOk && f.type.trim() !== "" && !extOk) {
+              onLocalPreviewChange(null);
+              return;
+            }
+            onLocalPreviewChange(URL.createObjectURL(f));
+            uploadImageMutation.mutate(f);
           }}
         />
         <Button
@@ -219,6 +240,26 @@ export function CatDetailPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [deleteOpen, setDeleteOpen] = useState(false); // 삭제 확인창
+  const [localImagePreview, setLocalImagePreviewState] = useState<
+    string | null
+  >(null);
+  const localImagePreviewRef = useRef<string | null>(null);
+
+  function setLocalImagePreview(next: string | null) {
+    if (localImagePreviewRef.current) {
+      URL.revokeObjectURL(localImagePreviewRef.current);
+    }
+    localImagePreviewRef.current = next;
+    setLocalImagePreviewState(next);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (localImagePreviewRef.current) {
+        URL.revokeObjectURL(localImagePreviewRef.current);
+      }
+    };
+  }, []);
 
   const {
     data: cat,
@@ -327,7 +368,15 @@ export function CatDetailPage() {
 
       <Card className="overflow-hidden">
         <div className="relative flex min-h-[min(78vh,40rem)] w-full items-center justify-center bg-muted p-4 sm:min-h-[min(82vh,44rem)] sm:p-8">
-          {cat.imageUrl ? (
+          {localImagePreview ? (
+            // blob URL은 next/image보다 native img가 단순함
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={localImagePreview}
+              alt={`${cat.name} 사진 미리보기`}
+              className="max-h-[min(76vh,42rem)] w-full object-contain"
+            />
+          ) : cat.imageUrl ? (
             <SafeImage
               src={cat.imageUrl}
               alt={`${cat.name} 사진`}
@@ -346,6 +395,7 @@ export function CatDetailPage() {
             key={`${cat.id}-${cat.updatedAt}`} // 서버 갱신 시 폼 리셋
             cat={cat}
             id={id}
+            onLocalPreviewChange={setLocalImagePreview}
           />
         ) : (
           <CardHeader>
