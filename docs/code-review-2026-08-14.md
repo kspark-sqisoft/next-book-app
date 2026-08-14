@@ -136,6 +136,33 @@
 
 ---
 
+## 적용 현황 (2026-08-14 반영)
+
+**완료** (커밋 `7b6de19`~`90c2a0f`):
+
+- P0: 북·글 저장 트랜잭션+검증 선행, drizzle 마이그레이션 전환(push 제거), 업로드 크기 선검사+bodySizeLimit 200MB,
+  서버 생명주기(SIGTERM·unhandledRejection·prepare catch), runner 패치 적용+`--error-on-fail`, compose restart+healthcheck
+- CI 부활: `.cursor` 린트/포맷 제외(264→0), 프리티어 일괄 적용, CI Node 22+빌드 단계, engines/.nvmrc, lint-staged pre-commit
+- 보안: 가입 서버 검증+이메일 소문자, 로그인 타이밍 방어, 레이트 리밋(인증·뉴스·날씨), 외부 API 타임아웃 8곳,
+  NewsAPI 키 헤더+오류 마스킹, 관리자 목록 해시 제외, 강등 TOCTOU 차단, richHtml 서버 살균, 웹뷰 샌드박스 축소,
+  업로드 nosniff, 전역 보안 헤더(XFO/nosniff/Referrer/Permissions), 오픈 리다이렉트, JWT alg 고정, 글 수정 인가 선행
+- 백엔드: 북 삭제 미디어 정리, LIKE 이스케이프, 댓글 재귀 CTE, 채팅 프로필 캐시+방목록 디바운스, MIME 분기 데드코드,
+  NaN 가드, AI 히스토리 최근 200건, selection 주입 차단, 포스터 실패 롤백, 부트스트랩 경합
+- DB: FK 11개+캐스케이드, 인덱스 12개, 이메일 lower 유니크 (0001 마이그레이션)
+- 프론트: 분기 버그 3건 동기화, undo 배치(그룹 드래그·nudge), 유령 undo 제거, 에러 바운더리 3종, 미저장 경고,
+  Ctrl+S 재등록 수정, 키보드 가드 공용화, 썸네일 의존성, 미디어 라이브러리 완화 3종, 데드코드 578줄 제거+저장 경로 exhaustive
+- 의존성: next 16.3.1, axios/ws/sanitize-html/socket.io 계열 취약점 해소, 미사용 deps 제거. e2e 실사용 흐름 추가(13개 전부 통과)
+
+**보류/미착수** (사유):
+
+- P0 #1 JWT 시크릿 — **사용자 지시로 제외(테스트 학습 중)**. 운영 전환 시 반드시 처리
+- 서버 액션 에러 status 보존 — 액션 반환 계약 전면 변경 필요
+- 위젯 레지스트리 전면 도입·BookWorkspace 통합(-1,400줄)·memo/스토어 리팩터링 — 데모 직전 대규모 구조 변경 위험, 이후 착수 권장
+- CSP 헤더 — 캔버스 blob·외부 미디어·유튜브 임베드 소스 정리 후 도입
+- 미디어 라이브러리 서버 이관, 낙관적 동시성 토큰, 리프레시 재사용 감지, 소켓 토큰 재검증, 검색 pg_trgm,
+  Docker 이미지 다이어트(standalone/서버 컴파일), compose DB 비밀번호·5432 노출·백업, digest 고정, 고아 파일 sweeper,
+  접근성(캔버스 키보드), 감사 로깅 — 후순위 백로그
+
 ## 로드맵
 
 | 기간  | 항목                                                                                                                                                                      |
