@@ -4,6 +4,8 @@ import {
   ChevronUp,
   Clock,
   CloudSun,
+  FileText,
+  Globe,
   GripVertical,
   ImagePlus,
   ListVideo,
@@ -46,6 +48,7 @@ const ITEMS: { kind: BookDropWidgetKind; label: string; icon: LucideIcon }[] = [
   { kind: "news", label: "뉴스", icon: Newspaper },
   { kind: "mediaPlaylist", label: "미디어", icon: ListVideo },
   { kind: "digitalClock", label: "디지털 시계", icon: Clock },
+  { kind: "webview", label: "웹뷰", icon: Globe },
 ];
 
 const STORAGE_KEY = "book-widget-palette";
@@ -106,13 +109,82 @@ function setWidgetDragData(e: DragEvent, kind: BookDropWidgetKind) {
   e.dataTransfer.effectAllowed = "copy";
 }
 
+/** 팔레트의 "PDF" 항목 — 다른 위젯과 같은 모양: 끌어 넣기 또는 더블 클릭(파일 선택) */
+function PdfImportItem({
+  layout,
+  disabled,
+  onOpenPicker,
+}: {
+  layout: "row" | "column";
+  disabled?: boolean;
+  onOpenPicker: () => void;
+}) {
+  const label = disabled ? "변환 중…" : "PDF";
+  const common = {
+    draggable: !disabled,
+    onDragStart: (e: DragEvent) => {
+      if (disabled) {
+        e.preventDefault();
+        return;
+      }
+      setWidgetDragData(e, "pdfImport");
+    },
+    onDoubleClick: () => {
+      if (!disabled) onOpenPicker();
+    },
+    title: "슬라이드로 끌어다 놓거나 더블 클릭해 PDF를 가져옵니다",
+  };
+  if (layout === "row") {
+    return (
+      <div
+        {...common}
+        className={cn(
+          "flex cursor-grab select-none items-center gap-3 rounded-lg border border-border/80 bg-background/90 px-3 py-2.5 transition-colors active:cursor-grabbing hover:border-primary/35 hover:bg-muted/40",
+          disabled && "cursor-wait opacity-60",
+        )}
+      >
+        <GripVertical
+          className="size-3.5 shrink-0 text-muted-foreground"
+          aria-hidden
+        />
+        <FileText className="size-5 shrink-0 text-foreground" aria-hidden />
+        <span className="min-w-0 flex-1 text-sm font-medium text-foreground">
+          {label}
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div
+      {...common}
+      onPointerDown={(e) => e.stopPropagation()}
+      className={cn(
+        "flex min-w-0 flex-1 cursor-grab select-none flex-col items-center gap-1 rounded-lg border border-border/80 bg-background/90 px-2 py-2 transition-colors active:cursor-grabbing hover:border-primary/35 hover:bg-muted/40 sm:px-3",
+        disabled && "cursor-wait opacity-60",
+      )}
+    >
+      <GripVertical className="size-3 text-muted-foreground" aria-hidden />
+      <FileText className="size-5 text-foreground" aria-hidden />
+      <span className="text-center text-[10px] font-medium text-muted-foreground">
+        {label}
+      </span>
+    </div>
+  );
+}
+
 /** 왼쪽 열 도킹 — `BookPagePropertiesPanel`과 같은 헤더·스크롤 구조 */
 function BookWidgetPaletteDocked({
   className,
   onRequestFloat,
+  onRequestImportPdf,
+  pdfImportBusy,
+  onQuickAdd,
 }: {
   className?: string;
   onRequestFloat?: () => void;
+  onRequestImportPdf?: () => void;
+  pdfImportBusy?: boolean;
+  onQuickAdd?: (kind: BookDropWidgetKind) => void;
 }) {
   return (
     <div
@@ -147,6 +219,8 @@ function BookWidgetPaletteDocked({
               key={kind}
               draggable
               onDragStart={(e) => setWidgetDragData(e, kind)}
+              onDoubleClick={onQuickAdd ? () => onQuickAdd(kind) : undefined}
+              title="슬라이드로 끌어다 놓거나 더블 클릭하면 가운데에 추가됩니다"
               className="flex cursor-grab select-none items-center gap-3 rounded-lg border border-border/80 bg-background/90 px-3 py-2.5 transition-colors active:cursor-grabbing hover:border-primary/35 hover:bg-muted/40"
             >
               <GripVertical
@@ -159,6 +233,13 @@ function BookWidgetPaletteDocked({
               </span>
             </div>
           ))}
+          {onRequestImportPdf ? (
+            <PdfImportItem
+              layout="row"
+              disabled={pdfImportBusy}
+              onOpenPicker={onRequestImportPdf}
+            />
+          ) : null}
         </div>
       </div>
     </div>
@@ -171,6 +252,9 @@ function BookWidgetPaletteFloating({
   onClose,
   stackZIndex,
   onRaiseStack,
+  onRequestImportPdf,
+  pdfImportBusy,
+  onQuickAdd,
 }: {
   className?: string;
   onCollapsedChange?: (collapsed: boolean) => void;
@@ -179,6 +263,9 @@ function BookWidgetPaletteFloating({
   stackZIndex?: number;
   /** 포인터 다운(캡처) 시 맨 앞으로 — 미디어 창 등과 겹침 처리 */
   onRaiseStack?: () => void;
+  onRequestImportPdf?: () => void;
+  pdfImportBusy?: boolean;
+  onQuickAdd?: (kind: BookDropWidgetKind) => void;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
@@ -401,6 +488,8 @@ function BookWidgetPaletteFloating({
               draggable
               onDragStart={(e) => setWidgetDragData(e, kind)}
               onPointerDown={(e) => e.stopPropagation()}
+              onDoubleClick={onQuickAdd ? () => onQuickAdd(kind) : undefined}
+              title="슬라이드로 끌어다 놓거나 더블 클릭하면 가운데에 추가됩니다"
               className="flex min-w-0 flex-1 cursor-grab select-none flex-col items-center gap-1 rounded-lg border border-border/80 bg-background/90 px-2 py-2 transition-colors active:cursor-grabbing hover:border-primary/35 hover:bg-muted/40 sm:px-3"
             >
               <GripVertical
@@ -413,6 +502,13 @@ function BookWidgetPaletteFloating({
               </span>
             </div>
           ))}
+          {onRequestImportPdf ? (
+            <PdfImportItem
+              layout="column"
+              disabled={pdfImportBusy}
+              onOpenPicker={onRequestImportPdf}
+            />
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -432,6 +528,9 @@ export function BookWidgetPalette({
   onRequestFloat,
   floatingStackZIndex,
   onRaiseFloatingStack,
+  onRequestImportPdf,
+  pdfImportBusy,
+  onQuickAdd,
 }: {
   variant?: "floating" | "docked";
   className?: string;
@@ -443,12 +542,21 @@ export function BookWidgetPalette({
   /** floating: 다른 떠 있는 패널과 겹칠 때 쌓임 순서(부모 state) */
   floatingStackZIndex?: number;
   onRaiseFloatingStack?: () => void;
+  /** 있으면 "PDF" 항목 표시 — 끌어 넣기·더블 클릭 시 파일 선택(업로드 가능한 화면에서만 전달) */
+  onRequestImportPdf?: () => void;
+  /** PDF 변환·업로드 중 표시(항목 비활성) */
+  pdfImportBusy?: boolean;
+  /** 항목 더블 클릭 → 슬라이드 가운데에 바로 추가 */
+  onQuickAdd?: (kind: BookDropWidgetKind) => void;
 }) {
   if (variant === "docked") {
     return (
       <BookWidgetPaletteDocked
         className={className}
         onRequestFloat={onRequestFloat}
+        onRequestImportPdf={onRequestImportPdf}
+        pdfImportBusy={pdfImportBusy}
+        onQuickAdd={onQuickAdd}
       />
     );
   }
@@ -459,6 +567,9 @@ export function BookWidgetPalette({
       onClose={onClose}
       stackZIndex={floatingStackZIndex}
       onRaiseStack={onRaiseFloatingStack}
+      onRequestImportPdf={onRequestImportPdf}
+      pdfImportBusy={pdfImportBusy}
+      onQuickAdd={onQuickAdd}
     />
   );
 }

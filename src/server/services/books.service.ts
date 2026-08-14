@@ -161,6 +161,23 @@ export type BookCanvasElementPublic =
     }
   | {
       id: string;
+      type: "webview";
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      /** 임베드할 페이지 주소(http/https) */
+      webviewUrl?: string;
+      opacity?: number;
+      rotation?: number;
+      borderRadius?: number;
+      outlineWidth?: number;
+      outlineColor?: string;
+      visible?: boolean;
+      locked?: boolean;
+    }
+  | {
+      id: string;
       type: "news";
       x: number;
       y: number;
@@ -505,6 +522,7 @@ export class BooksService {
         o.type !== "video" &&
         o.type !== "weather" &&
         o.type !== "digitalClock" &&
+        o.type !== "webview" &&
         o.type !== "news" &&
         o.type !== "mediaPlaylist" &&
         o.type !== "drawing" &&
@@ -732,6 +750,34 @@ export class BooksService {
             throw new HttpError(
               400,
               "디지털 시계 글자색에 허용되지 않는 문자가 있습니다.",
+            );
+          }
+        }
+      } else if (o.type === "webview") {
+        const w = o.width;
+        const h = o.height;
+        if (
+          typeof w !== "number" ||
+          typeof h !== "number" ||
+          w < 24 ||
+          h < 24 ||
+          w > 4000 ||
+          h > 4000
+        ) {
+          throw new HttpError(400, "웹뷰 위젯 크기가 올바르지 않습니다.");
+        }
+        if (o.webviewUrl != null) {
+          if (
+            typeof o.webviewUrl !== "string" ||
+            o.webviewUrl.length > 2048
+          ) {
+            throw new HttpError(400, "웹뷰 URL이 올바르지 않습니다.");
+          }
+          const u = o.webviewUrl.trim();
+          if (u && !/^https?:\/\//i.test(u)) {
+            throw new HttpError(
+              400,
+              "웹뷰 URL은 http:// 또는 https:// 로 시작해야 합니다.",
             );
           }
         }

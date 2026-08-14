@@ -1,6 +1,15 @@
 // Konva 기반 슬라이드: 요소 렌더·히트·위젯별 오버레이; 드래그/스냅 상수·타입도 이 파일에서 re-export
 import type Konva from "konva";
-import { FolderOpen, Library, Pause, Play, Square } from "lucide-react";
+import {
+  ClipboardPaste,
+  Copy,
+  FolderOpen,
+  Library,
+  Pause,
+  Play,
+  Scissors,
+  Square,
+} from "lucide-react";
 import {
   type CSSProperties,
   type DragEvent,
@@ -43,6 +52,7 @@ import {
   BookTextWidgetOverlay,
 } from "@/components/books/BookTextWidgetOverlay";
 import { BookWeatherWidgetOverlay } from "@/components/books/BookWeatherWidgetOverlay";
+import { BookWebviewWidgetOverlay } from "@/components/books/BookWebviewWidgetOverlay";
 import {
   ContextMenuFloatingItem,
   ContextMenuFloatingPanel,
@@ -202,8 +212,11 @@ export type BookDropWidgetKind =
   | "video"
   | "weather"
   | "digitalClock"
+  | "webview"
   | "news"
-  | "mediaPlaylist";
+  | "mediaPlaylist"
+  /** 요소 타입이 아니라 "PDF 가져오기" 동작 — 드롭 지점에서 파일 선택을 연다 */
+  | "pdfImport";
 
 /** `id: null` = 선택 해제. `shiftKey` = 기존 선택에 토글 추가 */
 export type BookCanvasSelectDetail = { id: string | null; shiftKey?: boolean };
@@ -275,6 +288,14 @@ type BookSlideCanvasProps = {
   onMediaPlaylistRemoteCommandConsumed?: () => void;
   /** 동영상 위젯 메타데이터 로드 후 재생 길이(초) — 속성 패널 표시용 */
   onVideoDurationKnown?: (elementId: string, durationSec: number) => void;
+  /** 우클릭 메뉴 복사 — 클릭한 위젯(선택에 포함돼 있으면 선택 전체) */
+  onCopyElement?: (elementId: string) => void;
+  /** 우클릭 메뉴 잘라내기 — 확인 없이 즉시 제거(undo 가능) */
+  onCutElement?: (elementId: string) => void;
+  /** 우클릭 메뉴 붙여넣기 — 페이지 규칙(같은 페이지 오프셋·다른 페이지 같은 좌표)은 페이지가 처리 */
+  onPasteFromClipboard?: () => void;
+  /** 붙여넣기 메뉴 활성화 여부(내부 클립보드에 내용 있음) */
+  widgetClipboardHasContent?: boolean;
   /**
    * 보기 모드 전용: `true`이면 비디오·미디어 플레이리스트 하단 컨트롤 바를 표시하지 않음
    * (예: 전체 화면에서 커서 유휴 시 오버레이와 같이 숨김).
@@ -860,6 +881,10 @@ export function BookSlideCanvas({
   onMediaPlaylistRemoteCommandConsumed,
   onVideoDurationKnown,
   viewModeHideMediaChrome = false,
+  onCopyElement,
+  onCutElement,
+  onPasteFromClipboard,
+  widgetClipboardHasContent = false,
 }: BookSlideCanvasProps) {
   const trRef = useRef<Konva.Transformer>(null);
   const konvaNodeByIdRef = useRef<Map<string, Konva.Node>>(new Map());
@@ -1393,8 +1418,10 @@ export function BookSlideCanvas({
       raw === "video" ||
       raw === "weather" ||
       raw === "digitalClock" ||
+      raw === "webview" ||
       raw === "news" ||
-      raw === "mediaPlaylist"
+      raw === "mediaPlaylist" ||
+      raw === "pdfImport"
     )
       return raw;
     return null;
@@ -1608,7 +1635,7 @@ export function BookSlideCanvas({
                   />
                 );
               }
-              if (el.type === "digitalClock") {
+              if (el.type === "digitalClock" || el.type === "webview") {
                 return (
                   <BookDigitalClockHitShape
                     key={el.id}
@@ -1760,6 +1787,7 @@ export function BookSlideCanvas({
                   | "text"
                   | "weather"
                   | "digitalClock"
+                  | "webview"
                   | "news"
                   | "mediaPlaylist";
               }
@@ -1767,6 +1795,7 @@ export function BookSlideCanvas({
               e.type === "text" ||
               e.type === "weather" ||
               e.type === "digitalClock" ||
+              e.type === "webview" ||
               e.type === "news" ||
               e.type === "mediaPlaylist",
           )
@@ -1874,6 +1903,18 @@ export function BookSlideCanvas({
                   onPlaylistRemoteCommandConsumed={
                     onMediaPlaylistRemoteCommandConsumed
                   }
+                />
+              );
+            }
+            if (el.type === "webview") {
+              return (
+                <BookWebviewWidgetOverlay
+                  key={el.id}
+                  el={el}
+                  scale={scale}
+                  mode={mode}
+                  isSelected={selectedIdSet.has(el.id)}
+                  liveFrame={frameLive}
                 />
               );
             }
@@ -2069,6 +2110,55 @@ export function BookSlideCanvas({
                   </>
                 );
               })()}
+              {onCopyElement || onCutElement || onPasteFromClipboard ? (
+                <>
+                  <div
+                    className="-mx-1 my-0.5 h-px shrink-0 bg-border"
+                    role="separator"
+                    aria-hidden="true"
+                  />
+                  <div
+                    className="flex flex-col gap-0.5"
+                    role="group"
+                    aria-label="편집"
+                  >
+                    {onCopyElement ? (
+                      <ContextMenuFloatingItem
+                        onClick={() => {
+                          onCopyElement(zMenu.elementId);
+                          setZMenu(null);
+                        }}
+                      >
+                        <Copy className="opacity-70" aria-hidden />
+                        복사
+                      </ContextMenuFloatingItem>
+                    ) : null}
+                    {onCutElement ? (
+                      <ContextMenuFloatingItem
+                        onClick={() => {
+                          onCutElement(zMenu.elementId);
+                          setZMenu(null);
+                        }}
+                      >
+                        <Scissors className="opacity-70" aria-hidden />
+                        잘라내기
+                      </ContextMenuFloatingItem>
+                    ) : null}
+                    {onPasteFromClipboard ? (
+                      <ContextMenuFloatingItem
+                        disabled={!widgetClipboardHasContent}
+                        onClick={() => {
+                          onPasteFromClipboard();
+                          setZMenu(null);
+                        }}
+                      >
+                        <ClipboardPaste className="opacity-70" aria-hidden />
+                        붙여넣기
+                      </ContextMenuFloatingItem>
+                    ) : null}
+                  </div>
+                </>
+              ) : null}
               {onReorderZ || onDeleteElement ? (
                 <div
                   className="-mx-1 my-0.5 h-px shrink-0 bg-border"
@@ -2880,7 +2970,8 @@ function BookDigitalClockHitShape({
   zMenuEnabled,
   onZMenu,
 }: {
-  el: Extract<BookCanvasElement, { type: "digitalClock" }>;
+  /* 웹뷰도 같은 히트/변형 동작 — 프레임만 필요해 시계 히트 셰이프를 공유 */
+  el: Extract<BookCanvasElement, { type: "digitalClock" | "webview" }>;
   locked: boolean;
   liveSync: BookShapeLiveSync;
   registerKonvaNode: (elementId: string, node: Konva.Node | null) => void;

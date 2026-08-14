@@ -57,6 +57,8 @@ import {
   DEFAULT_BOOK_NEWS_WIDGET_WIDTH,
   DEFAULT_BOOK_WEATHER_WIDGET_HEIGHT,
   DEFAULT_BOOK_WEATHER_WIDGET_WIDTH,
+  DEFAULT_BOOK_WEBVIEW_HEIGHT,
+  DEFAULT_BOOK_WEBVIEW_WIDTH,
   DEFAULT_PAGE_BACKGROUND,
   DEFAULT_SLIDE_HEIGHT,
   DEFAULT_SLIDE_WIDTH,
@@ -77,6 +79,7 @@ import {
   writeFloatingWidgetPaletteVisible,
 } from "@/lib/book-floating-ui-prefs";
 import { warmBookCanvasImagesForNeighborPages } from "@/lib/book-image-cache";
+import { computeSlidePresentationDurationSec } from "@/lib/book-presentation";
 import {
   type BookPresentationTransitionId,
   clampBookPresentationTransitionMs,
@@ -100,6 +103,7 @@ import {
 } from "@/lib/use-book-canvas-display-scale";
 import { useBookDocumentHistory } from "@/lib/use-book-document-history";
 import { useBookPageThumbnails } from "@/lib/use-book-page-thumbnails";
+import { useBookWidgetClipboard } from "@/lib/use-book-widget-clipboard";
 
 /** `/books/new` — 저장 후 `/books/:id`로 이동해 동일 편집 UI를 씁니다. */
 export function BookEditorPage() {
@@ -736,6 +740,26 @@ export function BookEditorPage() {
     [activePageIndex, updatePages],
   );
 
+  const addWebviewAt = useCallback(
+    (x: number, y: number) => {
+      const id = crypto.randomUUID();
+      const el: BookCanvasElement = {
+        id,
+        type: "webview",
+        x,
+        y,
+        width: DEFAULT_BOOK_WEBVIEW_WIDTH,
+        height: DEFAULT_BOOK_WEBVIEW_HEIGHT,
+      };
+      updatePages((draft) => {
+        const p = draft[activePageIndex];
+        if (p) p.elements.push(el);
+      });
+      setSelectedIds([id]);
+    },
+    [activePageIndex, updatePages],
+  );
+
   const onDropWidget = useCallback(
     (point: { x: number; y: number }, kind: BookDropWidgetKind) => {
       if (kind === "text") {
@@ -750,6 +774,10 @@ export function BookEditorPage() {
         addDigitalClockAt(point.x, point.y);
         return;
       }
+      if (kind === "webview") {
+        addWebviewAt(point.x, point.y);
+        return;
+      }
       if (kind === "news") {
         addNewsAt(point.x, point.y);
         return;
@@ -762,7 +790,82 @@ export function BookEditorPage() {
         "저장한 뒤 열린 북 화면에서 이미지·동영상 위젯을 넣을 수 있습니다.",
       );
     },
-    [addDigitalClockAt, addMediaPlaylistAt, addNewsAt, addTextAt, addWeatherAt],
+    [
+      addDigitalClockAt,
+      addMediaPlaylistAt,
+      addNewsAt,
+      addTextAt,
+      addWeatherAt,
+      addWebviewAt,
+    ],
+  );
+
+  /** 팔레트 더블 클릭 — 위젯을 슬라이드 가운데에 바로 추가 */
+  const handlePaletteQuickAdd = useCallback(
+    (kind: BookDropWidgetKind) => {
+      const center = (w: number, h: number) => ({
+        x: Math.max(0, Math.round((slideWidth - w) / 2)),
+        y: Math.max(0, Math.round((slideHeight - h) / 2)),
+      });
+      if (kind === "text") {
+        const p = center(480, defaultTextWidgetBoxHeight(28));
+        addTextAt(p.x, p.y);
+        return;
+      }
+      if (kind === "weather") {
+        const p = center(
+          DEFAULT_BOOK_WEATHER_WIDGET_WIDTH,
+          DEFAULT_BOOK_WEATHER_WIDGET_HEIGHT,
+        );
+        addWeatherAt(p.x, p.y);
+        return;
+      }
+      if (kind === "news") {
+        const p = center(
+          DEFAULT_BOOK_NEWS_WIDGET_WIDTH,
+          DEFAULT_BOOK_NEWS_WIDGET_HEIGHT,
+        );
+        addNewsAt(p.x, p.y);
+        return;
+      }
+      if (kind === "mediaPlaylist") {
+        const p = center(
+          DEFAULT_BOOK_MEDIA_PLAYLIST_WIDTH,
+          DEFAULT_BOOK_MEDIA_PLAYLIST_HEIGHT,
+        );
+        addMediaPlaylistAt(p.x, p.y);
+        return;
+      }
+      if (kind === "digitalClock") {
+        const p = center(
+          DEFAULT_BOOK_DIGITAL_CLOCK_WIDTH,
+          DEFAULT_BOOK_DIGITAL_CLOCK_HEIGHT,
+        );
+        addDigitalClockAt(p.x, p.y);
+        return;
+      }
+      if (kind === "webview") {
+        const p = center(
+          DEFAULT_BOOK_WEBVIEW_WIDTH,
+          DEFAULT_BOOK_WEBVIEW_HEIGHT,
+        );
+        addWebviewAt(p.x, p.y);
+        return;
+      }
+      toast.error(
+        "저장한 뒤 열린 북 화면에서 이미지·동영상·PDF 위젯을 넣을 수 있습니다.",
+      );
+    },
+    [
+      addDigitalClockAt,
+      addMediaPlaylistAt,
+      addNewsAt,
+      addTextAt,
+      addWeatherAt,
+      addWebviewAt,
+      slideHeight,
+      slideWidth,
+    ],
   );
 
   const applyAiElements = useCallback(
@@ -842,6 +945,84 @@ export function BookEditorPage() {
     },
     [activePageIndex, updatePages],
   );
+
+  const appendElementsToActivePage = useCallback(
+    (els: BookCanvasElement[]) => {
+      updatePages((draft) => {
+        const p = draft[activePageIndex];
+        if (!p) return;
+        p.elements.push(...els);
+      });
+    },
+    [activePageIndex, updatePages],
+  );
+
+  const {
+    hasClipboard: widgetClipboardHasContent,
+    copySelection: copySelectedWidgets,
+    cutSelection: cutSelectedWidgets,
+    copyElementOrSelection,
+    cutElementOrSelection,
+    paste: pasteWidgetClipboard,
+  } = useBookWidgetClipboard({
+    selectedIds: canvasSelectedIds,
+    activePageIndex,
+    slideWidth,
+    slideHeight,
+    getActivePageElements: () => currentPage?.elements ?? [],
+    appendElements: appendElementsToActivePage,
+    removeElementsByIds,
+    setSelectedIds,
+  });
+
+  /** 위젯 복사/잘라내기/붙여넣기 단축키 — 입력창·다이얼로그에서는 브라우저 기본 동작 유지 */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const k = e.key.toLowerCase();
+      if (k !== "c" && k !== "x" && k !== "v") return;
+      const t = e.target as HTMLElement;
+      if (t.closest("input, textarea, [contenteditable=true]")) return;
+      if (
+        t.closest(
+          '[data-slot="select-content"], [data-slot="combobox-content"], [data-slot="combobox-list"]',
+        )
+      ) {
+        return;
+      }
+      if (widgetDeleteOpen || pageDeleteOpen) return;
+      if (k === "v") {
+        if (!widgetClipboardHasContent) return;
+        e.preventDefault();
+        pasteWidgetClipboard();
+        return;
+      }
+      if (canvasSelectedIds.length === 0) return;
+      e.preventDefault();
+      if (k === "c") copySelectedWidgets();
+      else cutSelectedWidgets();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [
+    canvasSelectedIds,
+    widgetDeleteOpen,
+    pageDeleteOpen,
+    widgetClipboardHasContent,
+    copySelectedWidgets,
+    cutSelectedWidgets,
+    pasteWidgetClipboard,
+  ]);
+
+  /** 캔버스 우상단 오버레이 — 슬라이드쇼와 같은 규칙의 페이지 재생 시간(초) */
+  const currentPagePlaybackSec = useMemo(() => {
+    if (!currentPage) return null;
+    return computeSlidePresentationDurationSec({
+      elements: currentPage.elements,
+      presentationTimingElementId:
+        currentPage.presentationTimingElementId ?? null,
+    });
+  }, [currentPage]);
 
   const requestRemoveWidget = useCallback((elementId: string) => {
     setWidgetDeleteIds([elementId]);
@@ -977,6 +1158,7 @@ export function BookEditorPage() {
     if (el.type === "news") return "뉴스 위젯";
     if (el.type === "mediaPlaylist") return "미디어 위젯";
     if (el.type === "digitalClock") return "디지털 시계 위젯";
+    if (el.type === "webview") return "웹뷰 위젯";
     if (el.type === "drawing") return "그리기";
     return "위젯";
   }, [widgetDeleteIds, currentPage]);
@@ -1088,6 +1270,7 @@ export function BookEditorPage() {
                   variant="docked"
                   className="min-h-0 flex-1"
                   onRequestFloat={() => persistWidgetFloatingOpen(true)}
+                  onQuickAdd={handlePaletteQuickAdd}
                 />
               ) : null}
               {leftDockTab === "templates" ? (
@@ -1148,6 +1331,14 @@ export function BookEditorPage() {
                   setSelectedIds([]);
                 }}
               >
+                {currentPagePlaybackSec != null ? (
+                  <div
+                    className="pointer-events-none absolute right-2 top-2 z-10 rounded-md bg-black/60 px-2 py-1 font-mono text-[11px] tabular-nums text-white shadow-sm backdrop-blur-sm"
+                    title="기준 레이어 기준 이 페이지의 슬라이드쇼 재생 시간"
+                  >
+                    재생 {currentPagePlaybackSec}초
+                  </div>
+                ) : null}
                 {currentPage ? (
                   <BookSlideCanvas
                     pageWidth={slideWidth}
@@ -1184,6 +1375,10 @@ export function BookEditorPage() {
                     onMediaPlaylistRemoteCommandConsumed={
                       clearPlaylistRemoteCmd
                     }
+                    onCopyElement={copyElementOrSelection}
+                    onCutElement={cutElementOrSelection}
+                    onPasteFromClipboard={pasteWidgetClipboard}
+                    widgetClipboardHasContent={widgetClipboardHasContent}
                   />
                 ) : null}
               </div>
@@ -1192,6 +1387,7 @@ export function BookEditorPage() {
               <BookWidgetPalette
                 variant="floating"
                 onClose={() => persistWidgetFloatingOpen(false)}
+                onQuickAdd={handlePaletteQuickAdd}
               />
             ) : null}
             {currentPage ? (

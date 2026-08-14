@@ -1147,6 +1147,62 @@ export async function captureBookSlideToDataURL(
             opacity: elOp,
           }),
         );
+      } else if (el.type === "webview") {
+        // 썸네일은 실제 페이지를 그릴 수 없어 URL 호스트만 표시하는 자리표시자
+        const ww = sx(el.width);
+        const wh = sx(el.height);
+        const wp = bookElementPivotKonva({
+          x: sx(el.x),
+          y: sx(el.y),
+          width: ww,
+          height: wh,
+          rotation: el.rotation,
+        });
+        let host = "웹뷰";
+        const u = el.webviewUrl?.trim();
+        if (u) {
+          try {
+            host = new URL(u).host || "웹뷰";
+          } catch {
+            /* URL 파싱 실패 시 기본 라벨 */
+          }
+        }
+        const wUserOw = resolveBookElementOutlineWidth(el);
+        const wUserOc = resolveBookElementOutlineColor(el);
+        const wCorner = sx(resolveBookElementBorderRadius(el));
+        layer.add(
+          new Konva.Rect({
+            x: wp.cx,
+            y: wp.cy,
+            offsetX: wp.offsetX,
+            offsetY: wp.offsetY,
+            width: ww,
+            height: wh,
+            rotation: wp.rotation,
+            fill: "#0f172a",
+            stroke: wUserOw > 0 ? wUserOc : "rgba(148,163,184,0.45)",
+            strokeWidth: wUserOw > 0 ? Math.max(0.5, sx(wUserOw)) : 0.5,
+            cornerRadius: Math.max(0, wCorner),
+            opacity: elOp,
+          }),
+        );
+        layer.add(
+          new Konva.Text({
+            x: wp.cx,
+            y: wp.cy,
+            offsetX: wp.offsetX,
+            offsetY: wp.offsetY,
+            width: ww,
+            height: wh,
+            rotation: wp.rotation,
+            text: `🌐\n${host}`,
+            fontSize: Math.max(6, 9 * scale),
+            fill: "#94a3b8",
+            align: "center",
+            verticalAlign: "middle",
+            opacity: elOp,
+          }),
+        );
       } else if (el.type === "shape") {
         appendBookShapeElementToSnapshotLayer(layer, el, sx, elOp);
       } else if (el.type === "drawing") {

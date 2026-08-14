@@ -435,6 +435,24 @@ export type BookCanvasElement =
     }
   | {
       id: string;
+      type: "webview";
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      /** 위젯 안에 임베드할 페이지 주소(http/https). 비우면 안내 문구 표시 */
+      webviewUrl?: string;
+      opacity?: number;
+      rotation?: number;
+      borderRadius?: number;
+      outlineWidth?: number;
+      outlineColor?: string;
+      visible?: boolean;
+      locked?: boolean;
+      presentationHoldSec?: number;
+    }
+  | {
+      id: string;
       type: "news";
       x: number;
       y: number;
@@ -830,7 +848,8 @@ export function resolveBookElementBorderRadius(el: BookCanvasElement): number {
     el.type === "weather" ||
     el.type === "digitalClock" ||
     el.type === "news" ||
-    el.type === "mediaPlaylist"
+    el.type === "mediaPlaylist" ||
+    el.type === "webview"
   ) {
     return BOOK_WIDGET_DEFAULT_ROUNDED_RADIUS;
   }
@@ -941,6 +960,17 @@ export const DEFAULT_BOOK_WEATHER_WIDGET_HEIGHT = 220;
 export const DEFAULT_BOOK_NEWS_WIDGET_WIDTH = 420;
 export const DEFAULT_BOOK_NEWS_WIDGET_HEIGHT = 200;
 /** 디지털 시계 위젯 기본 프레임(px) */
+export const DEFAULT_BOOK_WEBVIEW_WIDTH = 480;
+export const DEFAULT_BOOK_WEBVIEW_HEIGHT = 320;
+/** 웹뷰 URL: http(s)만 허용, 과도한 길이 차단 */
+export function parseBookWebviewUrl(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const s = raw.trim();
+  if (!s || s.length > 2048) return undefined;
+  if (!/^https?:\/\//i.test(s)) return undefined;
+  return s;
+}
+
 export const DEFAULT_BOOK_DIGITAL_CLOCK_WIDTH = 280;
 export const DEFAULT_BOOK_DIGITAL_CLOCK_HEIGHT = 96;
 export const DEFAULT_PAGE_BACKGROUND = "#ffffff";
@@ -1056,6 +1086,15 @@ function normalizeBookElementsForSave(
         el.height,
         DEFAULT_BOOK_DIGITAL_CLOCK_WIDTH,
         DEFAULT_BOOK_DIGITAL_CLOCK_HEIGHT,
+      );
+      return finalizeElementForApi({ ...el, ...xy, ...wh });
+    }
+    if (el.type === "webview") {
+      const wh = finiteWH(
+        el.width,
+        el.height,
+        DEFAULT_BOOK_WEBVIEW_WIDTH,
+        DEFAULT_BOOK_WEBVIEW_HEIGHT,
       );
       return finalizeElementForApi({ ...el, ...xy, ...wh });
     }
@@ -1841,6 +1880,23 @@ export function normalizeBookElements(raw: unknown[]): BookCanvasElement[] {
         ...(cd !== undefined ? { clockDisplay: cd } : {}),
         ...(cb !== undefined ? { clockBackground: cb } : {}),
         ...(ctc !== undefined ? { clockTextColor: ctc } : {}),
+        ...chrome,
+        ...(opacity !== undefined ? { opacity } : {}),
+        ...(rotation !== undefined ? { rotation } : {}),
+        ...(o.visible === false ? { visible: false as const } : {}),
+        ...(o.locked === true ? { locked: true as const } : {}),
+        ...presentationHoldFromRaw(o),
+      });
+    } else if (o.type === "webview") {
+      const wu = parseBookWebviewUrl(o.webviewUrl);
+      out.push({
+        id: o.id,
+        type: "webview",
+        x: Number(o.x) || 0,
+        y: Number(o.y) || 0,
+        width: Number(o.width) || DEFAULT_BOOK_WEBVIEW_WIDTH,
+        height: Number(o.height) || DEFAULT_BOOK_WEBVIEW_HEIGHT,
+        ...(wu !== undefined ? { webviewUrl: wu } : {}),
         ...chrome,
         ...(opacity !== undefined ? { opacity } : {}),
         ...(rotation !== undefined ? { rotation } : {}),

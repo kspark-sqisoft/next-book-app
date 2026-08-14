@@ -82,6 +82,8 @@ import {
   DEFAULT_BOOK_NEWS_WIDGET_WIDTH,
   DEFAULT_BOOK_WEATHER_WIDGET_HEIGHT,
   DEFAULT_BOOK_WEATHER_WIDGET_WIDTH,
+  DEFAULT_BOOK_WEBVIEW_HEIGHT,
+  DEFAULT_BOOK_WEBVIEW_WIDTH,
   DEFAULT_PAGE_BACKGROUND,
   DEFAULT_SLIDE_HEIGHT,
   DEFAULT_SLIDE_WIDTH,
@@ -106,6 +108,8 @@ import {
 } from "@/lib/book-floating-ui-prefs";
 import { warmBookCanvasImagesForNeighborPages } from "@/lib/book-image-cache";
 import { appendBookMediaLibraryItem } from "@/lib/book-media-library";
+import { renderPdfFileToPageImages } from "@/lib/book-pdf-import";
+import { computeSlidePresentationDurationSec } from "@/lib/book-presentation";
 import {
   type BookPresentationTransitionId,
   clampBookPresentationTransitionMs,
@@ -129,6 +133,7 @@ import {
 } from "@/lib/use-book-canvas-display-scale";
 import { useBookDocumentHistory } from "@/lib/use-book-document-history";
 import { useBookPageThumbnails } from "@/lib/use-book-page-thumbnails";
+import { useBookWidgetClipboard } from "@/lib/use-book-widget-clipboard";
 import { useAuth } from "@/stores/auth-store";
 
 // API 페이지 DTO 를 편집기 로컬 페이지 배열로 정렬·정규화
@@ -271,6 +276,11 @@ function BookDetailOwnerView({
   const playlistRemoteSeqRef = useRef(0);
   const [playlistRemoteCmd, setPlaylistRemoteCmd] =
     useState<BookMediaPlaylistRemoteCommand | null>(null);
+  /** PDF 가져오기(팔레트) — 변환·업로드 진행 중 여부와 숨김 파일 입력 */
+  const [pdfImportBusy, setPdfImportBusy] = useState(false);
+  const pdfImportInputRef = useRef<HTMLInputElement>(null);
+  /** 드래그 드롭으로 시작한 경우 위젯을 놓을 지점(더블 클릭·버튼은 null → 중앙) */
+  const pdfImportPlacementRef = useRef<{ x: number; y: number } | null>(null);
   const raiseFloatingWidgetStack = useCallback(() => {
     setFloatingPanelZ((prev) => {
       const top = Math.max(prev.widget, prev.media, prev.ai) + 1;
@@ -950,6 +960,26 @@ function BookDetailOwnerView({
     [activePageIndex, updatePages],
   );
 
+  const addWebviewAt = useCallback(
+    (x: number, y: number) => {
+      const id = crypto.randomUUID();
+      const el: BookCanvasElement = {
+        id,
+        type: "webview",
+        x,
+        y,
+        width: DEFAULT_BOOK_WEBVIEW_WIDTH,
+        height: DEFAULT_BOOK_WEBVIEW_HEIGHT,
+      };
+      updatePages((draft) => {
+        const p = draft[activePageIndex];
+        if (p) p.elements.push(el);
+      });
+      setSelectedIds([id]);
+    },
+    [activePageIndex, updatePages],
+  );
+
   const addDigitalClockAt = useCallback(
     (x: number, y: number) => {
       const id = crypto.randomUUID();
@@ -1137,6 +1167,103 @@ function BookDetailOwnerView({
     [activePageIndex, bookId, updatePages],
   );
 
+  /** PDF 가져오기 — 각 페이지를 PNG로 변환·업로드해 미디어 재생목록 위젯으로 추가 */
+  const handleImportPdfFile = useCallback(
+    async (file: File) => {
+      const idx = activePageIndex;
+      setPdfImportBusy(true);
+      const toastId = toast.loading("PDF 페이지 변환 중…");
+      try {
+        const { pages, totalPageCount } = await renderPdfFileToPageImages(
+          file,
+          {
+            maxPages: MEDIA_PLAYLIST_MAX_ITEMS,
+            onProgress: (done, total) =>
+              toast.loading(`PDF 페이지 변환 중… (${done}/${total})`, {
+                id: toastId,
+              }),
+          },
+        );
+        if (pages.length === 0) {
+          throw new Error("PDF에서 페이지를 찾지 못했습니다.");
+        }
+        const baseName = file.name.replace(/\.pdf$/i, "").trim() || "pdf";
+        const items: { id: string; kind: "image"; src: string }[] = [];
+        for (let i = 0; i < pages.length; i++) {
+          toast.loading(`페이지 업로드 중… (${i + 1}/${pages.length})`, {
+            id: toastId,
+          });
+          const pageFile = new File(
+            [pages[i]!.blob],
+            `${baseName}-p${i + 1}.png`,
+            { type: "image/png" },
+          );
+          const res = await uploadBookMedia(bookId, pageFile, null);
+          items.push({ id: crypto.randomUUID(), kind: "image", src: res.url });
+        }
+        // 위젯 프레임: 첫 페이지 비율로 슬라이드의 ~70%, 중앙 배치
+        const first = pages[0]!;
+        const aspect = first.height / Math.max(1, first.width);
+        let w = Math.max(80, Math.min(slideWidth * 0.7, slideWidth - 40));
+        let h = w * aspect;
+        const maxH = Math.max(80, slideHeight - 40);
+        if (h > maxH) {
+          h = maxH;
+          w = h / Math.max(0.01, aspect);
+        }
+        w = Math.round(w);
+        h = Math.round(h);
+        const at = pdfImportPlacementRef.current;
+        pdfImportPlacementRef.current = null;
+        const px = at
+          ? Math.round(
+              Math.min(Math.max(0, at.x), Math.max(0, slideWidth - w)),
+            )
+          : Math.round((slideWidth - w) / 2);
+        const py = at
+          ? Math.round(
+              Math.min(Math.max(0, at.y), Math.max(0, slideHeight - h)),
+            )
+          : Math.round((slideHeight - h) / 2);
+        const el: BookCanvasElement = {
+          id: crypto.randomUUID(),
+          type: "mediaPlaylist",
+          x: px,
+          y: py,
+          width: w,
+          height: h,
+          mediaPlaylistItems: items,
+        };
+        updatePages((draft) => {
+          const p = draft[idx];
+          if (!p) return;
+          p.elements.push(el);
+        });
+        setSelectedIds([el.id]);
+        toast.success(
+          `PDF ${pages.length}페이지를 미디어 위젯으로 추가했습니다. 페이지별 표시 시간은 속성 패널에서 바꿀 수 있어요.`,
+          { id: toastId },
+        );
+        if (totalPageCount > pages.length) {
+          toast.warning(
+            `PDF가 ${totalPageCount}페이지라 앞 ${pages.length}페이지만 가져왔습니다(위젯 항목 최대 ${MEDIA_PLAYLIST_MAX_ITEMS}개).`,
+          );
+        }
+      } catch (e) {
+        toast.error(`PDF 가져오기 실패: ${(e as Error).message}`, {
+          id: toastId,
+        });
+      } finally {
+        setPdfImportBusy(false);
+      }
+    },
+    [activePageIndex, bookId, slideHeight, slideWidth, updatePages],
+  );
+
+  const onRequestImportPdf = useCallback(() => {
+    pdfImportInputRef.current?.click();
+  }, []);
+
   const onRequestPlaylistAppendFromFile = useCallback(
     (elementId: string) => {
       const el = activePage?.elements.find((e) => e.id === elementId);
@@ -1202,6 +1329,17 @@ function BookDetailOwnerView({
         addDigitalClockAt(point.x, point.y);
         return;
       }
+      if (kind === "webview") {
+        addWebviewAt(point.x, point.y);
+        return;
+      }
+      if (kind === "pdfImport") {
+        if (!pdfImportBusy) {
+          pdfImportPlacementRef.current = point;
+          pdfImportInputRef.current?.click();
+        }
+        return;
+      }
       pendingPlacementRef.current = point;
       pendingMediaKindRef.current = kind;
       if (kind === "image") {
@@ -1210,7 +1348,93 @@ function BookDetailOwnerView({
         videoInputRef.current?.click();
       }
     },
-    [addDigitalClockAt, addMediaPlaylistAt, addNewsAt, addTextAt, addWeatherAt],
+    [
+      addDigitalClockAt,
+      addMediaPlaylistAt,
+      addNewsAt,
+      addTextAt,
+      addWeatherAt,
+      addWebviewAt,
+      pdfImportBusy,
+    ],
+  );
+
+  /** 팔레트 더블 클릭 — 위젯을 슬라이드 가운데에 바로 추가 */
+  const handlePaletteQuickAdd = useCallback(
+    (kind: BookDropWidgetKind) => {
+      const center = (w: number, h: number) => ({
+        x: Math.max(0, Math.round((slideWidth - w) / 2)),
+        y: Math.max(0, Math.round((slideHeight - h) / 2)),
+      });
+      if (kind === "text") {
+        const p = center(480, defaultTextWidgetBoxHeight(28));
+        addTextAt(p.x, p.y);
+        return;
+      }
+      if (kind === "weather") {
+        const p = center(
+          DEFAULT_BOOK_WEATHER_WIDGET_WIDTH,
+          DEFAULT_BOOK_WEATHER_WIDGET_HEIGHT,
+        );
+        addWeatherAt(p.x, p.y);
+        return;
+      }
+      if (kind === "news") {
+        const p = center(
+          DEFAULT_BOOK_NEWS_WIDGET_WIDTH,
+          DEFAULT_BOOK_NEWS_WIDGET_HEIGHT,
+        );
+        addNewsAt(p.x, p.y);
+        return;
+      }
+      if (kind === "mediaPlaylist") {
+        const p = center(
+          DEFAULT_BOOK_MEDIA_PLAYLIST_WIDTH,
+          DEFAULT_BOOK_MEDIA_PLAYLIST_HEIGHT,
+        );
+        addMediaPlaylistAt(p.x, p.y);
+        return;
+      }
+      if (kind === "digitalClock") {
+        const p = center(
+          DEFAULT_BOOK_DIGITAL_CLOCK_WIDTH,
+          DEFAULT_BOOK_DIGITAL_CLOCK_HEIGHT,
+        );
+        addDigitalClockAt(p.x, p.y);
+        return;
+      }
+      if (kind === "webview") {
+        const p = center(DEFAULT_BOOK_WEBVIEW_WIDTH, DEFAULT_BOOK_WEBVIEW_HEIGHT);
+        addWebviewAt(p.x, p.y);
+        return;
+      }
+      if (kind === "pdfImport") {
+        if (!pdfImportBusy) {
+          pdfImportPlacementRef.current = null;
+          pdfImportInputRef.current?.click();
+        }
+        return;
+      }
+      // 이미지·동영상: 파일 선택 후 중앙 근처 배치
+      pendingPlacementRef.current = center(480, 320);
+      pendingMediaKindRef.current = kind;
+      if (kind === "image") {
+        imageInputRef.current?.click();
+      } else {
+        videoInputRef.current?.click();
+      }
+    },
+    [
+      addDigitalClockAt,
+      addMediaPlaylistAt,
+      addNewsAt,
+      addTextAt,
+      addWeatherAt,
+      addWebviewAt,
+      pdfImportBusy,
+      slideHeight,
+      slideWidth,
+    ],
   );
 
   const applyAiElements = useCallback(
@@ -1405,6 +1629,88 @@ function BookDetailOwnerView({
     [activePageIndex, updatePages],
   );
 
+  const appendElementsToActivePage = useCallback(
+    (els: BookCanvasElement[]) => {
+      updatePages((draft) => {
+        const p = draft[activePageIndex];
+        if (!p) return;
+        p.elements.push(...els);
+      });
+    },
+    [activePageIndex, updatePages],
+  );
+
+  const {
+    hasClipboard: widgetClipboardHasContent,
+    copySelection: copySelectedWidgets,
+    cutSelection: cutSelectedWidgets,
+    copyElementOrSelection,
+    cutElementOrSelection,
+    paste: pasteWidgetClipboard,
+  } = useBookWidgetClipboard({
+    selectedIds: canvasSelectedIds,
+    activePageIndex,
+    slideWidth,
+    slideHeight,
+    getActivePageElements: () => activePage?.elements ?? [],
+    appendElements: appendElementsToActivePage,
+    removeElementsByIds,
+    setSelectedIds,
+  });
+
+  /** 위젯 복사/잘라내기/붙여넣기 단축키 — 입력창·다이얼로그에서는 브라우저 기본 동작 유지 */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const k = e.key.toLowerCase();
+      if (k !== "c" && k !== "x" && k !== "v") return;
+      const t = e.target as HTMLElement;
+      if (t.closest("input, textarea, [contenteditable=true]")) return;
+      if (
+        t.closest(
+          '[data-slot="select-content"], [data-slot="combobox-content"], [data-slot="combobox-list"]',
+        )
+      ) {
+        return;
+      }
+      if (widgetDeleteOpen || deleteConfirmOpen || pageDeleteOpen) return;
+      if (k === "v") {
+        if (!widgetClipboardHasContent) return;
+        e.preventDefault();
+        pasteWidgetClipboard();
+        return;
+      }
+      if (canvasSelectedIds.length === 0) return;
+      e.preventDefault();
+      if (k === "c") copySelectedWidgets();
+      else cutSelectedWidgets();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [
+    canvasSelectedIds,
+    widgetDeleteOpen,
+    deleteConfirmOpen,
+    pageDeleteOpen,
+    widgetClipboardHasContent,
+    copySelectedWidgets,
+    cutSelectedWidgets,
+    pasteWidgetClipboard,
+  ]);
+
+  /** 캔버스 우상단 오버레이 — 슬라이드쇼와 같은 규칙의 페이지 재생 시간(초) */
+  const activePagePlaybackSec = useMemo(() => {
+    if (!activePage) return null;
+    return computeSlidePresentationDurationSec(
+      {
+        elements: activePage.elements,
+        presentationTimingElementId:
+          activePage.presentationTimingElementId ?? null,
+      },
+      { videoDurationSecById: videoDurationByElementId },
+    );
+  }, [activePage, videoDurationByElementId]);
+
   const requestRemoveWidget = useCallback((elementId: string) => {
     setWidgetDeleteIds([elementId]);
     setWidgetDeleteOpen(true);
@@ -1486,6 +1792,7 @@ function BookDetailOwnerView({
     if (el.type === "news") return "뉴스 위젯";
     if (el.type === "mediaPlaylist") return "미디어 위젯";
     if (el.type === "digitalClock") return "디지털 시계 위젯";
+    if (el.type === "webview") return "웹뷰 위젯";
     if (el.type === "drawing") return "그리기";
     return "위젯";
   }, [widgetDeleteIds, activePage]);
@@ -1669,6 +1976,9 @@ function BookDetailOwnerView({
                     variant="docked"
                     className="min-h-0 flex-1"
                     onRequestFloat={() => persistWidgetFloatingOpen(true)}
+                    onRequestImportPdf={onRequestImportPdf}
+                    pdfImportBusy={pdfImportBusy}
+                    onQuickAdd={handlePaletteQuickAdd}
                   />
                 ) : null}
                 {leftDockTab === "media" ? (
@@ -1719,6 +2029,9 @@ function BookDetailOwnerView({
                   floatingStackZIndex={floatingPanelZ.widget}
                   onRaiseFloatingStack={raiseFloatingWidgetStack}
                   onClose={() => persistWidgetFloatingOpen(false)}
+                  onRequestImportPdf={onRequestImportPdf}
+                  pdfImportBusy={pdfImportBusy}
+                  onQuickAdd={handlePaletteQuickAdd}
                 />
               ) : null}
               {floatingMediaLibraryOpen ? (
@@ -1846,6 +2159,9 @@ function BookDetailOwnerView({
                   variant="docked"
                   className="min-h-0 flex-1"
                   onRequestFloat={() => persistWidgetFloatingOpen(true)}
+                  onRequestImportPdf={onRequestImportPdf}
+                  pdfImportBusy={pdfImportBusy}
+                  onQuickAdd={handlePaletteQuickAdd}
                 />
               ) : null}
               {leftDockTab === "media" ? (
@@ -1914,6 +2230,14 @@ function BookDetailOwnerView({
                   setSelectedIds([]);
                 }}
               >
+                {activePagePlaybackSec != null ? (
+                  <div
+                    className="pointer-events-none absolute right-2 top-2 z-10 rounded-md bg-black/60 px-2 py-1 font-mono text-[11px] tabular-nums text-white shadow-sm backdrop-blur-sm"
+                    title="기준 레이어 기준 이 페이지의 슬라이드쇼 재생 시간"
+                  >
+                    재생 {activePagePlaybackSec}초
+                  </div>
+                ) : null}
                 <BookSlideCanvas
                   pageWidth={slideWidth}
                   pageHeight={slideHeight}
@@ -1960,6 +2284,10 @@ function BookDetailOwnerView({
                   mediaPlaylistRemoteCommand={playlistRemoteCmd}
                   onMediaPlaylistRemoteCommandConsumed={clearPlaylistRemoteCmd}
                   onVideoDurationKnown={handleVideoDurationKnown}
+                  onCopyElement={copyElementOrSelection}
+                  onCutElement={cutElementOrSelection}
+                  onPasteFromClipboard={pasteWidgetClipboard}
+                  widgetClipboardHasContent={widgetClipboardHasContent}
                 />
               </div>
             </div>
@@ -1969,6 +2297,9 @@ function BookDetailOwnerView({
                 floatingStackZIndex={floatingPanelZ.widget}
                 onRaiseFloatingStack={raiseFloatingWidgetStack}
                 onClose={() => persistWidgetFloatingOpen(false)}
+                onRequestImportPdf={onRequestImportPdf}
+                pdfImportBusy={pdfImportBusy}
+                onQuickAdd={handlePaletteQuickAdd}
               />
             ) : null}
             {floatingMediaLibraryOpen ? (
@@ -2047,6 +2378,18 @@ function BookDetailOwnerView({
                   return;
                 }
                 void handlePlaylistMediaFile(f);
+              }}
+            />
+            <input
+              ref={pdfImportInputRef}
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (!f) return;
+                void handleImportPdfFile(f);
               }}
             />
           </>

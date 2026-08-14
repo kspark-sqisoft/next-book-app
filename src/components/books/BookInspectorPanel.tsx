@@ -717,7 +717,8 @@ function ElementShapeChromeFields({
     el.type === "weather" ||
     el.type === "digitalClock" ||
     el.type === "news" ||
-    el.type === "mediaPlaylist"
+    el.type === "mediaPlaylist" ||
+    el.type === "webview"
       ? `저장하지 않으면 기본 ${BOOK_WIDGET_DEFAULT_ROUNDED_RADIUS}px(둥근 카드)입니다.`
       : el.type === "shape"
         ? "도형을 감싼 프레임(클립) 모서리입니다. 사각 도형 자체의 둥근 모서리는 인스펙터의 ‘모서리 둥글기’로 바꿉니다."
@@ -1958,6 +1959,40 @@ export function BookInspectorPanel({
                             })
                           }
                         />
+                      </div>
+                      <ElementOpacitySlider
+                        elementId={selected.id}
+                        opacity={selected.opacity}
+                        onChange={onChange}
+                      />
+                      <ElementShapeChromeFields
+                        el={selected}
+                        onChange={onChange}
+                      />
+                      <PositionSizeFields el={selected} onChange={onChange} />
+                    </>
+                  ) : selected.type === "webview" ? (
+                    <>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        입력한 주소의 웹 페이지를 위젯 영역 안에 보여줍니다.
+                        일부 사이트는 임베드(iframe)를 차단해 표시되지 않을 수
+                        있습니다.
+                      </p>
+                      <div className="space-y-1">
+                        <Label className="text-[11px]">URL</Label>
+                        <Input
+                          className="font-mono text-xs"
+                          placeholder="https://example.com"
+                          value={selected.webviewUrl ?? ""}
+                          onChange={(e) =>
+                            onChange(selected.id, {
+                              webviewUrl: e.target.value,
+                            })
+                          }
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                          http:// 또는 https:// 로 시작하는 주소만 표시됩니다.
+                        </p>
                       </div>
                       <ElementOpacitySlider
                         elementId={selected.id}

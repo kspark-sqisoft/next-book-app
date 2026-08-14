@@ -26,6 +26,7 @@ import {
   CloudSun,
   Eye,
   EyeOff,
+  Globe,
   GripVertical,
   Image as ImageIcon,
   Layers,
@@ -73,6 +74,8 @@ function bookElementLayerLabel(el: BookCanvasElement): string {
       return "날씨";
     case "digitalClock":
       return "디지털 시계";
+    case "webview":
+      return "웹뷰";
     case "news":
       return "뉴스";
     case "mediaPlaylist":
@@ -140,6 +143,8 @@ function LayerTypeIcon({ el }: { el: BookCanvasElement }) {
       return <Newspaper className={cls} aria-hidden />;
     case "digitalClock":
       return <Clock className={cls} aria-hidden />;
+    case "webview":
+      return <Globe className={cls} aria-hidden />;
     case "mediaPlaylist":
       return <ListVideo className={cls} aria-hidden />;
     case "drawing":
