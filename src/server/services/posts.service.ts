@@ -604,87 +604,7 @@ export class PostsService {
 
     const current = this.sortedAttachments(row.attachments as AttachmentRow[]);
 
-    if (body.clearAllMedia) {
-      await this.deleteAllAttachments(id);
-    } else if (body.mediaPlan !== undefined) {
-      const items = body.mediaPlan;
-      if (items.length > POST_ATTACHMENTS_MAX_COUNT) {
-        throw new HttpError(
-          400,
-          `첨부는 최대 ${POST_ATTACHMENTS_MAX_COUNT}개까지 가능합니다.`,
-        );
-      }
-
-      if (items.length === 0) {
-        await this.deleteAllAttachments(id);
-      } else {
-        const keptIds = new Set<number>();
-        for (const it of items) {
-          if (it.t === "e") keptIds.add(it.id);
-        }
-
-        for (const a of current) {
-          if (!keptIds.has(a.id)) {
-            await this.unlinkAttachmentRow(a);
-            await db.delete(postAttachment).where(eq(postAttachment.id, a.id));
-          }
-        }
-
-        const remaining = await db
-          .select()
-          .from(postAttachment)
-          .where(eq(postAttachment.postId, id))
-          .orderBy(asc(postAttachment.sortOrder));
-        const byId = new Map(remaining.map((a) => [a.id, a]));
-
-        const newVideoCount = items
-          .filter((it): it is { t: "n"; i: number } => it.t === "n")
-          .map((it) => newFiles[it.i])
-          .filter((f) => f && PostsService.multerKind(f) === "video").length;
-        if (newPosters.length !== newVideoCount) {
-          throw new HttpError(
-            400,
-            `새 동영상이 ${newVideoCount}개이면 newPosters도 ${newVideoCount}개가 필요합니다.`,
-          );
-        }
-
-        let posterIdx = 0;
-        let order = 0;
-        for (const it of items) {
-          if (it.t === "e") {
-            const att = byId.get(it.id);
-            if (!att || att.postId !== id) {
-              throw new HttpError(400, "잘못된 첨부 id입니다.");
-            }
-            await db
-              .update(postAttachment)
-              .set({ sortOrder: order++ })
-              .where(eq(postAttachment.id, att.id));
-          } else {
-            const f = newFiles[it.i];
-            if (!f) {
-              throw new HttpError(400, "새 첨부 파일이 부족합니다.");
-            }
-            const kind = PostsService.multerKind(f);
-            if (!kind) {
-              throw new HttpError(400, "지원하지 않는 새 첨부 형식입니다.");
-            }
-            let posterFilename: string | null = null;
-            if (kind === "video") {
-              posterFilename = newPosters[posterIdx++].filename;
-            }
-            await db.insert(postAttachment).values({
-              postId: id,
-              sortOrder: order++,
-              kind,
-              fileFilename: f.filename,
-              posterFilename,
-            });
-          }
-        }
-      }
-    }
-
+    // ── 1) 검증을 전부 파괴적 작업 앞에서 끝낸다 — 잘못된 요청이 기존 미디어를 지우고 400 나는 사고 방지 ──
     const patch: Partial<{
       title: string;
       content: string;
@@ -710,9 +630,110 @@ export class PostsService {
     if (body.category !== undefined) {
       patch.category = normalizePostCategory(body.category);
     }
-    if (Object.keys(patch).length > 0) {
-      patch.updatedAt = new Date();
-      await db.update(post).set(patch).where(eq(post.id, id));
+
+    // 커밋 성공 후 디스크에서 지울 첨부(파일 삭제는 DB 확정 뒤에만)
+    let plannedRemoved: AttachmentRow[] = [];
+    let plan: MediaPlanItem[] | null = null;
+
+    if (body.clearAllMedia) {
+      plannedRemoved = current;
+    } else if (body.mediaPlan !== undefined) {
+      const items = body.mediaPlan;
+      if (items.length > POST_ATTACHMENTS_MAX_COUNT) {
+        throw new HttpError(
+          400,
+          `첨부는 최대 ${POST_ATTACHMENTS_MAX_COUNT}개까지 가능합니다.`,
+        );
+      }
+      if (items.length === 0) {
+        plannedRemoved = current;
+      } else {
+        const currentById = new Map(current.map((a) => [a.id, a]));
+        const keptIds = new Set<number>();
+        const seenNewIdx = new Set<number>();
+        let newVideoCount = 0;
+        for (const it of items) {
+          if (it.t === "e") {
+            if (!currentById.has(it.id) || keptIds.has(it.id)) {
+              throw new HttpError(400, "잘못된 첨부 id입니다.");
+            }
+            keptIds.add(it.id);
+          } else {
+            const f = newFiles[it.i];
+            if (!f) {
+              throw new HttpError(400, "새 첨부 파일이 부족합니다.");
+            }
+            if (seenNewIdx.has(it.i)) {
+              throw new HttpError(400, "중복된 새 첨부 인덱스입니다.");
+            }
+            seenNewIdx.add(it.i);
+            const kind = PostsService.multerKind(f);
+            if (!kind) {
+              throw new HttpError(400, "지원하지 않는 새 첨부 형식입니다.");
+            }
+            if (kind === "video") newVideoCount++;
+          }
+        }
+        if (newPosters.length !== newVideoCount) {
+          throw new HttpError(
+            400,
+            `새 동영상이 ${newVideoCount}개이면 newPosters도 ${newVideoCount}개가 필요합니다.`,
+          );
+        }
+        plannedRemoved = current.filter((a) => !keptIds.has(a.id));
+        plan = items;
+      }
+    }
+
+    // ── 2) DB 변경을 한 트랜잭션으로 원자 적용 ──
+    await db.transaction(async (tx) => {
+      if (
+        body.clearAllMedia ||
+        (body.mediaPlan !== undefined && body.mediaPlan.length === 0)
+      ) {
+        await tx.delete(postAttachment).where(eq(postAttachment.postId, id));
+      } else if (plan) {
+        for (const a of plannedRemoved) {
+          await tx.delete(postAttachment).where(eq(postAttachment.id, a.id));
+        }
+        let posterIdx = 0;
+        let order = 0;
+        for (const it of plan) {
+          if (it.t === "e") {
+            await tx
+              .update(postAttachment)
+              .set({ sortOrder: order++ })
+              .where(eq(postAttachment.id, it.id));
+          } else {
+            const f = newFiles[it.i];
+            if (!f) throw new HttpError(400, "새 첨부 파일이 부족합니다.");
+            const kind = PostsService.multerKind(f);
+            if (!kind) {
+              throw new HttpError(400, "지원하지 않는 새 첨부 형식입니다.");
+            }
+            let posterFilename: string | null = null;
+            if (kind === "video") {
+              posterFilename = newPosters[posterIdx++]?.filename ?? null;
+            }
+            await tx.insert(postAttachment).values({
+              postId: id,
+              sortOrder: order++,
+              kind,
+              fileFilename: f.filename,
+              posterFilename,
+            });
+          }
+        }
+      }
+      if (Object.keys(patch).length > 0) {
+        patch.updatedAt = new Date();
+        await tx.update(post).set(patch).where(eq(post.id, id));
+      }
+    });
+
+    // ── 3) 커밋이 확정된 뒤에만 디스크 파일 삭제(실패해도 고아 파일이 남을 뿐 데이터는 안전) ──
+    for (const a of plannedRemoved) {
+      await this.unlinkAttachmentRow(a);
     }
 
     const refreshed = await db.query.post.findFirst({

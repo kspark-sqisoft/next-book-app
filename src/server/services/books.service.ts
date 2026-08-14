@@ -811,10 +811,7 @@ export class BooksService {
           throw new HttpError(400, "웹뷰 위젯 크기가 올바르지 않습니다.");
         }
         if (o.webviewUrl != null) {
-          if (
-            typeof o.webviewUrl !== "string" ||
-            o.webviewUrl.length > 2048
-          ) {
+          if (typeof o.webviewUrl !== "string" || o.webviewUrl.length > 2048) {
             throw new HttpError(400, "웹뷰 URL이 올바르지 않습니다.");
           }
           const u = o.webviewUrl.trim();
@@ -845,7 +842,12 @@ export class BooksService {
         }
         if (o.tickerSpeedPxPerSec != null) {
           const s = o.tickerSpeedPxPerSec;
-          if (typeof s !== "number" || !Number.isFinite(s) || s < 1 || s > 1000) {
+          if (
+            typeof s !== "number" ||
+            !Number.isFinite(s) ||
+            s < 1 ||
+            s > 1000
+          ) {
             throw new HttpError(400, "티커 속도가 올바르지 않습니다.");
           }
         }
@@ -858,7 +860,12 @@ export class BooksService {
         }
         if (o.tickerFontSize != null) {
           const f = o.tickerFontSize;
-          if (typeof f !== "number" || !Number.isFinite(f) || f < 4 || f > 400) {
+          if (
+            typeof f !== "number" ||
+            !Number.isFinite(f) ||
+            f < 4 ||
+            f > 400
+          ) {
             throw new HttpError(400, "티커 글자 크기가 올바르지 않습니다.");
           }
         }
@@ -1765,32 +1772,36 @@ export class BooksService {
       body.slideHeight,
     );
 
-    const [newBook] = await db
-      .insert(bookTable)
-      .values({
-        title,
-        authorId: userId,
-        slideWidth: sw,
-        slideHeight: sh,
-        presentationLoop: body.presentationLoop !== false,
-      })
-      .returning();
-    if (!newBook) throw new HttpError(500, "북 생성에 실패했습니다.");
+    // 검증은 normalizePagesInput에서 전량 완료 — DML은 트랜잭션으로 원자 처리(중간 실패 시 반쪽 북 방지)
+    const newBook = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(bookTable)
+        .values({
+          title,
+          authorId: userId,
+          slideWidth: sw,
+          slideHeight: sh,
+          presentationLoop: body.presentationLoop !== false,
+        })
+        .returning();
+      if (!row) throw new HttpError(500, "북 생성에 실패했습니다.");
 
-    for (const p of normalized) {
-      const elements = p.elements ?? [];
-      this.validateElements(elements);
-      await db.insert(bookPage).values({
-        bookId: newBook.id,
-        sortOrder: p.sortOrder,
-        slideName: p.name,
-        backgroundColor: p.backgroundColor,
-        elementsJson: JSON.stringify(elements),
-        presentationTimingElementId: p.presentationTimingElementId,
-        presentationTransition: p.presentationTransition,
-        presentationTransitionMs: p.presentationTransitionMs,
-      });
-    }
+      if (normalized.length > 0) {
+        await tx.insert(bookPage).values(
+          normalized.map((p) => ({
+            bookId: row.id,
+            sortOrder: p.sortOrder,
+            slideName: p.name,
+            backgroundColor: p.backgroundColor,
+            elementsJson: JSON.stringify(p.elements ?? []),
+            presentationTimingElementId: p.presentationTimingElementId,
+            presentationTransition: p.presentationTransition,
+            presentationTransitionMs: p.presentationTransitionMs,
+          })),
+        );
+      }
+      return row;
+    });
 
     return this.findOne(newBook.id);
   }
@@ -1810,57 +1821,61 @@ export class BooksService {
       throw new HttpError(403, "수정 권한이 없습니다.");
     }
 
+    // 1) 검증·정규화를 DML 시작 전에 전부 끝낸다 — 삭제 후 실패로 덱이 소실되는 사고 방지
+    const set: {
+      title?: string;
+      slideWidth?: number;
+      slideHeight?: number;
+      presentationLoop?: boolean;
+    } = {};
     if (body.title != null) {
       const title = body.title.trim();
       if (!title) throw new HttpError(400, "제목을 입력하세요.");
       if (title.length > TITLE_MAX) {
         throw new HttpError(400, `제목은 ${TITLE_MAX}자 이하입니다.`);
       }
-      await db
-        .update(bookTable)
-        .set({ title, updatedAt: new Date() })
-        .where(eq(bookTable.id, bookId));
+      set.title = title;
     }
-
     if (body.slideWidth != null || body.slideHeight != null) {
       const { width, height } = this.normalizeBookSlideSize(
         body.slideWidth ?? book.slideWidth ?? DEFAULT_PAGE_W,
         body.slideHeight ?? book.slideHeight ?? DEFAULT_PAGE_H,
       );
-      await db
-        .update(bookTable)
-        .set({ slideWidth: width, slideHeight: height, updatedAt: new Date() })
-        .where(eq(bookTable.id, bookId));
+      set.slideWidth = width;
+      set.slideHeight = height;
     }
-
     if (body.presentationLoop != null) {
-      await db
-        .update(bookTable)
-        .set({
-          presentationLoop: Boolean(body.presentationLoop),
-          updatedAt: new Date(),
-        })
-        .where(eq(bookTable.id, bookId));
+      set.presentationLoop = Boolean(body.presentationLoop);
     }
+    const normalized =
+      body.pages != null ? this.normalizePagesInput(body.pages) : null;
 
-    if (body.pages != null) {
-      const normalized = this.normalizePagesInput(body.pages);
-      await db.delete(bookPage).where(eq(bookPage.bookId, bookId));
-      for (const p of normalized) {
-        const elements = p.elements ?? [];
-        this.validateElements(elements);
-        await db.insert(bookPage).values({
-          bookId,
-          sortOrder: p.sortOrder,
-          slideName: p.name,
-          backgroundColor: p.backgroundColor,
-          elementsJson: JSON.stringify(elements),
-          presentationTimingElementId: p.presentationTimingElementId,
-          presentationTransition: p.presentationTransition,
-          presentationTransitionMs: p.presentationTransitionMs,
-        });
+    // 2) 전체 교체(삭제+재삽입)를 한 트랜잭션으로 — 중간 실패 시 롤백
+    await db.transaction(async (tx) => {
+      if (Object.keys(set).length > 0) {
+        await tx
+          .update(bookTable)
+          .set({ ...set, updatedAt: new Date() })
+          .where(eq(bookTable.id, bookId));
       }
-    }
+      if (normalized) {
+        await tx.delete(bookPage).where(eq(bookPage.bookId, bookId));
+        if (normalized.length > 0) {
+          await tx.insert(bookPage).values(
+            normalized.map((p) => ({
+              bookId,
+              sortOrder: p.sortOrder,
+              slideName: p.name,
+              backgroundColor: p.backgroundColor,
+              elementsJson: JSON.stringify(p.elements ?? []),
+              presentationTimingElementId: p.presentationTimingElementId,
+              presentationTransition: p.presentationTransition,
+              presentationTransitionMs: p.presentationTransitionMs,
+            })),
+          );
+        }
+      }
+    });
 
     return this.findOne(bookId);
   }
@@ -1875,8 +1890,11 @@ export class BooksService {
     if (!canMutateOwnedResource(actor, book.author.id)) {
       throw new HttpError(403, "삭제 권한이 없습니다.");
     }
-    await db.delete(bookPage).where(eq(bookPage.bookId, bookId));
-    await db.delete(bookTable).where(eq(bookTable.id, bookId));
+    // 페이지·북 삭제를 원자 처리 — 중간 실패 시 고아 행 방지
+    await db.transaction(async (tx) => {
+      await tx.delete(bookPage).where(eq(bookPage.bookId, bookId));
+      await tx.delete(bookTable).where(eq(bookTable.id, bookId));
+    });
   }
 
   async assertBookOwner(bookId: number, actor: AuthActor) {
