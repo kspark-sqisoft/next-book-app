@@ -65,7 +65,10 @@ export async function listPostsAction(
 ): Promise<PostsPageResponse> {
   try {
     const takeRaw = Number(params?.take ?? 12);
-    const take = Math.min(50, Math.max(1, takeRaw)); // 서버 상한
+    // NaN이면 min/max를 그대로 통과해 SQL 오류가 나므로 유한값 강제
+    const take = Number.isFinite(takeRaw)
+      ? Math.min(50, Math.max(1, Math.floor(takeRaw)))
+      : 12;
     const search = params?.search?.trim();
     const category = params?.category?.trim();
     const cursor = params?.cursor;
@@ -205,6 +208,9 @@ export async function updatePostAction(
   try {
     const user = await requireUserFromToken(accessToken);
     const id = assertPositiveIntId(postId);
+    // 소유권 확인을 파일 저장(멀티파트 파싱) 앞에 — 타인 글 id로 디스크를 채우는 것 차단
+    const posts = new PostsService();
+    await posts.assertPostOwner({ id: user.sub, role: user.role }, id);
     const body = await parsePostPatchMultipart(formData);
     toClean = [...body.newFiles, ...body.newPosters];
 
@@ -215,7 +221,6 @@ export async function updatePostAction(
 
     const mediaPlan = parseMediaPlan(body.mediaPlanRaw);
 
-    const posts = new PostsService();
     return (await posts.updatePost({ id: user.sub, role: user.role }, id, {
       title: body.title,
       content: body.content,

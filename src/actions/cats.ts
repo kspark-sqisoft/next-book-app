@@ -143,13 +143,13 @@ export async function uploadCatImageAction(
       });
       filename = saved.filename; // 디스크에 저장된 안전한 파일명
     } catch (err) {
-      if (String(err) === "MIME_NOT_ALLOWED") {
+      if (err instanceof Error && err.message === "MIME_NOT_ALLOWED") {
         throw new HttpError(
           400,
           "고양이 사진은 JPEG, PNG, GIF, WebP만 업로드할 수 있습니다.",
         );
       }
-      if (String(err) === "FILE_TOO_LARGE") {
+      if (err instanceof Error && err.message === "FILE_TOO_LARGE") {
         throw new HttpError(400, "파일이 너무 큽니다.");
       }
       throw err; // 예상 밖 오류는 그대로 전파

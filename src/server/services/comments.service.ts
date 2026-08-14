@@ -1,5 +1,5 @@
 // 글 댓글 트리·작성/삭제 권한
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 
 import {
   type AuthActor,
@@ -227,13 +227,15 @@ export class CommentsService {
 
   private async deleteCommentSubtree(commentId: number): Promise<void> {
     const db = this.db();
-    const children = await db
-      .select({ id: postComment.id })
-      .from(postComment)
-      .where(eq(postComment.parentId, commentId));
-    for (const ch of children) {
-      await this.deleteCommentSubtree(ch.id);
-    }
-    await db.delete(postComment).where(eq(postComment.id, commentId));
+    // 재귀 CTE 한 문장으로 서브트리 전체 삭제 — 노드당 왕복(N+1)과 중간 실패로 인한 고아 방지
+    await db.execute(sql`
+      WITH RECURSIVE subtree AS (
+        SELECT id FROM ${postComment} WHERE id = ${commentId}
+        UNION ALL
+        SELECT c.id FROM ${postComment} c
+        JOIN subtree s ON c."parentId" = s.id
+      )
+      DELETE FROM ${postComment} WHERE id IN (SELECT id FROM subtree)
+    `);
   }
 }

@@ -29,7 +29,19 @@ export function BookWebviewWidgetOverlay({
   isSelected,
   liveFrame,
 }: Props) {
-  const url = parseBookWebviewUrl(el.webviewUrl);
+  const parsed = parseBookWebviewUrl(el.webviewUrl);
+  // 자기 오리진 임베드 차단 — allow-scripts 샌드박스에서 같은 출처 문서는 부모 컨텍스트에 접근할 여지가 있음
+  const url = (() => {
+    if (!parsed) return undefined;
+    if (typeof window === "undefined") return parsed;
+    try {
+      return new URL(parsed).origin === window.location.origin
+        ? undefined
+        : parsed;
+    } catch {
+      return undefined;
+    }
+  })();
 
   const w = el.width;
   const h = el.height;
@@ -95,7 +107,10 @@ export function BookWebviewWidgetOverlay({
             transform: `scale(${scale})`,
             transformOrigin: "top left",
           }}
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          /* allow-same-origin과 allow-scripts를 함께 주면 샌드박스가 무력화될 수 있어 제외.
+             일부 사이트(스토리지 의존)는 표시가 제한될 수 있으나 보안 우선. */
+          sandbox="allow-scripts allow-forms allow-popups"
+          referrerPolicy="no-referrer"
           allow="autoplay; encrypted-media; fullscreen"
           loading="lazy"
         />

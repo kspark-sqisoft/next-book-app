@@ -57,7 +57,8 @@ export function LoginPage() {
     const read = () => {
       const sp = new URLSearchParams(window.location.search.replace(/^\?/, ""));
       const raw = sp.get("from")?.trim() ?? "";
-      const safe = raw.startsWith("/") && !raw.startsWith("//") ? raw : "/me";
+      // `/\evil.com`은 URL 파서가 백슬래시를 슬래시로 정규화해 외부로 튈 수 있음 — 둘 다 차단
+      const safe = /^\/[^/\\]/.test(raw) ? raw : "/me";
       setFrom(safe);
       setJustRegistered(sp.get("registered") === "1");
     };

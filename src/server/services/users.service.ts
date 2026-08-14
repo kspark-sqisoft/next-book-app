@@ -77,8 +77,10 @@ export class UsersService {
 
   async findByEmail(email: string) {
     const db = this.db();
+    // 부트스트랩 관리자 매칭(LOWER)과 동일 기준 — 대소문자만 다른 중복 계정·권한 오지정 방지
+    const normalized = email.trim().toLowerCase();
     return db.query.user.findFirst({
-      where: eq(userTable.email, email),
+      where: sql`LOWER(TRIM(${userTable.email})) = ${normalized}`,
     });
   }
 
@@ -118,27 +120,48 @@ export class UsersService {
     return row;
   }
 
-  private async assertNotLastAdminWhenDemotingAdmin(userId: number) {
+  /**
+   * 관리자 강등을 "남은 관리자 수 > 1" 조건과 같은 문장으로 수행 —
+   * 카운트 조회와 UPDATE 사이의 경합(동시 강등으로 관리자 0명)을 DB 레벨에서 차단.
+   * 강등이 실제로 일어났으면 true, 마지막 관리자여서 거부되면 throw.
+   */
+  private async demoteAdminGuarded(userId: number): Promise<void> {
     const db = this.db();
-    const u = await db.query.user.findFirst({
-      where: eq(userTable.id, userId),
-    });
-    if (!u || u.role !== UserRole.Admin) return;
-    const [{ n }] = await db
-      .select({ n: sql<number>`count(*)::int` })
-      .from(userTable)
-      .where(eq(userTable.role, UserRole.Admin));
-    if (n <= 1) {
-      throw new HttpError(
-        400,
-        "마지막 관리자입니다. 역할을 일반 사용자로 바꿀 수 없습니다.",
-      );
+    const rows = await db
+      .update(userTable)
+      .set({ role: UserRole.User })
+      .where(
+        sql`${userTable.id} = ${userId} AND ${userTable.role} = ${UserRole.Admin} AND (SELECT count(*) FROM ${userTable} WHERE ${userTable.role} = ${UserRole.Admin}) > 1`,
+      )
+      .returning({ id: userTable.id });
+    if (rows.length === 0) {
+      // 이미 일반 사용자면 통과, 마지막 관리자면 거부
+      const u = await db.query.user.findFirst({
+        where: eq(userTable.id, userId),
+        columns: { role: true },
+      });
+      if (u && u.role === UserRole.Admin) {
+        throw new HttpError(
+          400,
+          "마지막 관리자입니다. 역할을 일반 사용자로 바꿀 수 없습니다.",
+        );
+      }
     }
   }
 
   async listUsersForAdmin(): Promise<AdminUserListItem[]> {
     const db = this.db();
-    const rows = await db.select().from(userTable).orderBy(userTable.id);
+    // password 해시는 목록에 필요 없음 — 프로젝션으로 앱 메모리 유입 자체를 차단
+    const rows = await db
+      .select({
+        id: userTable.id,
+        email: userTable.email,
+        name: userTable.name,
+        profileImageFilename: userTable.profileImageFilename,
+        role: userTable.role,
+      })
+      .from(userTable)
+      .orderBy(userTable.id);
     return rows.map((u) => {
       const fn = u.profileImageFilename;
       const trimmed =
@@ -195,13 +218,13 @@ export class UsersService {
     }
 
     if (curRole === UserRole.Admin && newRole === UserRole.User) {
-      await this.assertNotLastAdminWhenDemotingAdmin(target.id);
+      await this.demoteAdminGuarded(target.id);
+    } else {
+      await db
+        .update(userTable)
+        .set({ role: newRole })
+        .where(eq(userTable.id, target.id));
     }
-
-    await db
-      .update(userTable)
-      .set({ role: newRole })
-      .where(eq(userTable.id, target.id));
 
     return {
       id: target.id,
@@ -263,7 +286,7 @@ export class UsersService {
         }
       } else if (body.role === UserRole.User) {
         if (curRole === UserRole.Admin) {
-          await this.assertNotLastAdminWhenDemotingAdmin(user.id);
+          await this.demoteAdminGuarded(user.id);
           user.role = UserRole.User;
           touched = true;
         }

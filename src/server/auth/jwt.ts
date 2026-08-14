@@ -47,7 +47,9 @@ export async function signRefreshToken(payload: JwtPayload): Promise<string> {
 
 // API Bearer·서버 액션에서 사용
 export async function verifyAccessToken(token: string): Promise<JwtPayload> {
-  const { payload } = await jose.jwtVerify(token, encAccess);
+  const { payload } = await jose.jwtVerify(token, encAccess, {
+    algorithms: ["HS256"],
+  });
   const sub = Number(payload.sub);
   if (!Number.isFinite(sub) || sub < 1) {
     throw new Error("Invalid sub");
@@ -64,7 +66,9 @@ export async function verifyAccessToken(token: string): Promise<JwtPayload> {
 
 // 리프레시 로테이션 시에만
 export async function verifyRefreshToken(token: string): Promise<JwtPayload> {
-  const { payload } = await jose.jwtVerify(token, encRefresh);
+  const { payload } = await jose.jwtVerify(token, encRefresh, {
+    algorithms: ["HS256"],
+  });
   const sub = Number(payload.sub);
   if (!Number.isFinite(sub) || sub < 1) {
     throw new Error("Invalid sub");

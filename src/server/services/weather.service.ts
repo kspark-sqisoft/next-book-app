@@ -85,7 +85,7 @@ export class WeatherService {
     const geoUrl = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(t)}&limit=1&appid=${encodeURIComponent(key)}`;
     let res: Response;
     try {
-      res = await fetch(geoUrl);
+      res = await fetch(geoUrl, { signal: AbortSignal.timeout(8_000) });
     } catch {
       throw new HttpError(502, "도시 정보를 가져오지 못했습니다.");
     }
@@ -125,7 +125,9 @@ export class WeatherService {
 
     let weatherJson: OwmWeatherJson;
     try {
-      const res = await fetch(weatherUrl);
+      const res = await fetch(weatherUrl, {
+        signal: AbortSignal.timeout(8_000),
+      });
       if (!res.ok) throw new Error(`weather ${res.status}`);
       weatherJson = (await res.json()) as OwmWeatherJson;
     } catch {
@@ -150,7 +152,7 @@ export class WeatherService {
     let aqiLabel: string | null = null;
 
     try {
-      const ares = await fetch(airUrl);
+      const ares = await fetch(airUrl, { signal: AbortSignal.timeout(8_000) });
       if (ares.ok) {
         const airJson = (await ares.json()) as OwmAirJson;
         const row = airJson.list?.[0];

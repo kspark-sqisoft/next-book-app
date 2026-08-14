@@ -153,7 +153,6 @@ export class NewsService {
         from,
         sortBy: "publishedAt",
         pageSize: String(ask),
-        apiKey: key,
       });
       if (withLang) params.set("language", withLang);
 
@@ -161,7 +160,11 @@ export class NewsService {
 
       let res: Response;
       try {
-        res = await fetch(url);
+        // 키는 쿼리 대신 헤더로(로그·에러 메시지 유출 방지), 무기한 대기 방지 타임아웃
+        res = await fetch(url, {
+          headers: { "X-Api-Key": key },
+          signal: AbortSignal.timeout(8_000),
+        });
       } catch {
         return [];
       }
@@ -225,7 +228,6 @@ export class NewsService {
       const params = new URLSearchParams({
         country,
         pageSize: String(pageSize),
-        apiKey: key,
       });
       if (cat) params.set("category", cat);
 
@@ -233,7 +235,10 @@ export class NewsService {
 
       let res: Response;
       try {
-        res = await fetch(url);
+        res = await fetch(url, {
+          headers: { "X-Api-Key": key },
+          signal: AbortSignal.timeout(8_000),
+        });
       } catch {
         throw new HttpError(502, "뉴스 API에 연결하지 못했습니다.");
       }
@@ -246,13 +251,13 @@ export class NewsService {
       }
 
       if (json.status === "error") {
-        const msg = json.message ?? json.code ?? "unknown";
-        throw new HttpError(
-          502,
-          typeof msg === "string" && msg.length > 0
-            ? `NewsAPI: ${msg}`
-            : "뉴스를 가져오지 못했습니다.",
+        // 업스트림 원본 메시지는 요청 파라미터를 되돌려줄 수 있어 서버 로그에만 남김
+        console.warn(
+          "[news] NewsAPI 오류:",
+          String(json.code ?? ""),
+          String(json.message ?? "").slice(0, 300),
         );
+        throw new HttpError(502, "뉴스를 가져오지 못했습니다.");
       }
 
       if (!res.ok) {

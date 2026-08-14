@@ -78,15 +78,22 @@ async function buildRoomList(nsp: Namespace) {
   return list;
 }
 
+// 접속·해제가 몰릴 때 방 전체 스캔+전역 emit이 이벤트마다 반복되지 않게 짧게 디바운스
+let roomListTimer: NodeJS.Timeout | null = null;
+
 function broadcastRoomList(nsp: Namespace) {
-  // DB 순단 시 unhandled rejection으로 프로세스가 죽지 않도록 반드시 catch
-  void buildRoomList(nsp)
-    .then((rooms) => {
-      nsp.emit("roomList", { rooms });
-    })
-    .catch((err) => {
-      console.error("[chat] roomList 브로드캐스트 실패:", err);
-    });
+  if (roomListTimer) return;
+  roomListTimer = setTimeout(() => {
+    roomListTimer = null;
+    // DB 순단 시 unhandled rejection으로 프로세스가 죽지 않도록 반드시 catch
+    void buildRoomList(nsp)
+      .then((rooms) => {
+        nsp.emit("roomList", { rooms });
+      })
+      .catch((err) => {
+        console.error("[chat] roomList 브로드캐스트 실패:", err);
+      });
+  }, 300);
 }
 
 async function messageHistoryPayload(
@@ -138,6 +145,21 @@ export function attachChatNamespace(nsp: Namespace) {
 
     const db = getDb();
 
+    // 메시지마다 프로필 SELECT가 반복되지 않게 소켓 단위 캐시(60초)
+    let profileCache: {
+      at: number;
+      profile: Awaited<ReturnType<typeof loadUserProfile>>;
+    } | null = null;
+    async function getProfileCached() {
+      const now = Date.now();
+      if (profileCache && now - profileCache.at < 60_000) {
+        return profileCache.profile;
+      }
+      const profile = await loadUserProfile(db, userPayload.sub);
+      profileCache = { at: now, profile };
+      return profile;
+    }
+
     async function joinRoom(roomId: string) {
       const prev = currentRoomBySocket.get(socket.id);
       if (prev === roomId) {
@@ -175,7 +197,7 @@ export function attachChatNamespace(nsp: Namespace) {
       const messages = await messageHistoryPayload(db, roomId);
       socket.emit("messageHistory", { roomId, messages });
 
-      const profile = await loadUserProfile(db, userPayload.sub);
+      const profile = await getProfileCached();
       socket.to(`room:${roomId}`).emit("systemNotice", {
         type: "join",
         roomId,
@@ -220,7 +242,7 @@ export function attachChatNamespace(nsp: Namespace) {
           return;
         }
 
-        const profile = await loadUserProfile(db, userPayload.sub);
+        const profile = await getProfileCached();
         const authorName = (
           profile.name ||
           userPayload.name ||
@@ -260,14 +282,18 @@ export function attachChatNamespace(nsp: Namespace) {
     });
 
     socket.on("leaveRoom", async () => {
-      const room = currentRoomBySocket.get(socket.id);
-      if (!room || room === "lobby") {
-        socket.emit("chatError", { message: "로비에서는 나갈 수 없습니다." });
-        return;
+      try {
+        const room = currentRoomBySocket.get(socket.id);
+        if (!room || room === "lobby") {
+          socket.emit("chatError", { message: "로비에서는 나갈 수 없습니다." });
+          return;
+        }
+        socket.leave(`room:${room}`);
+        socket.emit("leftRoom", { roomId: room });
+        await joinRoom("lobby");
+      } catch {
+        socket.emit("chatError", { message: "방 나가기에 실패했습니다." });
       }
-      socket.leave(`room:${room}`);
-      socket.emit("leftRoom", { roomId: room });
-      await joinRoom("lobby");
     });
 
     socket.on("deleteRoom", async (p: { roomId?: string }) => {
@@ -288,20 +314,21 @@ export function attachChatNamespace(nsp: Namespace) {
 
         const roomKey = `room:${roomId}`;
         const sids = nsp.adapter.rooms.get(roomKey);
-        if (sids) {
+        if (sids && sids.size > 0) {
+          // 로비 히스토리는 전원 동일 — 인원수만큼 반복 조회하지 않게 1회만
+          const lobbyMessages = await messageHistoryPayload(db, "lobby");
           for (const sid of [...sids]) {
             const peer = nsp.sockets.get(sid);
             if (!peer) continue;
             peer.leave(roomKey);
             peer.emit("roomDeleted", { roomId });
-            currentRoomBySocket.delete(sid);
-            await (async function rejoinLobby(sock: Socket) {
-              sock.join("room:lobby");
-              currentRoomBySocket.set(sock.id, "lobby");
-              sock.emit("joinedRoom", { roomId: "lobby" });
-              const messages = await messageHistoryPayload(db, "lobby");
-              sock.emit("messageHistory", { roomId: "lobby", messages });
-            })(peer);
+            peer.join("room:lobby");
+            currentRoomBySocket.set(sid, "lobby");
+            peer.emit("joinedRoom", { roomId: "lobby" });
+            peer.emit("messageHistory", {
+              roomId: "lobby",
+              messages: lobbyMessages,
+            });
           }
         }
 

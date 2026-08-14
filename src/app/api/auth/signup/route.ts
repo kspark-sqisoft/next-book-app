@@ -2,11 +2,14 @@
 import { NextResponse } from "next/server";
 
 import { handleRouteError } from "@/server/http/api-response";
+import { assertRateLimit, clientIpFromRequest } from "@/server/http/rate-limit";
 import { AuthService } from "@/server/services/auth.service";
 import { ensureUserBootstraps } from "@/server/services/bootstrap";
 
 export async function POST(request: Request) {
   try {
+    // 가입 스팸 방지
+    assertRateLimit(`signup:${clientIpFromRequest(request)}`, 5, 60_000);
     await ensureUserBootstraps();
     const body = (await request.json()) as {
       email?: string;

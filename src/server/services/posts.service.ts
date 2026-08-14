@@ -229,6 +229,19 @@ export class PostsService {
     return raw.replace(/!/g, "!!").replace(/%/g, "!%").replace(/_/g, "!_");
   }
 
+  /** 파일 저장 등 비용이 드는 작업 전에 소유권만 빠르게 확인 */
+  async assertPostOwner(actor: AuthActor, id: number): Promise<void> {
+    const db = this.db();
+    const row = await db.query.post.findFirst({
+      where: eq(post.id, id),
+      columns: { id: true, authorId: true },
+    });
+    if (!row) throw new HttpError(404, "Not Found");
+    if (!canMutateOwnedResource(actor, row.authorId)) {
+      throw new HttpError(403, "Forbidden");
+    }
+  }
+
   private async getLikeAggregates(
     postIds: number[],
     viewerId?: number,

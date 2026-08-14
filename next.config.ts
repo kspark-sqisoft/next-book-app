@@ -17,6 +17,26 @@ const konvaPackageRoot = path.resolve(
 const konvaTurbopackAlias = "./node_modules/konva";
 
 const nextConfig: NextConfig = {
+  // 기본 보안 헤더 — CSP는 캔버스(blob:)·외부 미디어(Pexels 등)·유튜브 임베드 요구사항 정리 후 별도 도입
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+          },
+        ],
+      },
+    ];
+  },
   // Custom `server.ts` runs Next + Socket.IO on one port; standalone bundle targets the default server only.
   experimental: {
     // Next 16 기본 true — dev 클라이언트가 self.__next_r 를 요구함. 커스텀 서버(tsx server.ts)와 맞지 않아 InvariantError.

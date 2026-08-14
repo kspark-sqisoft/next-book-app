@@ -1,5 +1,5 @@
 // 북 편집용 OpenAI 채팅·툴(Pexels)·히스토리 영속
-import { asc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
 import type { AuthActor } from "@/server/auth/auth-policy";
 import { getDb } from "@/server/db";
@@ -198,6 +198,17 @@ export class BookAiService {
     const viewingOneBased = activeIdx + 1;
 
     const sel = input.selection;
+    // 시스템 프롬프트에 문자열로 삽입되므로 형식을 강제 — 따옴표 탈출로 임의 지시가 주입되지 않게
+    if (sel) {
+      if (
+        typeof sel.elementId !== "string" ||
+        !/^[A-Za-z0-9_-]{1,80}$/.test(sel.elementId) ||
+        typeof sel.kind !== "string" ||
+        !/^[a-zA-Z]{1,32}$/.test(sel.kind)
+      ) {
+        throw new HttpError(400, "selection 형식이 올바르지 않습니다.");
+      }
+    }
     const selectionBlock = sel
       ? `WIDGET SELECTION (single selected widget on the slide the user is viewing): elementId="${sel.elementId}" kind="${sel.kind}". If they ask to change/replace/swap THIS widget's image or video (e.g. 바꿔줘, 다른 걸로, 교체, 다른 동영상, 다른 사진, replace, swap, change to), emit replace_widget_media (schema J) with this EXACT elementId and widget "${sel.kind}" plus English imageSearchQuery/videoSearchQuery or https URL. Do NOT use add_widget for that. If the request is about book title, slide tab name, background, pages, undo, canvas size, or unrelated topics, ignore this selection.`
       : "No WIDGET SELECTION — never emit replace_widget_media (no target id). Use add_widget for new image/video widgets.";
@@ -357,6 +368,8 @@ ${msg}`;
             { role: "user", content: user },
           ],
         }),
+        // 업스트림 무응답 시 핸들러가 무기한 매달리지 않게
+        signal: AbortSignal.timeout(30_000),
       });
     } catch (e) {
       console.warn(`OpenAI fetch failed: ${(e as Error).message}`);
@@ -1434,8 +1447,10 @@ ${msg}`;
       .select()
       .from(bookAiChatMessage)
       .where(eq(bookAiChatMessage.bookId, bookId))
-      .orderBy(asc(bookAiChatMessage.createdAt))
+      // 최신 N건을 시간순으로 — asc+limit이면 201건째부터 최근 대화가 영영 안 보임
+      .orderBy(desc(bookAiChatMessage.createdAt), desc(bookAiChatMessage.id))
       .limit(BookAiService.CHAT_PAGE);
+    rows.reverse();
     return rows.map((r) => ({
       id: r.id,
       role: r.role as "user" | "assistant",

@@ -14,6 +14,7 @@ import type {
   BookUploadResult,
 } from "@/lib/api";
 import { saveBookMainAndPoster } from "@/server/books/save-book-media";
+import { HttpError } from "@/server/http/http-error";
 import { BookAiService } from "@/server/services/book-ai.service";
 import { BooksService } from "@/server/services/books.service";
 import type {
@@ -28,11 +29,16 @@ export async function listBooksAction(params?: {
   search?: string;
 }): Promise<BooksPageResponse> {
   try {
+    // Math.max(0, NaN)은 NaN — OFFSET NaN으로 SQL 오류가 나지 않게 유한값 강제
     const skipRaw = Number(params?.skip ?? 0);
     const takeRaw = Number(params?.take ?? 12);
     const search = params?.search?.trim();
-    const skip = Math.max(0, skipRaw);
-    const take = Math.min(50, Math.max(1, takeRaw));
+    const skip = Number.isFinite(skipRaw)
+      ? Math.max(0, Math.floor(skipRaw))
+      : 0;
+    const take = Number.isFinite(takeRaw)
+      ? Math.min(50, Math.max(1, Math.floor(takeRaw)))
+      : 12;
     const books = new BooksService();
     return (await books.findPage(
       skip,
@@ -115,7 +121,7 @@ export async function uploadBookMediaAction(
     const file = formData.get("file");
     const poster = formData.get("poster");
     if (!(file instanceof File) || file.size === 0) {
-      throw new Error("file 필드가 필요합니다.");
+      throw new HttpError(400, "file 필드가 필요합니다.");
     }
     const posterFile =
       poster instanceof File && poster.size > 0 ? poster : null;

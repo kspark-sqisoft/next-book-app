@@ -1,6 +1,6 @@
 // 가입·로그인·리프레시 로테이션·bcrypt·JWT
 import * as bcrypt from "bcrypt";
-import { and, eq } from "drizzle-orm";
+import { and, eq, lt } from "drizzle-orm";
 
 import { hashRefreshToken } from "@/server/auth/hash-refresh";
 import {
@@ -23,9 +23,27 @@ export class AuthService {
   }
 
   async signup(email: string, password: string, name: string) {
-    const emailNorm = email.trim();
-    if (!name?.trim()) {
+    // 클라이언트 zod 스키마와 별개로 서버에서도 검증 — API 직접 호출로 빈 비밀번호 계정이 생기지 않게
+    const emailNorm = email.trim().toLowerCase();
+    if (
+      !emailNorm ||
+      emailNorm.length > 255 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)
+    ) {
+      throw new HttpError(400, "이메일 형식이 올바르지 않습니다.");
+    }
+    if (typeof password !== "string" || password.length < 6) {
+      throw new HttpError(400, "비밀번호는 6자 이상이어야 합니다.");
+    }
+    if (password.length > 200) {
+      throw new HttpError(400, "비밀번호가 너무 깁니다.");
+    }
+    const trimmedName = name?.trim() ?? "";
+    if (!trimmedName) {
       throw new HttpError(400, "이름을 입력해 주세요.");
+    }
+    if (trimmedName.length > 100) {
+      throw new HttpError(400, "이름은 100자 이하로 입력해 주세요.");
     }
     const existing = await this.usersService.findByEmail(emailNorm);
     if (existing) {
@@ -56,9 +74,14 @@ export class AuthService {
       .where(eq(refreshTokenTable.tokenHash, hashRefreshToken(rawToken)));
   }
 
+  // 미존재 계정도 bcrypt 비교 비용을 지불시켜 응답 시간으로 계정 존재를 추측하지 못하게 함
+  private static readonly DUMMY_HASH =
+    "$2b$10$C6UzMDM.H6dfI/f/IKcEeO7ZoLCkzK7qXKcnwm0eEC1EaBTU0uW3S";
+
   async signin(email: string, password: string) {
     const user = await this.usersService.findByEmail(email);
     if (!user) {
+      await bcrypt.compare(password, AuthService.DUMMY_HASH);
       throw new HttpError(401, "Unauthorized");
     }
     const isMatch = await bcrypt.compare(password, user.password);
@@ -101,6 +124,16 @@ export class AuthService {
     const incomingHash = hashRefreshToken(refreshToken);
     const now = Date.now();
     const db = this.db();
+
+    // 갱신 때마다 이 사용자의 만료 행을 정리 — 로그인/갱신 반복으로 무한 누적되는 것 방지
+    await db
+      .delete(refreshTokenTable)
+      .where(
+        and(
+          eq(refreshTokenTable.userId, user.id),
+          lt(refreshTokenTable.expiresAt, new Date(now)),
+        ),
+      );
 
     try {
       const newRefreshToken = await db.transaction(async (tx) => {

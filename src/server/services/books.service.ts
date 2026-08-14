@@ -1,5 +1,7 @@
 // 북·페이지·캔버스 요소 CRUD, 미디어 업로드 한도·전환 키 검증
-import { asc, count, desc, eq, inArray, like, sql } from "drizzle-orm";
+import { join } from "node:path";
+
+import { asc, count, desc, eq, inArray, sql } from "drizzle-orm";
 
 import {
   type AuthActor,
@@ -12,8 +14,11 @@ import {
   BOOK_IMAGES_SUBDIR,
   BOOK_VIDEO_POSTERS_SUBDIR,
   BOOK_VIDEOS_SUBDIR,
+  UPLOAD_ROOT,
 } from "@/server/env";
 import { HttpError } from "@/server/http/http-error";
+import { sanitizePostContentHtml } from "@/server/posts/post-content-sanitize";
+import { tryUnlink } from "@/server/uploads/write-file";
 
 import type {
   BookPageInputDto,
@@ -1607,7 +1612,17 @@ export class BooksService {
       this.normalizePageBackgroundColor(p.backgroundColor);
     }
     return sorted.map((p) => {
-      const elements = p.elements ?? [];
+      // 텍스트 위젯 richHtml은 저장 시점에 서버에서도 살균 — 클라이언트 DOMPurify 단일 방어 탈피
+      const elements = (p.elements ?? []).map((el) => {
+        const o = el as Record<string, unknown>;
+        if (o.type === "text" && typeof o.richHtml === "string" && o.richHtml) {
+          return {
+            ...o,
+            richHtml: sanitizePostContentHtml(o.richHtml),
+          } as typeof el;
+        }
+        return el;
+      });
       let presentationTimingElementId: string | null = null;
       const tr = p.presentationTimingElementId;
       if (tr != null && String(tr).trim() !== "") {
@@ -1641,7 +1656,13 @@ export class BooksService {
   ): Promise<{ items: BookListItemPublic[]; total: number }> {
     const db = this.db();
     const term = search?.trim().slice(0, 120);
-    const whereClause = term ? like(bookTable.title, `%${term}%`) : undefined;
+    // %·_ 와일드카드 이스케이프 — posts 검색과 동일 규칙
+    const pattern = term
+      ? `%${term.replace(/!/g, "!!").replace(/%/g, "!%").replace(/_/g, "!_")}%`
+      : null;
+    const whereClause = pattern
+      ? sql`${bookTable.title} LIKE ${pattern} ESCAPE '!'`
+      : undefined;
 
     const totalResult = await db
       .select({ n: count() })
@@ -1880,6 +1901,38 @@ export class BooksService {
     return this.findOne(bookId);
   }
 
+  /** elementsJson 안의 이 앱 업로드 미디어 경로(/uploads/book-*)만 수집 — 외부 URL·다른 서브디렉터리는 제외 */
+  private collectBookUploadMediaPaths(
+    elementsJsonList: (string | null)[],
+  ): string[] {
+    const allow = new RegExp(
+      `^/uploads/(${BOOK_IMAGES_SUBDIR}|${BOOK_VIDEOS_SUBDIR}|${BOOK_VIDEO_POSTERS_SUBDIR})/[A-Za-z0-9._-]+$`,
+    );
+    const found = new Set<string>();
+    const visit = (v: unknown): void => {
+      if (typeof v === "string") {
+        if (allow.test(v)) found.add(v);
+        return;
+      }
+      if (Array.isArray(v)) {
+        for (const x of v) visit(x);
+        return;
+      }
+      if (v && typeof v === "object") {
+        for (const x of Object.values(v)) visit(x);
+      }
+    };
+    for (const j of elementsJsonList) {
+      if (!j) continue;
+      try {
+        visit(JSON.parse(j));
+      } catch {
+        // 손상된 JSON은 파일 수집만 건너뜀
+      }
+    }
+    return [...found];
+  }
+
   async remove(bookId: number, actor: AuthActor): Promise<void> {
     const db = this.db();
     const book = await db.query.book.findFirst({
@@ -1890,11 +1943,27 @@ export class BooksService {
     if (!canMutateOwnedResource(actor, book.author.id)) {
       throw new HttpError(403, "삭제 권한이 없습니다.");
     }
+
+    // 삭제 전 페이지에서 업로드 미디어 경로 수집 (디스크 정리는 커밋 후)
+    const pages = await db
+      .select({ elementsJson: bookPage.elementsJson })
+      .from(bookPage)
+      .where(eq(bookPage.bookId, bookId));
+    const mediaPaths = this.collectBookUploadMediaPaths(
+      pages.map((p) => p.elementsJson),
+    );
+
     // 페이지·북 삭제를 원자 처리 — 중간 실패 시 고아 행 방지
     await db.transaction(async (tx) => {
       await tx.delete(bookPage).where(eq(bookPage.bookId, bookId));
       await tx.delete(bookTable).where(eq(bookTable.id, bookId));
     });
+
+    // 커밋 확정 후 업로드 파일 정리 — 실패해도 고아 파일이 남을 뿐 데이터는 안전
+    for (const rel of mediaPaths) {
+      const relative = rel.slice("/uploads/".length);
+      await tryUnlink(join(UPLOAD_ROOT, relative));
+    }
   }
 
   async assertBookOwner(bookId: number, actor: AuthActor) {

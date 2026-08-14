@@ -60,6 +60,9 @@ export async function GET(
     "Cache-Control": "public, max-age=3600",
     // 비디오 탐색(seek)에 필요: 브라우저가 부분 요청 가능 여부를 이 헤더로 판단
     "Accept-Ranges": "bytes",
+    // 업로드 파일이 브라우저 스니핑으로 HTML/스크립트로 실행되지 않게
+    "X-Content-Type-Options": "nosniff",
+    "Content-Disposition": "inline",
   };
 
   const range = parseByteRange(request.headers.get("range"), size);

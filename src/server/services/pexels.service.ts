@@ -57,6 +57,7 @@ export class PexelsService {
       const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(q)}&per_page=15${o}`;
       const res = await fetch(url, {
         headers: { Authorization: key },
+        signal: AbortSignal.timeout(8_000),
       });
       if (!res.ok) return null;
       return (await res.json()) as PexelsSearchJson;
@@ -166,7 +167,10 @@ export class PexelsService {
       const o = orientation ? `&orientation=${orientation}` : "";
       const md = maxDuration != null ? `&max_duration=${maxDuration}` : "";
       const url = `https://api.pexels.com/v1/videos/search?query=${encodeURIComponent(q)}&per_page=20${md}${o}`;
-      const res = await fetch(url, { headers: { Authorization: key } });
+      const res = await fetch(url, {
+        headers: { Authorization: key },
+        signal: AbortSignal.timeout(8_000),
+      });
       if (!res.ok) return null;
       return (await res.json()) as PexelsVideoSearchJson;
     };

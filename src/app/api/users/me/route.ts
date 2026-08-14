@@ -91,13 +91,13 @@ export async function PATCH(request: Request) {
         });
         newImageFilename = saved.filename;
       } catch (err) {
-        if (String(err) === "MIME_NOT_ALLOWED") {
+        if (err instanceof Error && err.message === "MIME_NOT_ALLOWED") {
           return jsonError(
             400,
             "프로필 이미지는 JPEG, PNG, GIF, WebP만 업로드할 수 있습니다.",
           );
         }
-        if (String(err) === "FILE_TOO_LARGE") {
+        if (err instanceof Error && err.message === "FILE_TOO_LARGE") {
           return jsonError(400, "프로필 이미지가 너무 큽니다.");
         }
         throw err;
