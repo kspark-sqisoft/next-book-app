@@ -51,168 +51,168 @@ function createAuthStore() {
   return create<AuthState>()(
     devtools(
       immer((set) => ({
-      user: null,
-      /** `hydrate()`가 끝나기 전에는 보호 라우트·로그인 폼이 스피너를 보여 줍니다. */
-      isReady: false,
+        user: null,
+        /** `hydrate()`가 끝나기 전에는 보호 라우트·로그인 폼이 스피너를 보여 줍니다. */
+        isReady: false,
 
-      /**
-       * hydrate = “물을 채우듯” 메모리(Zustand)에 로그인 상태를 맞춰 넣는 작업입니다.
-       *
-       * 왜 필요한가?
-       * - 새로고침(F5)하면 React·Zustand state는 비어 있지만, 브라우저에는 이전에 남은
-       *   sessionStorage(액세스 JWT)와 httpOnly 쿠키(리프레시 JWT)가 남아 있을 수 있습니다.
-       * - 그걸 읽어서 “지금 로그인한 사람이 누구인지”를 다시 확인한 뒤 `user`에 넣습니다.
-       *
-       * 순서(요약):
-       * 1) 액세스 토큰이 있으면 → GET /users/me 로 프로필 시도
-       * 2) 실패(만료 등)면 → 쿠키만 보내 POST /auth/refresh 로 새 액세스 토큰 발급 후 다시 /users/me
-       * 3) 액세스 토큰이 원래 없어도 → 리프레시 쿠키만으로 2)와 같이 시도 (예: 직전 탭에서만 로그인한 경우)
-       * 4) 끝까지 사용자를 못 받으면 → 로컬 액세스 토큰 제거(깨진 값 정리)
-       * 5) `isReady = true` 로 바꿔서 앱이 “판단 끝났다”고 알림 → 스피너 대신 실제 화면(로그인/보호 라우트) 표시
-       */
-      hydrate: async () => {
-        appLog("auth", "hydrate 시작");
-        let user: AuthUser | null = null;
-        try {
-          const tryMe = () => fetchMe();
+        /**
+         * hydrate = “물을 채우듯” 메모리(Zustand)에 로그인 상태를 맞춰 넣는 작업입니다.
+         *
+         * 왜 필요한가?
+         * - 새로고침(F5)하면 React·Zustand state는 비어 있지만, 브라우저에는 이전에 남은
+         *   sessionStorage(액세스 JWT)와 httpOnly 쿠키(리프레시 JWT)가 남아 있을 수 있습니다.
+         * - 그걸 읽어서 “지금 로그인한 사람이 누구인지”를 다시 확인한 뒤 `user`에 넣습니다.
+         *
+         * 순서(요약):
+         * 1) 액세스 토큰이 있으면 → GET /users/me 로 프로필 시도
+         * 2) 실패(만료 등)면 → 쿠키만 보내 POST /auth/refresh 로 새 액세스 토큰 발급 후 다시 /users/me
+         * 3) 액세스 토큰이 원래 없어도 → 리프레시 쿠키만으로 2)와 같이 시도 (예: 직전 탭에서만 로그인한 경우)
+         * 4) 끝까지 사용자를 못 받으면 → 로컬 액세스 토큰 제거(깨진 값 정리)
+         * 5) `isReady = true` 로 바꿔서 앱이 “판단 끝났다”고 알림 → 스피너 대신 실제 화면(로그인/보호 라우트) 표시
+         */
+        hydrate: async () => {
+          appLog("auth", "hydrate 시작");
+          let user: AuthUser | null = null;
+          try {
+            const tryMe = () => fetchMe();
 
-          if (getAccessToken()) {
-            user = await tryMe();
-            if (!user) {
+            if (getAccessToken()) {
+              user = await tryMe();
+              if (!user) {
+                const refreshed = await refreshAccessToken();
+                if (refreshed) user = await tryMe();
+              }
+            } else {
               const refreshed = await refreshAccessToken();
               if (refreshed) user = await tryMe();
             }
-          } else {
-            const refreshed = await refreshAccessToken();
-            if (refreshed) user = await tryMe();
-          }
 
-          if (!user) {
+            if (!user) {
+              setAccessToken(null);
+            }
+          } catch (e) {
+            console.error("[auth/hydrate]", e);
             setAccessToken(null);
+            user = null;
           }
-        } catch (e) {
-          console.error("[auth/hydrate]", e);
-          setAccessToken(null);
-          user = null;
-        }
 
-        set(
-          (state) => {
-            state.user = user;
-            state.isReady = true;
-          },
-          false,
-          "auth/hydrate",
-        );
-        if (user) queryClient.setQueryData(userKeys.me(), user);
-        else void queryClient.removeQueries({ queryKey: userKeys.all });
-        appLog("auth", "hydrate 결과", { loggedIn: Boolean(user) });
-      },
-
-      /** 이메일/비밀번호 로그인 → 액세스 토큰 저장 → 프로필 로드 후 user 설정 */
-      signIn: async (email, password) => {
-        appLog("auth", "signIn 시도", { email });
-        try {
-          const { data } = await api.post<{ access_token?: string }>(
-            "/auth/signin",
-            {
-              email,
-              password,
-            },
-          );
-          const token = data.access_token;
-          if (!token) throw new Error("액세스 토큰을 받지 못했습니다.");
-          setAccessToken(token);
-          const me = await fetchMe();
-          if (!me) throw new Error("사용자 정보를 불러오지 못했습니다.");
           set(
             (state) => {
-              state.user = me;
+              state.user = user;
+              state.isReady = true;
             },
             false,
-            "auth/signIn",
+            "auth/hydrate",
           );
-          queryClient.setQueryData(userKeys.me(), me);
-          appLog("auth", "signIn 성공", { sub: me.sub });
-        } catch (e) {
-          appLog("auth", "signIn 실패", e instanceof Error ? e.message : e);
-          if (isAxiosError(e)) {
-            throw new Error(parseApiErrorMessage(e.response?.data));
+          if (user) queryClient.setQueryData(userKeys.me(), user);
+          else void queryClient.removeQueries({ queryKey: userKeys.all });
+          appLog("auth", "hydrate 결과", { loggedIn: Boolean(user) });
+        },
+
+        /** 이메일/비밀번호 로그인 → 액세스 토큰 저장 → 프로필 로드 후 user 설정 */
+        signIn: async (email, password) => {
+          appLog("auth", "signIn 시도", { email });
+          try {
+            const { data } = await api.post<{ access_token?: string }>(
+              "/auth/signin",
+              {
+                email,
+                password,
+              },
+            );
+            const token = data.access_token;
+            if (!token) throw new Error("액세스 토큰을 받지 못했습니다.");
+            setAccessToken(token);
+            const me = await fetchMe();
+            if (!me) throw new Error("사용자 정보를 불러오지 못했습니다.");
+            set(
+              (state) => {
+                state.user = me;
+              },
+              false,
+              "auth/signIn",
+            );
+            queryClient.setQueryData(userKeys.me(), me);
+            appLog("auth", "signIn 성공", { sub: me.sub });
+          } catch (e) {
+            appLog("auth", "signIn 실패", e instanceof Error ? e.message : e);
+            if (isAxiosError(e)) {
+              throw new Error(parseApiErrorMessage(e.response?.data));
+            }
+            throw e;
           }
-          throw e;
-        }
-      },
+        },
 
-      /** 회원가입 API만 호출; 로그인은 별도 화면에서 진행 */
-      signUp: async (input) => {
-        appLog("auth", "signUp 시도", { email: input.email });
-        try {
-          await api.post("/auth/signup", {
-            email: input.email,
-            password: input.password,
-            name: input.name,
-          });
-          appLog("auth", "signUp 성공");
-        } catch (e) {
-          appLog("auth", "signUp 실패", e instanceof Error ? e.message : e);
-          if (isAxiosError(e)) {
-            throw new Error(parseApiErrorMessage(e.response?.data));
+        /** 회원가입 API만 호출; 로그인은 별도 화면에서 진행 */
+        signUp: async (input) => {
+          appLog("auth", "signUp 시도", { email: input.email });
+          try {
+            await api.post("/auth/signup", {
+              email: input.email,
+              password: input.password,
+              name: input.name,
+            });
+            appLog("auth", "signUp 성공");
+          } catch (e) {
+            appLog("auth", "signUp 실패", e instanceof Error ? e.message : e);
+            if (isAxiosError(e)) {
+              throw new Error(parseApiErrorMessage(e.response?.data));
+            }
+            throw e;
           }
-          throw e;
-        }
-      },
+        },
 
-      /** 서버 로그아웃(쿠키 무효화) 후 로컬 토큰·user 제거 */
-      signOut: async () => {
-        appLog("auth", "signOut");
-        try {
-          await api.post("/auth/logout");
-        } catch {
-          /* 쿠키/토큰은 클라이언트에서 정리 */
-        }
-        setAccessToken(null);
-        set(
-          (state) => {
-            state.user = null;
-          },
-          false,
-          "auth/signOut",
-        );
-        void queryClient.removeQueries({ queryKey: userKeys.all });
-      },
-
-      refreshUser: async () => {
-        const me = await fetchMe();
-        if (!me) {
+        /** 서버 로그아웃(쿠키 무효화) 후 로컬 토큰·user 제거 */
+        signOut: async () => {
+          appLog("auth", "signOut");
+          try {
+            await api.post("/auth/logout");
+          } catch {
+            /* 쿠키/토큰은 클라이언트에서 정리 */
+          }
           setAccessToken(null);
-          void queryClient.removeQueries({ queryKey: userKeys.all });
           set(
             (state) => {
               state.user = null;
             },
             false,
+            "auth/signOut",
+          );
+          void queryClient.removeQueries({ queryKey: userKeys.all });
+        },
+
+        refreshUser: async () => {
+          const me = await fetchMe();
+          if (!me) {
+            setAccessToken(null);
+            void queryClient.removeQueries({ queryKey: userKeys.all });
+            set(
+              (state) => {
+                state.user = null;
+              },
+              false,
+              "auth/refreshUser",
+            );
+            return;
+          }
+          set(
+            (state) => {
+              state.user = me;
+            },
+            false,
             "auth/refreshUser",
           );
-          return;
-        }
-        set(
-          (state) => {
-            state.user = me;
-          },
-          false,
-          "auth/refreshUser",
-        );
-      },
+        },
 
-      applyServerUser: (me) => {
-        set(
-          (state) => {
-            state.user = me;
-          },
-          false,
-          "auth/applyServerUser",
-        );
-      },
+        applyServerUser: (me) => {
+          set(
+            (state) => {
+              state.user = me;
+            },
+            false,
+            "auth/applyServerUser",
+          );
+        },
       })),
       {
         name: "auth-store",
@@ -227,7 +227,8 @@ const globalForAuth = globalThis as unknown as {
 };
 
 export const useAuthStore =
-  (typeof window !== "undefined" && globalForAuth.__NEXT_BOOK_APP_AUTH_STORE__) ||
+  (typeof window !== "undefined" &&
+    globalForAuth.__NEXT_BOOK_APP_AUTH_STORE__) ||
   (() => {
     const store = createAuthStore();
     if (typeof window !== "undefined") {

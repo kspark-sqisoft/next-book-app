@@ -32,8 +32,7 @@ export function BookTickerWidgetOverlay({
   isSelected,
   liveFrame,
 }: Props) {
-  const text =
-    el.tickerText?.trim() || "티커 문구를 속성 창에서 입력하세요.";
+  const text = el.tickerText?.trim() || "티커 문구를 속성 창에서 입력하세요.";
   const speedLogical = resolveBookTickerSpeedPxPerSec(el);
   const direction = el.tickerDirection === "right" ? "right" : "left";
 

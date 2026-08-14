@@ -9,7 +9,9 @@ import {
   regenerateBookElementIds,
 } from "@/lib/use-book-widget-clipboard";
 
-const imageEl = (over: Partial<Extract<BookCanvasElement, { type: "image" }>> = {}) =>
+const imageEl = (
+  over: Partial<Extract<BookCanvasElement, { type: "image" }>> = {},
+) =>
   ({
     id: "img-1",
     type: "image",
@@ -66,7 +68,9 @@ describe("nextBookWidgetPasteStepPx", () => {
   };
 
   it("원본 페이지 첫 붙여넣기는 +16", () => {
-    expect(nextBookWidgetPasteStepPx(base, 0)).toBe(BOOK_WIDGET_PASTE_OFFSET_PX);
+    expect(nextBookWidgetPasteStepPx(base, 0)).toBe(
+      BOOK_WIDGET_PASTE_OFFSET_PX,
+    );
   });
 
   it("다른 페이지 첫 붙여넣기는 원본 좌표(0)", () => {

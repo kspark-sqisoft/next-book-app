@@ -166,8 +166,7 @@ function BookNumericIntFieldInner(props: BookNumericIntFieldProps) {
   const atMax = baseForLimits + step > max;
   const atMin = baseForLimits - step < min;
 
-  const labelForSpinner =
-    typeof label === "string" ? label : "숫자";
+  const labelForSpinner = typeof label === "string" ? label : "숫자";
 
   return (
     <div className={cn("space-y-1", className)}>

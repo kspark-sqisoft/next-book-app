@@ -12,11 +12,17 @@ describe("parseByteRange", () => {
   });
 
   it("끝 생략 bytes=500- 은 파일 끝까지", () => {
-    expect(parseByteRange("bytes=500-", 1000)).toEqual({ start: 500, end: 999 });
+    expect(parseByteRange("bytes=500-", 1000)).toEqual({
+      start: 500,
+      end: 999,
+    });
   });
 
   it("접미 구간 bytes=-300 은 마지막 300바이트", () => {
-    expect(parseByteRange("bytes=-300", 1000)).toEqual({ start: 700, end: 999 });
+    expect(parseByteRange("bytes=-300", 1000)).toEqual({
+      start: 700,
+      end: 999,
+    });
   });
 
   it("파일 크기보다 큰 접미 구간은 전체로 클램프", () => {

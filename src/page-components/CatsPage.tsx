@@ -419,7 +419,7 @@ export function CatsPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       {user &&
-                        canEditCatAsOwnerOrAdmin(user, c.ownerId ?? null) ? (
+                      canEditCatAsOwnerOrAdmin(user, c.ownerId ?? null) ? (
                         <Button
                           type="button"
                           variant="ghost"

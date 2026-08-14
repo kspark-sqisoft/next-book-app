@@ -1159,8 +1159,7 @@ export async function captureBookSlideToDataURL(
           rotation: el.rotation,
         });
         const tBg = parseBookClockBackground(el.tickerBackground) ?? "#0f172a";
-        const tFill =
-          parseBookWidgetTextColor(el.tickerTextColor) ?? "#f1f5f9";
+        const tFill = parseBookWidgetTextColor(el.tickerTextColor) ?? "#f1f5f9";
         const tUserOw = resolveBookElementOutlineWidth(el);
         const tUserOc = resolveBookElementOutlineColor(el);
         layer.add(

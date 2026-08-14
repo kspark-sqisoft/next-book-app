@@ -73,8 +73,7 @@ export function PostListPage() {
     [queryString],
   );
   const urlSearchRaw = urlParams.get("search") ?? "";
-  const urlCategoryRaw =
-    urlParams.get("category")?.trim().toLowerCase() ?? "";
+  const urlCategoryRaw = urlParams.get("category")?.trim().toLowerCase() ?? "";
   const categoryFilterParam = isPostCategoryId(urlCategoryRaw)
     ? urlCategoryRaw
     : "";
@@ -263,10 +262,10 @@ export function PostListPage() {
               items: page.items.map((p) =>
                 p.id === postId
                   ? {
-                    ...p,
-                    likeCount: state.likeCount,
-                    likedByMe: state.likedByMe,
-                  }
+                      ...p,
+                      likeCount: state.likeCount,
+                      likedByMe: state.likedByMe,
+                    }
                   : p,
               ),
             })),

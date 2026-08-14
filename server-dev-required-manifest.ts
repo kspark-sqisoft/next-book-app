@@ -54,12 +54,15 @@ export async function ensureDevRequiredServerFilesManifest(): Promise<void> {
   if (process.env.NODE_ENV === "production") return;
 
   const dir = process.cwd();
-  const [{ default: loadConfig }, { getNextConfigRuntime }, { PHASE_DEVELOPMENT_SERVER }] =
-    await Promise.all([
-      import("next/dist/server/config.js"),
-      import("next/dist/server/config-shared.js"),
-      import("next/dist/shared/lib/constants.js"),
-    ]);
+  const [
+    { default: loadConfig },
+    { getNextConfigRuntime },
+    { PHASE_DEVELOPMENT_SERVER },
+  ] = await Promise.all([
+    import("next/dist/server/config.js"),
+    import("next/dist/server/config-shared.js"),
+    import("next/dist/shared/lib/constants.js"),
+  ]);
 
   const config = await loadConfig(PHASE_DEVELOPMENT_SERVER, dir);
   const distRoot = devDistDir(dir, config.distDir);

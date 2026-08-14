@@ -231,9 +231,7 @@ export function BookPagePropertiesPanel({
                 <BookNumericIntField
                   fieldKey={`page-${pageIndex}-pres-trans-ms`}
                   htmlId="pres-trans-ms"
-                  label={
-                    <span className="text-[11px]">전환 시간(ms)</span>
-                  }
+                  label={<span className="text-[11px]">전환 시간(ms)</span>}
                   value={presentationTransitionMs}
                   min={80}
                   max={2500}

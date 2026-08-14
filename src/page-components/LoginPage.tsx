@@ -55,12 +55,9 @@ export function LoginPage() {
   const [justRegistered, setJustRegistered] = useState(false);
   useEffect(() => {
     const read = () => {
-      const sp = new URLSearchParams(
-        window.location.search.replace(/^\?/, ""),
-      );
+      const sp = new URLSearchParams(window.location.search.replace(/^\?/, ""));
       const raw = sp.get("from")?.trim() ?? "";
-      const safe =
-        raw.startsWith("/") && !raw.startsWith("//") ? raw : "/me";
+      const safe = raw.startsWith("/") && !raw.startsWith("//") ? raw : "/me";
       setFrom(safe);
       setJustRegistered(sp.get("registered") === "1");
     };

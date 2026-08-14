@@ -59,6 +59,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // ECC 플러그인 툴링 — 의도적 CommonJS 훅 스크립트라 앱 린트 대상이 아님
+    ".cursor/**",
+    // 세션 운영 산출물
+    ".omc/**",
+    ".playwright-mcp/**",
   ]),
 ]);
 

@@ -91,8 +91,8 @@ export function BookVideoEditorDialog({ onClose, onExport }: Props) {
         <div className="min-w-0">
           <h2 className="font-heading text-sm font-semibold">비디오 편집</h2>
           <p className="truncate text-[11px] text-muted-foreground">
-            내보내기(Export) 시 렌더링 후 미디어 라이브러리에 저장됩니다 ·
-            위 트랙일수록 화면 앞에 표시됩니다 · 렌더는 크롬·엣지 지원
+            내보내기(Export) 시 렌더링 후 미디어 라이브러리에 저장됩니다 · 위
+            트랙일수록 화면 앞에 표시됩니다 · 렌더는 크롬·엣지 지원
           </p>
         </div>
         <Button

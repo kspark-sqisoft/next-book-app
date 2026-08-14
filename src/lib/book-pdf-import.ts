@@ -19,7 +19,10 @@ const RENDER_TARGET_WIDTH_PX = 1600;
 
 export async function renderPdfFileToPageImages(
   file: File,
-  opts: { maxPages: number; onProgress?: (done: number, total: number) => void },
+  opts: {
+    maxPages: number;
+    onProgress?: (done: number, total: number) => void;
+  },
 ): Promise<BookPdfImportResult> {
   const pdfjs = await import("pdfjs-dist");
   pdfjs.GlobalWorkerOptions.workerSrc = new URL(

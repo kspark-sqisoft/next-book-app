@@ -24,14 +24,14 @@ services:
       - sh
       - -c
       - |
-          set -e
-          STAMP="/app/node_modules/.docker-dev-install-stamp"
-          if [ ! -f "$$STAMP" ] || [ "/app/package-lock.json" -nt "$$STAMP" ]; then
-            npm ci
-            touch "$$STAMP"
-          fi
-          npx drizzle-kit push --config drizzle.config.mjs
-          npm run dev
+        set -e
+        STAMP="/app/node_modules/.docker-dev-install-stamp"
+        if [ ! -f "$$STAMP" ] || [ "/app/package-lock.json" -nt "$$STAMP" ]; then
+          npm ci
+          touch "$$STAMP"
+        fi
+        npx drizzle-kit push --config drizzle.config.mjs
+        npm run dev
     ports:
       - "3000:3000"
     volumes:

@@ -15,6 +15,7 @@
 ## P0 — 이대로 배포하면 사고 (즉시)
 
 ### 1. JWT 시크릿이 공개된 플레이스홀더 (CRITICAL)
+
 - `.env`에 `change-me-access`가 실값, `src/server/env.ts:39-42` 하드코딩 폴백,
   `docker-compose.yml:31-32` 동일 기본값, `.env.example`에도 커밋됨.
 - 이 문자열로 누구나 `role: "admin"` 토큰 위조 → 전 계정/데이터 장악.
@@ -22,23 +23,27 @@
   `.env`의 외부 API 키 4종(OpenAI/Pexels/OpenWeather/NewsAPI)도 로테이션 권장.
 
 ### 2. 북 저장 = 전체 삭제 후 재삽입, 트랜잭션 없음 (CRITICAL)
+
 - `books.service.ts:1846-1863` — DELETE 후 페이지별 개별 INSERT. 루프 중간 실패 시 **덱 영구 소실**.
 - `posts.service.ts:626-686` — 검증 **전에** 기존 첨부 파일·행 삭제 → 400 응답인데 데이터는 이미 파괴.
 - `db.transaction`은 저장소 전체에서 auth 1곳뿐. 검증 선행 + 트랜잭션 + 다중행 INSERT로 전환.
 - 연관: **스키마에 FK 0개**, 인덱스 3개뿐(`schema.ts`). cascade 도입 시 수동 다단 삭제 로직 축소됨.
 
 ### 3. 기동마다 `drizzle-kit push` (CRITICAL)
+
 - `Dockerfile:46` — push는 스키마 diff 자동 적용 도구. 파괴적 변경을 사람 검토 없이 DROP 처리 가능,
   비-TTY에서 확인 프롬프트에 걸리면 기동 정지. `drizzle/` 마이그레이션 파일은 생성된 적 없음(이력·롤백 0).
 - 조치: `drizzle-kit generate`로 마이그레이션 커밋 → 기동은 `migrate`(또는 별도 job)로 전환.
 
 ### 4. 업로드 OOM DoS + 프로세스 생명주기 부재 (CRITICAL/HIGH)
+
 - `write-file.ts:26`, `save-post-files.ts:52` — 크기 검사 **전에** `arrayBuffer()`로 전체 버퍼링.
   `next.config.ts` `bodySizeLimit: "1gb"`와 결합 → 로그인 사용자 1명이 OOM으로 서버 다운 가능.
 - `server.ts` — `unhandledRejection`/`uncaughtException`/SIGTERM 핸들러 0건, compose `restart` 정책·healthcheck 없음.
   `attach-chat-namespace.ts:82`에 catch 없는 floating promise 실재 → DB 순단 1회로 프로세스 사망 가능.
 
 ### 5. patch-package가 runner 스테이지에 미적용 (HIGH)
+
 - `Dockerfile:24-25` — runner의 `npm ci --omit=dev` 시점에 `patches/`가 없어 postinstall이 조용히 통과.
   서버측 node_modules는 미패치(클라이언트 번들만 패치됨). `patches/` 복사 + `--error-on-fail` 필요.
 
@@ -56,6 +61,7 @@
 ## P1 — 1주 내
 
 ### 보안
+
 - 서버측 비밀번호/이메일 검증 부재 (`auth.service.ts:25-37`) — 빈 비밀번호 가입 가능. zod 검증 + 이메일 소문자 정규화
   (부트스트랩 관리자 `LOWER()` 매칭과 불일치 → 조건부 권한 상승 여지, `users.service.ts:222-232`).
 - 레이트 리밋 전무 — signin 브루트포스, 외부 API 프록시(`/api/news`, `/api/weather`) 무인증 쿼터 소진.
@@ -67,6 +73,7 @@
 - 인가 전 디스크 쓰기 (`actions/posts.ts:206-219`) — 소유권 검사를 파일 저장 앞으로 (books 쪽은 올바른 순서).
 
 ### 백엔드
+
 - 서버 액션 에러가 HTTP status를 잃음 (`session-token.ts:44-50` rethrowActionError) — 401/403/404 구분 불가.
 - 업로드 에러 분기 데드코드 (`actions/cats.ts:146` 등 4곳) — `String(err) === "MIME_NOT_ALLOWED"`는 항상 false
   (실제 값은 `"Error: MIME_NOT_ALLOWED"`).
@@ -77,6 +84,7 @@
 - 북 삭제가 디스크 미디어 미정리(`books.service.ts:1868` — posts/users/cats는 정리함), 고아 파일 sweeper 부재.
 
 ### 프론트엔드 (실버그)
+
 - **DetailPage ↔ EditorPage 약 1,400줄 중복** (Editor의 88%) — 이미 divergence 버그 3건:
   (A) Editor만 타이밍 ID 무검증 대입(`BookEditorPage.tsx:612`), (B) Detail만 요소 교체 시 초기화 누락(`:752`),
   (C) Editor만 `videoDurationSecById` 누락. → `BookWorkspace` 통합 권장.
@@ -130,8 +138,8 @@
 
 ## 로드맵
 
-| 기간 | 항목 |
-|---|---|
-| 1시간 | JWT 시크릿 교체+fail-fast · `.cursor` 린트/포맷 제외(CI 부활) · runner 패치 수정 · compose restart+healthcheck |
-| 1주 | 북 저장 트랜잭션 · drizzle 마이그레이션 전환 · 업로드 크기 선검사+bodySizeLimit 축소 · 레이트 리밋 · npm audit · divergence 버그 3건 · 에러 바운더리 · server.ts 생명주기 |
-| 1개월 | FK/인덱스 · auth/books 서비스 테스트 · 위젯 레지스트리 · BookWorkspace 통합(-1,400줄) · 보안 헤더/CSP · 미디어 라이브러리 서버 이관 · 이미지 다이어트 |
+| 기간  | 항목                                                                                                                                                                      |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1시간 | JWT 시크릿 교체+fail-fast · `.cursor` 린트/포맷 제외(CI 부활) · runner 패치 수정 · compose restart+healthcheck                                                            |
+| 1주   | 북 저장 트랜잭션 · drizzle 마이그레이션 전환 · 업로드 크기 선검사+bodySizeLimit 축소 · 레이트 리밋 · npm audit · divergence 버그 3건 · 에러 바운더리 · server.ts 생명주기 |
+| 1개월 | FK/인덱스 · auth/books 서비스 테스트 · 위젯 레지스트리 · BookWorkspace 통합(-1,400줄) · 보안 헤더/CSP · 미디어 라이브러리 서버 이관 · 이미지 다이어트                     |

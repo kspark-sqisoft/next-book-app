@@ -1241,7 +1241,9 @@ function MediaPlaylistInspectorBody({
                       <BookNumericIntField
                         fieldKey={`${el.id}:pl-dur-${i}`}
                         htmlId={`insp-pl-dur-${el.id}-${i}`}
-                        label={<span className="text-[11px]">표시 시간(초)</span>}
+                        label={
+                          <span className="text-[11px]">표시 시간(초)</span>
+                        }
                         optional
                         commitPolicy="reject"
                         value={
@@ -2043,8 +2045,7 @@ export function BookInspectorPanel({
                           checked={selected.tickerDirection === "right"}
                           onCheckedChange={(c) =>
                             onChange(selected.id, {
-                              tickerDirection:
-                                c === true ? "right" : undefined,
+                              tickerDirection: c === true ? "right" : undefined,
                             })
                           }
                         />
@@ -2150,8 +2151,7 @@ export function BookInspectorPanel({
                             checked={selected.youtubeControls === true}
                             onCheckedChange={(c) =>
                               onChange(selected.id, {
-                                youtubeControls:
-                                  c === true ? true : undefined,
+                                youtubeControls: c === true ? true : undefined,
                               })
                             }
                           />

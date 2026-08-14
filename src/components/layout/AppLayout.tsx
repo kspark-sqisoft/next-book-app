@@ -98,7 +98,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   // 메뉴 첫 클릭이 RSC 페치 대기로 “안 먹는 것처럼” 느껴지는 것 완화 — 주요 탭은 백그라운드 프리패치
   useEffect(() => {
-    const paths = ["/", "/posts", "/books", "/cats", "/login", "/signup"] as const;
+    const paths = [
+      "/",
+      "/posts",
+      "/books",
+      "/cats",
+      "/login",
+      "/signup",
+    ] as const;
     for (const p of paths) {
       void router.prefetch(p);
     }

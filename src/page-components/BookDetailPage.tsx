@@ -1282,9 +1282,7 @@ function BookDetailOwnerView({
         const at = pdfImportPlacementRef.current;
         pdfImportPlacementRef.current = null;
         const px = at
-          ? Math.round(
-              Math.min(Math.max(0, at.x), Math.max(0, slideWidth - w)),
-            )
+          ? Math.round(Math.min(Math.max(0, at.x), Math.max(0, slideWidth - w)))
           : Math.round((slideWidth - w) / 2);
         const py = at
           ? Math.round(
@@ -1518,7 +1516,10 @@ function BookDetailOwnerView({
         return;
       }
       if (kind === "webview") {
-        const p = center(DEFAULT_BOOK_WEBVIEW_WIDTH, DEFAULT_BOOK_WEBVIEW_HEIGHT);
+        const p = center(
+          DEFAULT_BOOK_WEBVIEW_WIDTH,
+          DEFAULT_BOOK_WEBVIEW_HEIGHT,
+        );
         addWebviewAt(p.x, p.y);
         return;
       }

@@ -24,18 +24,18 @@ This is a **production-ready AI coding plugin** providing 48 specialized agents,
 
 ## Available Agents
 
-| Agent | Purpose | When to Use |
-|-------|---------|-------------|
-| planner | Implementation planning | Complex features, refactoring |
-| architect | System design and scalability | Architectural decisions |
-| tdd-guide | Test-driven development | New features, bug fixes |
-| code-reviewer | Code quality and maintainability | After writing/modifying code |
-| security-reviewer | Vulnerability detection | Before commits, sensitive code |
-| build-error-resolver | Fix build/type errors | When build fails |
-| e2e-runner | End-to-end Playwright testing | Critical user flows |
-| refactor-cleaner | Dead code cleanup | Code maintenance |
-| doc-updater | Documentation and codemaps | Updating docs |
-| typescript-reviewer | TypeScript/JavaScript code review | TypeScript/JavaScript projects |
+| Agent                | Purpose                           | When to Use                    |
+| -------------------- | --------------------------------- | ------------------------------ |
+| planner              | Implementation planning           | Complex features, refactoring  |
+| architect            | System design and scalability     | Architectural decisions        |
+| tdd-guide            | Test-driven development           | New features, bug fixes        |
+| code-reviewer        | Code quality and maintainability  | After writing/modifying code   |
+| security-reviewer    | Vulnerability detection           | Before commits, sensitive code |
+| build-error-resolver | Fix build/type errors             | When build fails               |
+| e2e-runner           | End-to-end Playwright testing     | Critical user flows            |
+| refactor-cleaner     | Dead code cleanup                 | Code maintenance               |
+| doc-updater          | Documentation and codemaps        | Updating docs                  |
+| typescript-reviewer  | TypeScript/JavaScript code review | TypeScript/JavaScript projects |
 
 ## Agent Orchestration
 
@@ -78,13 +78,13 @@ Cursor workflow skills for this install live under `.cursor/skills/` (and `.curs
 
 ## ECC layout in this project
 
-| Path | Role |
-|------|------|
-| `.cursor/rules/` | Cursor rules (`.mdc`) |
-| `.cursor/hooks/` + `.cursor/hooks.json` | Cursor hooks |
-| `.cursor/scripts/` | Hook script implementations used by the adapter |
-| `.cursor/skills/` | SKILL.md workflows |
-| `.cursor/agents/` | Agent definitions |
-| `.cursor/commands/` | Command shims |
+| Path                                    | Role                                            |
+| --------------------------------------- | ----------------------------------------------- |
+| `.cursor/rules/`                        | Cursor rules (`.mdc`)                           |
+| `.cursor/hooks/` + `.cursor/hooks.json` | Cursor hooks                                    |
+| `.cursor/scripts/`                      | Hook script implementations used by the adapter |
+| `.cursor/skills/`                       | SKILL.md workflows                              |
+| `.cursor/agents/`                       | Agent definitions                               |
+| `.cursor/commands/`                     | Command shims                                   |
 
 Optional tuning: `ECC_HOOK_PROFILE` (`minimal` \| `standard` \| `strict`), `ECC_DISABLED_HOOKS` (comma-separated hook ids).
