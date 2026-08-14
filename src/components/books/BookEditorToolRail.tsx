@@ -1,10 +1,12 @@
 import {
   Blocks,
+  Clapperboard,
   FileStack,
   ImagePlus,
   LayoutTemplate,
   Pencil,
   Shapes,
+  Wand2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -34,6 +36,10 @@ export type BookEditorToolRailProps = {
   onActiveTabChange: (tab: BookEditorLeftTab) => void;
   mediaLibraryEnabled?: boolean;
   mediaDisabledHint?: string;
+  /** 있으면 "이미지 편집" 항목 표시 — 전체 화면 편집 창을 연다(탭 아님) */
+  onOpenImageEditor?: () => void;
+  /** 있으면 "비디오 편집" 항목 표시 */
+  onOpenVideoEditor?: () => void;
 };
 
 /** 워크스페이스 최좌측 세로 탭 — 페이지 / 위젯 / 미디어 / 템플릿 / Elements / 드로잉 */
@@ -43,6 +49,8 @@ export function BookEditorToolRail({
   onActiveTabChange,
   mediaLibraryEnabled = true,
   mediaDisabledHint = "북을 저장한 뒤 이 화면에서 미디어 라이브러리를 쓸 수 있어요.",
+  onOpenImageEditor,
+  onOpenVideoEditor,
 }: BookEditorToolRailProps) {
   return (
     <TooltipProvider delayDuration={400}>
@@ -144,6 +152,41 @@ export function BookEditorToolRail({
             <Pencil className="size-[22px]" aria-hidden />
           </Button>
         </RailTooltip>
+
+        {onOpenImageEditor || onOpenVideoEditor ? (
+          <div
+            className="my-1 h-px w-8 bg-border/60"
+            role="separator"
+            aria-hidden
+          />
+        ) : null}
+
+        {onOpenImageEditor ? (
+          <RailTooltip label="이미지 편집 — 자르기·필터·주석 후 미디어 라이브러리로 내보내기">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className={railBtn}
+              onClick={onOpenImageEditor}
+            >
+              <Wand2 className="size-[22px]" aria-hidden />
+            </Button>
+          </RailTooltip>
+        ) : null}
+        {onOpenVideoEditor ? (
+          <RailTooltip label="비디오 편집 — 컷 편집·합성 후 미디어 라이브러리로 내보내기">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className={railBtn}
+              onClick={onOpenVideoEditor}
+            >
+              <Clapperboard className="size-[22px]" aria-hidden />
+            </Button>
+          </RailTooltip>
+        ) : null}
       </nav>
     </TooltipProvider>
   );

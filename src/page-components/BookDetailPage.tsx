@@ -3,6 +3,7 @@
 // 북 상세·편집: 서버 페이지 → 로컬 히스토리, 소유자는 BookDetailOwnerView / 비로그인·타인은 읽기 전용 게스트 뷰
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MonitorPlay, Save, Trash2 } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -19,6 +20,24 @@ import { toast } from "sonner";
 import { BookAiAssistantPanel } from "@/components/books/BookAiAssistantPanel";
 import { BookCanvasToolbar } from "@/components/books/BookCanvasToolbar";
 import { BookEditorToolRail } from "@/components/books/BookEditorToolRail";
+
+/** Filerobot 편집기는 브라우저 전용 — SSR 제외하고 열 때만 로드 */
+const BookImageEditorDialog = dynamic(
+  () =>
+    import("@/components/books/BookImageEditorDialog").then(
+      (m) => m.BookImageEditorDialog,
+    ),
+  { ssr: false },
+);
+
+/** Twick 비디오 편집기(WebCodecs 렌더)도 브라우저 전용 */
+const BookVideoEditorDialog = dynamic(
+  () =>
+    import("@/components/books/BookVideoEditorDialog").then(
+      (m) => m.BookVideoEditorDialog,
+    ),
+  { ssr: false },
+);
 import { BookElementsPanel } from "@/components/books/BookElementsPanel";
 import { BookHeaderSlideDimensions } from "@/components/books/BookHeaderSlideDimensions";
 import { BookInspectorPanel } from "@/components/books/BookInspectorPanel";
@@ -280,6 +299,9 @@ function BookDetailOwnerView({
   const playlistRemoteSeqRef = useRef(0);
   const [playlistRemoteCmd, setPlaylistRemoteCmd] =
     useState<BookMediaPlaylistRemoteCommand | null>(null);
+  /** 이미지·비디오 편집기(레일 메뉴) — 전체 화면 편집 창 */
+  const [imageEditorOpen, setImageEditorOpen] = useState(false);
+  const [videoEditorOpen, setVideoEditorOpen] = useState(false);
   /** PDF 가져오기(팔레트) — 변환·업로드 진행 중 여부와 숨김 파일 입력 */
   const [pdfImportBusy, setPdfImportBusy] = useState(false);
   const pdfImportInputRef = useRef<HTMLInputElement>(null);
@@ -1413,6 +1435,44 @@ function BookDetailOwnerView({
     ],
   );
 
+  /** 이미지 편집기 내보내기 — 업로드 후 미디어 라이브러리에 등록 */
+  const handleImageEditorExport = useCallback(
+    async (file: File) => {
+      try {
+        const res = await uploadBookMedia(bookId, file, null);
+        appendBookMediaLibraryItem(bookId, {
+          kind: res.kind,
+          src: res.url,
+          posterUrl: res.posterUrl,
+        });
+        toast.success("편집한 이미지를 미디어 라이브러리에 저장했습니다.");
+      } catch (e) {
+        toast.error(`이미지 저장 실패: ${(e as Error).message}`);
+        throw e;
+      }
+    },
+    [bookId],
+  );
+
+  /** 비디오 편집기 내보내기 — 업로드 후 미디어 라이브러리에 등록 */
+  const handleVideoEditorExport = useCallback(
+    async (file: File) => {
+      try {
+        const res = await uploadBookMedia(bookId, file, null);
+        appendBookMediaLibraryItem(bookId, {
+          kind: res.kind,
+          src: res.url,
+          posterUrl: res.posterUrl,
+        });
+        toast.success("편집한 영상을 미디어 라이브러리에 저장했습니다.");
+      } catch (e) {
+        toast.error(`영상 저장 실패: ${(e as Error).message}`);
+        throw e;
+      }
+    },
+    [bookId],
+  );
+
   /** 팔레트 더블 클릭 — 위젯을 슬라이드 가운데에 바로 추가 */
   const handlePaletteQuickAdd = useCallback(
     (kind: BookDropWidgetKind) => {
@@ -2019,6 +2079,8 @@ function BookDetailOwnerView({
                 activeTab={leftDockTab}
                 onActiveTabChange={setLeftDockTab}
                 mediaLibraryEnabled
+                onOpenImageEditor={() => setImageEditorOpen(true)}
+                onOpenVideoEditor={() => setVideoEditorOpen(true)}
               />
               <div
                 className={bookLeftDockContentColumnClass(
@@ -2190,6 +2252,8 @@ function BookDetailOwnerView({
               activeTab={leftDockTab}
               onActiveTabChange={setLeftDockTab}
               mediaLibraryEnabled
+              onOpenImageEditor={() => setImageEditorOpen(true)}
+              onOpenVideoEditor={() => setVideoEditorOpen(true)}
             />
             <div
               className={bookLeftDockContentColumnClass(
@@ -2463,6 +2527,18 @@ function BookDetailOwnerView({
                 void handleImportPdfFile(f);
               }}
             />
+            {imageEditorOpen ? (
+              <BookImageEditorDialog
+                onClose={() => setImageEditorOpen(false)}
+                onExport={handleImageEditorExport}
+              />
+            ) : null}
+            {videoEditorOpen ? (
+              <BookVideoEditorDialog
+                onClose={() => setVideoEditorOpen(false)}
+                onExport={handleVideoEditorExport}
+              />
+            ) : null}
           </>
         }
         right={

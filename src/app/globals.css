@@ -10,3 +10,33 @@
     transform: translateX(-50%);
   }
 }
+
+/* 비디오 편집기(Twick) 커스텀: 타임라인 아래 여백 */
+.twick-editor-timeline-section {
+  padding-bottom: 14px;
+}
+
+/* 비디오 편집기(Twick): 앱 폰트 적용 + 보라 강조색을 앱 강조색(파랑 계열)으로 통일 */
+.twick-editor-container,
+.twick-editor-main-container,
+.twick-modal-content,
+.twick-canvas-context-menu {
+  font-family: var(--font-sans);
+  --color-purple-400: #60a5fa;
+  --color-purple-500: #3b82f6;
+  --color-purple-600: #2563eb;
+  --color-purple-700: #1d4ed8;
+}
+.twick-editor-timeline-section {
+  border-radius: var(--radius);
+}
+.twick-track-element-audio {
+  background: rgba(37, 99, 235, 0.2) !important;
+}
+.twick-drop-preview {
+  background: rgba(37, 99, 235, 0.35) !important;
+}
+.twick-modal-content .emoji-category-chip-active {
+  border-color: rgba(37, 99, 235, 0.8);
+  background: rgba(37, 99, 235, 0.2);
+}
