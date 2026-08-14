@@ -16,6 +16,7 @@
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "db:push": "drizzle-kit push --config drizzle.config.mjs",
+    "db:migrate": "drizzle-kit migrate --config drizzle.config.mjs",
     "db:studio": "drizzle-kit studio --config drizzle.config.mjs",
     "db:generate": "drizzle-kit generate --config drizzle.config.mjs",
     "setup:assets": "node scripts/fetch-template-card-images.mjs"

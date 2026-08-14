@@ -5,3 +5,10 @@ uploads
 *.md
 .env
 .env.*
+.cursor
+.omc
+.playwright-mcp
+__tests__
+e2e
+*.tsbuildinfo
+*.bak
