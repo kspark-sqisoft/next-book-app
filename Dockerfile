@@ -11,6 +11,8 @@ FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# deps 스테이지의 npm ci 시점엔 patches/ 가 없어 patch-package가 스킵됨 — 여기서 적용
+RUN npx patch-package
 RUN npm run build
 
 FROM base AS runner
