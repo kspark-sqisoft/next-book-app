@@ -80,10 +80,14 @@ import {
   DEFAULT_BOOK_MEDIA_PLAYLIST_WIDTH,
   DEFAULT_BOOK_NEWS_WIDGET_HEIGHT,
   DEFAULT_BOOK_NEWS_WIDGET_WIDTH,
+  DEFAULT_BOOK_TICKER_HEIGHT,
+  DEFAULT_BOOK_TICKER_WIDTH,
   DEFAULT_BOOK_WEATHER_WIDGET_HEIGHT,
   DEFAULT_BOOK_WEATHER_WIDGET_WIDTH,
   DEFAULT_BOOK_WEBVIEW_HEIGHT,
   DEFAULT_BOOK_WEBVIEW_WIDTH,
+  DEFAULT_BOOK_YOUTUBE_HEIGHT,
+  DEFAULT_BOOK_YOUTUBE_WIDTH,
   DEFAULT_PAGE_BACKGROUND,
   DEFAULT_SLIDE_HEIGHT,
   DEFAULT_SLIDE_WIDTH,
@@ -980,6 +984,46 @@ function BookDetailOwnerView({
     [activePageIndex, updatePages],
   );
 
+  const addTickerAt = useCallback(
+    (x: number, y: number) => {
+      const id = crypto.randomUUID();
+      const el: BookCanvasElement = {
+        id,
+        type: "ticker",
+        x,
+        y,
+        width: DEFAULT_BOOK_TICKER_WIDTH,
+        height: DEFAULT_BOOK_TICKER_HEIGHT,
+      };
+      updatePages((draft) => {
+        const p = draft[activePageIndex];
+        if (p) p.elements.push(el);
+      });
+      setSelectedIds([id]);
+    },
+    [activePageIndex, updatePages],
+  );
+
+  const addYoutubeAt = useCallback(
+    (x: number, y: number) => {
+      const id = crypto.randomUUID();
+      const el: BookCanvasElement = {
+        id,
+        type: "youtube",
+        x,
+        y,
+        width: DEFAULT_BOOK_YOUTUBE_WIDTH,
+        height: DEFAULT_BOOK_YOUTUBE_HEIGHT,
+      };
+      updatePages((draft) => {
+        const p = draft[activePageIndex];
+        if (p) p.elements.push(el);
+      });
+      setSelectedIds([id]);
+    },
+    [activePageIndex, updatePages],
+  );
+
   const addDigitalClockAt = useCallback(
     (x: number, y: number) => {
       const id = crypto.randomUUID();
@@ -1333,6 +1377,14 @@ function BookDetailOwnerView({
         addWebviewAt(point.x, point.y);
         return;
       }
+      if (kind === "ticker") {
+        addTickerAt(point.x, point.y);
+        return;
+      }
+      if (kind === "youtube") {
+        addYoutubeAt(point.x, point.y);
+        return;
+      }
       if (kind === "pdfImport") {
         if (!pdfImportBusy) {
           pdfImportPlacementRef.current = point;
@@ -1353,8 +1405,10 @@ function BookDetailOwnerView({
       addMediaPlaylistAt,
       addNewsAt,
       addTextAt,
+      addTickerAt,
       addWeatherAt,
       addWebviewAt,
+      addYoutubeAt,
       pdfImportBusy,
     ],
   );
@@ -1408,6 +1462,19 @@ function BookDetailOwnerView({
         addWebviewAt(p.x, p.y);
         return;
       }
+      if (kind === "ticker") {
+        const p = center(DEFAULT_BOOK_TICKER_WIDTH, DEFAULT_BOOK_TICKER_HEIGHT);
+        addTickerAt(p.x, p.y);
+        return;
+      }
+      if (kind === "youtube") {
+        const p = center(
+          DEFAULT_BOOK_YOUTUBE_WIDTH,
+          DEFAULT_BOOK_YOUTUBE_HEIGHT,
+        );
+        addYoutubeAt(p.x, p.y);
+        return;
+      }
       if (kind === "pdfImport") {
         if (!pdfImportBusy) {
           pdfImportPlacementRef.current = null;
@@ -1429,8 +1496,10 @@ function BookDetailOwnerView({
       addMediaPlaylistAt,
       addNewsAt,
       addTextAt,
+      addTickerAt,
       addWeatherAt,
       addWebviewAt,
+      addYoutubeAt,
       pdfImportBusy,
       slideHeight,
       slideWidth,
@@ -1793,6 +1862,8 @@ function BookDetailOwnerView({
     if (el.type === "mediaPlaylist") return "미디어 위젯";
     if (el.type === "digitalClock") return "디지털 시계 위젯";
     if (el.type === "webview") return "웹뷰 위젯";
+    if (el.type === "ticker") return "티커 위젯";
+    if (el.type === "youtube") return "유튜브 위젯";
     if (el.type === "drawing") return "그리기";
     return "위젯";
   }, [widgetDeleteIds, activePage]);

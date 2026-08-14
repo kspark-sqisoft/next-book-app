@@ -68,6 +68,8 @@ function bookElementTimingLabel(
     weather: "날씨",
     digitalClock: "디지털 시계",
     webview: "웹뷰",
+    ticker: "티커",
+    youtube: "유튜브",
     news: "뉴스",
     drawing: "그리기",
     shape: "도형",

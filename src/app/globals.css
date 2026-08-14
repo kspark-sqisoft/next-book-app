@@ -1,2 +1,12 @@
 @import "../index.css";
 @import "../book-presentation-transitions.css";
+
+/* 티커 위젯: 같은 문구 2벌 트랙을 -50% 이동하면 정확히 한 사이클 */
+@keyframes book-ticker-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}

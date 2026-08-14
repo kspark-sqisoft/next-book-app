@@ -51,8 +51,10 @@ import {
   type BookTextOverlayLiveFrame,
   BookTextWidgetOverlay,
 } from "@/components/books/BookTextWidgetOverlay";
+import { BookTickerWidgetOverlay } from "@/components/books/BookTickerWidgetOverlay";
 import { BookWeatherWidgetOverlay } from "@/components/books/BookWeatherWidgetOverlay";
 import { BookWebviewWidgetOverlay } from "@/components/books/BookWebviewWidgetOverlay";
+import { BookYoutubeWidgetOverlay } from "@/components/books/BookYoutubeWidgetOverlay";
 import {
   ContextMenuFloatingItem,
   ContextMenuFloatingPanel,
@@ -213,6 +215,8 @@ export type BookDropWidgetKind =
   | "weather"
   | "digitalClock"
   | "webview"
+  | "ticker"
+  | "youtube"
   | "news"
   | "mediaPlaylist"
   /** 요소 타입이 아니라 "PDF 가져오기" 동작 — 드롭 지점에서 파일 선택을 연다 */
@@ -1419,6 +1423,8 @@ export function BookSlideCanvas({
       raw === "weather" ||
       raw === "digitalClock" ||
       raw === "webview" ||
+      raw === "ticker" ||
+      raw === "youtube" ||
       raw === "news" ||
       raw === "mediaPlaylist" ||
       raw === "pdfImport"
@@ -1635,7 +1641,12 @@ export function BookSlideCanvas({
                   />
                 );
               }
-              if (el.type === "digitalClock" || el.type === "webview") {
+              if (
+                el.type === "digitalClock" ||
+                el.type === "webview" ||
+                el.type === "ticker" ||
+                el.type === "youtube"
+              ) {
                 return (
                   <BookDigitalClockHitShape
                     key={el.id}
@@ -1788,6 +1799,8 @@ export function BookSlideCanvas({
                   | "weather"
                   | "digitalClock"
                   | "webview"
+                  | "ticker"
+                  | "youtube"
                   | "news"
                   | "mediaPlaylist";
               }
@@ -1796,6 +1809,8 @@ export function BookSlideCanvas({
               e.type === "weather" ||
               e.type === "digitalClock" ||
               e.type === "webview" ||
+              e.type === "ticker" ||
+              e.type === "youtube" ||
               e.type === "news" ||
               e.type === "mediaPlaylist",
           )
@@ -1909,6 +1924,30 @@ export function BookSlideCanvas({
             if (el.type === "webview") {
               return (
                 <BookWebviewWidgetOverlay
+                  key={el.id}
+                  el={el}
+                  scale={scale}
+                  mode={mode}
+                  isSelected={selectedIdSet.has(el.id)}
+                  liveFrame={frameLive}
+                />
+              );
+            }
+            if (el.type === "ticker") {
+              return (
+                <BookTickerWidgetOverlay
+                  key={el.id}
+                  el={el}
+                  scale={scale}
+                  mode={mode}
+                  isSelected={selectedIdSet.has(el.id)}
+                  liveFrame={frameLive}
+                />
+              );
+            }
+            if (el.type === "youtube") {
+              return (
+                <BookYoutubeWidgetOverlay
                   key={el.id}
                   el={el}
                   scale={scale}
@@ -2970,8 +3009,11 @@ function BookDigitalClockHitShape({
   zMenuEnabled,
   onZMenu,
 }: {
-  /* 웹뷰도 같은 히트/변형 동작 — 프레임만 필요해 시계 히트 셰이프를 공유 */
-  el: Extract<BookCanvasElement, { type: "digitalClock" | "webview" }>;
+  /* 웹뷰·티커·유튜브도 같은 히트/변형 동작 — 프레임만 필요해 시계 히트 셰이프를 공유 */
+  el: Extract<
+    BookCanvasElement,
+    { type: "digitalClock" | "webview" | "ticker" | "youtube" }
+  >;
   locked: boolean;
   liveSync: BookShapeLiveSync;
   registerKonvaNode: (elementId: string, node: Konva.Node | null) => void;

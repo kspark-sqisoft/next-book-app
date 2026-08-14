@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
+import { Textarea } from "@/components/ui/textarea";
 import { publicAssetUrl } from "@/lib/api";
 import {
   BOOK_MEDIA_OBJECT_FIT_VALUES,
@@ -718,7 +719,9 @@ function ElementShapeChromeFields({
     el.type === "digitalClock" ||
     el.type === "news" ||
     el.type === "mediaPlaylist" ||
-    el.type === "webview"
+    el.type === "webview" ||
+    el.type === "ticker" ||
+    el.type === "youtube"
       ? `저장하지 않으면 기본 ${BOOK_WIDGET_DEFAULT_ROUNDED_RADIUS}px(둥근 카드)입니다.`
       : el.type === "shape"
         ? "도형을 감싼 프레임(클립) 모서리입니다. 사각 도형 자체의 둥근 모서리는 인스펙터의 ‘모서리 둥글기’로 바꿉니다."
@@ -1959,6 +1962,201 @@ export function BookInspectorPanel({
                             })
                           }
                         />
+                      </div>
+                      <ElementOpacitySlider
+                        elementId={selected.id}
+                        opacity={selected.opacity}
+                        onChange={onChange}
+                      />
+                      <ElementShapeChromeFields
+                        el={selected}
+                        onChange={onChange}
+                      />
+                      <PositionSizeFields el={selected} onChange={onChange} />
+                    </>
+                  ) : selected.type === "ticker" ? (
+                    <>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        문구가 전광판처럼 옆으로 흐릅니다. 문구·속도·방향을
+                        바꿔보세요.
+                      </p>
+                      <div className="space-y-1">
+                        <Label className="text-[11px]">문구</Label>
+                        <Textarea
+                          rows={3}
+                          maxLength={1000}
+                          placeholder="흐르는 안내 문구를 입력하세요"
+                          value={selected.tickerText ?? ""}
+                          onChange={(e) =>
+                            onChange(selected.id, {
+                              tickerText: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-[11px]">
+                            속도(px/초, 20~400)
+                          </Label>
+                          <Input
+                            type="number"
+                            min={20}
+                            max={400}
+                            placeholder="기본 80"
+                            value={selected.tickerSpeedPxPerSec ?? ""}
+                            onChange={(e) => {
+                              const n = Math.round(Number(e.target.value));
+                              onChange(selected.id, {
+                                tickerSpeedPxPerSec:
+                                  Number.isFinite(n) && n >= 20 && n <= 400
+                                    ? n
+                                    : undefined,
+                              });
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[11px]">
+                            글자 크기(px, 10~200)
+                          </Label>
+                          <Input
+                            type="number"
+                            min={10}
+                            max={200}
+                            placeholder="높이 비례"
+                            value={selected.tickerFontSize ?? ""}
+                            onChange={(e) => {
+                              const n = Math.round(Number(e.target.value));
+                              onChange(selected.id, {
+                                tickerFontSize:
+                                  Number.isFinite(n) && n >= 10 && n <= 200
+                                    ? n
+                                    : undefined,
+                              });
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <label className="flex cursor-pointer items-center gap-2 text-sm leading-none">
+                        <Checkbox
+                          checked={selected.tickerDirection === "right"}
+                          onCheckedChange={(c) =>
+                            onChange(selected.id, {
+                              tickerDirection:
+                                c === true ? "right" : undefined,
+                            })
+                          }
+                        />
+                        <span>왼쪽→오른쪽으로 흐르기</span>
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-[11px]">배경색(CSS)</Label>
+                          <Input
+                            className="font-mono text-xs"
+                            placeholder="#0f172a, rgba(...)"
+                            value={selected.tickerBackground ?? ""}
+                            onChange={(e) =>
+                              onChange(selected.id, {
+                                tickerBackground:
+                                  e.target.value.trim() || undefined,
+                              })
+                            }
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[11px]">글자색(CSS)</Label>
+                          <Input
+                            className="font-mono text-xs"
+                            placeholder="#ffffff"
+                            value={selected.tickerTextColor ?? ""}
+                            onChange={(e) =>
+                              onChange(selected.id, {
+                                tickerTextColor:
+                                  e.target.value.trim() || undefined,
+                              })
+                            }
+                          />
+                        </div>
+                      </div>
+                      <ElementOpacitySlider
+                        elementId={selected.id}
+                        opacity={selected.opacity}
+                        onChange={onChange}
+                      />
+                      <ElementShapeChromeFields
+                        el={selected}
+                        onChange={onChange}
+                      />
+                      <PositionSizeFields el={selected} onChange={onChange} />
+                    </>
+                  ) : selected.type === "youtube" ? (
+                    <>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        유튜브 주소(watch·youtu.be·shorts)나 11자 동영상 id를
+                        넣으면 위젯 안에서 재생됩니다.
+                      </p>
+                      <div className="space-y-1">
+                        <Label className="text-[11px]">유튜브 주소</Label>
+                        <Input
+                          className="font-mono text-xs"
+                          placeholder="https://www.youtube.com/watch?v=..."
+                          value={selected.youtubeUrl ?? ""}
+                          onChange={(e) =>
+                            onChange(selected.id, {
+                              youtubeUrl: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <label className="flex cursor-pointer items-center gap-2 text-sm leading-none">
+                          <Checkbox
+                            checked={selected.youtubeAutoplay !== false}
+                            onCheckedChange={(c) =>
+                              onChange(selected.id, {
+                                youtubeAutoplay:
+                                  c === false ? false : undefined,
+                              })
+                            }
+                          />
+                          <span>자동 재생</span>
+                        </label>
+                        <label className="flex cursor-pointer items-center gap-2 text-sm leading-none">
+                          <Checkbox
+                            checked={selected.youtubeMute !== false}
+                            onCheckedChange={(c) =>
+                              onChange(selected.id, {
+                                youtubeMute: c === false ? false : undefined,
+                              })
+                            }
+                          />
+                          <span>음소거(자동 재생에 필요)</span>
+                        </label>
+                        <label className="flex cursor-pointer items-center gap-2 text-sm leading-none">
+                          <Checkbox
+                            checked={selected.youtubeLoop !== false}
+                            onCheckedChange={(c) =>
+                              onChange(selected.id, {
+                                youtubeLoop: c === false ? false : undefined,
+                              })
+                            }
+                          />
+                          <span>반복 재생</span>
+                        </label>
+                        <label className="flex cursor-pointer items-center gap-2 text-sm leading-none">
+                          <Checkbox
+                            checked={selected.youtubeControls === true}
+                            onCheckedChange={(c) =>
+                              onChange(selected.id, {
+                                youtubeControls:
+                                  c === true ? true : undefined,
+                              })
+                            }
+                          />
+                          <span>재생 컨트롤 표시</span>
+                        </label>
                       </div>
                       <ElementOpacitySlider
                         elementId={selected.id}

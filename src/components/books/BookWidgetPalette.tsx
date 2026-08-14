@@ -10,8 +10,10 @@ import {
   ImagePlus,
   ListVideo,
   type LucideIcon,
+  Megaphone,
   Newspaper,
   PictureInPicture2,
+  SquarePlay,
   Type,
   Video,
   X,
@@ -49,6 +51,8 @@ const ITEMS: { kind: BookDropWidgetKind; label: string; icon: LucideIcon }[] = [
   { kind: "mediaPlaylist", label: "미디어", icon: ListVideo },
   { kind: "digitalClock", label: "디지털 시계", icon: Clock },
   { kind: "webview", label: "웹뷰", icon: Globe },
+  { kind: "ticker", label: "티커", icon: Megaphone },
+  { kind: "youtube", label: "유튜브", icon: SquarePlay },
 ];
 
 const STORAGE_KEY = "book-widget-palette";

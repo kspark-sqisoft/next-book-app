@@ -55,10 +55,14 @@ import {
   DEFAULT_BOOK_MEDIA_PLAYLIST_WIDTH,
   DEFAULT_BOOK_NEWS_WIDGET_HEIGHT,
   DEFAULT_BOOK_NEWS_WIDGET_WIDTH,
+  DEFAULT_BOOK_TICKER_HEIGHT,
+  DEFAULT_BOOK_TICKER_WIDTH,
   DEFAULT_BOOK_WEATHER_WIDGET_HEIGHT,
   DEFAULT_BOOK_WEATHER_WIDGET_WIDTH,
   DEFAULT_BOOK_WEBVIEW_HEIGHT,
   DEFAULT_BOOK_WEBVIEW_WIDTH,
+  DEFAULT_BOOK_YOUTUBE_HEIGHT,
+  DEFAULT_BOOK_YOUTUBE_WIDTH,
   DEFAULT_PAGE_BACKGROUND,
   DEFAULT_SLIDE_HEIGHT,
   DEFAULT_SLIDE_WIDTH,
@@ -760,6 +764,46 @@ export function BookEditorPage() {
     [activePageIndex, updatePages],
   );
 
+  const addTickerAt = useCallback(
+    (x: number, y: number) => {
+      const id = crypto.randomUUID();
+      const el: BookCanvasElement = {
+        id,
+        type: "ticker",
+        x,
+        y,
+        width: DEFAULT_BOOK_TICKER_WIDTH,
+        height: DEFAULT_BOOK_TICKER_HEIGHT,
+      };
+      updatePages((draft) => {
+        const p = draft[activePageIndex];
+        if (p) p.elements.push(el);
+      });
+      setSelectedIds([id]);
+    },
+    [activePageIndex, updatePages],
+  );
+
+  const addYoutubeAt = useCallback(
+    (x: number, y: number) => {
+      const id = crypto.randomUUID();
+      const el: BookCanvasElement = {
+        id,
+        type: "youtube",
+        x,
+        y,
+        width: DEFAULT_BOOK_YOUTUBE_WIDTH,
+        height: DEFAULT_BOOK_YOUTUBE_HEIGHT,
+      };
+      updatePages((draft) => {
+        const p = draft[activePageIndex];
+        if (p) p.elements.push(el);
+      });
+      setSelectedIds([id]);
+    },
+    [activePageIndex, updatePages],
+  );
+
   const onDropWidget = useCallback(
     (point: { x: number; y: number }, kind: BookDropWidgetKind) => {
       if (kind === "text") {
@@ -776,6 +820,14 @@ export function BookEditorPage() {
       }
       if (kind === "webview") {
         addWebviewAt(point.x, point.y);
+        return;
+      }
+      if (kind === "ticker") {
+        addTickerAt(point.x, point.y);
+        return;
+      }
+      if (kind === "youtube") {
+        addYoutubeAt(point.x, point.y);
         return;
       }
       if (kind === "news") {
@@ -795,8 +847,10 @@ export function BookEditorPage() {
       addMediaPlaylistAt,
       addNewsAt,
       addTextAt,
+      addTickerAt,
       addWeatherAt,
       addWebviewAt,
+      addYoutubeAt,
     ],
   );
 
@@ -852,6 +906,19 @@ export function BookEditorPage() {
         addWebviewAt(p.x, p.y);
         return;
       }
+      if (kind === "ticker") {
+        const p = center(DEFAULT_BOOK_TICKER_WIDTH, DEFAULT_BOOK_TICKER_HEIGHT);
+        addTickerAt(p.x, p.y);
+        return;
+      }
+      if (kind === "youtube") {
+        const p = center(
+          DEFAULT_BOOK_YOUTUBE_WIDTH,
+          DEFAULT_BOOK_YOUTUBE_HEIGHT,
+        );
+        addYoutubeAt(p.x, p.y);
+        return;
+      }
       toast.error(
         "저장한 뒤 열린 북 화면에서 이미지·동영상·PDF 위젯을 넣을 수 있습니다.",
       );
@@ -861,8 +928,10 @@ export function BookEditorPage() {
       addMediaPlaylistAt,
       addNewsAt,
       addTextAt,
+      addTickerAt,
       addWeatherAt,
       addWebviewAt,
+      addYoutubeAt,
       slideHeight,
       slideWidth,
     ],
@@ -1159,6 +1228,8 @@ export function BookEditorPage() {
     if (el.type === "mediaPlaylist") return "미디어 위젯";
     if (el.type === "digitalClock") return "디지털 시계 위젯";
     if (el.type === "webview") return "웹뷰 위젯";
+    if (el.type === "ticker") return "티커 위젯";
+    if (el.type === "youtube") return "유튜브 위젯";
     if (el.type === "drawing") return "그리기";
     return "위젯";
   }, [widgetDeleteIds, currentPage]);

@@ -178,6 +178,48 @@ export type BookCanvasElementPublic =
     }
   | {
       id: string;
+      type: "ticker";
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      tickerText?: string;
+      tickerSpeedPxPerSec?: number;
+      tickerDirection?: "left" | "right";
+      tickerFontSize?: number;
+      tickerBackground?: string;
+      tickerTextColor?: string;
+      opacity?: number;
+      rotation?: number;
+      borderRadius?: number;
+      outlineWidth?: number;
+      outlineColor?: string;
+      visible?: boolean;
+      locked?: boolean;
+    }
+  | {
+      id: string;
+      type: "youtube";
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      /** 유튜브 주소 또는 11자 동영상 id */
+      youtubeUrl?: string;
+      youtubeAutoplay?: boolean;
+      youtubeMute?: boolean;
+      youtubeLoop?: boolean;
+      youtubeControls?: boolean;
+      opacity?: number;
+      rotation?: number;
+      borderRadius?: number;
+      outlineWidth?: number;
+      outlineColor?: string;
+      visible?: boolean;
+      locked?: boolean;
+    }
+  | {
+      id: string;
       type: "news";
       x: number;
       y: number;
@@ -523,6 +565,8 @@ export class BooksService {
         o.type !== "weather" &&
         o.type !== "digitalClock" &&
         o.type !== "webview" &&
+        o.type !== "ticker" &&
+        o.type !== "youtube" &&
         o.type !== "news" &&
         o.type !== "mediaPlaylist" &&
         o.type !== "drawing" &&
@@ -778,6 +822,96 @@ export class BooksService {
             throw new HttpError(
               400,
               "웹뷰 URL은 http:// 또는 https:// 로 시작해야 합니다.",
+            );
+          }
+        }
+      } else if (o.type === "ticker") {
+        const w = o.width;
+        const h = o.height;
+        if (
+          typeof w !== "number" ||
+          typeof h !== "number" ||
+          w < 24 ||
+          h < 24 ||
+          w > 4000 ||
+          h > 4000
+        ) {
+          throw new HttpError(400, "티커 위젯 크기가 올바르지 않습니다.");
+        }
+        if (o.tickerText != null) {
+          if (typeof o.tickerText !== "string" || o.tickerText.length > 1000) {
+            throw new HttpError(400, "티커 문구가 올바르지 않습니다.");
+          }
+        }
+        if (o.tickerSpeedPxPerSec != null) {
+          const s = o.tickerSpeedPxPerSec;
+          if (typeof s !== "number" || !Number.isFinite(s) || s < 1 || s > 1000) {
+            throw new HttpError(400, "티커 속도가 올바르지 않습니다.");
+          }
+        }
+        if (
+          o.tickerDirection != null &&
+          o.tickerDirection !== "left" &&
+          o.tickerDirection !== "right"
+        ) {
+          throw new HttpError(400, "티커 방향이 올바르지 않습니다.");
+        }
+        if (o.tickerFontSize != null) {
+          const f = o.tickerFontSize;
+          if (typeof f !== "number" || !Number.isFinite(f) || f < 4 || f > 400) {
+            throw new HttpError(400, "티커 글자 크기가 올바르지 않습니다.");
+          }
+        }
+        for (const [key, label] of [
+          ["tickerBackground", "티커 배경색"],
+          ["tickerTextColor", "티커 글자색"],
+        ] as const) {
+          const v = (o as Record<string, unknown>)[key];
+          if (v != null) {
+            if (typeof v !== "string" || v.length > 80) {
+              throw new HttpError(400, `${label}이 올바르지 않습니다.`);
+            }
+            if (/[<>]/.test(v) || /url\s*\(/i.test(v)) {
+              throw new HttpError(
+                400,
+                `${label}에 허용되지 않는 문자가 있습니다.`,
+              );
+            }
+          }
+        }
+      } else if (o.type === "youtube") {
+        const w = o.width;
+        const h = o.height;
+        if (
+          typeof w !== "number" ||
+          typeof h !== "number" ||
+          w < 24 ||
+          h < 24 ||
+          w > 4000 ||
+          h > 4000
+        ) {
+          throw new HttpError(400, "유튜브 위젯 크기가 올바르지 않습니다.");
+        }
+        if (o.youtubeUrl != null) {
+          if (
+            typeof o.youtubeUrl !== "string" ||
+            o.youtubeUrl.length > 512 ||
+            /[<>"']/.test(o.youtubeUrl)
+          ) {
+            throw new HttpError(400, "유튜브 주소가 올바르지 않습니다.");
+          }
+        }
+        for (const key of [
+          "youtubeAutoplay",
+          "youtubeMute",
+          "youtubeLoop",
+          "youtubeControls",
+        ] as const) {
+          const v = (o as Record<string, unknown>)[key];
+          if (v !== undefined && typeof v !== "boolean") {
+            throw new HttpError(
+              400,
+              "유튜브 재생 옵션은 true/false만 가능합니다.",
             );
           }
         }

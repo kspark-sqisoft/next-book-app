@@ -453,6 +453,59 @@ export type BookCanvasElement =
     }
   | {
       id: string;
+      type: "ticker";
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      /** 흐르는 안내 문구(최대 1000자). 비우면 안내 표시 */
+      tickerText?: string;
+      /** 초당 이동 논리 px 20~400, 생략 시 80 */
+      tickerSpeedPxPerSec?: number;
+      /** 생략·left = 오른쪽→왼쪽 */
+      tickerDirection?: "left" | "right";
+      /** 글자 크기(논리 px) 10~200, 생략 시 높이 비례 */
+      tickerFontSize?: number;
+      /** CSS 배경색. 없으면 기본 어두운 띠 */
+      tickerBackground?: string;
+      tickerTextColor?: string;
+      opacity?: number;
+      rotation?: number;
+      borderRadius?: number;
+      outlineWidth?: number;
+      outlineColor?: string;
+      visible?: boolean;
+      locked?: boolean;
+      presentationHoldSec?: number;
+    }
+  | {
+      id: string;
+      type: "youtube";
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      /** watch·youtu.be·shorts·embed 주소 또는 11자 동영상 id */
+      youtubeUrl?: string;
+      /** 생략 시 true */
+      youtubeAutoplay?: boolean;
+      /** 생략 시 true(자동재생은 음소거가 필요) */
+      youtubeMute?: boolean;
+      /** 생략 시 true */
+      youtubeLoop?: boolean;
+      /** 생략 시 false — 재생 컨트롤 표시 */
+      youtubeControls?: boolean;
+      opacity?: number;
+      rotation?: number;
+      borderRadius?: number;
+      outlineWidth?: number;
+      outlineColor?: string;
+      visible?: boolean;
+      locked?: boolean;
+      presentationHoldSec?: number;
+    }
+  | {
+      id: string;
       type: "news";
       x: number;
       y: number;
@@ -849,7 +902,9 @@ export function resolveBookElementBorderRadius(el: BookCanvasElement): number {
     el.type === "digitalClock" ||
     el.type === "news" ||
     el.type === "mediaPlaylist" ||
-    el.type === "webview"
+    el.type === "webview" ||
+    el.type === "ticker" ||
+    el.type === "youtube"
   ) {
     return BOOK_WIDGET_DEFAULT_ROUNDED_RADIUS;
   }
@@ -962,6 +1017,37 @@ export const DEFAULT_BOOK_NEWS_WIDGET_HEIGHT = 200;
 /** 디지털 시계 위젯 기본 프레임(px) */
 export const DEFAULT_BOOK_WEBVIEW_WIDTH = 480;
 export const DEFAULT_BOOK_WEBVIEW_HEIGHT = 320;
+
+export const DEFAULT_BOOK_TICKER_WIDTH = 960;
+export const DEFAULT_BOOK_TICKER_HEIGHT = 64;
+export const BOOK_TICKER_DEFAULT_SPEED_PX_PER_SEC = 80;
+
+/** 티커 속도(논리 px/초): 20~400 클램프, 기본 80 */
+export function resolveBookTickerSpeedPxPerSec(
+  el: Extract<BookCanvasElement, { type: "ticker" }>,
+): number {
+  const n = el.tickerSpeedPxPerSec;
+  if (typeof n === "number" && Number.isFinite(n)) {
+    return Math.min(400, Math.max(20, n));
+  }
+  return BOOK_TICKER_DEFAULT_SPEED_PX_PER_SEC;
+}
+
+export const DEFAULT_BOOK_YOUTUBE_WIDTH = 480;
+export const DEFAULT_BOOK_YOUTUBE_HEIGHT = 270;
+
+/** 유튜브 주소(watch·youtu.be·shorts·live·embed) 또는 11자 id → 동영상 id */
+export function parseBookYoutubeVideoId(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const s = raw.trim();
+  if (!s || s.length > 512) return undefined;
+  if (/^[A-Za-z0-9_-]{11}$/.test(s)) return s;
+  const m =
+    /(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|live\/))([A-Za-z0-9_-]{11})/.exec(
+      s,
+    );
+  return m?.[1];
+}
 /** 웹뷰 URL: http(s)만 허용, 과도한 길이 차단 */
 export function parseBookWebviewUrl(raw: unknown): string | undefined {
   if (typeof raw !== "string") return undefined;
@@ -1095,6 +1181,24 @@ function normalizeBookElementsForSave(
         el.height,
         DEFAULT_BOOK_WEBVIEW_WIDTH,
         DEFAULT_BOOK_WEBVIEW_HEIGHT,
+      );
+      return finalizeElementForApi({ ...el, ...xy, ...wh });
+    }
+    if (el.type === "ticker") {
+      const wh = finiteWH(
+        el.width,
+        el.height,
+        DEFAULT_BOOK_TICKER_WIDTH,
+        DEFAULT_BOOK_TICKER_HEIGHT,
+      );
+      return finalizeElementForApi({ ...el, ...xy, ...wh });
+    }
+    if (el.type === "youtube") {
+      const wh = finiteWH(
+        el.width,
+        el.height,
+        DEFAULT_BOOK_YOUTUBE_WIDTH,
+        DEFAULT_BOOK_YOUTUBE_HEIGHT,
       );
       return finalizeElementForApi({ ...el, ...xy, ...wh });
     }
@@ -1897,6 +2001,79 @@ export function normalizeBookElements(raw: unknown[]): BookCanvasElement[] {
         width: Number(o.width) || DEFAULT_BOOK_WEBVIEW_WIDTH,
         height: Number(o.height) || DEFAULT_BOOK_WEBVIEW_HEIGHT,
         ...(wu !== undefined ? { webviewUrl: wu } : {}),
+        ...chrome,
+        ...(opacity !== undefined ? { opacity } : {}),
+        ...(rotation !== undefined ? { rotation } : {}),
+        ...(o.visible === false ? { visible: false as const } : {}),
+        ...(o.locked === true ? { locked: true as const } : {}),
+        ...presentationHoldFromRaw(o),
+      });
+    } else if (o.type === "ticker") {
+      const text =
+        typeof o.tickerText === "string" && o.tickerText.length <= 1000
+          ? o.tickerText
+          : undefined;
+      const spd =
+        typeof o.tickerSpeedPxPerSec === "number" &&
+        Number.isFinite(o.tickerSpeedPxPerSec)
+          ? Math.min(400, Math.max(20, o.tickerSpeedPxPerSec))
+          : undefined;
+      const dir =
+        o.tickerDirection === "right"
+          ? ("right" as const)
+          : o.tickerDirection === "left"
+            ? ("left" as const)
+            : undefined;
+      const fs =
+        typeof o.tickerFontSize === "number" &&
+        Number.isFinite(o.tickerFontSize)
+          ? Math.min(200, Math.max(10, Math.round(o.tickerFontSize)))
+          : undefined;
+      const tb = parseBookClockBackground(o.tickerBackground);
+      const ttc = parseBookWidgetTextColor(o.tickerTextColor);
+      out.push({
+        id: o.id,
+        type: "ticker",
+        x: Number(o.x) || 0,
+        y: Number(o.y) || 0,
+        width: Number(o.width) || DEFAULT_BOOK_TICKER_WIDTH,
+        height: Number(o.height) || DEFAULT_BOOK_TICKER_HEIGHT,
+        ...(text !== undefined ? { tickerText: text } : {}),
+        ...(spd !== undefined ? { tickerSpeedPxPerSec: spd } : {}),
+        ...(dir !== undefined ? { tickerDirection: dir } : {}),
+        ...(fs !== undefined ? { tickerFontSize: fs } : {}),
+        ...(tb !== undefined ? { tickerBackground: tb } : {}),
+        ...(ttc !== undefined ? { tickerTextColor: ttc } : {}),
+        ...chrome,
+        ...(opacity !== undefined ? { opacity } : {}),
+        ...(rotation !== undefined ? { rotation } : {}),
+        ...(o.visible === false ? { visible: false as const } : {}),
+        ...(o.locked === true ? { locked: true as const } : {}),
+        ...presentationHoldFromRaw(o),
+      });
+    } else if (o.type === "youtube") {
+      const yu =
+        typeof o.youtubeUrl === "string" &&
+        o.youtubeUrl.trim().length > 0 &&
+        o.youtubeUrl.length <= 512
+          ? o.youtubeUrl.trim()
+          : undefined;
+      out.push({
+        id: o.id,
+        type: "youtube",
+        x: Number(o.x) || 0,
+        y: Number(o.y) || 0,
+        width: Number(o.width) || DEFAULT_BOOK_YOUTUBE_WIDTH,
+        height: Number(o.height) || DEFAULT_BOOK_YOUTUBE_HEIGHT,
+        ...(yu !== undefined ? { youtubeUrl: yu } : {}),
+        ...(o.youtubeAutoplay === false
+          ? { youtubeAutoplay: false as const }
+          : {}),
+        ...(o.youtubeMute === false ? { youtubeMute: false as const } : {}),
+        ...(o.youtubeLoop === false ? { youtubeLoop: false as const } : {}),
+        ...(o.youtubeControls === true
+          ? { youtubeControls: true as const }
+          : {}),
         ...chrome,
         ...(opacity !== undefined ? { opacity } : {}),
         ...(rotation !== undefined ? { rotation } : {}),

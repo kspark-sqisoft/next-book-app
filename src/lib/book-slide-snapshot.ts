@@ -1147,6 +1147,102 @@ export async function captureBookSlideToDataURL(
             opacity: elOp,
           }),
         );
+      } else if (el.type === "ticker") {
+        // 썸네일은 정지 화면 — 문구 한 줄만 표시
+        const tw = sx(el.width);
+        const th = sx(el.height);
+        const tp = bookElementPivotKonva({
+          x: sx(el.x),
+          y: sx(el.y),
+          width: tw,
+          height: th,
+          rotation: el.rotation,
+        });
+        const tBg = parseBookClockBackground(el.tickerBackground) ?? "#0f172a";
+        const tFill =
+          parseBookWidgetTextColor(el.tickerTextColor) ?? "#f1f5f9";
+        const tUserOw = resolveBookElementOutlineWidth(el);
+        const tUserOc = resolveBookElementOutlineColor(el);
+        layer.add(
+          new Konva.Rect({
+            x: tp.cx,
+            y: tp.cy,
+            offsetX: tp.offsetX,
+            offsetY: tp.offsetY,
+            width: tw,
+            height: th,
+            rotation: tp.rotation,
+            fill: tBg,
+            stroke: tUserOw > 0 ? tUserOc : "rgba(148,163,184,0.45)",
+            strokeWidth: tUserOw > 0 ? Math.max(0.5, sx(tUserOw)) : 0.5,
+            cornerRadius: Math.max(0, sx(resolveBookElementBorderRadius(el))),
+            opacity: elOp,
+          }),
+        );
+        layer.add(
+          new Konva.Text({
+            x: tp.cx,
+            y: tp.cy,
+            offsetX: tp.offsetX,
+            offsetY: tp.offsetY,
+            width: tw,
+            height: th,
+            rotation: tp.rotation,
+            text: el.tickerText?.trim() || "티커",
+            fontSize: Math.max(6, Math.min(th * 0.5, 10 * scale)),
+            fill: tFill,
+            align: "center",
+            verticalAlign: "middle",
+            ellipsis: true,
+            wrap: "none",
+            opacity: elOp,
+          }),
+        );
+      } else if (el.type === "youtube") {
+        const yw = sx(el.width);
+        const yh = sx(el.height);
+        const yp = bookElementPivotKonva({
+          x: sx(el.x),
+          y: sx(el.y),
+          width: yw,
+          height: yh,
+          rotation: el.rotation,
+        });
+        const yUserOw = resolveBookElementOutlineWidth(el);
+        const yUserOc = resolveBookElementOutlineColor(el);
+        layer.add(
+          new Konva.Rect({
+            x: yp.cx,
+            y: yp.cy,
+            offsetX: yp.offsetX,
+            offsetY: yp.offsetY,
+            width: yw,
+            height: yh,
+            rotation: yp.rotation,
+            fill: "#000000",
+            stroke: yUserOw > 0 ? yUserOc : "rgba(148,163,184,0.45)",
+            strokeWidth: yUserOw > 0 ? Math.max(0.5, sx(yUserOw)) : 0.5,
+            cornerRadius: Math.max(0, sx(resolveBookElementBorderRadius(el))),
+            opacity: elOp,
+          }),
+        );
+        layer.add(
+          new Konva.Text({
+            x: yp.cx,
+            y: yp.cy,
+            offsetX: yp.offsetX,
+            offsetY: yp.offsetY,
+            width: yw,
+            height: yh,
+            rotation: yp.rotation,
+            text: "▶ YouTube",
+            fontSize: Math.max(6, 9 * scale),
+            fill: "#f87171",
+            align: "center",
+            verticalAlign: "middle",
+            opacity: elOp,
+          }),
+        );
       } else if (el.type === "webview") {
         // 썸네일은 실제 페이지를 그릴 수 없어 URL 호스트만 표시하는 자리표시자
         const ww = sx(el.width);

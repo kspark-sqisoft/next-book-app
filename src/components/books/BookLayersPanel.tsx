@@ -32,9 +32,11 @@ import {
   Layers,
   ListVideo,
   Lock,
+  Megaphone,
   Newspaper,
   Pencil,
   Shapes,
+  SquarePlay,
   Trash2,
   Type,
   Unlock,
@@ -76,6 +78,13 @@ function bookElementLayerLabel(el: BookCanvasElement): string {
       return "디지털 시계";
     case "webview":
       return "웹뷰";
+    case "ticker": {
+      const t = el.tickerText?.trim() ?? "";
+      if (t) return t.length > 32 ? `${t.slice(0, 32)}…` : t;
+      return "티커";
+    }
+    case "youtube":
+      return "유튜브";
     case "news":
       return "뉴스";
     case "mediaPlaylist":
@@ -145,6 +154,10 @@ function LayerTypeIcon({ el }: { el: BookCanvasElement }) {
       return <Clock className={cls} aria-hidden />;
     case "webview":
       return <Globe className={cls} aria-hidden />;
+    case "ticker":
+      return <Megaphone className={cls} aria-hidden />;
+    case "youtube":
+      return <SquarePlay className={cls} aria-hidden />;
     case "mediaPlaylist":
       return <ListVideo className={cls} aria-hidden />;
     case "drawing":
