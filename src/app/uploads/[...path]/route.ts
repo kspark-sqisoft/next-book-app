@@ -1,10 +1,13 @@
-// 업로드 정적 파일 서빙: UPLOAD_ROOT 기준, 경로 탈출 차단
-import { readFile } from "node:fs/promises";
+// 업로드 정적 파일 서빙: UPLOAD_ROOT 기준, 경로 탈출 차단, Range(부분 요청)·스트리밍 지원
+import { createReadStream } from "node:fs";
+import { stat } from "node:fs/promises";
 import { join, normalize, resolve } from "node:path";
+import { Readable } from "node:stream";
 
+import { parseByteRange } from "@/lib/http-range";
 import { UPLOAD_ROOT } from "@/server/env";
 
-// 확장자별 Content-Type (스트리밍 없이 버퍼 전체 읽기)
+// 확장자별 Content-Type
 function contentTypeForPath(rel: string): string {
   const lower = rel.toLowerCase();
   if (lower.endsWith(".png")) return "image/png";
@@ -17,8 +20,14 @@ function contentTypeForPath(rel: string): string {
   return "application/octet-stream";
 }
 
+function fileStream(path: string, range?: { start: number; end: number }) {
+  return Readable.toWeb(
+    createReadStream(path, range ? { start: range.start, end: range.end } : {}),
+  ) as ReadableStream<Uint8Array>;
+}
+
 export async function GET(
-  _request: Request,
+  request: Request,
   ctx: { params: Promise<{ path: string[] }> },
 ) {
   const { path: segments } = await ctx.params;
@@ -34,15 +43,44 @@ export async function GET(
   if (!full.startsWith(base)) {
     return new Response("Forbidden", { status: 403 });
   }
+
+  let info;
   try {
-    const buf = await readFile(full);
-    return new Response(buf, {
-      headers: {
-        "Content-Type": contentTypeForPath(rel),
-        "Cache-Control": "public, max-age=3600",
-      },
-    });
+    info = await stat(full);
   } catch {
     return new Response("Not Found", { status: 404 });
   }
+  if (!info.isFile()) {
+    return new Response("Not Found", { status: 404 });
+  }
+
+  const size = info.size;
+  const baseHeaders: Record<string, string> = {
+    "Content-Type": contentTypeForPath(rel),
+    "Cache-Control": "public, max-age=3600",
+    // 비디오 탐색(seek)에 필요: 브라우저가 부분 요청 가능 여부를 이 헤더로 판단
+    "Accept-Ranges": "bytes",
+  };
+
+  const range = parseByteRange(request.headers.get("range"), size);
+  if (range === "invalid") {
+    return new Response(null, {
+      status: 416,
+      headers: { ...baseHeaders, "Content-Range": `bytes */${size}` },
+    });
+  }
+  if (range) {
+    return new Response(fileStream(full, range), {
+      status: 206,
+      headers: {
+        ...baseHeaders,
+        "Content-Range": `bytes ${range.start}-${range.end}/${size}`,
+        "Content-Length": String(range.end - range.start + 1),
+      },
+    });
+  }
+
+  return new Response(fileStream(full), {
+    headers: { ...baseHeaders, "Content-Length": String(size) },
+  });
 }
