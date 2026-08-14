@@ -7,7 +7,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { Plus, Search, X } from "lucide-react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   startTransition,
   useCallback,
@@ -51,24 +51,35 @@ export function BookListPage() {
   const router = useRouter();
   const pathname = usePathname();
   const queryClient = useQueryClient();
-  const searchParams = useSearchParams();
+
+  /** 글 목록과 동일: `useSearchParams` 대신 location 기반(커스텀 서버·Suspense 이슈 회피) */
+  const [queryString, setQueryString] = useState("");
+  useEffect(() => {
+    const read = () =>
+      setQueryString(window.location.search.replace(/^\?/, ""));
+    read();
+    window.addEventListener("popstate", read);
+    return () => window.removeEventListener("popstate", read);
+  }, [pathname]);
+
+  const urlSearchRaw = useMemo(() => {
+    return new URLSearchParams(queryString).get("search") ?? "";
+  }, [queryString]);
 
   const commitSearchParams = useCallback(
     (mutate: (p: URLSearchParams) => void) => {
-      const p = new URLSearchParams(searchParams.toString());
+      const p = new URLSearchParams(queryString);
       mutate(p);
       const q = p.toString();
+      setQueryString(q);
       router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
     },
-    [searchParams, router, pathname],
+    [queryString, router, pathname],
   );
-  const urlSearchRaw = searchParams.get("search") ?? "";
-  /** `useSearchParams()` 참조는 자주 바뀔 수 있어, 의존성은 직렬화 문자열만 씀 */
-  const searchParamsSnapshot = searchParams.toString();
 
   const [loadMoreScheduled, setLoadMoreScheduled] = useState(false);
-  const [searchInput, setSearchInput] = useState(urlSearchRaw);
-  const [searchQuery, setSearchQuery] = useState(urlSearchRaw.trim());
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const listQueryKey = bookKeys.list(searchQuery);
 
@@ -151,16 +162,17 @@ export function BookListPage() {
   }, [searchInput]);
 
   useEffect(() => {
-    const sp = new URLSearchParams(searchParamsSnapshot);
+    const sp = new URLSearchParams(queryString);
     const current = (sp.get("search") ?? "").trim();
     if (searchQuery === current) return;
     skipUrlToStateSyncRef.current = true;
-    const p = new URLSearchParams(searchParamsSnapshot);
+    const p = new URLSearchParams(queryString);
     if (searchQuery) p.set("search", searchQuery);
     else p.delete("search");
     const q = p.toString();
     router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
-  }, [searchQuery, pathname, router, searchParamsSnapshot]);
+    queueMicrotask(() => setQueryString(q));
+  }, [searchQuery, pathname, router, queryString]);
 
   useEffect(() => {
     if (skipUrlToStateSyncRef.current) {

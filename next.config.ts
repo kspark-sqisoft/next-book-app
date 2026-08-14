@@ -19,6 +19,8 @@ const konvaTurbopackAlias = "./node_modules/konva";
 const nextConfig: NextConfig = {
   // Custom `server.ts` runs Next + Socket.IO on one port; standalone bundle targets the default server only.
   experimental: {
+    // Next 16 기본 true — dev 클라이언트가 self.__next_r 를 요구함. 커스텀 서버(tsx server.ts)와 맞지 않아 InvariantError.
+    reactDebugChannel: false,
     serverActions: {
       // 기본 1MB — FormData·Server Action 업로드가 여기서 먼저 막힘. 앱별 maxBytes와 별개로 상한을 넉넉히 둠.
       bodySizeLimit: "1gb",

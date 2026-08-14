@@ -2,13 +2,14 @@
 
 // 로그인 폼: useActionState + authStore.signIn, 성공 시 ?from 또는 /me
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   startTransition,
   useActionState,
   useCallback,
   useEffect,
   useOptimistic,
+  useState,
 } from "react";
 import { toast } from "sonner";
 
@@ -47,9 +48,26 @@ const LOGIN_INITIAL_STATE: LoginActionState = {
 export function LoginPage() {
   const { user, isReady, signIn } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const from = searchParams.get("from") ?? "/me";
-  const justRegistered = searchParams.get("registered") === "1";
+  const pathname = usePathname();
+
+  /** 커스텀 서버 등에서 `useSearchParams`+Suspense 가 영구 대기될 수 있어 location 기반 */
+  const [from, setFrom] = useState("/me");
+  const [justRegistered, setJustRegistered] = useState(false);
+  useEffect(() => {
+    const read = () => {
+      const sp = new URLSearchParams(
+        window.location.search.replace(/^\?/, ""),
+      );
+      const raw = sp.get("from")?.trim() ?? "";
+      const safe =
+        raw.startsWith("/") && !raw.startsWith("//") ? raw : "/me";
+      setFrom(safe);
+      setJustRegistered(sp.get("registered") === "1");
+    };
+    read();
+    window.addEventListener("popstate", read);
+    return () => window.removeEventListener("popstate", read);
+  }, [pathname]);
 
   const loginAction = useCallback(
     async (

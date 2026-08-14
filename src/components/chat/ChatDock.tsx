@@ -418,7 +418,7 @@ export function ChatDock() {
         래퍼에 pointer-events-auto + flex-1을 두면 오른쪽 가늘 띠 전체(뷰포트 세로)가 히트 영역이 되어
         북 속성 패널 등 그 아래 UI가 클릭되지 않는다. 실제 대화상자·FAB만 pointer-events-auto.
       */}
-      <div className="pointer-events-none flex min-h-0 flex-1 flex-col items-end justify-end gap-3">
+      <div className="pointer-events-none flex min-h-0 flex-1 flex-col items-end justify-start gap-3">
         {open ? (
           <div
             className="pointer-events-auto flex h-full max-h-[min(90dvh,48rem)] min-h-0 w-[min(100vw-2rem,22rem)] flex-col overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-xl sm:w-[24rem]"

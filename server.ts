@@ -1,3 +1,5 @@
+import "./server-env-bootstrap";
+
 import http from "node:http";
 import { parse } from "node:url";
 
@@ -5,6 +7,11 @@ import next from "next";
 import { Server as SocketIOServer } from "socket.io";
 
 import { attachChatNamespace } from "@/server/chat/attach-chat-namespace";
+
+import {
+  ensureDevRequiredServerFilesIfMissing,
+  ensureDevRequiredServerFilesManifest,
+} from "./server-dev-required-manifest";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = process.env.HOSTNAME ?? "0.0.0.0";
@@ -24,12 +31,22 @@ const app = next({
   ...(useWebpackDev ? { webpack: true } : {}),
 });
 
-app.prepare().then(() => {
+app.prepare().then(async () => {
+  await ensureDevRequiredServerFilesManifest();
   const handle = app.getRequestHandler();
   const handleUpgrade = app.getUpgradeHandler();
 
   const httpServer = http.createServer((req, res) => {
     const parsedUrl = parse(req.url ?? "", true);
+    const pathname = parsedUrl.pathname ?? "";
+    // Socket.IO(폴링·long-polling)는 별도 request 리스너가 처리한다. Next에 넘기면 404로 res가 끝나 연결 실패.
+    if (pathname.startsWith("/socket.io")) {
+      return;
+    }
+    // 첫 컴파일이 `.next/dev` 를 비운 뒤 manifest 가 잠깐 없을 수 있음 → 요청마다 없으면 동기 보강.
+    if (dev) {
+      ensureDevRequiredServerFilesIfMissing();
+    }
     void handle(req, res, parsedUrl);
   });
 

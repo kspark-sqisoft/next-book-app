@@ -8,7 +8,7 @@ import {
 } from "@tanstack/react-query";
 import { Search, X } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   startTransition,
   useCallback,
@@ -55,31 +55,45 @@ const SEARCH_DEBOUNCE_MS = 400;
 export function PostListPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
 
-  const commitSearchParams = useCallback(
-    (mutate: (p: URLSearchParams) => void) => {
-      const p = new URLSearchParams(searchParams.toString());
-      mutate(p);
-      const q = p.toString();
-      router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
-    },
-    [searchParams, router, pathname],
+  /** `useSearchParams` 는 App Router + 커스텀 서버 조합에서 Suspense/스트리밍과 맞물려 목록이 영구 로딩처럼 보일 수 있음 */
+  const [queryString, setQueryString] = useState("");
+  useEffect(() => {
+    const read = () =>
+      setQueryString(window.location.search.replace(/^\?/, ""));
+    read();
+    window.addEventListener("popstate", read);
+    return () => window.removeEventListener("popstate", read);
+  }, [pathname]);
+
+  const urlParams = useMemo(
+    () => new URLSearchParams(queryString),
+    [queryString],
   );
-  const urlSearchRaw = searchParams.get("search") ?? "";
+  const urlSearchRaw = urlParams.get("search") ?? "";
   const urlCategoryRaw =
-    searchParams.get("category")?.trim().toLowerCase() ?? "";
+    urlParams.get("category")?.trim().toLowerCase() ?? "";
   const categoryFilterParam = isPostCategoryId(urlCategoryRaw)
     ? urlCategoryRaw
     : "";
-  const searchParamsSnapshot = searchParams.toString();
+
+  const commitSearchParams = useCallback(
+    (mutate: (p: URLSearchParams) => void) => {
+      const p = new URLSearchParams(queryString);
+      mutate(p);
+      const q = p.toString();
+      setQueryString(q);
+      router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
+    },
+    [queryString, router, pathname],
+  );
 
   const [loadMoreScheduled, setLoadMoreScheduled] = useState(false);
   const [likeActionError, setLikeActionError] = useState<string | null>(null);
-  const [searchInput, setSearchInput] = useState(urlSearchRaw);
-  const [searchQuery, setSearchQuery] = useState(urlSearchRaw.trim());
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const listQueryKey = postKeys.list(searchQuery, categoryFilterParam);
 
@@ -166,16 +180,17 @@ export function PostListPage() {
   }, [searchInput]);
 
   useEffect(() => {
-    const sp = new URLSearchParams(searchParamsSnapshot);
+    const sp = new URLSearchParams(queryString);
     const current = (sp.get("search") ?? "").trim();
     if (searchQuery === current) return;
     skipUrlToStateSyncRef.current = true;
-    const p = new URLSearchParams(searchParamsSnapshot);
+    const p = new URLSearchParams(queryString);
     if (searchQuery) p.set("search", searchQuery);
     else p.delete("search");
     const q = p.toString();
     router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
-  }, [searchQuery, pathname, router, searchParamsSnapshot]);
+    queueMicrotask(() => setQueryString(q));
+  }, [searchQuery, pathname, router, queryString]);
 
   /** 브라우저 뒤로가기 등으로 URL만 바뀐 때 입력·쿼리 복원 */
   useEffect(() => {

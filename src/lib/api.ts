@@ -45,13 +45,17 @@ function normalizeApiBase(raw: unknown): string {
 export const API_BASE_URL =
   normalizeApiBase(process.env.NEXT_PUBLIC_API_BASE_URL) || "/api";
 
-// WebSocket 등 절대 URL 이 필요할 때 API 호스트만 추출
+// WebSocket 등 **오리진**(scheme+host+port)만 필요할 때. `http://host:3000/api` 처럼 path가 있으면 strip.
 export function apiOrigin(): string {
   if (
     API_BASE_URL.startsWith("http://") ||
     API_BASE_URL.startsWith("https://")
   ) {
-    return API_BASE_URL;
+    try {
+      return new URL(API_BASE_URL).origin;
+    } catch {
+      return API_BASE_URL.replace(/\/$/, "");
+    }
   }
   return typeof window !== "undefined" ? window.location.origin : "";
 }
@@ -166,6 +170,7 @@ export function parseApiErrorMessage(data: unknown): string {
 export const api = axios.create({
   baseURL: API_BASE_URL || undefined,
   withCredentials: true,
+  timeout: 30_000,
 });
 
 /**
@@ -178,7 +183,7 @@ export async function refreshAccessToken(): Promise<boolean> {
     const { data } = await axios.post<{ access_token?: string }>(
       refreshUrl,
       {},
-      { withCredentials: true },
+      { withCredentials: true, timeout: 30_000 },
     );
     if (!data.access_token) {
       appLog("api", "refresh 실패(토큰 없음)");

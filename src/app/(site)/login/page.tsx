@@ -1,13 +1,6 @@
-// 로그인: useSearchParams 때문에 Suspense 경계 필요
-import { Suspense } from "react";
-
-import { CenteredSpinner } from "@/components/layout/CenteredSpinner";
+// 로그인: 쿼리는 LoginPage 에서 window.location 으로 읽음(useSearchParams·Suspense 회피)
 import { LoginPage } from "@/page-components/LoginPage";
 
 export default function Page() {
-  return (
-    <Suspense fallback={<CenteredSpinner />}>
-      <LoginPage />
-    </Suspense>
-  );
+  return <LoginPage />;
 }

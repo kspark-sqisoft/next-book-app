@@ -42,10 +42,15 @@ type AuthState = {
   applyServerUser: (me: AuthUser) => void;
 };
 
-/** 스토어 본체. 컴포넌트에서 직접 쓰면 구독 범위가 넓어져 불필요한 리렌더가 잘 납니다. 가능하면 `useAuth()` 사용. */
-export const useAuthStore = create<AuthState>()(
-  devtools(
-    immer((set) => ({
+/**
+ * 브라우저에서 webpack HMR·중복 클라이언트 청크로 이 모듈이 두 번 평가되면 `create()` 가 두 번 돌아가
+ * 서로 다른 스토어가 된다. `Providers` 는 `getState().hydrate()` 로 한쪽만 갱신하고 `useAuth()` 는 다른 쪽을
+ * 구독하면 `isReady` 가 끝없이 false → 로그인·목록 등이 전부 스피너만 보일 수 있다.
+ */
+function createAuthStore() {
+  return create<AuthState>()(
+    devtools(
+      immer((set) => ({
       user: null,
       /** `hydrate()`가 끝나기 전에는 보호 라우트·로그인 폼이 스피너를 보여 줍니다. */
       isReady: false,
@@ -67,27 +72,28 @@ export const useAuthStore = create<AuthState>()(
        */
       hydrate: async () => {
         appLog("auth", "hydrate 시작");
-        /** 현재 Bearer로 로그인 사용자 조회 (성공 시 AuthUser, 실패 시 null) */
-        const tryMe = () => fetchMe();
         let user: AuthUser | null = null;
+        try {
+          const tryMe = () => fetchMe();
 
-        if (getAccessToken()) {
-          // 세션에 액세스 JWT가 있으면 그걸로 먼저 “나” 정보 요청
-          user = await tryMe();
-          if (!user) {
-            // 만료·무효 등으로 실패 → 리프레시 쿠키로 새 액세스 토큰 받은 뒤 재시도
+          if (getAccessToken()) {
+            user = await tryMe();
+            if (!user) {
+              const refreshed = await refreshAccessToken();
+              if (refreshed) user = await tryMe();
+            }
+          } else {
             const refreshed = await refreshAccessToken();
             if (refreshed) user = await tryMe();
           }
-        } else {
-          // 탭에 액세스 토큰은 없어도, 리프레시 쿠키가 있으면 조용히 갱신 후 로그인 유지 가능
-          const refreshed = await refreshAccessToken();
-          if (refreshed) user = await tryMe();
-        }
 
-        if (!user) {
-          // 서버가 “로그인 아님”이면 클라이언트에 남은 액세스 토큰도 의미 없으므로 제거
+          if (!user) {
+            setAccessToken(null);
+          }
+        } catch (e) {
+          console.error("[auth/hydrate]", e);
           setAccessToken(null);
+          user = null;
         }
 
         set(
@@ -207,13 +213,28 @@ export const useAuthStore = create<AuthState>()(
           "auth/applyServerUser",
         );
       },
-    })),
-    {
-      name: "auth-store",
-      enabled: process.env.NODE_ENV === "development",
-    },
-  ),
-);
+      })),
+      {
+        name: "auth-store",
+        enabled: process.env.NODE_ENV === "development",
+      },
+    ),
+  );
+}
+
+const globalForAuth = globalThis as unknown as {
+  __NEXT_BOOK_APP_AUTH_STORE__?: ReturnType<typeof createAuthStore>;
+};
+
+export const useAuthStore =
+  (typeof window !== "undefined" && globalForAuth.__NEXT_BOOK_APP_AUTH_STORE__) ||
+  (() => {
+    const store = createAuthStore();
+    if (typeof window !== "undefined") {
+      globalForAuth.__NEXT_BOOK_APP_AUTH_STORE__ = store;
+    }
+    return store;
+  })();
 
 /**
  * 인증 상태를 쓰기 위한 React 훅입니다. (내부적으로 Zustand `useAuthStore`를 구독합니다.)
