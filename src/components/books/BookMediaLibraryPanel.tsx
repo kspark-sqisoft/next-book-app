@@ -104,8 +104,18 @@ function useBookMediaLibraryCore(bookId: number) {
       const d = (ev as CustomEvent<{ bookId?: number }>).detail;
       if (d?.bookId === bookId) setItems(loadBookMediaLibrary(bookId));
     };
+    // 커스텀 이벤트는 같은 탭 전용 — 다른 탭의 변경은 storage 이벤트로 동기화
+    const onStorage = (ev: StorageEvent) => {
+      if (ev.key === `book-media-lib:v1:${bookId}`) {
+        setItems(loadBookMediaLibrary(bookId));
+      }
+    };
     window.addEventListener(BOOK_MEDIA_LIBRARY_CHANGED, fn);
-    return () => window.removeEventListener(BOOK_MEDIA_LIBRARY_CHANGED, fn);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(BOOK_MEDIA_LIBRARY_CHANGED, fn);
+      window.removeEventListener("storage", onStorage);
+    };
   }, [bookId]);
 
   const onDragStartItem = useCallback(
@@ -131,11 +141,20 @@ function useBookMediaLibraryCore(bookId: number) {
       setUploading(true);
       try {
         const res = await uploadBookMedia(bookId, f, null);
-        appendBookMediaLibraryItem(bookId, {
+        const appended = appendBookMediaLibraryItem(bookId, {
           kind: res.kind,
           src: res.url,
           posterUrl: res.posterUrl,
         });
+        if (!appended.saved) {
+          toast.error(
+            "브라우저 저장 공간이 가득 차 라이브러리 목록에 기록하지 못했습니다. (파일 업로드는 완료)",
+          );
+        } else if (appended.truncated > 0) {
+          toast.info(
+            `라이브러리 최대 개수를 넘어 오래된 항목 ${appended.truncated}개가 목록에서 제외됐습니다.`,
+          );
+        }
         toast.success(
           res.kind === "image"
             ? "라이브러리에 이미지를 추가했습니다."

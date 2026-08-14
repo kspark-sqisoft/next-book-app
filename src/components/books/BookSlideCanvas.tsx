@@ -83,6 +83,7 @@ import {
   resolveMediaPlaylistShowControls,
   snapKonvaBookNodePositionToGrid,
 } from "@/lib/book-canvas";
+import { isBookEditorTypingTarget } from "@/lib/book-editor-keyboard";
 import { getBookImageIfReady, loadBookImage } from "@/lib/book-image-cache";
 import { computeKonvaFittedImageLayout } from "@/lib/book-media-layout";
 import {
@@ -237,6 +238,10 @@ type BookSlideCanvasProps = {
   selectedIds: readonly string[];
   onSelect: (detail: BookCanvasSelectDetail) => void;
   onElementChange: (id: string, patch: Partial<BookCanvasElement>) => void;
+  /** 그룹 드래그·화살표 이동처럼 여러 요소를 한 번에 — 없으면 개별 호출로 폴백(undo 엔트리가 요소 수만큼 생김) */
+  onElementsChange?: (
+    patches: { id: string; patch: Partial<BookCanvasElement> }[],
+  ) => void;
   /** 편집 모드에서 팔레트 위젯을 캔버스로 드롭 */
   onDropWidget?: (
     point: { x: number; y: number },
@@ -863,6 +868,7 @@ export function BookSlideCanvas({
   selectedIds,
   onSelect,
   onElementChange,
+  onElementsChange,
   onDropWidget,
   onDropShape,
   onDropLibraryMedia,
@@ -1097,12 +1103,18 @@ export function BookSlideCanvas({
         if (o0) {
           const dx = tl.x - o0.x;
           const dy = tl.y - o0.y;
-          for (const [id, pos] of g.origins) {
-            if (id === elementId) {
-              onElementChange(id, { x: tl.x, y: tl.y });
-            } else {
-              onElementChange(id, { x: pos.x + dx, y: pos.y + dy });
-            }
+          const patches = [...g.origins].map(([id, pos]) => ({
+            id,
+            patch:
+              id === elementId
+                ? { x: tl.x, y: tl.y }
+                : { x: pos.x + dx, y: pos.y + dy },
+          }));
+          if (onElementsChange) {
+            // 그룹 이동 1회 = undo 1엔트리
+            onElementsChange(patches);
+          } else {
+            for (const { id, patch } of patches) onElementChange(id, patch);
           }
         }
         groupDragSnapRef.current = null;
@@ -1112,7 +1124,7 @@ export function BookSlideCanvas({
       }
       clearDragLive();
     },
-    [clearDragLive, dragGridPx, onElementChange],
+    [clearDragLive, dragGridPx, onElementChange, onElementsChange],
   );
 
   const shapeLiveSync: BookShapeLiveSync = useMemo(
@@ -1280,16 +1292,7 @@ export function BookSlideCanvas({
       ) {
         return;
       }
-      const t = e.target as HTMLElement | null;
-      if (!t) return;
-      if (t.closest("input, textarea, [contenteditable=true]")) return;
-      if (
-        t.closest(
-          '[data-slot="select-content"], [data-slot="combobox-content"], [data-slot="combobox-list"]',
-        )
-      ) {
-        return;
-      }
+      if (isBookEditorTypingTarget(e.target)) return;
       const movers = selectedIds
         .map((id) => elements.find((x) => x.id === id))
         .filter(
@@ -1305,13 +1308,23 @@ export function BookSlideCanvas({
       else if (e.key === "ArrowRight") dx = step;
       else if (e.key === "ArrowUp") dy = -step;
       else dy = step;
-      for (const el of movers) {
-        onElementChange(el.id, { x: el.x + dx, y: el.y + dy });
+      if (onElementsChange) {
+        // 다중 선택 nudge 1회 = undo 1엔트리 (키 반복으로 히스토리가 밀려나는 것 완화)
+        onElementsChange(
+          movers.map((el) => ({
+            id: el.id,
+            patch: { x: el.x + dx, y: el.y + dy },
+          })),
+        );
+      } else {
+        for (const el of movers) {
+          onElementChange(el.id, { x: el.x + dx, y: el.y + dy });
+        }
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [mode, selectedIds, zMenu, elements, onElementChange]);
+  }, [mode, selectedIds, zMenu, elements, onElementChange, onElementsChange]);
 
   const openZMenu = useCallback(
     (elementId: string, clientX: number, clientY: number) => {

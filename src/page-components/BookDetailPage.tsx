@@ -11,6 +11,7 @@ import {
   type SetStateAction,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -122,6 +123,7 @@ import {
   resolveEffectivePresentationTimingElementId,
   toBookPagePayloads,
 } from "@/lib/book-canvas";
+import { isBookEditorTypingTarget } from "@/lib/book-editor-keyboard";
 import type { BookEditorLeftTab } from "@/lib/book-editor-panel-events";
 import {
   readFloatingMediaLibraryVisible,
@@ -222,15 +224,21 @@ function BookDetailOwnerView({
   const [pageIndex, setPageIndex] = useState(0);
   const canvasWrapRef = useRef<HTMLDivElement>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  // 마운트 시 1회만 쓰이는 초기값 — 매 렌더 전체 페이지 재계산(정렬·정규화)을 막는다
+  const initialPagesRef = useRef<BookEditorPageState[] | null>(null);
+  if (initialPagesRef.current === null) {
+    initialPagesRef.current = mapServerPagesToLocal(serverBook.pages);
+  }
   const {
     pages: localPages,
     updatePages,
+    updatePagesSilent,
     commitPages,
     undo,
     redo,
     canUndo,
     canRedo,
-  } = useBookDocumentHistory(mapServerPagesToLocal(serverBook.pages));
+  } = useBookDocumentHistory(initialPagesRef.current);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const playlistMediaInputRef = useRef<HTMLInputElement>(null);
@@ -336,11 +344,13 @@ function BookDetailOwnerView({
   );
 
   useEffect(() => {
+    // 파생 상태 자동 교정은 히스토리에 남기지 않는다(Silent) —
+    // 남기면 템플릿 적용·요소 삭제 뒤 Ctrl+Z가 유령 엔트리에 한 번 헛돈다.
     const pg = localPages[activePageIndex];
     if (!pg) return;
     if (pg.elements.length === 0) {
       if (pg.presentationTimingElementId != null) {
-        updatePages((d) => {
+        updatePagesSilent((d) => {
           const p = d[activePageIndex];
           if (p && p.elements.length === 0)
             p.presentationTimingElementId = null;
@@ -353,7 +363,7 @@ function BookDetailOwnerView({
       pg.presentationTimingElementId,
     );
     if (want !== pg.presentationTimingElementId) {
-      updatePages((d) => {
+      updatePagesSilent((d) => {
         const p = d[activePageIndex];
         if (!p || p.elements.length === 0) return;
         p.presentationTimingElementId =
@@ -368,7 +378,7 @@ function BookDetailOwnerView({
     activePageElementIdsKey,
     activePage?.presentationTimingElementId,
     localPages,
-    updatePages,
+    updatePagesSilent,
   ]);
 
   useEffect(() => {
@@ -528,15 +538,7 @@ function BookDetailOwnerView({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement;
-      if (t.closest("input, textarea, [contenteditable=true]")) return;
-      if (
-        t.closest(
-          '[data-slot="select-content"], [data-slot="combobox-content"], [data-slot="combobox-list"]',
-        )
-      ) {
-        return;
-      }
+      if (isBookEditorTypingTarget(e.target)) return;
       if (widgetDeleteOpen || deleteConfirmOpen || pageDeleteOpen) return;
       if ((e.ctrlKey || e.metaKey) && e.key === "a") {
         e.preventDefault();
@@ -608,26 +610,33 @@ function BookDetailOwnerView({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // useMutation 반환 객체는 매 렌더 새 참조 — ref로 참조해 리스너 재등록 반복을 막는다
+  const saveMutationRef = useRef(saveMutation);
+  useLayoutEffect(() => {
+    saveMutationRef.current = saveMutation;
+  });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s")) return;
-      const t = e.target as HTMLElement;
-      if (t.closest("input, textarea, [contenteditable=true]")) return;
-      if (
-        t.closest(
-          '[data-slot="select-content"], [data-slot="combobox-content"], [data-slot="combobox-list"]',
-        )
-      ) {
-        return;
-      }
+      if (isBookEditorTypingTarget(e.target)) return;
       if (widgetDeleteOpen || deleteConfirmOpen || pageDeleteOpen) return;
       e.preventDefault();
-      if (saveMutation.isPending) return;
-      saveMutation.mutate();
+      if (saveMutationRef.current.isPending) return;
+      saveMutationRef.current.mutate();
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [saveMutation, widgetDeleteOpen, deleteConfirmOpen, pageDeleteOpen]);
+  }, [widgetDeleteOpen, deleteConfirmOpen, pageDeleteOpen]);
+
+  // 미저장 편집이 있으면 탭 닫기·새로고침 전에 경고
+  useEffect(() => {
+    if (!canUndo) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [canUndo]);
 
   const deleteMutation = useMutation({
     mutationFn: (bid: number) => deleteBook(bid),
@@ -679,6 +688,21 @@ function BookDetailOwnerView({
         const el = p.elements.find((x) => x.id === elId);
         if (!el) return;
         Object.assign(el, patch);
+      });
+    },
+    [activePageIndex, updatePages],
+  );
+
+  // 그룹 드래그·다중 nudge — 한 번의 조작 = 한 개의 undo 엔트리
+  const onElementsChange = useCallback(
+    (patches: { id: string; patch: Partial<BookCanvasElement> }[]) => {
+      updatePages((draft) => {
+        const p = draft[activePageIndex];
+        if (!p) return;
+        for (const { id, patch } of patches) {
+          const el = p.elements.find((x) => x.id === id);
+          if (el) Object.assign(el, patch);
+        }
       });
     },
     [activePageIndex, updatePages],
@@ -752,6 +776,9 @@ function BookDetailOwnerView({
         const p = draft[activePageIndex];
         if (!p) return;
         p.elements = nextElements;
+        // 요소를 통째로 교체하면 기존 타이밍 요소 id가 무효 — 즉시 재계산(뒤늦은 effect 교정에 의존하지 않음)
+        p.presentationTimingElementId =
+          resolveEffectivePresentationTimingElementId(p.elements, null);
       });
       setSelectedIds([]);
       toast.success("슬라이드 내용을 비우고 템플릿을 적용했습니다.");
@@ -1412,13 +1439,18 @@ function BookDetailOwnerView({
         }
         return;
       }
-      pendingPlacementRef.current = point;
-      pendingMediaKindRef.current = kind;
-      if (kind === "image") {
-        imageInputRef.current?.click();
-      } else {
-        videoInputRef.current?.click();
+      // 명시된 종류만 파일 선택으로 — 새 위젯 kind가 조용히 동영상 선택창으로 흘러가지 않게
+      if (kind === "image" || kind === "video") {
+        pendingPlacementRef.current = point;
+        pendingMediaKindRef.current = kind;
+        if (kind === "image") {
+          imageInputRef.current?.click();
+        } else {
+          videoInputRef.current?.click();
+        }
+        return;
       }
+      toast.error("지원하지 않는 위젯 종류입니다.");
     },
     [
       addDigitalClockAt,
@@ -1794,15 +1826,7 @@ function BookDetailOwnerView({
       if (!(e.ctrlKey || e.metaKey)) return;
       const k = e.key.toLowerCase();
       if (k !== "c" && k !== "x" && k !== "v") return;
-      const t = e.target as HTMLElement;
-      if (t.closest("input, textarea, [contenteditable=true]")) return;
-      if (
-        t.closest(
-          '[data-slot="select-content"], [data-slot="combobox-content"], [data-slot="combobox-list"]',
-        )
-      ) {
-        return;
-      }
+      if (isBookEditorTypingTarget(e.target)) return;
       if (widgetDeleteOpen || deleteConfirmOpen || pageDeleteOpen) return;
       if (k === "v") {
         if (!widgetClipboardHasContent) return;
@@ -2387,6 +2411,7 @@ function BookDetailOwnerView({
                   selectedIds={canvasSelectedIds}
                   onSelect={handleCanvasSelect}
                   onElementChange={onElementChange}
+                  onElementsChange={onElementsChange}
                   onDropWidget={onDropWidget}
                   onDropShape={onDropShape}
                   onDropLibraryMedia={onDropLibraryMedia}
@@ -2884,6 +2909,8 @@ export function BookDetailPage() {
     queryKey: bookKeys.detail(id),
     queryFn: () => fetchBook(id),
     enabled: Number.isFinite(id) && id > 0,
+    // 편집 화면은 key 리마운트로만 문서를 초기화 — 포커스 복귀 refetch가 편집 흐름을 흔들지 않게
+    refetchOnWindowFocus: false,
   });
 
   /** 작성자 또는 관리자만 편집 UI */

@@ -57,6 +57,21 @@ export function useBookDocumentHistory(initialPages: BookEditorPageState[]) {
     [],
   );
 
+  /**
+   * 히스토리에 남기지 않는 갱신 — 파생 상태 자동 교정(예: 삭제된 타이밍 요소 id 정리) 전용.
+   * 사용자가 하지 않은 조작이 undo 스택에 끼어 Ctrl+Z가 한 번 헛도는 것을 막는다.
+   */
+  const updatePagesSilent = useCallback(
+    (recipe: (draft: Draft<BookEditorPageState>[]) => void) => {
+      setDoc(({ pages, past, future }) => {
+        const next = produce(pages, recipe);
+        if (next === pages) return { pages, past, future };
+        return { pages: next, past, future };
+      });
+    },
+    [],
+  );
+
   const undo = useCallback(() => {
     setDoc(({ pages, past, future }) => {
       if (past.length === 0) return { pages, past, future };
@@ -84,6 +99,7 @@ export function useBookDocumentHistory(initialPages: BookEditorPageState[]) {
   return {
     pages: doc.pages,
     updatePages,
+    updatePagesSilent,
     commitPages,
     undo,
     redo,

@@ -46,25 +46,34 @@ export function loadBookMediaLibrary(bookId: number): BookMediaLibraryItem[] {
   }
 }
 
+/** 저장 성공 여부를 반환 — 쿼터 초과를 조용히 성공으로 위장하지 않는다 */
 function saveBookMediaLibrary(
   bookId: number,
   items: BookMediaLibraryItem[],
-): void {
+): boolean {
+  let ok = true;
   try {
     localStorage.setItem(key(bookId), JSON.stringify(items));
   } catch {
-    /* quota */
+    ok = false; // quota 초과 등
   }
   window.dispatchEvent(
     new CustomEvent(BOOK_MEDIA_LIBRARY_CHANGED, { detail: { bookId } }),
   );
+  return ok;
 }
+
+export type AppendBookMediaLibraryResult = {
+  saved: boolean;
+  /** MAX_ITEMS 초과로 목록에서 밀려난 오래된 항목 수(파일은 서버에 남음) */
+  truncated: number;
+};
 
 /** 목록 앞에 추가(최대 개수 유지) */
 export function appendBookMediaLibraryItem(
   bookId: number,
   meta: { kind: "image" | "video"; src: string; posterUrl: string | null },
-): void {
+): AppendBookMediaLibraryResult {
   const items = loadBookMediaLibrary(bookId);
   const item: BookMediaLibraryItem = {
     id: crypto.randomUUID(),
@@ -74,8 +83,10 @@ export function appendBookMediaLibraryItem(
     addedAt: Date.now(),
   };
   const dedup = items.filter((x) => x.src !== item.src);
-  const next = [item, ...dedup].slice(0, MAX_ITEMS);
-  saveBookMediaLibrary(bookId, next);
+  const merged = [item, ...dedup];
+  const next = merged.slice(0, MAX_ITEMS);
+  const saved = saveBookMediaLibrary(bookId, next);
+  return { saved, truncated: merged.length - next.length };
 }
 
 export function removeBookMediaLibraryItem(

@@ -4,7 +4,14 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Save } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { toast } from "sonner";
 
 import { BookAiAssistantPanel } from "@/components/books/BookAiAssistantPanel";
@@ -77,6 +84,7 @@ import {
   resolveEffectivePresentationTimingElementId,
   toBookPagePayloads,
 } from "@/lib/book-canvas";
+import { isBookEditorTypingTarget } from "@/lib/book-editor-keyboard";
 import type { BookEditorLeftTab } from "@/lib/book-editor-panel-events";
 import {
   readFloatingWidgetPaletteVisible,
@@ -115,10 +123,18 @@ export function BookEditorPage() {
   const queryClient = useQueryClient();
 
   const [title, setTitle] = useState("");
-  const { pages, updatePages, commitPages, undo, redo, canUndo, canRedo } =
-    useBookDocumentHistory(
-      applyAutoSlideNamesByIndex([createEmptyEditorPage(0)]),
-    );
+  const {
+    pages,
+    updatePages,
+    updatePagesSilent,
+    commitPages,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+  } = useBookDocumentHistory(
+    applyAutoSlideNamesByIndex([createEmptyEditorPage(0)]),
+  );
   const [pageIndex, setPageIndex] = useState(0);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const canvasWrapRef = useRef<HTMLDivElement>(null);
@@ -174,7 +190,7 @@ export function BookEditorPage() {
     if (!pg) return;
     if (pg.elements.length === 0) {
       if (pg.presentationTimingElementId != null) {
-        updatePages((d) => {
+        updatePagesSilent((d) => {
           const p = d[activePageIndex];
           if (p && p.elements.length === 0)
             p.presentationTimingElementId = null;
@@ -187,7 +203,8 @@ export function BookEditorPage() {
       pg.presentationTimingElementId,
     );
     if (want !== pg.presentationTimingElementId) {
-      updatePages((d) => {
+      // 파생 상태 자동 교정 — 히스토리에 남기지 않아 유령 undo 엔트리를 만들지 않는다
+      updatePagesSilent((d) => {
         const p = d[activePageIndex];
         if (!p || p.elements.length === 0) return;
         p.presentationTimingElementId =
@@ -202,7 +219,7 @@ export function BookEditorPage() {
     currentPageElementIdsKey,
     currentPage?.presentationTimingElementId,
     pages,
-    updatePages,
+    updatePagesSilent,
   ]);
 
   const handleCanvasSelect = useCallback((d: BookCanvasSelectDetail) => {
@@ -297,6 +314,20 @@ export function BookEditorPage() {
     [],
   );
 
+  // 상세 페이지와 동일 — 동영상 실제 길이를 반영해야 재생 시간 배지·타이밍 계산이 맞음
+  const [videoDurationByElementId, setVideoDurationByElementId] = useState<
+    Record<string, number>
+  >({});
+  const handleVideoDurationKnown = useCallback(
+    (elementId: string, durationSec: number) => {
+      setVideoDurationByElementId((prev) => {
+        if (prev[elementId] === durationSec) return prev;
+        return { ...prev, [elementId]: durationSec };
+      });
+    },
+    [],
+  );
+
   const handleMediaPlaylistRemoteControl = useCallback(
     (
       elementId: string,
@@ -323,15 +354,7 @@ export function BookEditorPage() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement;
-      if (t.closest("input, textarea, [contenteditable=true]")) return;
-      if (
-        t.closest(
-          '[data-slot="select-content"], [data-slot="combobox-content"], [data-slot="combobox-list"]',
-        )
-      ) {
-        return;
-      }
+      if (isBookEditorTypingTarget(e.target)) return;
       if (widgetDeleteOpen || pageDeleteOpen) return;
       if ((e.ctrlKey || e.metaKey) && e.key === "a") {
         e.preventDefault();
@@ -403,26 +426,33 @@ export function BookEditorPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // useMutation 반환 객체는 매 렌더 새 참조 — ref로 참조해 리스너 재등록 반복을 막는다
+  const saveMutationRef = useRef(saveMutation);
+  useLayoutEffect(() => {
+    saveMutationRef.current = saveMutation;
+  });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s")) return;
-      const t = e.target as HTMLElement;
-      if (t.closest("input, textarea, [contenteditable=true]")) return;
-      if (
-        t.closest(
-          '[data-slot="select-content"], [data-slot="combobox-content"], [data-slot="combobox-list"]',
-        )
-      ) {
-        return;
-      }
+      if (isBookEditorTypingTarget(e.target)) return;
       if (widgetDeleteOpen || pageDeleteOpen) return;
       e.preventDefault();
-      if (saveMutation.isPending) return;
-      saveMutation.mutate();
+      if (saveMutationRef.current.isPending) return;
+      saveMutationRef.current.mutate();
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [saveMutation, widgetDeleteOpen, pageDeleteOpen]);
+  }, [widgetDeleteOpen, pageDeleteOpen]);
+
+  // 미저장 편집이 있으면 탭 닫기·새로고침 전에 경고
+  useEffect(() => {
+    if (!canUndo) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [canUndo]);
 
   const onElementChange = useCallback(
     (elId: string, patch: Partial<BookCanvasElement>) => {
@@ -432,6 +462,21 @@ export function BookEditorPage() {
         const el = p.elements.find((x) => x.id === elId);
         if (!el) return;
         Object.assign(el, patch);
+      });
+    },
+    [activePageIndex, updatePages],
+  );
+
+  // 그룹 드래그·다중 nudge — 한 번의 조작 = 한 개의 undo 엔트리
+  const onElementsChange = useCallback(
+    (patches: { id: string; patch: Partial<BookCanvasElement> }[]) => {
+      updatePages((draft) => {
+        const p = draft[activePageIndex];
+        if (!p) return;
+        for (const { id, patch } of patches) {
+          const el = p.elements.find((x) => x.id === id);
+          if (el) Object.assign(el, patch);
+        }
       });
     },
     [activePageIndex, updatePages],
@@ -611,9 +656,21 @@ export function BookEditorPage() {
 
   const updatePresentationTimingElementId = useCallback(
     (id: string | null) => {
+      // 상세 페이지와 동일한 검증 — 삭제된 요소 id가 그대로 저장되지 않게
       updatePages((draft) => {
         const p = draft[activePageIndex];
-        if (p) p.presentationTimingElementId = id;
+        if (!p) return;
+        if (p.elements.length === 0) {
+          p.presentationTimingElementId = null;
+          return;
+        }
+        const trimmed = typeof id === "string" ? id.trim() : "";
+        if (trimmed && p.elements.some((e) => e.id === trimmed)) {
+          p.presentationTimingElementId = trimmed;
+          return;
+        }
+        p.presentationTimingElementId =
+          resolveEffectivePresentationTimingElementId(p.elements, null);
       });
     },
     [activePageIndex, updatePages],
@@ -1050,15 +1107,7 @@ export function BookEditorPage() {
       if (!(e.ctrlKey || e.metaKey)) return;
       const k = e.key.toLowerCase();
       if (k !== "c" && k !== "x" && k !== "v") return;
-      const t = e.target as HTMLElement;
-      if (t.closest("input, textarea, [contenteditable=true]")) return;
-      if (
-        t.closest(
-          '[data-slot="select-content"], [data-slot="combobox-content"], [data-slot="combobox-list"]',
-        )
-      ) {
-        return;
-      }
+      if (isBookEditorTypingTarget(e.target)) return;
       if (widgetDeleteOpen || pageDeleteOpen) return;
       if (k === "v") {
         if (!widgetClipboardHasContent) return;
@@ -1086,12 +1135,15 @@ export function BookEditorPage() {
   /** 캔버스 우상단 오버레이 — 슬라이드쇼와 같은 규칙의 페이지 재생 시간(초) */
   const currentPagePlaybackSec = useMemo(() => {
     if (!currentPage) return null;
-    return computeSlidePresentationDurationSec({
-      elements: currentPage.elements,
-      presentationTimingElementId:
-        currentPage.presentationTimingElementId ?? null,
-    });
-  }, [currentPage]);
+    return computeSlidePresentationDurationSec(
+      {
+        elements: currentPage.elements,
+        presentationTimingElementId:
+          currentPage.presentationTimingElementId ?? null,
+      },
+      { videoDurationSecById: videoDurationByElementId },
+    );
+  }, [currentPage, videoDurationByElementId]);
 
   const requestRemoveWidget = useCallback((elementId: string) => {
     setWidgetDeleteIds([elementId]);
@@ -1424,6 +1476,7 @@ export function BookEditorPage() {
                     selectedIds={canvasSelectedIds}
                     onSelect={handleCanvasSelect}
                     onElementChange={onElementChange}
+                    onElementsChange={onElementsChange}
                     onDropWidget={onDropWidget}
                     onDropShape={onDropShape}
                     onReorderZ={onReorderZ}
@@ -1450,6 +1503,7 @@ export function BookEditorPage() {
                     onCutElement={cutElementOrSelection}
                     onPasteFromClipboard={pasteWidgetClipboard}
                     widgetClipboardHasContent={widgetClipboardHasContent}
+                    onVideoDurationKnown={handleVideoDurationKnown}
                   />
                 ) : null}
               </div>
@@ -1503,6 +1557,7 @@ export function BookEditorPage() {
                 onPresentationHoldSecChange={(eid, sec) =>
                   onElementChange(eid, { presentationHoldSec: sec })
                 }
+                videoDurationSecByElementId={videoDurationByElementId}
               />
               <div className={bookRightDockInspectorShellClass()}>
                 {canvasSelectedIds.length >= 2 ? (
@@ -1534,6 +1589,7 @@ export function BookEditorPage() {
                     onMediaPlaylistRemoteControl={
                       handleMediaPlaylistRemoteControl
                     }
+                    videoDurationSecByElementId={videoDurationByElementId}
                     pagePresentationTimingElementId={
                       currentPage.presentationTimingElementId
                     }

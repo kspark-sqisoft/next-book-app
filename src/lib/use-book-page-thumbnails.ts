@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import {
   type BookSlideSnapshotPage,
@@ -31,6 +31,11 @@ export function useBookPageThumbnails(
 ): Record<string, string> {
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
   const sigRef = useRef<Record<string, string>>({});
+  // pages는 immer produce마다 새 참조 — effect 의존성에 넣으면 captureKey(내용 서명)가 무력화됨
+  const pagesRef = useRef(pages);
+  useLayoutEffect(() => {
+    pagesRef.current = pages;
+  });
 
   const captureKey = useMemo(
     () =>
@@ -46,13 +51,14 @@ export function useBookPageThumbnails(
 
   useEffect(() => {
     let cancelled = false;
-    const validKeys = new Set(pages.map((p) => p.clientKey));
+    const pagesNow = pagesRef.current;
+    const validKeys = new Set(pagesNow.map((p) => p.clientKey));
 
     const id = window.setTimeout(() => {
       void (async () => {
         const updates: Record<string, string> = {};
 
-        for (const p of pages) {
+        for (const p of pagesNow) {
           if (cancelled) return;
           const w = p.slideWidth ?? defaultSlideWidth;
           const h = p.slideHeight ?? defaultSlideHeight;
@@ -96,7 +102,7 @@ export function useBookPageThumbnails(
       cancelled = true;
       window.clearTimeout(id);
     };
-  }, [captureKey, pages, defaultSlideWidth, defaultSlideHeight]);
+  }, [captureKey, defaultSlideWidth, defaultSlideHeight]);
 
   return thumbnails;
 }
