@@ -22,8 +22,9 @@ const nextConfig: NextConfig = {
     // Next 16 기본 true — dev 클라이언트가 self.__next_r 를 요구함. 커스텀 서버(tsx server.ts)와 맞지 않아 InvariantError.
     reactDebugChannel: false,
     serverActions: {
-      // 기본 1MB — FormData·Server Action 업로드가 여기서 먼저 막힘. 앱별 maxBytes와 별개로 상한을 넉넉히 둠.
-      bodySizeLimit: "1gb",
+      // 기본 1MB — FormData·Server Action 업로드가 여기서 먼저 막힘.
+      // 최대 단일 파일(북 동영상 150MB) + 여유분. 과도한 상한은 요청 1건이 힙을 고갈시키는 DoS 표면이 됨.
+      bodySizeLimit: "200mb",
     },
   },
   turbopack: {

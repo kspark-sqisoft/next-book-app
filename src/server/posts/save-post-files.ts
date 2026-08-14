@@ -49,13 +49,35 @@ async function saveAttachmentLike(
   file: File,
   isPosterField: boolean,
 ): Promise<UploadedPostFile> {
-  const buf = Buffer.from(await file.arrayBuffer());
   const mimetype = file.type || "application/octet-stream";
 
+  // MIME·크기를 힙 적재(arrayBuffer) 전에 선검사 — 대용량 요청의 메모리 고갈 차단
   if (isPosterField) {
     if (!posterMime.has(mimetype)) {
       throw new HttpError(400, "동영상 썸네일은 JPEG, PNG, WebP만 가능합니다.");
     }
+    if (file.size > POST_MEDIA_POSTER_MAX_BYTES) {
+      throw new HttpError(400, "동영상 썸네일은 파일당 2MB 이하여야 합니다.");
+    }
+  } else {
+    if (!imageMime.has(mimetype) && !videoMime.has(mimetype)) {
+      throw new HttpError(
+        400,
+        "첨부는 이미지(JPEG/PNG/GIF/WebP) 또는 동영상(MP4/WebM/MOV)만 가능합니다.",
+      );
+    }
+    if (imageMime.has(mimetype) && file.size > POST_MEDIA_IMAGE_MAX_BYTES) {
+      throw new HttpError(400, "이미지 첨부는 파일당 5MB 이하여야 합니다.");
+    }
+    if (videoMime.has(mimetype) && file.size > POST_MEDIA_VIDEO_MAX_BYTES) {
+      throw new HttpError(400, "동영상 첨부가 너무 큽니다.");
+    }
+  }
+
+  // file.size는 클라이언트 신고값 — 실제 바이트 수로 한 번 더 확인
+  const buf = Buffer.from(await file.arrayBuffer());
+
+  if (isPosterField) {
     if (buf.length > POST_MEDIA_POSTER_MAX_BYTES) {
       throw new HttpError(400, "동영상 썸네일은 파일당 2MB 이하여야 합니다.");
     }
@@ -64,12 +86,6 @@ async function saveAttachmentLike(
     return { ...out, mimetype };
   }
 
-  if (!imageMime.has(mimetype) && !videoMime.has(mimetype)) {
-    throw new HttpError(
-      400,
-      "첨부는 이미지(JPEG/PNG/GIF/WebP) 또는 동영상(MP4/WebM/MOV)만 가능합니다.",
-    );
-  }
   if (imageMime.has(mimetype) && buf.length > POST_MEDIA_IMAGE_MAX_BYTES) {
     throw new HttpError(400, "이미지 첨부는 파일당 5MB 이하여야 합니다.");
   }

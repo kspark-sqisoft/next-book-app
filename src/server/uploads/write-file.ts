@@ -23,6 +23,10 @@ export async function saveFormFileToDir(options: {
   if (!allowedMime.has(mimetype)) {
     throw new Error("MIME_NOT_ALLOWED"); // 액션에서 메시지로 변환
   }
+  // arrayBuffer()로 힙에 올리기 전에 선차단 — 대용량 요청이 메모리를 고갈시키지 않게
+  if (file.size > maxBytes) {
+    throw new Error("FILE_TOO_LARGE");
+  }
   const buf = Buffer.from(await file.arrayBuffer());
   if (buf.length > maxBytes) {
     throw new Error("FILE_TOO_LARGE");
