@@ -79,9 +79,14 @@ async function buildRoomList(nsp: Namespace) {
 }
 
 function broadcastRoomList(nsp: Namespace) {
-  void buildRoomList(nsp).then((rooms) => {
-    nsp.emit("roomList", { rooms });
-  });
+  // DB 순단 시 unhandled rejection으로 프로세스가 죽지 않도록 반드시 catch
+  void buildRoomList(nsp)
+    .then((rooms) => {
+      nsp.emit("roomList", { rooms });
+    })
+    .catch((err) => {
+      console.error("[chat] roomList 브로드캐스트 실패:", err);
+    });
 }
 
 async function messageHistoryPayload(

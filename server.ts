@@ -7,6 +7,7 @@ import next from "next";
 import { Server as SocketIOServer } from "socket.io";
 
 import { attachChatNamespace } from "@/server/chat/attach-chat-namespace";
+import { corsOrigin } from "@/server/env";
 
 import {
   ensureDevRequiredServerFilesIfMissing,
@@ -61,11 +62,47 @@ app.prepare().then(async () => {
 
   const io = new SocketIOServer(httpServer, {
     path: "/socket.io",
-    cors: { origin: true, credentials: true },
+    // FRONTEND_ORIGIN 설정 시 해당 오리진만 허용(미설정이면 개발 편의상 전 허용)
+    cors: { origin: corsOrigin(), credentials: true },
   });
+  // 기본 네임스페이스는 쓰지 않음 — 인증 없는 연결 유지(커넥션 고갈)를 차단
+  io.use((_socket, nextFn) => nextFn(new Error("Unauthorized")));
   attachChatNamespace(io.of("/chat"));
 
   httpServer.listen(port, hostname, () => {
     console.log(`> Ready on http://${hostname}:${port}`);
   });
+
+  // docker stop(SIGTERM) 시 진행 중 요청·소켓·리스너를 정리하고 종료. 미처리 시 강제 절단으로 저장 유실 가능.
+  let shuttingDown = false;
+  const shutdown = (signal: string) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`> ${signal} 수신 — 종료 절차 시작`);
+    const force = setTimeout(() => {
+      console.error("> 정리 시간 초과 — 강제 종료");
+      process.exit(1);
+    }, 10_000);
+    force.unref();
+    io.close(() => {
+      httpServer.close(() => {
+        console.log("> 정상 종료");
+        process.exit(0);
+      });
+    });
+  };
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
+}).catch((err) => {
+  // prepare 실패가 무증상 종료로 끝나지 않게 명시적으로 남기고 실패 코드로 종료
+  console.error("[server] Next prepare 실패:", err);
+  process.exit(1);
+});
+
+// 미처리 예외/거부가 프로세스를 조용히 죽이지 않도록 로깅(치명 여부는 로그로 판단)
+process.on("unhandledRejection", (reason) => {
+  console.error("[unhandledRejection]", reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("[uncaughtException]", err);
 });
