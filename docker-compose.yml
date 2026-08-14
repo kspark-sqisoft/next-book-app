@@ -30,6 +30,11 @@ services:
       UPLOAD_ROOT: /app/uploads
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-change-me-access}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-me-refresh}
+      # 위젯·AI 어시스턴트용 API 키 — 이미지에 .env를 넣지 않으므로 호스트 .env에서 주입
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      PEXELS_API_KEY: ${PEXELS_API_KEY:-}
+      OPENWEATHERMAP_API_KEY: ${OPENWEATHERMAP_API_KEY:-}
+      NEWSAPI_KEY: ${NEWSAPI_KEY:-}
     volumes:
       - uploads:/app/uploads
     depends_on:
