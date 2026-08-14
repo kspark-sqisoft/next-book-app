@@ -44,7 +44,9 @@ export type BookMediaPlaylistPlaybackUiSnapshot = {
 
 export type BookMediaPlaylistRemoteCommand = {
   targetId: string;
-  kind: "prev" | "next" | "togglePause";
+  kind: "prev" | "next" | "togglePause" | "jumpTo";
+  /** kind가 "jumpTo"일 때 이동할 항목 인덱스(0-based) */
+  index?: number;
   seq: number;
 };
 
@@ -317,6 +319,28 @@ export function BookMediaPlaylistWidgetOverlay({
     }
   }, [bumpSlideStart, items.length, loop]);
 
+  /** 속성 패널 목록 클릭 → 해당 항목부터 재생 */
+  const jumpTo = useCallback(
+    (target: number) => {
+      const len = items.length;
+      if (len === 0) return;
+      const next = Math.min(Math.max(0, Math.floor(target)), len - 1);
+      setIndex(next);
+      bumpSlideStart();
+      setPaused(false);
+      const v = videoRef.current;
+      if (v) {
+        try {
+          v.pause();
+          v.currentTime = 0;
+        } catch {
+          /* ignore */
+        }
+      }
+    },
+    [bumpSlideStart, items.length],
+  );
+
   const togglePause = useCallback(() => {
     setPaused((p) => {
       if (!p && current?.kind === "image") {
@@ -339,9 +363,10 @@ export function BookMediaPlaylistWidgetOverlay({
       if (cmd.kind === "prev") goPrev();
       else if (cmd.kind === "next") goNext();
       else if (cmd.kind === "togglePause") togglePause();
+      else if (cmd.kind === "jumpTo") jumpTo(cmd.index ?? 0);
       consumedRef.current?.();
     });
-  }, [mediaPlaylistRemoteCommand, el.id, goPrev, goNext, togglePause]);
+  }, [mediaPlaylistRemoteCommand, el.id, goPrev, goNext, togglePause, jumpTo]);
 
   const w = el.width;
   const h = el.height;

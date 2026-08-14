@@ -111,10 +111,12 @@ type BookInspectorPanelProps = {
     string,
     BookMediaPlaylistPlaybackUiSnapshot
   >;
-  /** 인스펙터 미니 컨트롤 → 캔버스 플레이리스트 */
+  /** 인스펙터 미니 컨트롤·목록 클릭 → 캔버스 플레이리스트 */
   onMediaPlaylistRemoteControl?: (
     elementId: string,
-    kind: "prev" | "next" | "togglePause",
+    kind: "prev" | "next" | "togglePause" | "jumpTo",
+    /** kind가 "jumpTo"일 때 이동할 항목 인덱스(0-based) */
+    index?: number,
   ) => void;
   /** 동영상 위젯 id → 재생 길이(초), 캔버스에서 메타 로드 후 채움 */
   videoDurationSecByElementId?: Record<string, number>;
@@ -1147,7 +1149,22 @@ function MediaPlaylistInspectorBody({
                   activePlaybackItemIndex === i
                     ? "border-primary bg-primary/[0.07] ring-2 ring-primary/35"
                     : "border-border/80 bg-muted/20",
+                  onMediaPlaylistRemoteControl &&
+                    activePlaybackItemIndex !== i &&
+                    "cursor-pointer hover:border-primary/50",
                 )}
+                title={
+                  onMediaPlaylistRemoteControl
+                    ? "클릭하면 캔버스 위젯이 이 항목부터 재생됩니다"
+                    : undefined
+                }
+                onClick={(e) => {
+                  if (!onMediaPlaylistRemoteControl) return;
+                  // URL 입력·삭제/이동 버튼 등 행 안의 컨트롤 조작은 점프로 취급하지 않음
+                  const t = e.target as HTMLElement;
+                  if (t.closest("button,input,textarea,select,label")) return;
+                  onMediaPlaylistRemoteControl(el.id, "jumpTo", i);
+                }}
               >
                 <div className="flex gap-2">
                   <MediaPlaylistInspectorItemThumb

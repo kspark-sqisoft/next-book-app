@@ -290,12 +290,17 @@ export function BookEditorPage() {
   );
 
   const handleMediaPlaylistRemoteControl = useCallback(
-    (elementId: string, kind: "prev" | "next" | "togglePause") => {
+    (
+      elementId: string,
+      kind: "prev" | "next" | "togglePause" | "jumpTo",
+      index?: number,
+    ) => {
       playlistRemoteSeqRef.current += 1;
       setPlaylistRemoteCmd({
         targetId: elementId,
         kind,
         seq: playlistRemoteSeqRef.current,
+        ...(index !== undefined ? { index } : {}),
       });
     },
     [],
