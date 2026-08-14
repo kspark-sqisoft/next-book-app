@@ -25,8 +25,9 @@ import {
   Strikethrough,
   Undo2,
 } from "lucide-react";
-import { type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
+import { LinkUrlDialog } from "@/components/forms/LinkUrlDialog";
 import { Button } from "@/components/ui/button";
 import { BOOK_HEX_COLOR_PRESETS } from "@/lib/book-color-presets";
 import {
@@ -141,21 +142,32 @@ export function BookTextRichEditor({
     lastEmitted.current = clean;
   }, [html, editor, widgetKey]);
 
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+
   const setLink = () => {
     if (!editor) return;
-    const prev = editor.getAttributes("link").href as string | undefined;
-    const url = window.prompt("링크 URL", prev ?? "https://");
-    if (url === null) return;
-    const t = url.trim();
-    if (t === "") {
+    setLinkDialogOpen(true);
+  };
+
+  const applyLink = (url: string) => {
+    if (!editor) return;
+    if (url === "") {
       editor.chain().focus().extendMarkRange("link").unsetLink().run();
       return;
     }
-    editor.chain().focus().extendMarkRange("link").setLink({ href: t }).run();
+    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
   };
 
   return (
     <div className="space-y-1.5">
+      <LinkUrlDialog
+        open={linkDialogOpen}
+        onOpenChange={setLinkDialogOpen}
+        initialUrl={
+          (editor?.getAttributes("link").href as string | undefined) ?? ""
+        }
+        onSubmit={applyLink}
+      />
       <div className="flex flex-wrap gap-0.5 rounded-md border border-border bg-muted/25 p-0.5">
         {editor ? (
           <>

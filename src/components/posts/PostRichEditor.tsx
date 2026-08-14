@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { type ReactNode, useRef, useState } from "react";
 
+import { LinkUrlDialog } from "@/components/forms/LinkUrlDialog";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -175,6 +176,7 @@ function TipColorSwatch({ hex, onPick }: { hex: string; onPick: () => void }) {
 
 export function PostRichEditor({ initialHtml, invalid, onHtmlChange }: Props) {
   const [html, setHtml] = useState(() => initialHtml?.trim() || "<p></p>");
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const colorInputRef = useRef<HTMLInputElement>(null);
 
   const editor = useEditor(
@@ -239,6 +241,26 @@ export function PostRichEditor({ initialHtml, invalid, onHtmlChange }: Props) {
   return (
     <TooltipProvider delayDuration={400}>
       <div className="space-y-2">
+        <LinkUrlDialog
+          open={linkDialogOpen}
+          onOpenChange={setLinkDialogOpen}
+          initialUrl={
+            (editor?.getAttributes("link").href as string | undefined) ?? ""
+          }
+          onSubmit={(url) => {
+            if (!editor) return;
+            if (url === "") {
+              editor.chain().focus().extendMarkRange("link").unsetLink().run();
+              return;
+            }
+            editor
+              .chain()
+              .focus()
+              .extendMarkRange("link")
+              .setLink({ href: url })
+              .run();
+          }}
+        />
         <input type="hidden" name="content" value={html} readOnly aria-hidden />
 
         <div className="rounded-md border border-border bg-muted/30 p-1">
@@ -474,32 +496,7 @@ export function PostRichEditor({ initialHtml, invalid, onHtmlChange }: Props) {
                   tip="선택한 글자에 링크(URL)를 겁니다. 주소를 비우면 링크만 제거합니다."
                   ariaLabel="링크"
                   active={editor.isActive("link")}
-                  onClick={() => {
-                    const prev = editor.getAttributes("link").href as
-                      | string
-                      | undefined;
-                    const url = window.prompt(
-                      "링크 URL (비우면 제거)",
-                      prev ?? "https://",
-                    );
-                    if (url === null) return;
-                    const t = url.trim();
-                    if (t === "") {
-                      editor
-                        .chain()
-                        .focus()
-                        .extendMarkRange("link")
-                        .unsetLink()
-                        .run();
-                      return;
-                    }
-                    editor
-                      .chain()
-                      .focus()
-                      .extendMarkRange("link")
-                      .setLink({ href: t })
-                      .run();
-                  }}
+                  onClick={() => setLinkDialogOpen(true)}
                 >
                   <Link2 className="size-4" />
                 </TipToolbarBtn>

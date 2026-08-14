@@ -9,6 +9,15 @@ import {
 } from "react";
 import { io, type Socket } from "socket.io-client";
 
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SafeImage } from "@/components/ui/safe-image";
@@ -190,6 +199,8 @@ function ChatMessageBubble({
 export function ChatDock() {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
+  /** 삭제 확인 다이얼로그가 대상 방 id를 들고 있음(null = 닫힘) */
+  const [roomDeleteId, setRoomDeleteId] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const [activeRoom, setActiveRoom] = useState("lobby");
   const [rooms, setRooms] = useState<RoomListEntry[]>([
@@ -395,8 +406,13 @@ export function ChatDock() {
 
   function deleteListedRoom(roomId: string) {
     if (roomId === "lobby" || !socketRef.current?.connected) return;
-    const label = roomLabel(roomId);
-    if (!window.confirm(`「${label}」방과 저장된 대화를 삭제할까요?`)) return;
+    setRoomDeleteId(roomId);
+  }
+
+  function confirmDeleteListedRoom() {
+    const roomId = roomDeleteId;
+    setRoomDeleteId(null);
+    if (!roomId || roomId === "lobby" || !socketRef.current?.connected) return;
     socketRef.current.emit("deleteRoom", { roomId });
   }
 
@@ -414,6 +430,32 @@ export function ChatDock() {
         floatingDockChatInsetEndClass,
       )}
     >
+      <AlertDialog
+        open={roomDeleteId != null}
+        onOpenChange={(o) => {
+          if (!o) setRoomDeleteId(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>채팅방을 삭제할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              「{roomDeleteId ? roomLabel(roomDeleteId) : ""}」방과 저장된
+              대화가 함께 삭제되며 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel type="button">취소</AlertDialogCancel>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDeleteListedRoom}
+            >
+              삭제
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {/*
         래퍼에 pointer-events-auto + flex-1을 두면 오른쪽 가늘 띠 전체(뷰포트 세로)가 히트 영역이 되어
         북 속성 패널 등 그 아래 UI가 클릭되지 않는다. 실제 대화상자·FAB만 pointer-events-auto.
