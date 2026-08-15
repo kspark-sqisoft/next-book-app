@@ -7,6 +7,7 @@ import { saveBookMainAndPoster } from "@/server/books/save-book-media";
 import { BooksService } from "@/server/services/books.service";
 
 import {
+  capturePosterFromMp4,
   renderTwickProjectToMp4,
   type TwickRenderInput,
   type TwickRenderSettings,
@@ -102,14 +103,25 @@ async function runJob(
     });
 
     job.status = "saving";
+    // 결과 영상의 첫 프레임을 poster(JPEG)로 만들어 함께 저장 → 미디어 라이브러리 썸네일.
+    const posterBuf = await capturePosterFromMp4(buf).catch(() => null);
     // Node Buffer → BlobPart(Uint8Array)로 감싸 File 생성(TS 타입 호환)
     const file = new File([new Uint8Array(buf)], "edited-video.mp4", {
       type: "video/mp4",
     });
-    const { main } = await saveBookMainAndPoster(file, null);
-    const meta = new BooksService().mapUploadedFile(main);
+    const poster = posterBuf
+      ? new File([new Uint8Array(posterBuf)], "poster.jpg", {
+          type: "image/jpeg",
+        })
+      : null;
+    const { main, posterFilename } = await saveBookMainAndPoster(file, poster);
+    const books = new BooksService();
+    const meta = books.mapUploadedFile(main);
+    const posterUrl = posterFilename
+      ? books.mapPosterFile({ filename: posterFilename })
+      : null;
 
-    job.result = { kind: meta.kind, url: meta.url, posterUrl: null };
+    job.result = { kind: meta.kind, url: meta.url, posterUrl };
     job.progress = 1;
     job.status = "done";
   } catch (e) {

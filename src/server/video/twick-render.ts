@@ -107,3 +107,64 @@ export async function renderTwickProjectToMp4(
     });
   }
 }
+
+/**
+ * 렌더된 MP4에서 첫 프레임을 JPEG poster로 뽑는다(미디어 라이브러리 썸네일용).
+ * MP4를 페이지 안에서 blob URL로 만들어 로드하므로 same-origin → canvas 오염 없이 toDataURL 가능.
+ * 실패(코덱/디코드 등) 시 null — poster 없이 저장은 진행된다.
+ */
+export async function capturePosterFromMp4(
+  mp4: Buffer,
+): Promise<Buffer | null> {
+  const browser = await getBrowser();
+  const page = await browser.newPage();
+  try {
+    await page.goto(`${selfOrigin()}/internal/render`, {
+      waitUntil: "domcontentloaded",
+      timeout: 60_000,
+    });
+    const dataB64 = await page.evaluate(async (mp4b64: string) => {
+      const bin = atob(mp4b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([bytes], { type: "video/mp4" }));
+      try {
+        const v = document.createElement("video");
+        v.muted = true;
+        v.preload = "metadata";
+        v.src = url;
+        await new Promise<void>((res, rej) => {
+          v.onloadedmetadata = () => res();
+          v.onerror = () => rej(new Error("metadata"));
+        });
+        const t =
+          Number.isFinite(v.duration) && v.duration > 0
+            ? Math.min(0.1, v.duration * 0.1)
+            : 0;
+        await new Promise<void>((res, rej) => {
+          v.onseeked = () => res();
+          v.onerror = () => rej(new Error("seek"));
+          v.currentTime = t;
+        });
+        const w = v.videoWidth || 1280;
+        const h = v.videoHeight || 720;
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return null;
+        ctx.drawImage(v, 0, 0, w, h);
+        return canvas.toDataURL("image/jpeg", 0.85).split(",")[1] ?? null;
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    }, mp4.toString("base64"));
+    return dataB64 ? Buffer.from(dataB64, "base64") : null;
+  } catch {
+    return null;
+  } finally {
+    await page.close().catch(() => {
+      /* 무시 */
+    });
+  }
+}
