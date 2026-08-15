@@ -1,5 +1,5 @@
 diff --git a/node_modules/@twick/studio/dist/index.js b/node_modules/@twick/studio/dist/index.js
-index f5fe21a..d555fcc 100644
+index f5fe21a..923bd66 100644
 --- a/node_modules/@twick/studio/dist/index.js
 +++ b/node_modules/@twick/studio/dist/index.js
 @@ -713,18 +713,20 @@ const StudioHeader = ({
@@ -36,8 +36,18 @@ index f5fe21a..d555fcc 100644
        /* @__PURE__ */ jsxRuntime.jsx("div", { className: "header-separator" }),
        /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "flex-container", style: { gap: "0.5rem" }, children: [
          /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-sm opacity-80", children: "Orientation" }),
+@@ -2478,6 +2480,9 @@ function VideoPanel({
+               {
+                 src: item.url,
+                 poster: item.thumbnail,
++                preload: "metadata",
++                muted: true,
++                playsInline: true,
+                 className: "media-item-content",
+                 ref: (el) => {
+                   if (el) {
 diff --git a/node_modules/@twick/studio/dist/index.mjs b/node_modules/@twick/studio/dist/index.mjs
-index c21d2c0..de28502 100644
+index c21d2c0..b2b4609 100644
 --- a/node_modules/@twick/studio/dist/index.mjs
 +++ b/node_modules/@twick/studio/dist/index.mjs
 @@ -714,18 +714,20 @@ const StudioHeader = ({
@@ -74,3 +84,13 @@ index c21d2c0..de28502 100644
        /* @__PURE__ */ jsx("div", { className: "header-separator" }),
        /* @__PURE__ */ jsxs("div", { className: "flex-container", style: { gap: "0.5rem" }, children: [
          /* @__PURE__ */ jsx("span", { className: "text-sm opacity-80", children: "Orientation" }),
+@@ -2479,6 +2481,9 @@ function VideoPanel({
+               {
+                 src: item.url,
+                 poster: item.thumbnail,
++                preload: "metadata",
++                muted: true,
++                playsInline: true,
+                 className: "media-item-content",
+                 ref: (el) => {
+                   if (el) {

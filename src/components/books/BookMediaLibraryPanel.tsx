@@ -38,6 +38,7 @@ import {
   bookDockedPanelRootClass,
 } from "@/lib/book-workspace-ui";
 import { cn } from "@/lib/utils";
+import { captureVideoPosterJpeg } from "@/lib/video-poster";
 
 const STORAGE_KEY = "book-media-library-panel";
 const PANEL_MAX_W = 320;
@@ -140,7 +141,12 @@ function useBookMediaLibraryCore(bookId: number) {
       if (!f) return;
       setUploading(true);
       try {
-        const res = await uploadBookMedia(bookId, f, null);
+        // 동영상은 첫 프레임 poster(JPEG)를 만들어 함께 올린다 → 라이브러리 썸네일 표시.
+        // 코덱/브라우저 제한으로 실패하면 null(썸네일 없이 업로드는 진행).
+        const poster = f.type.startsWith("video/")
+          ? await captureVideoPosterJpeg(f)
+          : null;
+        const res = await uploadBookMedia(bookId, f, poster);
         const appended = appendBookMediaLibraryItem(bookId, {
           kind: res.kind,
           src: res.url,

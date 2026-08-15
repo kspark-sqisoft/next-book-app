@@ -175,6 +175,15 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
   if (typeof document === "undefined") return null;
   return createPortal(
     <div className="fixed inset-0 z-[5000] flex flex-col bg-background">
+      {/* My assets 라이브러리 타일을 가로 16:9로, 영상/이미지는 타일을 꽉 채워(cover) 썸네일이 보이게 오버라이드 */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            .media-item { aspect-ratio: 16 / 9 !important; height: auto !important; }
+            .media-item-content { width: 100% !important; height: 100% !important; object-fit: cover !important; background: #000; }
+          `,
+        }}
+      />
       <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border bg-card/95 px-3">
         <div className="min-w-0">
           <h2 className="font-heading text-sm font-semibold">비디오 편집</h2>
