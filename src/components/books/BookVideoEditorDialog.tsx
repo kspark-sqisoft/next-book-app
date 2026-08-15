@@ -63,6 +63,9 @@ type OrientationConfirm = {
 
 type Rect = { top: number; bottom: number; left: number; right: number };
 
+/** 화면 맞춤 시 컴포지션이 뷰를 꽉 채우지 않게 남기는 여백 비율(0.9 → 상하좌우 약 5%씩) */
+const FIT_MARGIN_RATIO = 0.9;
+
 /**
  * 실제로 보이는 컴포지션 뷰 영역(안전 영역)과 현재 캔버스 사각형을 구한다.
  * 안전 영역 = 좌우는 뷰 섹션(패널 사이), 위는 Creta 상단 바 아래, 아래는 타임라인 위.
@@ -139,8 +142,10 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
       applyViewZoom(1);
       return;
     }
-    const pad = 32; // 상하좌우 여백(px)
-    const fit = Math.min((availW - pad) / naturalW, (availH - pad) / naturalH);
+    // 여백 비율 — 컴포지션이 뷰에 꽉 차지 않게 항상 여백을 둬서 경계선이 늘 보이고,
+    // 캔버스가 뷰 경계와 겹쳐 서브픽셀 흔들림으로 깜빡이는 것도 막는다.
+    const fit =
+      Math.min(availW / naturalW, availH / naturalH) * FIT_MARGIN_RATIO;
     applyViewZoom(fit);
   }, [applyViewZoom]);
 
@@ -215,6 +220,25 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
       root.style.removeProperty("--twick-view-zoom");
     };
   }, [applyViewZoom]);
+
+  // 편집기 열 때 자동 맞춤 — 캔버스가 준비되면 여백 있는 배율로 한 번 맞춰, 열자마자
+  // 경계선이 보이고 컴포지션이 뷰에 꽉 차 깜빡이지 않게 한다(캔버스 등장까지 폴링).
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    let raf = 0;
+    let tries = 0;
+    const tryFit = () => {
+      const geo = getViewGeometry(root);
+      if (geo?.canvas && geo.canvas.width > 0 && geo.canvas.height > 0) {
+        fitToView();
+        return;
+      }
+      if (tries++ < 180) raf = requestAnimationFrame(tryFit);
+    };
+    raf = requestAnimationFrame(tryFit);
+    return () => cancelAnimationFrame(raf);
+  }, [fitToView]);
 
   // 컴포지션 경계 프레임 — 편집 영역(렌더 해상도)이 뷰 배경과 같은 어두운 색이라 경계가 안 보인다.
   // 실제 캔버스의 화면 사각형(getBoundingClientRect: 줌 transform·리사이즈·해상도 변경 모두 반영)을
