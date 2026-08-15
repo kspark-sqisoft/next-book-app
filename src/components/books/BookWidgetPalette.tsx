@@ -56,7 +56,7 @@ const ITEMS: { kind: BookDropWidgetKind; label: string; icon: LucideIcon }[] = [
 ];
 
 const STORAGE_KEY = "book-widget-palette";
-const PANEL_MAX_W = 352; // ~22rem
+const PANEL_MAX_W = 416; // ~26rem
 const PANEL_COLLAPSED_ESTIMATE_W = 140;
 const VIEW_MARGIN = 8;
 
@@ -163,13 +163,12 @@ function PdfImportItem({
       {...common}
       onPointerDown={(e) => e.stopPropagation()}
       className={cn(
-        "flex min-w-0 flex-1 cursor-grab select-none flex-col items-center gap-1 rounded-lg border border-border/80 bg-background/90 px-2 py-2 transition-colors active:cursor-grabbing hover:border-primary/35 hover:bg-muted/40 sm:px-3",
+        "flex cursor-grab select-none flex-col items-center gap-1.5 rounded-lg border border-border/80 bg-background/90 px-2 py-2.5 transition-colors active:cursor-grabbing hover:border-primary/35 hover:bg-muted/40",
         disabled && "cursor-wait opacity-60",
       )}
     >
-      <GripVertical className="size-3 text-muted-foreground" aria-hidden />
-      <FileText className="size-5 text-foreground" aria-hidden />
-      <span className="text-center text-[10px] font-medium text-muted-foreground">
+      <FileText className="size-5 shrink-0 text-foreground" aria-hidden />
+      <span className="w-full truncate text-center text-[11px] font-medium text-muted-foreground">
         {label}
       </span>
     </div>
@@ -410,7 +409,7 @@ function BookWidgetPaletteFloating({
         stackZIndex == null && "z-[220]",
         collapsed
           ? "w-max max-w-[calc(100vw-2rem)] gap-0 border-sky-200/90 bg-sky-50/98 px-2 py-1.5 ring-1 ring-sky-200/45 dark:border-sky-500/40 dark:bg-sky-950/55 dark:ring-sky-400/30"
-          : "w-[min(100vw-2rem,22rem)] max-w-[calc(100vw-2rem)] gap-2 border-border bg-card/95 p-2.5 ring-1 ring-border/40",
+          : "w-[min(100vw-2rem,26rem)] max-w-[calc(100vw-2rem)] gap-2 border-border bg-card/95 p-2.5 ring-1 ring-border/40",
         className,
       )}
       role="region"
@@ -485,7 +484,9 @@ function BookWidgetPaletteFloating({
         </div>
       </header>
       {!collapsed ? (
-        <div className="flex items-stretch justify-center gap-2 px-0.5">
+        // 자동 줄바꿈 그리드 — 한 줄에 다 욱여넣지 않고 아이템을 넉넉히(≥84px) 잡아
+        // 라벨이 글자 단위로 세로로 쪼개지거나 가로 폭을 넘치지 않게 한다.
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(84px,1fr))] gap-2 px-0.5">
           {ITEMS.map(({ kind, label, icon: Icon }) => (
             <div
               key={kind}
@@ -494,14 +495,10 @@ function BookWidgetPaletteFloating({
               onPointerDown={(e) => e.stopPropagation()}
               onDoubleClick={onQuickAdd ? () => onQuickAdd(kind) : undefined}
               title="슬라이드로 끌어다 놓거나 더블 클릭하면 가운데에 추가됩니다"
-              className="flex min-w-0 flex-1 cursor-grab select-none flex-col items-center gap-1 rounded-lg border border-border/80 bg-background/90 px-2 py-2 transition-colors active:cursor-grabbing hover:border-primary/35 hover:bg-muted/40 sm:px-3"
+              className="flex cursor-grab select-none flex-col items-center gap-1.5 rounded-lg border border-border/80 bg-background/90 px-2 py-2.5 transition-colors active:cursor-grabbing hover:border-primary/35 hover:bg-muted/40"
             >
-              <GripVertical
-                className="size-3 text-muted-foreground"
-                aria-hidden
-              />
-              <Icon className="size-5 text-foreground" aria-hidden />
-              <span className="text-center text-[10px] font-medium text-muted-foreground">
+              <Icon className="size-5 shrink-0 text-foreground" aria-hidden />
+              <span className="w-full truncate text-center text-[11px] font-medium text-muted-foreground">
                 {label}
               </span>
             </div>
