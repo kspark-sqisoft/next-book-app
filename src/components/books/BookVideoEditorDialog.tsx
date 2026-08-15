@@ -61,6 +61,38 @@ type OrientationConfirm = {
   resolve: (confirmed: boolean) => void;
 };
 
+type Rect = { top: number; bottom: number; left: number; right: number };
+
+/**
+ * 실제로 보이는 컴포지션 뷰 영역(안전 영역)과 현재 캔버스 사각형을 구한다.
+ * 안전 영역 = 좌우는 뷰 섹션(패널 사이), 위는 Creta 상단 바 아래, 아래는 타임라인 위.
+ * 캔버스가 뷰보다 커져 헤더/타임라인 위로 넘칠 때 툴바 배치·프레임 클립·맞춤 계산의 공통 기준.
+ */
+function getViewGeometry(
+  root: HTMLElement,
+): { safe: Rect; canvas: DOMRect | null } | null {
+  const view = root.querySelector(".twick-editor-view-section");
+  if (!view) return null;
+  const vr = view.getBoundingClientRect();
+  // 우리 앱 헤더는 포털 루트의 직속 <header>; 그 외 <header>가 Twick(Creta) 상단 바.
+  const appHeader = root.querySelector(":scope > header");
+  const cretaBar = Array.from(root.querySelectorAll("header"))
+    .find((h) => h !== appHeader)
+    ?.getBoundingClientRect();
+  const timeline = root
+    .querySelector(".twick-editor-timeline-section")
+    ?.getBoundingClientRect();
+  const top = Math.max(vr.top, cretaBar ? cretaBar.bottom : vr.top);
+  const bottom = Math.min(vr.bottom, timeline ? timeline.top : vr.bottom);
+  const canvas = root.querySelector<HTMLCanvasElement>(
+    ".twick-editor-canvas-container canvas",
+  );
+  return {
+    safe: { top, bottom, left: vr.left, right: vr.right },
+    canvas: canvas?.getBoundingClientRect() ?? null,
+  };
+}
+
 export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
   const [exportProgress, setExportProgress] = useState<number | null>(null);
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
@@ -82,6 +114,35 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
     setViewZoom(z);
     rootRef.current?.style.setProperty("--twick-view-zoom", String(z));
   }, []);
+
+  // 화면 맞춤 — 100% 강제가 아니라, 컴포지션(원본 크기)이 안전 뷰 영역에 들어가는 배율을 계산.
+  // 원본 크기 = 현재 캔버스 사각형 ÷ 현재 줌. 여백(pad)만큼 줄여 가장자리에 딱 붙지 않게 한다.
+  const fitToView = useCallback(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const geo = getViewGeometry(root);
+    if (
+      !geo ||
+      !geo.canvas ||
+      geo.canvas.width <= 0 ||
+      geo.canvas.height <= 0
+    ) {
+      applyViewZoom(1);
+      return;
+    }
+    const availW = geo.safe.right - geo.safe.left;
+    const availH = geo.safe.bottom - geo.safe.top;
+    const zoom = zoomRef.current || 1;
+    const naturalW = geo.canvas.width / zoom;
+    const naturalH = geo.canvas.height / zoom;
+    if (availW <= 0 || availH <= 0 || naturalW <= 0 || naturalH <= 0) {
+      applyViewZoom(1);
+      return;
+    }
+    const pad = 32; // 상하좌우 여백(px)
+    const fit = Math.min((availW - pad) / naturalW, (availH - pad) / naturalH);
+    applyViewZoom(fit);
+  }, [applyViewZoom]);
 
   // 편집기가 떠 있는 동안에만 브리지를 등록 — 라이브러리의 window.confirm 호출을
   // Promise 기반 shadcn 다이얼로그로 바꿔치기한다. 언마운트 시 대기 중 요청은 취소로 정리.
@@ -169,26 +230,22 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
       last = "";
     };
     const tick = () => {
-      const canvas = root.querySelector<HTMLCanvasElement>(
-        ".twick-editor-canvas-container canvas",
-      );
-      // 뷰 영역(가시 캔버스 뷰포트) — 프레임 클립·툴바 배치의 기준
-      const view = root.querySelector(".twick-editor-view-section");
-      const r = canvas?.getBoundingClientRect();
-      const v = view?.getBoundingClientRect();
-      // 툴바를 뷰 영역 상단 가운데에 고정 배치(캔버스가 뷰보다 커도 헤더로 넘어가지 않게 뷰 기준)
+      const geo = getViewGeometry(root);
+      const safe = geo?.safe;
+      const r = geo?.canvas ?? null;
+      // 툴바를 안전 뷰 영역 상단 가운데에 고정(Creta 상단 바 아래, 패널 사이 중앙)
       const toolbar = toolbarRef.current;
-      if (toolbar && v) {
-        toolbar.style.left = `${Math.round(v.left + v.width / 2)}px`;
-        toolbar.style.top = `${Math.round(v.top + 8)}px`;
+      if (toolbar && safe) {
+        toolbar.style.left = `${Math.round((safe.left + safe.right) / 2)}px`;
+        toolbar.style.top = `${Math.round(safe.top + 8)}px`;
       }
-      if (r && v && r.width > 0 && r.height > 0) {
-        // 캔버스가 뷰 영역보다 크면(맞춤 등) 넘치는 부분이 헤더/타임라인 위로 새어 보이므로
-        // 프레임을 뷰 영역과의 교집합으로 클립한다(inset은 프레임 박스 기준).
-        const clipTop = Math.max(0, v.top - r.top);
-        const clipLeft = Math.max(0, v.left - r.left);
-        const clipRight = Math.max(0, r.right - v.right);
-        const clipBottom = Math.max(0, r.bottom - v.bottom);
+      if (safe && r && r.width > 0 && r.height > 0) {
+        // 캔버스가 안전 영역보다 크면(맞춤/줌 등) 넘치는 부분이 헤더/타임라인 위로 새어 보이므로
+        // 프레임을 안전 영역과의 교집합으로 클립한다(inset은 프레임 박스 기준).
+        const clipTop = Math.max(0, safe.top - r.top);
+        const clipLeft = Math.max(0, safe.left - r.left);
+        const clipRight = Math.max(0, r.right - safe.right);
+        const clipBottom = Math.max(0, r.bottom - safe.bottom);
         const key = `${r.left}|${r.top}|${r.width}|${r.height}|${clipTop}|${clipLeft}|${clipRight}|${clipBottom}`;
         if (key !== last) {
           last = key;
@@ -409,8 +466,8 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
           <button
             type="button"
             className="min-w-[3.25rem] rounded px-1 py-0.5 text-center text-xs font-medium tabular-nums hover:bg-muted"
-            title="100%로 맞춤"
-            onClick={() => applyViewZoom(1)}
+            title="화면에 맞춤"
+            onClick={fitToView}
           >
             {Math.round(viewZoom * 100)}%
           </button>
@@ -434,7 +491,7 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
             className="size-7"
             title="화면 맞춤"
             aria-label="화면 맞춤"
-            onClick={() => applyViewZoom(1)}
+            onClick={fitToView}
           >
             <Maximize2 className="size-4" aria-hidden />
           </Button>
