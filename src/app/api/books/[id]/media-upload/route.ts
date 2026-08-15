@@ -73,8 +73,15 @@ export async function POST(
 
     const { main } = await saveBookMainAndPoster(file, null);
     const { url } = books.mapUploadedFile(main);
+    // 절대 URL로 반환한다 — Twick 내부(studio isValidUrl·live-player)가 `new URL(src)`를 base 없이
+    // 호출해 상대 URL(`/uploads/...`)이면 throw하고, 그 결과 드래그 시 빈 트랙·빈 캔버스로 조용히 실패한다.
+    // request.url 은 커스텀 서버의 bind 호스트(0.0.0.0)라 브라우저에서 못 쓴다 → 클라이언트가 실제
+    // 사용한 Host 헤더로 절대 URL을 구성한다.
+    const host = request.headers.get("host");
+    const proto = request.headers.get("x-forwarded-proto") ?? "http";
+    const absoluteUrl = host ? `${proto}://${host}${url}` : url;
     // Twick(gcs provider)은 { url } 을 기대한다.
-    return NextResponse.json({ url });
+    return NextResponse.json({ url: absoluteUrl });
   } catch (e) {
     // Twick은 실패 응답의 { error } 를 사용자에게 노출한다.
     const message = e instanceof Error ? e.message : "업로드에 실패했습니다.";

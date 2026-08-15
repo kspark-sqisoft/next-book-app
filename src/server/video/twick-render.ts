@@ -51,8 +51,10 @@ async function getBrowser(): Promise<Browser> {
 
 function selfOrigin(): string {
   const port = process.env.PORT || "3000";
-  // 127.0.0.1 은 브라우저가 secure context로 취급 → WebCodecs 사용 가능
-  return `http://127.0.0.1:${port}`;
+  // localhost 도 secure context(WebCodecs 사용 가능)이며, 업로드 영상 URL이 http://localhost:PORT/uploads/...
+  // 로 저장되므로 렌더 페이지도 localhost 오리진이어야 same-origin으로 그 영상을 가져올 수 있다
+  // (127.0.0.1 이면 cross-origin → CORS 없는 /uploads 로드 실패).
+  return `http://localhost:${port}`;
 }
 
 export async function renderTwickProjectToMp4(
