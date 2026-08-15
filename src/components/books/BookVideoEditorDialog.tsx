@@ -391,8 +391,10 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
             .media-item { aspect-ratio: 16 / 9 !important; height: auto !important; }
             .media-item-content { width: 100% !important; height: 100% !important; object-fit: cover !important; background: #000; }
             /* 중앙 뷰 줌 — Twick은 캔버스 뷰 줌을 제공하지 않아 컴포지션을 CSS transform으로 확대/축소.
-               CSS 변수로 적용해 Twick 리렌더가 인라인 스타일을 덮어써도 유지된다(휠 핸들러가 변수만 갱신). */
-            .twick-editor-canvas-container {
+               CSS 변수로 적용해 Twick 리렌더가 인라인 스타일을 덮어써도 유지된다(휠 핸들러가 변수만 갱신).
+               .twick-editor-container(편집 캔버스+라이브 플레이어의 공통 부모)에 걸어야 재생/정지 배율이 일치한다.
+               (canvas-container에만 걸면 정지=Fabric만 축소되고 재생=twick-player는 원본 크기로 커 보임) */
+            .twick-editor-container {
               transform: scale(var(--twick-view-zoom, 1)) !important;
               transform-origin: center center !important;
             }
