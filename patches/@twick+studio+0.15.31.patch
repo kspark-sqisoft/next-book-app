@@ -1,8 +1,18 @@
 diff --git a/node_modules/@twick/studio/dist/index.js b/node_modules/@twick/studio/dist/index.js
-index f5fe21a..22938b1 100644
+index f5fe21a..d555fcc 100644
 --- a/node_modules/@twick/studio/dist/index.js
 +++ b/node_modules/@twick/studio/dist/index.js
-@@ -721,10 +721,12 @@ const StudioHeader = ({
+@@ -713,18 +713,20 @@ const StudioHeader = ({
+   onExportVideo
+ }) => {
+   const [orientation, setOrientation] = react.useState(
+-    "vertical"
++    "horizontal"
+   );
+   react.useEffect(() => {
+     const orientation2 = localStorage.getItem("orientation");
+-    if (orientation2) {
++    if (orientation2 === "horizontal") {
        setOrientation(orientation2);
      }
    }, []);
@@ -27,10 +37,20 @@ index f5fe21a..22938b1 100644
        /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "flex-container", style: { gap: "0.5rem" }, children: [
          /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-sm opacity-80", children: "Orientation" }),
 diff --git a/node_modules/@twick/studio/dist/index.mjs b/node_modules/@twick/studio/dist/index.mjs
-index c21d2c0..fd12846 100644
+index c21d2c0..de28502 100644
 --- a/node_modules/@twick/studio/dist/index.mjs
 +++ b/node_modules/@twick/studio/dist/index.mjs
-@@ -722,10 +722,12 @@ const StudioHeader = ({
+@@ -714,18 +714,20 @@ const StudioHeader = ({
+   onExportVideo
+ }) => {
+   const [orientation, setOrientation] = useState(
+-    "vertical"
++    "horizontal"
+   );
+   useEffect(() => {
+     const orientation2 = localStorage.getItem("orientation");
+-    if (orientation2) {
++    if (orientation2 === "horizontal") {
        setOrientation(orientation2);
      }
    }, []);
