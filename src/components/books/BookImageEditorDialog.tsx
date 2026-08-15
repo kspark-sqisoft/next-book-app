@@ -8,6 +8,7 @@ import FilerobotImageEditor, {
   TABS,
   TOOLS,
 } from "react-filerobot-image-editor";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -102,12 +103,23 @@ export function BookImageEditorDialog({ onClose, onExport }: Props) {
     (saved: unknown) => {
       void (async () => {
         setSaving(true);
+        // 1) 편집 결과 → File 변환. 실패를 조용히 삼키면 "저장 눌러도 아무 일 없음"으로 보이므로 노출한다.
+        let file: File;
         try {
-          const file = await savedImageToFile(saved as FilerobotSavedImage);
+          file = await savedImageToFile(saved as FilerobotSavedImage);
+        } catch (e) {
+          console.error("[이미지 편집] 결과 이미지 변환 실패:", e, saved);
+          toast.error(
+            `이미지 저장 실패: ${e instanceof Error ? e.message : String(e)}`,
+          );
+          setSaving(false);
+          return;
+        }
+        // 2) 업로드·라이브러리 등록은 호출측(onExport). 실패 토스트도 그쪽에서 띄우고 여기선 편집 화면 유지.
+        try {
           await onExport(file);
           onClose();
         } catch {
-          /* 실패 토스트는 호출측에서 — 여기서는 편집 화면 유지 */
           setSaving(false);
         }
       })();

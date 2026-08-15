@@ -8,7 +8,7 @@ import "@twick/studio/dist/studio.css";
 import { LivePlayerProvider } from "@twick/live-player";
 import { TwickStudio } from "@twick/studio";
 import { INITIAL_TIMELINE_DATA, TimelineProvider } from "@twick/timeline";
-import { X } from "lucide-react";
+import { Maximize2, Minus, Plus, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
@@ -68,6 +68,19 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
     useState<OrientationConfirm | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
+  // 중앙 뷰 줌 — 버튼/휠/퍼센트 표시가 한 값을 공유. zoomRef는 이벤트 핸들러가 최신값을 읽기 위한 미러.
+  const [viewZoom, setViewZoom] = useState(1);
+  const zoomRef = useRef(1);
+
+  const MIN_ZOOM = 0.25;
+  const MAX_ZOOM = 4;
+  const applyViewZoom = useCallback((next: number) => {
+    let z = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next));
+    if (Math.abs(z - 1) < 0.05) z = 1; // 100% 스냅
+    zoomRef.current = z;
+    setViewZoom(z);
+    rootRef.current?.style.setProperty("--twick-view-zoom", String(z));
+  }, []);
 
   // 편집기가 떠 있는 동안에만 브리지를 등록 — 라이브러리의 window.confirm 호출을
   // Promise 기반 shadcn 다이얼로그로 바꿔치기한다. 언마운트 시 대기 중 요청은 취소로 정리.
@@ -116,9 +129,6 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
-    let zoom = 1;
-    const apply = () =>
-      root.style.setProperty("--twick-view-zoom", String(zoom));
     const overCanvasView = (t: EventTarget | null): boolean => {
       const el = t as Element | null;
       if (!el?.closest) return false;
@@ -135,18 +145,14 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
     const onWheel = (e: WheelEvent) => {
       if (!overCanvasView(e.target)) return;
       e.preventDefault();
-      const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
-      let next = Math.min(4, Math.max(0.25, zoom * factor));
-      if (Math.abs(next - 1) < 0.05) next = 1; // 100% 스냅
-      zoom = next;
-      apply();
+      applyViewZoom(zoomRef.current * (e.deltaY < 0 ? 1.1 : 1 / 1.1));
     };
     root.addEventListener("wheel", onWheel, { passive: false });
     return () => {
       root.removeEventListener("wheel", onWheel);
       root.style.removeProperty("--twick-view-zoom");
     };
-  }, []);
+  }, [applyViewZoom]);
 
   // 컴포지션 경계 프레임 — 편집 영역(렌더 해상도)이 뷰 배경과 같은 어두운 색이라 경계가 안 보인다.
   // 실제 캔버스의 화면 사각형(getBoundingClientRect: 줌 transform·리사이즈·해상도 변경 모두 반영)을
@@ -362,6 +368,55 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
             />
           </TimelineProvider>
         </LivePlayerProvider>
+
+        {/* 뷰 줌 컨트롤 — 북 편집기처럼 −/+ 로 확대·축소, "맞춤"으로 가용 크기(100%)에 한 번에 맞춤.
+            퍼센트 클릭으로도 100% 복귀. 휠 줌과 같은 값을 공유한다(z는 export 오버레이 아래). */}
+        <div className="absolute right-3 top-3 z-[2] flex items-center gap-0.5 rounded-lg border border-border bg-card/90 p-1 shadow-md backdrop-blur">
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="size-7"
+            title="축소"
+            aria-label="축소"
+            disabled={viewZoom <= MIN_ZOOM}
+            onClick={() => applyViewZoom(zoomRef.current / 1.1)}
+          >
+            <Minus className="size-4" aria-hidden />
+          </Button>
+          <button
+            type="button"
+            className="min-w-[3.25rem] rounded px-1 py-0.5 text-center text-xs font-medium tabular-nums hover:bg-muted"
+            title="100%로 맞춤"
+            onClick={() => applyViewZoom(1)}
+          >
+            {Math.round(viewZoom * 100)}%
+          </button>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="size-7"
+            title="확대"
+            aria-label="확대"
+            disabled={viewZoom >= MAX_ZOOM}
+            onClick={() => applyViewZoom(zoomRef.current * 1.1)}
+          >
+            <Plus className="size-4" aria-hidden />
+          </Button>
+          <div className="mx-0.5 h-4 w-px bg-border" aria-hidden />
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="size-7"
+            title="화면 맞춤"
+            aria-label="화면 맞춤"
+            onClick={() => applyViewZoom(1)}
+          >
+            <Maximize2 className="size-4" aria-hidden />
+          </Button>
+        </div>
 
         {/* 컴포지션(렌더 해상도) 경계 — 캔버스 실제 사각형을 추적해 정확히 겹친다.
             pointer-events:none 으로 편집 조작을 막지 않고, 어두운 배경에서도 보이게 이중 링. */}
