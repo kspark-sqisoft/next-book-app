@@ -1,16 +1,17 @@
 "use client";
 
 // 비디오 편집 — Twick 스튜디오(멀티트랙 타임라인)를 전체 화면으로 띄우고,
-// 내보내기는 브라우저 렌더(WebCodecs)로 MP4 Blob을 만들어 호출측(업로드·라이브러리)에 넘긴다
+// 내보내기(Export)는 서버측 헤드리스 Chromium 렌더에 위임한다(브라우저를 붙잡지 않음).
+// 진행률은 잡 폴링으로 받아오고, 완료 시 결과 URL을 호출측(미디어 라이브러리 등록)에 넘긴다.
 import "@twick/studio/dist/studio.css";
 
-import { renderTwickVideoInBrowser } from "@twick/browser-render";
 import { LivePlayerProvider } from "@twick/live-player";
 import { TwickStudio } from "@twick/studio";
 import { INITIAL_TIMELINE_DATA, TimelineProvider } from "@twick/timeline";
 import { X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { toast } from "sonner";
 
 import {
   AlertDialog,
@@ -23,6 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { getBookVideoRenderJob, startBookVideoRender } from "@/lib/api";
 
 declare global {
   interface Window {
@@ -34,10 +36,19 @@ declare global {
   }
 }
 
+/** 서버 렌더 완료 결과 — 업로드는 서버가 이미 완료했고, 미디어 라이브러리 등록은 호출측 책임 */
+export type RenderedMedia = {
+  kind: "image" | "video";
+  url: string;
+  posterUrl: string | null;
+};
+
 type Props = {
   onClose: () => void;
-  /** 내보낸 MP4 파일 — 업로드·미디어 라이브러리 등록은 호출측 책임 */
-  onExport: (file: File) => Promise<void>;
+  /** 서버 렌더에 필요 — 소유권 확인·저장 경로 결정 */
+  bookId: number;
+  /** 렌더·저장 완료 시 결과 URL 전달(미디어 라이브러리 등록용) */
+  onRendered: (media: RenderedMedia) => void;
 };
 
 /** 대기 중인 orientation 확인 요청 — resolve로 사용자의 선택(계속/취소)을 라이브러리에 돌려준다 */
@@ -45,7 +56,7 @@ type OrientationConfirm = {
   resolve: (confirmed: boolean) => void;
 };
 
-export function BookVideoEditorDialog({ onClose, onExport }: Props) {
+export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
   const [exportProgress, setExportProgress] = useState<number | null>(null);
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
   const [orientationConfirm, setOrientationConfirm] =
@@ -76,7 +87,7 @@ export function BookVideoEditorDialog({ onClose, onExport }: Props) {
 
   const handleExportVideo = useCallback(
     async (
-      project: { tracks: unknown[] },
+      project: { tracks: unknown[]; backgroundColor?: string },
       videoSettings: {
         outFile: string;
         fps: number;
@@ -85,41 +96,54 @@ export function BookVideoEditorDialog({ onClose, onExport }: Props) {
     ): Promise<{ status: boolean; message: string }> => {
       setExportProgress(0);
       try {
-        const blob = await renderTwickVideoInBrowser({
-          variables: {
-            input: {
-              properties: {
-                width: videoSettings.resolution.width,
-                height: videoSettings.resolution.height,
-                fps: videoSettings.fps,
-              },
-              tracks: project.tracks,
-            },
+        const { width, height } = videoSettings.resolution;
+        const fps = videoSettings.fps;
+        // 렌더는 사용자 브라우저가 아니라 서버(헤드리스 Chromium)에서 수행 → 잡 시작 후 진행률 폴링.
+        const { jobId } = await startBookVideoRender(
+          bookId,
+          {
+            properties: { width, height, fps },
+            tracks: project.tracks,
+            backgroundColor: project.backgroundColor,
           },
-          settings: {
-            width: videoSettings.resolution.width,
-            height: videoSettings.resolution.height,
-            fps: videoSettings.fps,
-            quality: "high",
-            includeAudio: true,
-            onProgress: (p) => setExportProgress(p),
-          },
+          { width, height, fps, includeAudio: true },
+        );
+
+        const result = await new Promise<RenderedMedia>((resolve, reject) => {
+          const poll = async () => {
+            try {
+              const job = await getBookVideoRenderJob(jobId);
+              setExportProgress(job.progress);
+              if (job.status === "done" && job.result) {
+                resolve(job.result);
+                return;
+              }
+              if (job.status === "error") {
+                reject(new Error(job.error ?? "서버 렌더 실패"));
+                return;
+              }
+              setTimeout(poll, 1000);
+            } catch (err) {
+              reject(err);
+            }
+          };
+          void poll();
         });
-        const name = videoSettings.outFile?.toLowerCase().endsWith(".mp4")
-          ? videoSettings.outFile
-          : "edited-video.mp4";
-        await onExport(new File([blob], name, { type: "video/mp4" }));
-        return {
-          status: true,
-          message: "미디어 라이브러리에 저장했습니다.",
-        };
+
+        onRendered(result);
+        toast.success("편집한 영상을 미디어 라이브러리에 저장했습니다.");
+        return { status: true, message: "미디어 라이브러리에 저장했습니다." };
       } catch (e) {
-        return { status: false, message: (e as Error).message };
+        // 실패를 조용히 삼키지 않는다 — Twick은 반환값을 무시하므로 직접 노출.
+        const message = e instanceof Error ? e.message : String(e);
+        console.error("[비디오 편집] 서버 렌더 실패:", e);
+        toast.error(`영상 내보내기 실패: ${message}`);
+        return { status: false, message };
       } finally {
         setExportProgress(null);
       }
     },
-    [onExport],
+    [bookId, onRendered],
   );
 
   /* 워크스페이스 패널·채팅(z≤3500)보다 위에 오도록 body 포털로 렌더 —
@@ -131,8 +155,8 @@ export function BookVideoEditorDialog({ onClose, onExport }: Props) {
         <div className="min-w-0">
           <h2 className="font-heading text-sm font-semibold">비디오 편집</h2>
           <p className="truncate text-[11px] text-muted-foreground">
-            내보내기(Export) 시 렌더링 후 미디어 라이브러리에 저장됩니다 · 아래
-            트랙일수록 화면 앞에 표시됩니다 · 렌더는 크롬·엣지 지원
+            내보내기(Export) 시 서버에서 렌더링 후 미디어 라이브러리에
+            저장됩니다 · 아래 트랙일수록 화면 앞에 표시됩니다
           </p>
         </div>
         <Button

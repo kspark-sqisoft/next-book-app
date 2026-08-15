@@ -1484,21 +1484,18 @@ function BookDetailOwnerView({
     [bookId],
   );
 
-  /** 비디오 편집기 내보내기 — 업로드 후 미디어 라이브러리에 등록 */
-  const handleVideoEditorExport = useCallback(
-    async (file: File) => {
-      try {
-        const res = await uploadBookMedia(bookId, file, null);
-        appendBookMediaLibraryItem(bookId, {
-          kind: res.kind,
-          src: res.url,
-          posterUrl: res.posterUrl,
-        });
-        toast.success("편집한 영상을 미디어 라이브러리에 저장했습니다.");
-      } catch (e) {
-        toast.error(`영상 저장 실패: ${(e as Error).message}`);
-        throw e;
-      }
+  /** 비디오 편집기 서버 렌더 완료 — 결과 URL을 미디어 라이브러리에 등록(성공/실패 토스트는 다이얼로그가 담당) */
+  const handleVideoRendered = useCallback(
+    (media: {
+      kind: "image" | "video";
+      url: string;
+      posterUrl: string | null;
+    }) => {
+      appendBookMediaLibraryItem(bookId, {
+        kind: media.kind,
+        src: media.url,
+        posterUrl: media.posterUrl,
+      });
     },
     [bookId],
   );
@@ -2562,7 +2559,8 @@ function BookDetailOwnerView({
             {videoEditorOpen ? (
               <BookVideoEditorDialog
                 onClose={() => setVideoEditorOpen(false)}
-                onExport={handleVideoEditorExport}
+                bookId={bookId}
+                onRendered={handleVideoRendered}
               />
             ) : null}
           </>

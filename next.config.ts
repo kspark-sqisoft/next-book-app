@@ -17,6 +17,11 @@ const konvaPackageRoot = path.resolve(
 const konvaTurbopackAlias = "./node_modules/konva";
 
 const nextConfig: NextConfig = {
+  // 서버 렌더 서비스가 쓰는 Playwright는 네이티브 바이너리라 번들 대상에서 제외(서버에서 require)
+  serverExternalPackages: ["playwright", "playwright-core"],
+  // 서버 렌더의 헤드리스 Chromium은 자기 서버(127.0.0.1)로 /internal/render 에 접속한다.
+  // dev 모드는 기본적으로 교차 오리진(127.0.0.1)의 dev 리소스를 막으므로 명시적으로 허용(프로덕션 무관).
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
   // 기본 보안 헤더 — CSP는 캔버스(blob:)·외부 미디어(Pexels 등)·유튜브 임베드 요구사항 정리 후 별도 도입
   async headers() {
     return [

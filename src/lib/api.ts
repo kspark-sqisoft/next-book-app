@@ -24,12 +24,22 @@ import {
   unlikePostAction,
   updatePostAction,
 } from "@/actions/posts";
+import {
+  getBookVideoRenderJobAction,
+  startBookVideoRenderAction,
+} from "@/actions/video-render";
 import { appLog } from "@/lib/app-log";
 import type { BookCanvasElement } from "@/lib/book-canvas";
 import type {
   CreateBookDto,
   UpdateBookDto,
 } from "@/server/services/books-types";
+// 서버 렌더 타입 — import type 이라 런타임(playwright 등)은 클라이언트 번들에 포함되지 않음
+import type { RenderJobView } from "@/server/video/render-jobs";
+import type {
+  TwickRenderInput,
+  TwickRenderSettings,
+} from "@/server/video/twick-render";
 
 type RetryableRequest = InternalAxiosRequestConfig & { _retry?: boolean };
 
@@ -860,4 +870,26 @@ export async function uploadBookMedia(
   fd.append("file", file);
   if (poster) fd.append("poster", poster);
   return uploadBookMediaAction(token, bookId, fd);
+}
+
+// --- 서버측 비디오 렌더(헤드리스 Chromium) ---
+
+/** 렌더 잡 시작 → jobId. 실제 렌더는 서버에서 진행되고 클라는 진행률을 폴링한다. */
+export async function startBookVideoRender(
+  bookId: number,
+  input: TwickRenderInput,
+  settings: TwickRenderSettings,
+): Promise<{ jobId: string }> {
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  return startBookVideoRenderAction(token, bookId, input, settings);
+}
+
+/** 렌더 잡 상태·진행률·결과 조회 */
+export async function getBookVideoRenderJob(
+  jobId: string,
+): Promise<RenderJobView> {
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  return getBookVideoRenderJobAction(token, jobId);
 }
