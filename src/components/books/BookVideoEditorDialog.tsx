@@ -9,7 +9,7 @@ import { LivePlayerProvider } from "@twick/live-player";
 import { TwickStudio } from "@twick/studio";
 import { INITIAL_TIMELINE_DATA, TimelineProvider } from "@twick/timeline";
 import { X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 
@@ -66,6 +66,7 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
   const [orientationConfirm, setOrientationConfirm] =
     useState<OrientationConfirm | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   // 편집기가 떠 있는 동안에만 브리지를 등록 — 라이브러리의 window.confirm 호출을
   // Promise 기반 shadcn 다이얼로그로 바꿔치기한다. 언마운트 시 대기 중 요청은 취소로 정리.
@@ -106,6 +107,43 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
       window.clearInterval(iv);
       document.cookie =
         "twick_upload_at=; path=/api/books; Max-Age=0; SameSite=Lax";
+    };
+  }, []);
+
+  // 중앙 뷰 휠 줌 — 캔버스 위에서 휠로 컴포지션을 확대/축소(--twick-view-zoom 변수 갱신).
+  // 타임라인/사이드 패널 위에서는 동작하지 않는다. 100% 근처는 스냅해 원위치가 쉽다.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    let zoom = 1;
+    const apply = () =>
+      root.style.setProperty("--twick-view-zoom", String(zoom));
+    const overCanvasView = (t: EventTarget | null): boolean => {
+      const el = t as Element | null;
+      if (!el?.closest) return false;
+      if (
+        el.closest(
+          ".twick-editor-timeline-section, .panel-container, .media-content, .player-controls",
+        )
+      )
+        return false;
+      return !!el.closest(
+        ".twick-editor-view-section, .twick-editor-main-container, .twick-editor-canvas-container",
+      );
+    };
+    const onWheel = (e: WheelEvent) => {
+      if (!overCanvasView(e.target)) return;
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+      let next = Math.min(4, Math.max(0.25, zoom * factor));
+      if (Math.abs(next - 1) < 0.05) next = 1; // 100% 스냅
+      zoom = next;
+      apply();
+    };
+    root.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      root.removeEventListener("wheel", onWheel);
+      root.style.removeProperty("--twick-view-zoom");
     };
   }, []);
 
@@ -174,13 +212,22 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
      내부에 두면 조상 스태킹 컨텍스트에 갇혀 기존 패널이 편집기를 가린다 */
   if (typeof document === "undefined") return null;
   return createPortal(
-    <div className="fixed inset-0 z-[5000] flex flex-col bg-background">
+    <div
+      ref={rootRef}
+      className="fixed inset-0 z-[5000] flex flex-col bg-background"
+    >
       {/* My assets 라이브러리 타일을 가로 16:9로, 영상/이미지는 타일을 꽉 채워(cover) 썸네일이 보이게 오버라이드 */}
       <style
         dangerouslySetInnerHTML={{
           __html: `
             .media-item { aspect-ratio: 16 / 9 !important; height: auto !important; }
             .media-item-content { width: 100% !important; height: 100% !important; object-fit: cover !important; background: #000; }
+            /* 중앙 뷰 줌 — Twick은 캔버스 뷰 줌을 제공하지 않아 컴포지션을 CSS transform으로 확대/축소.
+               CSS 변수로 적용해 Twick 리렌더가 인라인 스타일을 덮어써도 유지된다(휠 핸들러가 변수만 갱신). */
+            .twick-editor-canvas-container {
+              transform: scale(var(--twick-view-zoom, 1)) !important;
+              transform-origin: center center !important;
+            }
           `,
         }}
       />
