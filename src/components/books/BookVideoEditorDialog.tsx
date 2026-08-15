@@ -24,7 +24,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { getBookVideoRenderJob, startBookVideoRender } from "@/lib/api";
+import {
+  API_BASE_URL,
+  getAccessToken,
+  getBookVideoRenderJob,
+  startBookVideoRender,
+} from "@/lib/api";
 
 declare global {
   interface Window {
@@ -83,6 +88,25 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
       prev?.resolve(confirmed);
       return null;
     });
+  }, []);
+
+  // "My assets" 로컬 업로드용 인증: Twick 업로드 fetch는 Bearer 헤더를 못 붙이므로,
+  // access token을 짧은 쿠키(twick_upload_at, /api/books 경로 한정)로 실어 업로드 엔드포인트가 검증하게 한다.
+  // 프록시 리프레시로 토큰이 갱신될 수 있어 주기적으로 최신값으로 갱신하고, 언마운트 시 제거한다.
+  useEffect(() => {
+    const syncCookie = () => {
+      const token = getAccessToken();
+      if (token) {
+        document.cookie = `twick_upload_at=${token}; path=/api/books; SameSite=Lax`;
+      }
+    };
+    syncCookie();
+    const iv = window.setInterval(syncCookie, 30_000);
+    return () => {
+      window.clearInterval(iv);
+      document.cookie =
+        "twick_upload_at=; path=/api/books; Max-Age=0; SameSite=Lax";
+    };
   }, []);
 
   const handleExportVideo = useCallback(
@@ -234,6 +258,12 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
               studioConfig={{
                 videoProps: { width: 1280, height: 720 },
                 exportVideo: handleExportVideo,
+                // "My assets"에 로컬 파일 업로드 활성화 — Twick의 gcs 방식(FormData "file" POST → { url }).
+                // 우리 엔드포인트가 UPLOAD_ROOT에 저장하고 /uploads/... URL을 돌려준다.
+                uploadConfig: {
+                  uploadApiUrl: `${API_BASE_URL}/books/${bookId}/media-upload`,
+                  provider: "gcs",
+                },
               }}
             />
           </TimelineProvider>
