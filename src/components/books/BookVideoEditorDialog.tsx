@@ -128,7 +128,6 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
   const [orientationConfirm, setOrientationConfirm] =
     useState<OrientationConfirm | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
-  const frameRef = useRef<HTMLDivElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
   // 중앙 뷰 줌 — 버튼/휠/퍼센트 표시가 한 값을 공유. zoomRef는 이벤트 핸들러가 최신값을 읽기 위한 미러.
   const [viewZoom, setViewZoom] = useState(1);
@@ -266,48 +265,17 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
     return () => cancelAnimationFrame(raf);
   }, [fitToView]);
 
-  // 컴포지션 경계 프레임 — 편집 영역(렌더 해상도)이 뷰 배경과 같은 어두운 색이라 경계가 안 보인다.
-  // 실제 캔버스의 화면 사각형(getBoundingClientRect: 줌 transform·리사이즈·해상도 변경 모두 반영)을
-  // 매 프레임 측정해 오버레이 테두리를 정확히 겹쳐 그린다. 변화가 있을 때만 DOM을 갱신한다.
+  // 줌 툴바를 안전 뷰 영역 상단 가운데(Creta 상단 바 아래, 패널 사이 중앙)에 매 프레임 고정.
   useEffect(() => {
     const root = rootRef.current;
-    const frame = frameRef.current;
-    if (!root || !frame) return;
+    if (!root) return;
     let raf = 0;
-    let last = "";
-    const hide = () => {
-      if (frame.style.opacity !== "0") frame.style.opacity = "0";
-      last = "";
-    };
     const tick = () => {
-      const geo = getViewGeometry(root);
-      const safe = geo?.safe;
-      const r = geo?.canvas ?? null;
-      // 툴바를 안전 뷰 영역 상단 가운데에 고정(Creta 상단 바 아래, 패널 사이 중앙)
+      const safe = getViewGeometry(root)?.safe;
       const toolbar = toolbarRef.current;
       if (toolbar && safe) {
         toolbar.style.left = `${Math.round((safe.left + safe.right) / 2)}px`;
         toolbar.style.top = `${Math.round(safe.top + 8)}px`;
-      }
-      if (safe && r && r.width > 0 && r.height > 0) {
-        // 캔버스가 안전 영역보다 크면(맞춤/줌 등) 넘치는 부분이 헤더/타임라인 위로 새어 보이므로
-        // 프레임을 안전 영역과의 교집합으로 클립한다(inset은 프레임 박스 기준).
-        const clipTop = Math.max(0, safe.top - r.top);
-        const clipLeft = Math.max(0, safe.left - r.left);
-        const clipRight = Math.max(0, r.right - safe.right);
-        const clipBottom = Math.max(0, r.bottom - safe.bottom);
-        const key = `${r.left}|${r.top}|${r.width}|${r.height}|${clipTop}|${clipLeft}|${clipRight}|${clipBottom}`;
-        if (key !== last) {
-          last = key;
-          frame.style.left = `${r.left}px`;
-          frame.style.top = `${r.top}px`;
-          frame.style.width = `${r.width}px`;
-          frame.style.height = `${r.height}px`;
-          frame.style.clipPath = `inset(${clipTop}px ${clipRight}px ${clipBottom}px ${clipLeft}px)`;
-          frame.style.opacity = "1";
-        }
-      } else {
-        hide();
       }
       raf = requestAnimationFrame(tick);
     };
@@ -548,19 +516,6 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
             <Maximize2 className="size-4" aria-hidden />
           </Button>
         </div>
-
-        {/* 컴포지션(렌더 해상도) 경계 — 캔버스 실제 사각형을 추적해 정확히 겹친다.
-            pointer-events:none 으로 편집 조작을 막지 않고, 어두운 배경에서도 보이게 이중 링. */}
-        <div
-          ref={frameRef}
-          aria-hidden
-          className="pointer-events-none fixed z-[1] opacity-0"
-          style={{
-            outline: "1.5px solid rgba(129, 140, 248, 0.95)",
-            boxShadow:
-              "0 0 0 1px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(0, 0, 0, 0.35)",
-          }}
-        />
 
         {exportProgress != null ? (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/70 backdrop-blur-[2px]">
