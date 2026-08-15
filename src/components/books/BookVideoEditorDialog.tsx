@@ -87,13 +87,39 @@ function getViewGeometry(
     ?.getBoundingClientRect();
   const top = Math.max(vr.top, cretaBar ? cretaBar.bottom : vr.top);
   const bottom = Math.min(vr.bottom, timeline ? timeline.top : vr.bottom);
+  return {
+    safe: { top, bottom, left: vr.left, right: vr.right },
+    canvas: getCompositionRect(root),
+  };
+}
+
+/**
+ * 실제 컴포지션(렌더 해상도) 영역을 화면 좌표로 구한다.
+ * 캔버스 CSS 박스는 뷰 모양에 따라 컴포지션보다 크게(레터박스 포함) 잡힐 수 있으므로,
+ * 캔버스 내부 버퍼 비율(= 컴포지션 종횡비)을 CSS 박스 안에 contain 시킨 중앙 영역을 돌려준다.
+ * 레터박스가 없으면 박스와 동일. 이 영역이 경계 프레임·맞춤 계산의 진짜 기준이다.
+ */
+function getCompositionRect(root: HTMLElement): DOMRect | null {
   const canvas = root.querySelector<HTMLCanvasElement>(
     ".twick-editor-canvas-container canvas",
   );
-  return {
-    safe: { top, bottom, left: vr.left, right: vr.right },
-    canvas: canvas?.getBoundingClientRect() ?? null,
-  };
+  if (!canvas) return null;
+  const r = canvas.getBoundingClientRect();
+  if (r.width <= 0 || r.height <= 0) return null;
+  // 내부 버퍼(canvas.width/height)가 컴포지션 해상도(×pixelRatio) → 그 종횡비가 컴포지션 종횡비.
+  const aspect =
+    canvas.width > 0 && canvas.height > 0
+      ? canvas.width / canvas.height
+      : r.width / r.height;
+  let w = r.width;
+  let h = r.width / aspect;
+  if (h > r.height) {
+    h = r.height;
+    w = r.height * aspect;
+  }
+  const x = r.left + (r.width - w) / 2;
+  const y = r.top + (r.height - h) / 2;
+  return new DOMRect(x, y, w, h);
 }
 
 export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
