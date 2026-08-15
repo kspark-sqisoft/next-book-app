@@ -1,7 +1,7 @@
 "use client";
 
 // 이미지 편집 — Filerobot 편집기를 전체 화면으로 띄우고, 저장 시 파일을 만들어 호출측(업로드·라이브러리)에 넘긴다
-import { ImagePlus, X } from "lucide-react";
+import { CheckCircle2, ImagePlus, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import FilerobotImageEditor, {
@@ -10,6 +10,15 @@ import FilerobotImageEditor, {
 } from "react-filerobot-image-editor";
 import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -83,6 +92,7 @@ export function BookImageEditorDialog({ onClose, onExport }: Props) {
   const [src, setSrc] = useState<string | null>(null);
   const [sourceName, setSourceName] = useState("edited-image");
   const [saving, setSaving] = useState(false);
+  const [savedOk, setSavedOk] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -116,15 +126,17 @@ export function BookImageEditorDialog({ onClose, onExport }: Props) {
           return;
         }
         // 2) 업로드·라이브러리 등록은 호출측(onExport). 실패 토스트도 그쪽에서 띄우고 여기선 편집 화면 유지.
+        //    성공 시 바로 닫지 않고 성공 팝업을 띄워 "저장됐다"는 확인을 명확히 준다.
         try {
           await onExport(file);
-          onClose();
+          setSaving(false);
+          setSavedOk(true);
         } catch {
           setSaving(false);
         }
       })();
     },
-    [onClose, onExport],
+    [onExport],
   );
 
   /* 워크스페이스 패널·채팅(z≤3500)보다 위에 오도록 body 포털로 렌더 —
@@ -182,6 +194,7 @@ export function BookImageEditorDialog({ onClose, onExport }: Props) {
             ]}
             defaultTabId={TABS.ADJUST}
             defaultToolId={TOOLS.CROP}
+            disableSaveIfNoChanges={false}
             theme={FILEROBOT_THEME as never}
           />
         ) : (
@@ -219,6 +232,39 @@ export function BookImageEditorDialog({ onClose, onExport }: Props) {
           if (f) pickFile(f);
         }}
       />
+
+      {/* 저장 성공 확인 — 명확한 피드백을 주고, 확인 시 편집기를 닫는다 */}
+      <AlertDialog
+        open={savedOk}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSavedOk(false);
+            onClose();
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="size-5 text-emerald-500" aria-hidden />
+              저장 완료
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              편집한 이미지를 미디어 라이브러리에 저장했습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction
+              onClick={() => {
+                setSavedOk(false);
+                onClose();
+              }}
+            >
+              확인
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>,
     document.body,
   );

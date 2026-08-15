@@ -68,6 +68,7 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
     useState<OrientationConfirm | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
   // 중앙 뷰 줌 — 버튼/휠/퍼센트 표시가 한 값을 공유. zoomRef는 이벤트 핸들러가 최신값을 읽기 위한 미러.
   const [viewZoom, setViewZoom] = useState(1);
   const zoomRef = useRef(1);
@@ -171,15 +172,31 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
       const canvas = root.querySelector<HTMLCanvasElement>(
         ".twick-editor-canvas-container canvas",
       );
+      // 뷰 영역(가시 캔버스 뷰포트) — 프레임 클립·툴바 배치의 기준
+      const view = root.querySelector(".twick-editor-view-section");
       const r = canvas?.getBoundingClientRect();
-      if (r && r.width > 0 && r.height > 0) {
-        const key = `${r.left}|${r.top}|${r.width}|${r.height}`;
+      const v = view?.getBoundingClientRect();
+      // 툴바를 뷰 영역 상단 가운데에 고정 배치(캔버스가 뷰보다 커도 헤더로 넘어가지 않게 뷰 기준)
+      const toolbar = toolbarRef.current;
+      if (toolbar && v) {
+        toolbar.style.left = `${Math.round(v.left + v.width / 2)}px`;
+        toolbar.style.top = `${Math.round(v.top + 8)}px`;
+      }
+      if (r && v && r.width > 0 && r.height > 0) {
+        // 캔버스가 뷰 영역보다 크면(맞춤 등) 넘치는 부분이 헤더/타임라인 위로 새어 보이므로
+        // 프레임을 뷰 영역과의 교집합으로 클립한다(inset은 프레임 박스 기준).
+        const clipTop = Math.max(0, v.top - r.top);
+        const clipLeft = Math.max(0, v.left - r.left);
+        const clipRight = Math.max(0, r.right - v.right);
+        const clipBottom = Math.max(0, r.bottom - v.bottom);
+        const key = `${r.left}|${r.top}|${r.width}|${r.height}|${clipTop}|${clipLeft}|${clipRight}|${clipBottom}`;
         if (key !== last) {
           last = key;
           frame.style.left = `${r.left}px`;
           frame.style.top = `${r.top}px`;
           frame.style.width = `${r.width}px`;
           frame.style.height = `${r.height}px`;
+          frame.style.clipPath = `inset(${clipTop}px ${clipRight}px ${clipBottom}px ${clipLeft}px)`;
           frame.style.opacity = "1";
         }
       } else {
@@ -370,8 +387,13 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
         </LivePlayerProvider>
 
         {/* 뷰 줌 컨트롤 — 북 편집기처럼 −/+ 로 확대·축소, "맞춤"으로 가용 크기(100%)에 한 번에 맞춤.
-            퍼센트 클릭으로도 100% 복귀. 휠 줌과 같은 값을 공유한다(z는 export 오버레이 아래). */}
-        <div className="absolute right-3 top-3 z-[2] flex items-center gap-0.5 rounded-lg border border-border bg-card/90 p-1 shadow-md backdrop-blur">
+            퍼센트 클릭으로도 100% 복귀. 휠 줌과 같은 값을 공유한다(z는 export 오버레이 아래).
+            위치는 rAF로 뷰 영역 상단 가운데에 고정(left/top은 imperative, translateX(-50%)로 중앙 정렬). */}
+        <div
+          ref={toolbarRef}
+          className="fixed z-[3] flex -translate-x-1/2 items-center gap-0.5 rounded-lg border border-border bg-card/90 p-1 shadow-md backdrop-blur"
+          style={{ left: 0, top: 0 }}
+        >
           <Button
             type="button"
             size="icon"
