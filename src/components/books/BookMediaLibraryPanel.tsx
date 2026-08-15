@@ -21,6 +21,16 @@ import {
 import { toast } from "sonner";
 
 import { BOOK_LIBRARY_DRAG_TYPE } from "@/components/books/BookSlideCanvas";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { publicAssetUrl, uploadBookMedia } from "@/lib/api";
@@ -189,6 +199,8 @@ function MediaGrid({
   onDragStartItem: (e: DragEvent, item: BookMediaLibraryItem) => void;
   gridClassName?: string;
 }) {
+  const [pendingDelete, setPendingDelete] =
+    useState<BookMediaLibraryItem | null>(null);
   if (items.length === 0) {
     return (
       <p className="py-6 text-center text-xs text-muted-foreground">
@@ -197,51 +209,82 @@ function MediaGrid({
     );
   }
   return (
-    <ul className={cn("grid gap-2", gridClassName)}>
-      {items.map((item) => {
-        const thumb =
-          item.kind === "image"
-            ? publicAssetUrl(item.src)
-            : publicAssetUrl(item.posterSrc);
-        return (
-          <li key={item.id} className="relative">
-            <div
-              draggable
-              onDragStart={(e) => onDragStartItem(e, item)}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="group relative aspect-square cursor-grab select-none overflow-hidden rounded-lg border border-border/80 bg-muted/40 active:cursor-grabbing hover:border-violet-400/50"
+    <>
+      <ul className={cn("grid gap-2", gridClassName)}>
+        {items.map((item) => {
+          const thumb =
+            item.kind === "image"
+              ? publicAssetUrl(item.src)
+              : publicAssetUrl(item.posterSrc);
+          return (
+            <li key={item.id} className="relative">
+              <div
+                draggable
+                onDragStart={(e) => onDragStartItem(e, item)}
+                onPointerDown={(e) => e.stopPropagation()}
+                className="group relative aspect-square cursor-grab select-none overflow-hidden rounded-lg border border-border/80 bg-muted/40 active:cursor-grabbing hover:border-violet-400/50"
+              >
+                {thumb ? (
+                  <img
+                    src={thumb}
+                    alt=""
+                    className="size-full object-cover"
+                    draggable={false}
+                  />
+                ) : (
+                  <div className="flex size-full items-center justify-center text-muted-foreground">
+                    <Film className="size-8" aria-hidden />
+                  </div>
+                )}
+                <span className="pointer-events-none absolute bottom-0.5 left-0.5 rounded bg-background/85 px-1 text-[9px] font-medium text-foreground/90">
+                  {item.kind === "image" ? "IMG" : "MOV"}
+                </span>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="absolute -right-1 -top-1 size-6 rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm hover:bg-destructive/15 hover:text-destructive"
+                aria-label="라이브러리에서 제거"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => setPendingDelete(item)}
+              >
+                <Trash2 className="size-3" />
+              </Button>
+            </li>
+          );
+        })}
+      </ul>
+      <AlertDialog
+        open={pendingDelete != null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>미디어를 삭제할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              라이브러리 목록에서 제거됩니다. 서버에 업로드된 원본 파일과 이미
+              페이지에 넣은 항목은 그대로 유지됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => {
+                if (pendingDelete)
+                  removeBookMediaLibraryItem(bookId, pendingDelete.id);
+                setPendingDelete(null);
+              }}
             >
-              {thumb ? (
-                <img
-                  src={thumb}
-                  alt=""
-                  className="size-full object-cover"
-                  draggable={false}
-                />
-              ) : (
-                <div className="flex size-full items-center justify-center text-muted-foreground">
-                  <Film className="size-8" aria-hidden />
-                </div>
-              )}
-              <span className="pointer-events-none absolute bottom-0.5 left-0.5 rounded bg-background/85 px-1 text-[9px] font-medium text-foreground/90">
-                {item.kind === "image" ? "IMG" : "MOV"}
-              </span>
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              className="absolute -right-1 -top-1 size-6 rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm hover:bg-destructive/15 hover:text-destructive"
-              aria-label="라이브러리에서 제거"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={() => removeBookMediaLibraryItem(bookId, item.id)}
-            >
-              <Trash2 className="size-3" />
-            </Button>
-          </li>
-        );
-      })}
-    </ul>
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
