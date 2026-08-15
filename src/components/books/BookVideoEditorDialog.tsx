@@ -67,6 +67,7 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
   const [orientationConfirm, setOrientationConfirm] =
     useState<OrientationConfirm | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
 
   // 편집기가 떠 있는 동안에만 브리지를 등록 — 라이브러리의 window.confirm 호출을
   // Promise 기반 shadcn 다이얼로그로 바꿔치기한다. 언마운트 시 대기 중 요청은 취소로 정리.
@@ -145,6 +146,43 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
       root.removeEventListener("wheel", onWheel);
       root.style.removeProperty("--twick-view-zoom");
     };
+  }, []);
+
+  // 컴포지션 경계 프레임 — 편집 영역(렌더 해상도)이 뷰 배경과 같은 어두운 색이라 경계가 안 보인다.
+  // 실제 캔버스의 화면 사각형(getBoundingClientRect: 줌 transform·리사이즈·해상도 변경 모두 반영)을
+  // 매 프레임 측정해 오버레이 테두리를 정확히 겹쳐 그린다. 변화가 있을 때만 DOM을 갱신한다.
+  useEffect(() => {
+    const root = rootRef.current;
+    const frame = frameRef.current;
+    if (!root || !frame) return;
+    let raf = 0;
+    let last = "";
+    const hide = () => {
+      if (frame.style.opacity !== "0") frame.style.opacity = "0";
+      last = "";
+    };
+    const tick = () => {
+      const canvas = root.querySelector<HTMLCanvasElement>(
+        ".twick-editor-canvas-container canvas",
+      );
+      const r = canvas?.getBoundingClientRect();
+      if (r && r.width > 0 && r.height > 0) {
+        const key = `${r.left}|${r.top}|${r.width}|${r.height}`;
+        if (key !== last) {
+          last = key;
+          frame.style.left = `${r.left}px`;
+          frame.style.top = `${r.top}px`;
+          frame.style.width = `${r.width}px`;
+          frame.style.height = `${r.height}px`;
+          frame.style.opacity = "1";
+        }
+      } else {
+        hide();
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
   }, []);
 
   const handleExportVideo = useCallback(
@@ -324,6 +362,19 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
             />
           </TimelineProvider>
         </LivePlayerProvider>
+
+        {/* 컴포지션(렌더 해상도) 경계 — 캔버스 실제 사각형을 추적해 정확히 겹친다.
+            pointer-events:none 으로 편집 조작을 막지 않고, 어두운 배경에서도 보이게 이중 링. */}
+        <div
+          ref={frameRef}
+          aria-hidden
+          className="pointer-events-none fixed z-[1] opacity-0"
+          style={{
+            outline: "1.5px solid rgba(129, 140, 248, 0.95)",
+            boxShadow:
+              "0 0 0 1px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(0, 0, 0, 0.35)",
+          }}
+        />
 
         {exportProgress != null ? (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/70 backdrop-blur-[2px]">
