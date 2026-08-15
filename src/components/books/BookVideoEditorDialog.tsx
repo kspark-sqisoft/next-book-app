@@ -379,13 +379,24 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
             .twick-editor-container {
               transform: scale(var(--twick-view-zoom, 1)) !important;
               transform-origin: center center !important;
-            }
-            /* 원래(컴포지션) 비율 유지 — Twick이 좁은/짧은 창에서 캔버스를 창 비율에 맞춰 늘려
-               컴포지션이 찌그러져(정사각처럼) 보이는 것 방지. 내부 버퍼(canvas.width/height)가
-               컴포지션 종횡비(16:9)이므로, 표시 종횡비를 그 값으로 고정하고 높이는 폭에서 파생시킨다. */
-            .twick-editor-canvas-container .canvas-container > canvas.twick-editor-canvas {
+              /* 컴포지션 원래 비율(16:9) 유지 — 편집(Fabric)·재생(Konva) 공통 부모를 이 비율로 고정하면
+                 둘 다 16:9로 렌더돼 재생/정지가 일치하고, 뷰가 세로로 길어도 찌그러지지 않는다.
+                 뷰 안에 들어가도록 max로 제한하고 margin:auto로 중앙 배치(남는 공간은 어두운 여백). */
               aspect-ratio: var(--twick-comp-aspect, 16 / 9) !important;
+              width: 100% !important;
               height: auto !important;
+              max-height: 100% !important;
+              margin: auto !important;
+            }
+            /* 컴포지션 모서리 각지게 — Twick 기본 라운딩(container 10px, canvas-container 12px) 제거 */
+            .twick-editor-container,
+            .canvas-container {
+              border-radius: 0 !important;
+            }
+            /* 라이브러리 아이템 버튼 겹침 방지 — 16:9 짧은 타일에서 재생(하단우) 버튼이 상단우 +·휴지통과
+               겹쳤다. 재생 버튼을 좌하단으로 옮겨 대각선으로 분리(타일 크기와 무관하게 안 겹침). */
+            .media-item .media-actions-corner-bottom {
+              inset: auto auto 6px 6px !important;
             }
           `,
         }}

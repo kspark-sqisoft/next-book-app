@@ -1,0 +1,72 @@
+diff --git a/node_modules/@twick/video-editor/dist/index.js b/node_modules/@twick/video-editor/dist/index.js
+index c4d1cea..a003576 100644
+--- a/node_modules/@twick/video-editor/dist/index.js
++++ b/node_modules/@twick/video-editor/dist/index.js
+@@ -10233,10 +10233,14 @@ const PlayerManager = ({
+   React.useEffect(() => {
+     var _a2;
+     const container = containerRef.current;
+-    const canvasSize = {
+-      width: (container == null ? void 0 : container.clientWidth) ?? 0,
+-      height: (container == null ? void 0 : container.clientHeight) ?? 0
+-    };
++    const canvasSize = (() => {
++      const _cw = (container == null ? void 0 : container.clientWidth) ?? 0;
++      const _ch = (container == null ? void 0 : container.clientHeight) ?? 0;
++      const _va = (videoProps && videoProps.width && videoProps.height) ? (videoProps.width / videoProps.height) : (_ch ? _cw / _ch : 1);
++      let _w = _cw, _h = _va ? _cw / _va : _ch;
++      if (_h > _ch) { _h = _ch; _w = _ch * _va; }
++      return { width: _w, height: _h };
++    })();
+     if (canvasSize.width > 0 && canvasSize.height > 0) {
+       buildCanvas({
+         backgroundColor: videoProps.backgroundColor ?? ((_a2 = projectData == null ? void 0 : projectData.input) == null ? void 0 : _a2.backgroundColor) ?? "#000000",
+@@ -10261,8 +10265,11 @@ const PlayerManager = ({
+       const width = container.clientWidth;
+       const height = container.clientHeight;
+       if (width <= 0 || height <= 0) return;
++      const _rva = (videoProps.width && videoProps.height) ? (videoProps.width / videoProps.height) : (height ? width / height : 1);
++      let _rw = width, _rh = _rva ? width / _rva : height;
++      if (_rh > height) { _rh = height; _rw = height * _rva; }
+       resizeCanvas({
+-        canvasSize: { width, height },
++        canvasSize: { width: _rw, height: _rh },
+         videoSize: { width: videoProps.width, height: videoProps.height }
+       });
+       updateCanvas(seekTimeRef.current, true);
+diff --git a/node_modules/@twick/video-editor/dist/index.mjs b/node_modules/@twick/video-editor/dist/index.mjs
+index 7851661..0a1cec5 100644
+--- a/node_modules/@twick/video-editor/dist/index.mjs
++++ b/node_modules/@twick/video-editor/dist/index.mjs
+@@ -10231,10 +10231,14 @@ const PlayerManager = ({
+   useEffect(() => {
+     var _a2;
+     const container = containerRef.current;
+-    const canvasSize = {
+-      width: (container == null ? void 0 : container.clientWidth) ?? 0,
+-      height: (container == null ? void 0 : container.clientHeight) ?? 0
+-    };
++    const canvasSize = (() => {
++      const _cw = (container == null ? void 0 : container.clientWidth) ?? 0;
++      const _ch = (container == null ? void 0 : container.clientHeight) ?? 0;
++      const _va = (videoProps && videoProps.width && videoProps.height) ? (videoProps.width / videoProps.height) : (_ch ? _cw / _ch : 1);
++      let _w = _cw, _h = _va ? _cw / _va : _ch;
++      if (_h > _ch) { _h = _ch; _w = _ch * _va; }
++      return { width: _w, height: _h };
++    })();
+     if (canvasSize.width > 0 && canvasSize.height > 0) {
+       buildCanvas({
+         backgroundColor: videoProps.backgroundColor ?? ((_a2 = projectData == null ? void 0 : projectData.input) == null ? void 0 : _a2.backgroundColor) ?? "#000000",
+@@ -10259,8 +10263,11 @@ const PlayerManager = ({
+       const width = container.clientWidth;
+       const height = container.clientHeight;
+       if (width <= 0 || height <= 0) return;
++      const _rva = (videoProps.width && videoProps.height) ? (videoProps.width / videoProps.height) : (height ? width / height : 1);
++      let _rw = width, _rh = _rva ? width / _rva : height;
++      if (_rh > height) { _rh = height; _rw = height * _rva; }
+       resizeCanvas({
+-        canvasSize: { width, height },
++        canvasSize: { width: _rw, height: _rh },
+         videoSize: { width: videoProps.width, height: videoProps.height }
+       });
+       updateCanvas(seekTimeRef.current, true);
