@@ -380,6 +380,13 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
               transform: scale(var(--twick-view-zoom, 1)) !important;
               transform-origin: center center !important;
             }
+            /* 원래(컴포지션) 비율 유지 — Twick이 좁은/짧은 창에서 캔버스를 창 비율에 맞춰 늘려
+               컴포지션이 찌그러져(정사각처럼) 보이는 것 방지. 내부 버퍼(canvas.width/height)가
+               컴포지션 종횡비(16:9)이므로, 표시 종횡비를 그 값으로 고정하고 높이는 폭에서 파생시킨다. */
+            .twick-editor-canvas-container .canvas-container > canvas.twick-editor-canvas {
+              aspect-ratio: var(--twick-comp-aspect, 16 / 9) !important;
+              height: auto !important;
+            }
           `,
         }}
       />
@@ -476,7 +483,7 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="relative min-h-0 flex-1">
+      <div className="relative min-h-0 flex-1 pb-4">
         <LivePlayerProvider>
           <TimelineProvider
             initialData={INITIAL_TIMELINE_DATA}
