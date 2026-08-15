@@ -9,7 +9,7 @@ import { LivePlayerProvider } from "@twick/live-player";
 import { TwickStudio } from "@twick/studio";
 import { INITIAL_TIMELINE_DATA, TimelineProvider } from "@twick/timeline";
 import { X } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 import {
@@ -24,15 +24,55 @@ import {
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 
+declare global {
+  interface Window {
+    /**
+     * @twick/studio 패치(patches/@twick+studio+…)가 orientation 변경 시 호출.
+     * 기본 window.confirm 대신 아래 shadcn 확인 다이얼로그로 연결한다.
+     */
+    __twickConfirm?: (message: string) => Promise<boolean>;
+  }
+}
+
 type Props = {
   onClose: () => void;
   /** 내보낸 MP4 파일 — 업로드·미디어 라이브러리 등록은 호출측 책임 */
   onExport: (file: File) => Promise<void>;
 };
 
+/** 대기 중인 orientation 확인 요청 — resolve로 사용자의 선택(계속/취소)을 라이브러리에 돌려준다 */
+type OrientationConfirm = {
+  resolve: (confirmed: boolean) => void;
+};
+
 export function BookVideoEditorDialog({ onClose, onExport }: Props) {
   const [exportProgress, setExportProgress] = useState<number | null>(null);
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
+  const [orientationConfirm, setOrientationConfirm] =
+    useState<OrientationConfirm | null>(null);
+
+  // 편집기가 떠 있는 동안에만 브리지를 등록 — 라이브러리의 window.confirm 호출을
+  // Promise 기반 shadcn 다이얼로그로 바꿔치기한다. 언마운트 시 대기 중 요청은 취소로 정리.
+  useEffect(() => {
+    window.__twickConfirm = () =>
+      new Promise<boolean>((resolve) => {
+        setOrientationConfirm({ resolve });
+      });
+    return () => {
+      delete window.__twickConfirm;
+      setOrientationConfirm((prev) => {
+        prev?.resolve(false);
+        return null;
+      });
+    };
+  }, []);
+
+  const resolveOrientation = useCallback((confirmed: boolean) => {
+    setOrientationConfirm((prev) => {
+      prev?.resolve(confirmed);
+      return null;
+    });
+  }, []);
 
   const handleExportVideo = useCallback(
     async (
@@ -91,7 +131,7 @@ export function BookVideoEditorDialog({ onClose, onExport }: Props) {
         <div className="min-w-0">
           <h2 className="font-heading text-sm font-semibold">비디오 편집</h2>
           <p className="truncate text-[11px] text-muted-foreground">
-            내보내기(Export) 시 렌더링 후 미디어 라이브러리에 저장됩니다 · 위
+            내보내기(Export) 시 렌더링 후 미디어 라이브러리에 저장됩니다 · 아래
             트랙일수록 화면 앞에 표시됩니다 · 렌더는 크롬·엣지 지원
           </p>
         </div>
@@ -127,6 +167,34 @@ export function BookVideoEditorDialog({ onClose, onExport }: Props) {
               }}
             >
               나가기
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={orientationConfirm != null}
+        onOpenChange={(open) => {
+          // 오버레이·ESC·취소로 닫히면 라이브러리에는 취소로 응답
+          if (!open) resolveOrientation(false);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>화면 방향을 바꿀까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              방향(가로 ↔ 세로)을 바꾸면 새 해상도로 새 프로젝트가 시작되며,
+              지금 편집 중인 내용은 사라집니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel type="button">취소</AlertDialogCancel>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => resolveOrientation(true)}
+            >
+              계속
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
