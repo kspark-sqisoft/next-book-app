@@ -486,7 +486,8 @@ function BookWidgetPaletteFloating({
       {!collapsed ? (
         // 자동 줄바꿈 그리드 — 한 줄에 다 욱여넣지 않고 아이템을 넉넉히(≥84px) 잡아
         // 라벨이 글자 단위로 세로로 쪼개지거나 가로 폭을 넘치지 않게 한다.
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(84px,1fr))] gap-2 px-0.5">
+        // 최대 3줄까지 보이고 그 이상은 세로 스크롤(약 13.5rem ≈ 3줄).
+        <div className="grid max-h-[13.5rem] grid-cols-[repeat(auto-fill,minmax(84px,1fr))] gap-2 overflow-y-auto overscroll-contain px-0.5 pr-1 [-webkit-overflow-scrolling:touch]">
           {ITEMS.map(({ kind, label, icon: Icon }) => (
             <div
               key={kind}
