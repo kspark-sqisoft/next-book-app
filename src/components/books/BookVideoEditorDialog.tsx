@@ -67,6 +67,18 @@ type Rect = { top: number; bottom: number; left: number; right: number };
 const FIT_MARGIN_RATIO = 0.9;
 
 /**
+ * 출력 해상도 = 편집 컴포지션(1280×720 16:9) × 화질 배율(quality).
+ * browser-render는 scene 좌표계를 컴포지션 크기로 유지하고 resolutionScale만 키우므로,
+ * 레이아웃이 깨지지 않고 안전하게 업스케일된다. (low=1×, medium=1.5×, high=2×)
+ */
+const EXPORT_QUALITIES = [
+  { id: "medium", label: "FHD · 1080p" },
+  { id: "high", label: "QHD · 1440p" },
+  { id: "low", label: "HD · 720p" },
+] as const;
+type ExportQuality = (typeof EXPORT_QUALITIES)[number]["id"];
+
+/**
  * 실제로 보이는 컴포지션 뷰 영역(안전 영역)과 현재 캔버스 사각형을 구한다.
  * 안전 영역 = 좌우는 뷰 섹션(패널 사이), 위는 Creta 상단 바 아래, 아래는 타임라인 위.
  * 캔버스가 뷰보다 커져 헤더/타임라인 위로 넘칠 때 툴바 배치·프레임 클립·맞춤 계산의 공통 기준.
@@ -124,6 +136,7 @@ function getCompositionRect(root: HTMLElement): DOMRect | null {
 
 export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
   const [exportProgress, setExportProgress] = useState<number | null>(null);
+  const [exportQuality, setExportQuality] = useState<ExportQuality>("medium");
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
   const [orientationConfirm, setOrientationConfirm] =
     useState<OrientationConfirm | null>(null);
@@ -304,7 +317,8 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
             tracks: project.tracks,
             backgroundColor: project.backgroundColor,
           },
-          { width, height, fps, includeAudio: true },
+          // 출력 해상도 = 컴포지션 크기 × quality 배율(scene 좌표계는 유지 → 레이아웃 안전)
+          { width, height, fps, quality: exportQuality, includeAudio: true },
         );
 
         const result = await new Promise<RenderedMedia>((resolve, reject) => {
@@ -341,7 +355,7 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
         setExportProgress(null);
       }
     },
-    [bookId, onRendered],
+    [bookId, onRendered, exportQuality],
   );
 
   /* 워크스페이스 패널·채팅(z≤3500)보다 위에 오도록 body 포털로 렌더 —
@@ -377,17 +391,37 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
             저장됩니다 · 아래 트랙일수록 화면 앞에 표시됩니다
           </p>
         </div>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="h-7 shrink-0 px-2.5 text-xs"
-          disabled={exportProgress != null}
-          onClick={() => setExitConfirmOpen(true)}
-        >
-          <X className="mr-1.5 size-3.5" aria-hidden />
-          나가기
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <label className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+            출력 해상도
+            <select
+              value={exportQuality}
+              onChange={(e) =>
+                setExportQuality(e.target.value as ExportQuality)
+              }
+              disabled={exportProgress != null}
+              className="h-7 rounded-md border border-border bg-background px-2 text-xs font-medium text-foreground disabled:opacity-50"
+              title="내보내기(Export) 시 만들어질 영상 해상도"
+            >
+              {EXPORT_QUALITIES.map((q) => (
+                <option key={q.id} value={q.id}>
+                  {q.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 px-2.5 text-xs"
+            disabled={exportProgress != null}
+            onClick={() => setExitConfirmOpen(true)}
+          >
+            <X className="mr-1.5 size-3.5" aria-hidden />
+            나가기
+          </Button>
+        </div>
       </header>
 
       <AlertDialog open={exitConfirmOpen} onOpenChange={setExitConfirmOpen}>

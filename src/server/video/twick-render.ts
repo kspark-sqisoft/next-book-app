@@ -16,6 +16,11 @@ export type TwickRenderSettings = {
   height: number;
   fps: number;
   includeAudio?: boolean;
+  /**
+   * 출력 화질 배율 — browser-render가 resolutionScale로 사용(low=1×, medium=1.5×, high=2×).
+   * 최종 출력 해상도 = (width×height) × 배율. 컴포지션(scene) 좌표계는 width/height 그대로 유지된다.
+   */
+  quality?: "low" | "medium" | "high";
 };
 
 /** 렌더 1건 상한 — 헤드리스가 특정 프레임에서 멈춰도 프로세스를 무한 점유하지 않도록 */

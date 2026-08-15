@@ -17,6 +17,8 @@ type RenderSettings = {
   height: number;
   fps: number;
   includeAudio?: boolean;
+  /** 출력 화질 배율(browser-render resolutionScale): low=1×, medium=1.5×, high=2× */
+  quality?: "low" | "medium" | "high";
 };
 
 declare global {
@@ -51,6 +53,7 @@ export default function InternalRenderPage() {
           width: settings.width,
           height: settings.height,
           fps: settings.fps,
+          quality: settings.quality ?? "medium",
           includeAudio: settings.includeAudio ?? true,
           onProgress: (p: number) => {
             try {
