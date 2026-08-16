@@ -13,6 +13,7 @@ import {
   SkipForward,
   SlidersHorizontal,
   Trash2,
+  X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -36,11 +37,14 @@ import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { publicAssetUrl } from "@/lib/api";
 import {
+  BOOK_CHART_DATA_MAX,
   BOOK_MEDIA_OBJECT_FIT_VALUES,
   BOOK_NEWS_CATEGORIES,
   BOOK_SHAPE_KINDS,
   BOOK_WIDGET_DEFAULT_ROUNDED_RADIUS,
   type BookCanvasElement,
+  type BookChartDatum,
+  type BookChartType,
   type BookDigitalClockDisplay,
   type BookDigitalClockDisplayResolved,
   type BookMediaObjectFit,
@@ -48,10 +52,15 @@ import {
   type BookShapeKind,
   type BookWeatherDisplay,
   type BookWeatherDisplayResolved,
+  DEFAULT_BOOK_CHART_COLOR,
+  DEFAULT_BOOK_CHART_DATA,
+  DEFAULT_BOOK_CHART_TYPE,
   DEFAULT_MEDIA_PLAYLIST_IMAGE_DURATION_SEC,
   formatBookMediaClock,
   isBookElementLocked,
   MEDIA_PLAYLIST_MAX_ITEMS,
+  parseBookChartData,
+  parseBookChartType,
   parseBookClockBackground,
   parseBookWidgetTextColor,
   resolveBookDigitalClockDisplay,
@@ -531,7 +540,175 @@ type WidgetTextColorFieldKey =
   | "weatherTextColor"
   | "clockTextColor"
   | "newsTextColor"
-  | "newsMetaColor";
+  | "newsMetaColor"
+  | "chartColor";
+
+/** 같은 검색어 반복 지오코딩 방지용 세션 캐시(null = 결과 없음) */
+const mapGeocodeCache = new Map<
+  string,
+  { lat: number; lon: number; bbox: [number, number, number, number] } | null
+>();
+
+/** Nominatim으로 지오코딩 후 지도 위젯에 좌표·bbox를 반영 */
+async function geocodeAndApplyMap(
+  id: string,
+  query: string,
+  onChange: BookInspectorPanelProps["onChange"],
+): Promise<void> {
+  onChange(id, { mapQuery: query });
+  if (!query) {
+    onChange(id, { mapLat: undefined, mapLon: undefined, mapBbox: undefined });
+    return;
+  }
+  if (mapGeocodeCache.has(query)) {
+    const hit = mapGeocodeCache.get(query);
+    if (hit) {
+      onChange(id, { mapLat: hit.lat, mapLon: hit.lon, mapBbox: hit.bbox });
+    }
+    return;
+  }
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`,
+      { headers: { "Accept-Language": "ko" } },
+    );
+    const arr = (await res.json()) as Array<{
+      lat: string;
+      lon: string;
+      boundingbox: string[];
+    }>;
+    const first = arr[0];
+    if (!first) {
+      mapGeocodeCache.set(query, null);
+      return;
+    }
+    // boundingbox: [south, north, west, east]
+    const [s, n, w, e] = first.boundingbox.map(Number);
+    const bbox: [number, number, number, number] = [w!, s!, e!, n!];
+    const parsed = { lat: Number(first.lat), lon: Number(first.lon), bbox };
+    mapGeocodeCache.set(query, parsed);
+    onChange(id, {
+      mapLat: parsed.lat,
+      mapLon: parsed.lon,
+      mapBbox: parsed.bbox,
+    });
+  } catch {
+    /* 네트워크·파싱 실패는 조용히 무시(주소만 저장됨) */
+  }
+}
+
+const CHART_TYPE_OPTIONS: { value: BookChartType; label: string }[] = [
+  { value: "line", label: "라인" },
+  { value: "bar", label: "바" },
+  { value: "pie", label: "파이" },
+];
+
+/** 차트 위젯 전용 편집 필드(종류·데이터·강조색) */
+function BookChartInspectorFields({
+  el,
+  onChange,
+}: {
+  el: Extract<BookCanvasElement, { type: "chart" }>;
+  onChange: BookInspectorPanelProps["onChange"];
+}) {
+  const chartType = parseBookChartType(el.chartType) ?? DEFAULT_BOOK_CHART_TYPE;
+  const data: BookChartDatum[] = parseBookChartData(el.chartData) ?? [
+    ...DEFAULT_BOOK_CHART_DATA,
+  ];
+
+  const writeData = (next: BookChartDatum[]) =>
+    onChange(el.id, { chartData: next.slice(0, BOOK_CHART_DATA_MAX) });
+
+  return (
+    <>
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        데이터와 종류를 지정하면 슬라이드에 차트를 그립니다.
+      </p>
+      <div className="space-y-2">
+        <Label className="text-[11px]">종류</Label>
+        <div className="flex gap-1.5">
+          {CHART_TYPE_OPTIONS.map((opt) => (
+            <Button
+              key={opt.value}
+              type="button"
+              size="sm"
+              variant={chartType === opt.value ? "default" : "outline"}
+              className="flex-1"
+              onClick={() => onChange(el.id, { chartType: opt.value })}
+            >
+              {opt.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label className="text-[11px]">데이터</Label>
+        <div className="flex flex-col gap-1.5">
+          {data.map((row, i) => (
+            <div key={i} className="flex items-center gap-1.5">
+              <Input
+                className="h-8 flex-1 text-xs"
+                placeholder="이름"
+                value={row.label}
+                onChange={(e) => {
+                  const next = data.map((r, j) =>
+                    j === i ? { ...r, label: e.target.value } : r,
+                  );
+                  writeData(next);
+                }}
+              />
+              <Input
+                className="h-8 w-20 text-xs"
+                type="number"
+                inputMode="decimal"
+                value={String(row.value)}
+                onChange={(e) => {
+                  const n = Number(e.target.value);
+                  const next = data.map((r, j) =>
+                    j === i ? { ...r, value: Number.isFinite(n) ? n : 0 } : r,
+                  );
+                  writeData(next);
+                }}
+              />
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="size-8 shrink-0 text-muted-foreground hover:text-destructive"
+                aria-label="행 삭제"
+                onClick={() => writeData(data.filter((_, j) => j !== i))}
+              >
+                <X className="size-4" aria-hidden />
+              </Button>
+            </div>
+          ))}
+        </div>
+        {data.length < BOOK_CHART_DATA_MAX ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="w-full"
+            onClick={() => writeData([...data, { label: "", value: 0 }])}
+          >
+            행 추가
+          </Button>
+        ) : null}
+      </div>
+      <OptionalWidgetTextColorFields
+        elementId={el.id}
+        value={el.chartColor}
+        field="chartColor"
+        defaultHex={DEFAULT_BOOK_CHART_COLOR}
+        colorAriaLabel="차트 강조색"
+        labelText="강조 색"
+        appliedHint="막대·선·첫 조각 색에 적용됩니다."
+        defaultHint="끄면 기본 강조색을 씁니다."
+        onChange={onChange}
+      />
+    </>
+  );
+}
 
 function OptionalWidgetTextColorFields({
   elementId,
@@ -720,6 +897,10 @@ function ElementShapeChromeFields({
     el.type === "news" ||
     el.type === "mediaPlaylist" ||
     el.type === "webview" ||
+    el.type === "map" ||
+    el.type === "calendar" ||
+    el.type === "qr" ||
+    el.type === "chart" ||
     el.type === "ticker" ||
     el.type === "youtube"
       ? `저장하지 않으면 기본 ${BOOK_WIDGET_DEFAULT_ROUNDED_RADIUS}px(둥근 카드)입니다.`
@@ -2259,6 +2440,115 @@ export function BookInspectorPanel({
                         defaultHex="#ffffff"
                         colorAriaLabel="디지털 시계 글자색"
                         defaultHint="끄면 밝은 기본 글자색을 씁니다."
+                        onChange={onChange}
+                      />
+                      <ElementOpacitySlider
+                        elementId={selected.id}
+                        opacity={selected.opacity}
+                        onChange={onChange}
+                      />
+                      <ElementShapeChromeFields
+                        el={selected}
+                        onChange={onChange}
+                      />
+                      <PositionSizeFields el={selected} onChange={onChange} />
+                    </>
+                  ) : selected.type === "map" ? (
+                    <>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        주소·지역을 입력하면 OpenStreetMap에서 위치를 찾아
+                        지도를 표시합니다.
+                      </p>
+                      <div className="space-y-1">
+                        <Label className="text-[11px]">주소·지역</Label>
+                        <Input
+                          className="text-xs"
+                          placeholder="예: 서울특별시청, 부산역"
+                          defaultValue={selected.mapQuery ?? ""}
+                          key={`${selected.id}:mapQuery`}
+                          onBlur={(e) =>
+                            void geocodeAndApplyMap(
+                              selected.id,
+                              e.target.value.trim(),
+                              onChange,
+                            )
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              void geocodeAndApplyMap(
+                                selected.id,
+                                e.currentTarget.value.trim(),
+                                onChange,
+                              );
+                            }
+                          }}
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                          입력 후 Enter 또는 포커스를 벗어나면 위치를 찾습니다.
+                        </p>
+                      </div>
+                      <ElementOpacitySlider
+                        elementId={selected.id}
+                        opacity={selected.opacity}
+                        onChange={onChange}
+                      />
+                      <ElementShapeChromeFields
+                        el={selected}
+                        onChange={onChange}
+                      />
+                      <PositionSizeFields el={selected} onChange={onChange} />
+                    </>
+                  ) : selected.type === "calendar" ? (
+                    <>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        기기의 현재 달을 표시하고 오늘을 강조합니다.
+                      </p>
+                      <ElementOpacitySlider
+                        elementId={selected.id}
+                        opacity={selected.opacity}
+                        onChange={onChange}
+                      />
+                      <ElementShapeChromeFields
+                        el={selected}
+                        onChange={onChange}
+                      />
+                      <PositionSizeFields el={selected} onChange={onChange} />
+                    </>
+                  ) : selected.type === "qr" ? (
+                    <>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        입력한 텍스트·URL을 QR 코드로 표시합니다.
+                      </p>
+                      <div className="space-y-1">
+                        <Label className="text-[11px]">QR 값(텍스트/URL)</Label>
+                        <Input
+                          className="font-mono text-xs"
+                          placeholder="https://example.com"
+                          value={selected.qrValue ?? ""}
+                          onChange={(e) =>
+                            onChange(selected.id, { qrValue: e.target.value })
+                          }
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                          최대 2048자까지 인코딩합니다.
+                        </p>
+                      </div>
+                      <ElementOpacitySlider
+                        elementId={selected.id}
+                        opacity={selected.opacity}
+                        onChange={onChange}
+                      />
+                      <ElementShapeChromeFields
+                        el={selected}
+                        onChange={onChange}
+                      />
+                      <PositionSizeFields el={selected} onChange={onChange} />
+                    </>
+                  ) : selected.type === "chart" ? (
+                    <>
+                      <BookChartInspectorFields
+                        el={selected}
                         onChange={onChange}
                       />
                       <ElementOpacitySlider

@@ -246,6 +246,12 @@ export function snapKonvaBookNodePositionToGrid(
 /** 뉴스 위젯 나열 방식 */
 export type BookNewsDisplayMode = "list" | "carousel";
 
+/** 차트 위젯 종류 */
+export type BookChartType = "line" | "bar" | "pie";
+
+/** 차트 위젯 데이터 항목 */
+export type BookChartDatum = { label: string; value: number };
+
 /** 미디어 위젯: 이미지 한 장. `durationSec` 생략 시 5초. */
 export type BookMediaPlaylistImageItem = {
   id: string;
@@ -442,6 +448,86 @@ export type BookCanvasElement =
       height: number;
       /** 위젯 안에 임베드할 페이지 주소(http/https). 비우면 안내 문구 표시 */
       webviewUrl?: string;
+      opacity?: number;
+      rotation?: number;
+      borderRadius?: number;
+      outlineWidth?: number;
+      outlineColor?: string;
+      visible?: boolean;
+      locked?: boolean;
+      presentationHoldSec?: number;
+    }
+  | {
+      id: string;
+      type: "map";
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      /** 지오코딩 대상 주소·지역. 비우면 안내 문구 표시 */
+      mapQuery?: string;
+      /** 마커 위도(있으면 표시) */
+      mapLat?: number;
+      /** 마커 경도(있으면 표시) */
+      mapLon?: number;
+      /** OSM embed bbox `[west, south, east, north]`. 없으면 지도 미표시 */
+      mapBbox?: [number, number, number, number];
+      opacity?: number;
+      rotation?: number;
+      borderRadius?: number;
+      outlineWidth?: number;
+      outlineColor?: string;
+      visible?: boolean;
+      locked?: boolean;
+      presentationHoldSec?: number;
+    }
+  | {
+      id: string;
+      type: "calendar";
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      opacity?: number;
+      rotation?: number;
+      borderRadius?: number;
+      outlineWidth?: number;
+      outlineColor?: string;
+      visible?: boolean;
+      locked?: boolean;
+      presentationHoldSec?: number;
+    }
+  | {
+      id: string;
+      type: "qr";
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      /** QR로 인코딩할 텍스트·URL(최대 2048자). 비우면 안내 문구 표시 */
+      qrValue?: string;
+      opacity?: number;
+      rotation?: number;
+      borderRadius?: number;
+      outlineWidth?: number;
+      outlineColor?: string;
+      visible?: boolean;
+      locked?: boolean;
+      presentationHoldSec?: number;
+    }
+  | {
+      id: string;
+      type: "chart";
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      /** 차트 종류. 생략 시 bar */
+      chartType?: BookChartType;
+      /** 데이터 항목(최대 24개). 생략 시 기본 예시 */
+      chartData?: BookChartDatum[];
+      /** 강조 색(CSS). 생략 시 기본 accent */
+      chartColor?: string;
       opacity?: number;
       rotation?: number;
       borderRadius?: number;
@@ -892,6 +978,10 @@ export function resolveBookElementBorderRadius(el: BookCanvasElement): number {
     el.type === "news" ||
     el.type === "mediaPlaylist" ||
     el.type === "webview" ||
+    el.type === "map" ||
+    el.type === "calendar" ||
+    el.type === "qr" ||
+    el.type === "chart" ||
     el.type === "ticker" ||
     el.type === "youtube"
   ) {
@@ -991,6 +1081,102 @@ export const DEFAULT_BOOK_NEWS_WIDGET_HEIGHT = 200;
 /** 디지털 시계 위젯 기본 프레임(px) */
 export const DEFAULT_BOOK_WEBVIEW_WIDTH = 480;
 export const DEFAULT_BOOK_WEBVIEW_HEIGHT = 320;
+
+/** 지도 위젯 기본 프레임(px) */
+export const DEFAULT_BOOK_MAP_WIDTH = 480;
+export const DEFAULT_BOOK_MAP_HEIGHT = 320;
+/** 지도 위젯 기본 검색어 */
+export const DEFAULT_BOOK_MAP_QUERY = "서울";
+
+/** 캘린더 위젯 기본 프레임(px) */
+export const DEFAULT_BOOK_CALENDAR_WIDTH = 320;
+export const DEFAULT_BOOK_CALENDAR_HEIGHT = 300;
+
+/** QR 위젯 기본 프레임(px) */
+export const DEFAULT_BOOK_QR_WIDTH = 200;
+export const DEFAULT_BOOK_QR_HEIGHT = 200;
+/** QR 위젯 기본값(비우면 안내 문구) */
+export const DEFAULT_BOOK_QR_VALUE = "";
+
+/** 차트 위젯 기본 프레임(px) */
+export const DEFAULT_BOOK_CHART_WIDTH = 360;
+export const DEFAULT_BOOK_CHART_HEIGHT = 260;
+/** 차트 위젯 기본 강조 색 */
+export const DEFAULT_BOOK_CHART_COLOR = "#2563eb";
+/** 차트 위젯 기본 종류 */
+export const DEFAULT_BOOK_CHART_TYPE: BookChartType = "bar";
+/** 차트 위젯 기본 데이터 */
+export const DEFAULT_BOOK_CHART_DATA: BookChartDatum[] = [
+  { label: "A", value: 30 },
+  { label: "B", value: 50 },
+  { label: "C", value: 20 },
+];
+/** 차트 데이터 최대 항목 수 */
+export const BOOK_CHART_DATA_MAX = 24;
+
+/** 지도 검색어: 앞뒤 공백 제거, 512자 제한. 빈 값이면 undefined */
+export function parseBookMapQuery(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const s = raw.trim();
+  if (!s || s.length > 512) return undefined;
+  return s;
+}
+
+/** OSM 임베드 URL. `mapBbox`가 없으면 undefined(지도 미표시) */
+export function buildBookOsmEmbedUrl(
+  el: Extract<BookCanvasElement, { type: "map" }>,
+): string | undefined {
+  const bbox = el.mapBbox;
+  if (
+    !Array.isArray(bbox) ||
+    bbox.length !== 4 ||
+    !bbox.every((n) => typeof n === "number" && Number.isFinite(n))
+  ) {
+    return undefined;
+  }
+  const [w, s, e, n] = bbox;
+  let url = `https://www.openstreetmap.org/export/embed.html?bbox=${w}%2C${s}%2C${e}%2C${n}&layer=mapnik`;
+  if (
+    typeof el.mapLat === "number" &&
+    Number.isFinite(el.mapLat) &&
+    typeof el.mapLon === "number" &&
+    Number.isFinite(el.mapLon)
+  ) {
+    url += `&marker=${el.mapLat}%2C${el.mapLon}`;
+  }
+  return url;
+}
+
+/** QR 값: 앞뒤 공백 제거, 2048자 제한. 빈 값·초과면 undefined */
+export function parseBookQrValue(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const s = raw.trim();
+  if (!s || s.length > 2048) return undefined;
+  return s;
+}
+
+/** 차트 종류: line·bar·pie 중 하나. 그 외는 undefined */
+export function parseBookChartType(raw: unknown): BookChartType | undefined {
+  if (raw === "line" || raw === "bar" || raw === "pie") return raw;
+  return undefined;
+}
+
+/** 차트 데이터: `{label(≤40), value(유한수)}` 배열로 정규화, 최대 24개 */
+export function parseBookChartData(raw: unknown): BookChartDatum[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out: BookChartDatum[] = [];
+  for (const item of raw) {
+    if (out.length >= BOOK_CHART_DATA_MAX) break;
+    if (!item || typeof item !== "object") continue;
+    const rec = item as Record<string, unknown>;
+    const label =
+      typeof rec.label === "string" ? rec.label.slice(0, 40) : undefined;
+    const value = Number(rec.value);
+    if (label === undefined || !Number.isFinite(value)) continue;
+    out.push({ label, value });
+  }
+  return out;
+}
 
 export const DEFAULT_BOOK_TICKER_WIDTH = 960;
 export const DEFAULT_BOOK_TICKER_HEIGHT = 64;
@@ -1157,6 +1343,50 @@ function normalizeBookElementsForSave(
         DEFAULT_BOOK_WEBVIEW_HEIGHT,
       );
       return finalizeElementForApi({ ...el, ...xy, ...wh });
+    }
+    if (el.type === "map") {
+      const wh = finiteWH(
+        el.width,
+        el.height,
+        DEFAULT_BOOK_MAP_WIDTH,
+        DEFAULT_BOOK_MAP_HEIGHT,
+      );
+      return finalizeElementForApi({ ...el, ...xy, ...wh });
+    }
+    if (el.type === "calendar") {
+      const wh = finiteWH(
+        el.width,
+        el.height,
+        DEFAULT_BOOK_CALENDAR_WIDTH,
+        DEFAULT_BOOK_CALENDAR_HEIGHT,
+      );
+      return finalizeElementForApi({ ...el, ...xy, ...wh });
+    }
+    if (el.type === "qr") {
+      const wh = finiteWH(
+        el.width,
+        el.height,
+        DEFAULT_BOOK_QR_WIDTH,
+        DEFAULT_BOOK_QR_HEIGHT,
+      );
+      return finalizeElementForApi({ ...el, ...xy, ...wh });
+    }
+    if (el.type === "chart") {
+      const wh = finiteWH(
+        el.width,
+        el.height,
+        DEFAULT_BOOK_CHART_WIDTH,
+        DEFAULT_BOOK_CHART_HEIGHT,
+      );
+      const chartType = parseBookChartType(el.chartType);
+      const chartData = parseBookChartData(el.chartData);
+      return finalizeElementForApi({
+        ...el,
+        ...xy,
+        ...wh,
+        ...(chartType ? { chartType } : {}),
+        ...(chartData ? { chartData } : {}),
+      });
     }
     if (el.type === "ticker") {
       const wh = finiteWH(

@@ -18,6 +18,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  CalendarDays,
+  ChartColumn,
   ChevronDown,
   ChevronsDown,
   ChevronsUp,
@@ -32,9 +34,11 @@ import {
   Layers,
   ListVideo,
   Lock,
+  MapPin,
   Megaphone,
   Newspaper,
   Pencil,
+  QrCode,
   Shapes,
   SquarePlay,
   Trash2,
@@ -78,6 +82,14 @@ function bookElementLayerLabel(el: BookCanvasElement): string {
       return "디지털 시계";
     case "webview":
       return "웹뷰";
+    case "map":
+      return "지도";
+    case "calendar":
+      return "캘린더";
+    case "qr":
+      return "QR코드";
+    case "chart":
+      return "차트";
     case "ticker": {
       const t = el.tickerText?.trim() ?? "";
       if (t) return t.length > 32 ? `${t.slice(0, 32)}…` : t;
@@ -154,6 +166,14 @@ function LayerTypeIcon({ el }: { el: BookCanvasElement }) {
       return <Clock className={cls} aria-hidden />;
     case "webview":
       return <Globe className={cls} aria-hidden />;
+    case "map":
+      return <MapPin className={cls} aria-hidden />;
+    case "calendar":
+      return <CalendarDays className={cls} aria-hidden />;
+    case "qr":
+      return <QrCode className={cls} aria-hidden />;
+    case "chart":
+      return <ChartColumn className={cls} aria-hidden />;
     case "ticker":
       return <Megaphone className={cls} aria-hidden />;
     case "youtube":

@@ -2,7 +2,7 @@
 
 // 새 북 작성: 빈 문서로 워크스페이스 열고 createBook 저장, 상세와 동일 패널·캔버스 구성
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Save } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   useCallback,
@@ -56,12 +56,24 @@ import {
   type BookShapeKind,
   createBookShapeElement,
   createEmptyEditorPage,
+  DEFAULT_BOOK_CALENDAR_HEIGHT,
+  DEFAULT_BOOK_CALENDAR_WIDTH,
+  DEFAULT_BOOK_CHART_DATA,
+  DEFAULT_BOOK_CHART_HEIGHT,
+  DEFAULT_BOOK_CHART_TYPE,
+  DEFAULT_BOOK_CHART_WIDTH,
   DEFAULT_BOOK_DIGITAL_CLOCK_HEIGHT,
   DEFAULT_BOOK_DIGITAL_CLOCK_WIDTH,
+  DEFAULT_BOOK_MAP_HEIGHT,
+  DEFAULT_BOOK_MAP_QUERY,
+  DEFAULT_BOOK_MAP_WIDTH,
   DEFAULT_BOOK_MEDIA_PLAYLIST_HEIGHT,
   DEFAULT_BOOK_MEDIA_PLAYLIST_WIDTH,
   DEFAULT_BOOK_NEWS_WIDGET_HEIGHT,
   DEFAULT_BOOK_NEWS_WIDGET_WIDTH,
+  DEFAULT_BOOK_QR_HEIGHT,
+  DEFAULT_BOOK_QR_VALUE,
+  DEFAULT_BOOK_QR_WIDTH,
   DEFAULT_BOOK_TICKER_HEIGHT,
   DEFAULT_BOOK_TICKER_WIDTH,
   DEFAULT_BOOK_WEATHER_WIDGET_HEIGHT,
@@ -821,6 +833,90 @@ export function BookEditorPage() {
     [activePageIndex, updatePages],
   );
 
+  const addMapAt = useCallback(
+    (x: number, y: number) => {
+      const id = crypto.randomUUID();
+      const el: BookCanvasElement = {
+        id,
+        type: "map",
+        x,
+        y,
+        width: DEFAULT_BOOK_MAP_WIDTH,
+        height: DEFAULT_BOOK_MAP_HEIGHT,
+        mapQuery: DEFAULT_BOOK_MAP_QUERY,
+      };
+      updatePages((draft) => {
+        const p = draft[activePageIndex];
+        if (p) p.elements.push(el);
+      });
+      setSelectedIds([id]);
+    },
+    [activePageIndex, updatePages],
+  );
+
+  const addCalendarAt = useCallback(
+    (x: number, y: number) => {
+      const id = crypto.randomUUID();
+      const el: BookCanvasElement = {
+        id,
+        type: "calendar",
+        x,
+        y,
+        width: DEFAULT_BOOK_CALENDAR_WIDTH,
+        height: DEFAULT_BOOK_CALENDAR_HEIGHT,
+      };
+      updatePages((draft) => {
+        const p = draft[activePageIndex];
+        if (p) p.elements.push(el);
+      });
+      setSelectedIds([id]);
+    },
+    [activePageIndex, updatePages],
+  );
+
+  const addQrAt = useCallback(
+    (x: number, y: number) => {
+      const id = crypto.randomUUID();
+      const el: BookCanvasElement = {
+        id,
+        type: "qr",
+        x,
+        y,
+        width: DEFAULT_BOOK_QR_WIDTH,
+        height: DEFAULT_BOOK_QR_HEIGHT,
+        qrValue: DEFAULT_BOOK_QR_VALUE,
+      };
+      updatePages((draft) => {
+        const p = draft[activePageIndex];
+        if (p) p.elements.push(el);
+      });
+      setSelectedIds([id]);
+    },
+    [activePageIndex, updatePages],
+  );
+
+  const addChartAt = useCallback(
+    (x: number, y: number) => {
+      const id = crypto.randomUUID();
+      const el: BookCanvasElement = {
+        id,
+        type: "chart",
+        x,
+        y,
+        width: DEFAULT_BOOK_CHART_WIDTH,
+        height: DEFAULT_BOOK_CHART_HEIGHT,
+        chartType: DEFAULT_BOOK_CHART_TYPE,
+        chartData: [...DEFAULT_BOOK_CHART_DATA],
+      };
+      updatePages((draft) => {
+        const p = draft[activePageIndex];
+        if (p) p.elements.push(el);
+      });
+      setSelectedIds([id]);
+    },
+    [activePageIndex, updatePages],
+  );
+
   const addTickerAt = useCallback(
     (x: number, y: number) => {
       const id = crypto.randomUUID();
@@ -879,6 +975,22 @@ export function BookEditorPage() {
         addWebviewAt(point.x, point.y);
         return;
       }
+      if (kind === "map") {
+        addMapAt(point.x, point.y);
+        return;
+      }
+      if (kind === "calendar") {
+        addCalendarAt(point.x, point.y);
+        return;
+      }
+      if (kind === "qr") {
+        addQrAt(point.x, point.y);
+        return;
+      }
+      if (kind === "chart") {
+        addChartAt(point.x, point.y);
+        return;
+      }
       if (kind === "ticker") {
         addTickerAt(point.x, point.y);
         return;
@@ -900,9 +1012,13 @@ export function BookEditorPage() {
       );
     },
     [
+      addCalendarAt,
+      addChartAt,
       addDigitalClockAt,
+      addMapAt,
       addMediaPlaylistAt,
       addNewsAt,
+      addQrAt,
       addTextAt,
       addTickerAt,
       addWeatherAt,
@@ -963,6 +1079,29 @@ export function BookEditorPage() {
         addWebviewAt(p.x, p.y);
         return;
       }
+      if (kind === "map") {
+        const p = center(DEFAULT_BOOK_MAP_WIDTH, DEFAULT_BOOK_MAP_HEIGHT);
+        addMapAt(p.x, p.y);
+        return;
+      }
+      if (kind === "calendar") {
+        const p = center(
+          DEFAULT_BOOK_CALENDAR_WIDTH,
+          DEFAULT_BOOK_CALENDAR_HEIGHT,
+        );
+        addCalendarAt(p.x, p.y);
+        return;
+      }
+      if (kind === "qr") {
+        const p = center(DEFAULT_BOOK_QR_WIDTH, DEFAULT_BOOK_QR_HEIGHT);
+        addQrAt(p.x, p.y);
+        return;
+      }
+      if (kind === "chart") {
+        const p = center(DEFAULT_BOOK_CHART_WIDTH, DEFAULT_BOOK_CHART_HEIGHT);
+        addChartAt(p.x, p.y);
+        return;
+      }
       if (kind === "ticker") {
         const p = center(DEFAULT_BOOK_TICKER_WIDTH, DEFAULT_BOOK_TICKER_HEIGHT);
         addTickerAt(p.x, p.y);
@@ -981,9 +1120,13 @@ export function BookEditorPage() {
       );
     },
     [
+      addCalendarAt,
+      addChartAt,
       addDigitalClockAt,
+      addMapAt,
       addMediaPlaylistAt,
       addNewsAt,
+      addQrAt,
       addTextAt,
       addTickerAt,
       addWeatherAt,
@@ -1280,6 +1423,10 @@ export function BookEditorPage() {
     if (el.type === "mediaPlaylist") return "미디어 위젯";
     if (el.type === "digitalClock") return "디지털 시계 위젯";
     if (el.type === "webview") return "웹뷰 위젯";
+    if (el.type === "map") return "지도 위젯";
+    if (el.type === "calendar") return "캘린더 위젯";
+    if (el.type === "qr") return "QR코드 위젯";
+    if (el.type === "chart") return "차트 위젯";
     if (el.type === "ticker") return "티커 위젯";
     if (el.type === "youtube") return "유튜브 위젯";
     if (el.type === "drawing") return "그리기";
@@ -1454,14 +1601,57 @@ export function BookEditorPage() {
                   setSelectedIds([]);
                 }}
               >
-                {currentPagePlaybackSec != null ? (
-                  <div
-                    className="pointer-events-none absolute right-2 top-2 z-10 rounded-md bg-black/60 px-2 py-1 font-mono text-[11px] tabular-nums text-white shadow-sm backdrop-blur-sm"
-                    title="기준 레이어 기준 이 페이지의 슬라이드쇼 재생 시간"
+                {/* 캔버스 우상단 — 현재 페이지 이름 + 재생 시간, 좌우 페이지 이동(페이지 1개면 이동 숨김) */}
+                <div className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-1 text-[11px] text-white shadow-sm backdrop-blur-sm">
+                  {pages.length > 1 ? (
+                    <button
+                      type="button"
+                      className="flex size-5 items-center justify-center rounded hover:bg-white/20 disabled:opacity-30"
+                      title="이전 페이지"
+                      aria-label="이전 페이지"
+                      disabled={activePageIndex <= 0}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
+                    >
+                      <ChevronLeft className="size-3.5" aria-hidden />
+                    </button>
+                  ) : null}
+                  <span
+                    className="max-w-[12rem] truncate font-medium"
+                    title="현재 페이지"
                   >
-                    재생 {currentPagePlaybackSec}초
-                  </div>
-                ) : null}
+                    {currentPage?.name?.trim() ||
+                      `슬라이드 ${activePageIndex + 1}`}
+                  </span>
+                  {currentPagePlaybackSec != null ? (
+                    <span
+                      className="font-mono tabular-nums text-white/70"
+                      title="기준 레이어 기준 이 페이지의 슬라이드쇼 재생 시간"
+                    >
+                      · 재생 {currentPagePlaybackSec}초
+                    </span>
+                  ) : null}
+                  {pages.length > 1 ? (
+                    <>
+                      <span className="tabular-nums text-white/50">
+                        {activePageIndex + 1}/{pages.length}
+                      </span>
+                      <button
+                        type="button"
+                        className="flex size-5 items-center justify-center rounded hover:bg-white/20 disabled:opacity-30"
+                        title="다음 페이지"
+                        aria-label="다음 페이지"
+                        disabled={activePageIndex >= pages.length - 1}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={() =>
+                          setPageIndex((i) => Math.min(pages.length - 1, i + 1))
+                        }
+                      >
+                        <ChevronRight className="size-3.5" aria-hidden />
+                      </button>
+                    </>
+                  ) : null}
+                </div>
                 {currentPage ? (
                   <BookSlideCanvas
                     pageWidth={slideWidth}

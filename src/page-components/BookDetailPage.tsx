@@ -2,7 +2,13 @@
 
 // 북 상세·편집: 서버 페이지 → 로컬 히스토리, 소유자는 BookDetailOwnerView / 비로그인·타인은 읽기 전용 게스트 뷰
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { MonitorPlay, Save, Trash2 } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  MonitorPlay,
+  Save,
+  Trash2,
+} from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -94,12 +100,24 @@ import {
   type BookShapeKind,
   createBookShapeElement,
   createEmptyEditorPage,
+  DEFAULT_BOOK_CALENDAR_HEIGHT,
+  DEFAULT_BOOK_CALENDAR_WIDTH,
+  DEFAULT_BOOK_CHART_DATA,
+  DEFAULT_BOOK_CHART_HEIGHT,
+  DEFAULT_BOOK_CHART_TYPE,
+  DEFAULT_BOOK_CHART_WIDTH,
   DEFAULT_BOOK_DIGITAL_CLOCK_HEIGHT,
   DEFAULT_BOOK_DIGITAL_CLOCK_WIDTH,
+  DEFAULT_BOOK_MAP_HEIGHT,
+  DEFAULT_BOOK_MAP_QUERY,
+  DEFAULT_BOOK_MAP_WIDTH,
   DEFAULT_BOOK_MEDIA_PLAYLIST_HEIGHT,
   DEFAULT_BOOK_MEDIA_PLAYLIST_WIDTH,
   DEFAULT_BOOK_NEWS_WIDGET_HEIGHT,
   DEFAULT_BOOK_NEWS_WIDGET_WIDTH,
+  DEFAULT_BOOK_QR_HEIGHT,
+  DEFAULT_BOOK_QR_VALUE,
+  DEFAULT_BOOK_QR_WIDTH,
   DEFAULT_BOOK_TICKER_HEIGHT,
   DEFAULT_BOOK_TICKER_WIDTH,
   DEFAULT_BOOK_WEATHER_WIDGET_HEIGHT,
@@ -1033,6 +1051,90 @@ function BookDetailOwnerView({
     [activePageIndex, updatePages],
   );
 
+  const addMapAt = useCallback(
+    (x: number, y: number) => {
+      const id = crypto.randomUUID();
+      const el: BookCanvasElement = {
+        id,
+        type: "map",
+        x,
+        y,
+        width: DEFAULT_BOOK_MAP_WIDTH,
+        height: DEFAULT_BOOK_MAP_HEIGHT,
+        mapQuery: DEFAULT_BOOK_MAP_QUERY,
+      };
+      updatePages((draft) => {
+        const p = draft[activePageIndex];
+        if (p) p.elements.push(el);
+      });
+      setSelectedIds([id]);
+    },
+    [activePageIndex, updatePages],
+  );
+
+  const addCalendarAt = useCallback(
+    (x: number, y: number) => {
+      const id = crypto.randomUUID();
+      const el: BookCanvasElement = {
+        id,
+        type: "calendar",
+        x,
+        y,
+        width: DEFAULT_BOOK_CALENDAR_WIDTH,
+        height: DEFAULT_BOOK_CALENDAR_HEIGHT,
+      };
+      updatePages((draft) => {
+        const p = draft[activePageIndex];
+        if (p) p.elements.push(el);
+      });
+      setSelectedIds([id]);
+    },
+    [activePageIndex, updatePages],
+  );
+
+  const addQrAt = useCallback(
+    (x: number, y: number) => {
+      const id = crypto.randomUUID();
+      const el: BookCanvasElement = {
+        id,
+        type: "qr",
+        x,
+        y,
+        width: DEFAULT_BOOK_QR_WIDTH,
+        height: DEFAULT_BOOK_QR_HEIGHT,
+        qrValue: DEFAULT_BOOK_QR_VALUE,
+      };
+      updatePages((draft) => {
+        const p = draft[activePageIndex];
+        if (p) p.elements.push(el);
+      });
+      setSelectedIds([id]);
+    },
+    [activePageIndex, updatePages],
+  );
+
+  const addChartAt = useCallback(
+    (x: number, y: number) => {
+      const id = crypto.randomUUID();
+      const el: BookCanvasElement = {
+        id,
+        type: "chart",
+        x,
+        y,
+        width: DEFAULT_BOOK_CHART_WIDTH,
+        height: DEFAULT_BOOK_CHART_HEIGHT,
+        chartType: DEFAULT_BOOK_CHART_TYPE,
+        chartData: [...DEFAULT_BOOK_CHART_DATA],
+      };
+      updatePages((draft) => {
+        const p = draft[activePageIndex];
+        if (p) p.elements.push(el);
+      });
+      setSelectedIds([id]);
+    },
+    [activePageIndex, updatePages],
+  );
+
   const addTickerAt = useCallback(
     (x: number, y: number) => {
       const id = crypto.randomUUID();
@@ -1424,6 +1526,22 @@ function BookDetailOwnerView({
         addWebviewAt(point.x, point.y);
         return;
       }
+      if (kind === "map") {
+        addMapAt(point.x, point.y);
+        return;
+      }
+      if (kind === "calendar") {
+        addCalendarAt(point.x, point.y);
+        return;
+      }
+      if (kind === "qr") {
+        addQrAt(point.x, point.y);
+        return;
+      }
+      if (kind === "chart") {
+        addChartAt(point.x, point.y);
+        return;
+      }
       if (kind === "ticker") {
         addTickerAt(point.x, point.y);
         return;
@@ -1453,9 +1571,13 @@ function BookDetailOwnerView({
       toast.error("지원하지 않는 위젯 종류입니다.");
     },
     [
+      addCalendarAt,
+      addChartAt,
       addDigitalClockAt,
+      addMapAt,
       addMediaPlaylistAt,
       addNewsAt,
+      addQrAt,
       addTextAt,
       addTickerAt,
       addWeatherAt,
@@ -1552,6 +1674,29 @@ function BookDetailOwnerView({
         addWebviewAt(p.x, p.y);
         return;
       }
+      if (kind === "map") {
+        const p = center(DEFAULT_BOOK_MAP_WIDTH, DEFAULT_BOOK_MAP_HEIGHT);
+        addMapAt(p.x, p.y);
+        return;
+      }
+      if (kind === "calendar") {
+        const p = center(
+          DEFAULT_BOOK_CALENDAR_WIDTH,
+          DEFAULT_BOOK_CALENDAR_HEIGHT,
+        );
+        addCalendarAt(p.x, p.y);
+        return;
+      }
+      if (kind === "qr") {
+        const p = center(DEFAULT_BOOK_QR_WIDTH, DEFAULT_BOOK_QR_HEIGHT);
+        addQrAt(p.x, p.y);
+        return;
+      }
+      if (kind === "chart") {
+        const p = center(DEFAULT_BOOK_CHART_WIDTH, DEFAULT_BOOK_CHART_HEIGHT);
+        addChartAt(p.x, p.y);
+        return;
+      }
       if (kind === "ticker") {
         const p = center(DEFAULT_BOOK_TICKER_WIDTH, DEFAULT_BOOK_TICKER_HEIGHT);
         addTickerAt(p.x, p.y);
@@ -1582,9 +1727,13 @@ function BookDetailOwnerView({
       }
     },
     [
+      addCalendarAt,
+      addChartAt,
       addDigitalClockAt,
+      addMapAt,
       addMediaPlaylistAt,
       addNewsAt,
+      addQrAt,
       addTextAt,
       addTickerAt,
       addWeatherAt,
@@ -1944,6 +2093,10 @@ function BookDetailOwnerView({
     if (el.type === "mediaPlaylist") return "미디어 위젯";
     if (el.type === "digitalClock") return "디지털 시계 위젯";
     if (el.type === "webview") return "웹뷰 위젯";
+    if (el.type === "map") return "지도 위젯";
+    if (el.type === "calendar") return "캘린더 위젯";
+    if (el.type === "qr") return "QR코드 위젯";
+    if (el.type === "chart") return "차트 위젯";
     if (el.type === "ticker") return "티커 위젯";
     if (el.type === "youtube") return "유튜브 위젯";
     if (el.type === "drawing") return "그리기";
@@ -2387,14 +2540,59 @@ function BookDetailOwnerView({
                   setSelectedIds([]);
                 }}
               >
-                {activePagePlaybackSec != null ? (
-                  <div
-                    className="pointer-events-none absolute right-2 top-2 z-10 rounded-md bg-black/60 px-2 py-1 font-mono text-[11px] tabular-nums text-white shadow-sm backdrop-blur-sm"
-                    title="기준 레이어 기준 이 페이지의 슬라이드쇼 재생 시간"
+                {/* 캔버스 우상단 — 현재 페이지 이름 + 재생 시간, 좌우 페이지 이동(페이지 1개면 이동 숨김) */}
+                <div className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-1 text-[11px] text-white shadow-sm backdrop-blur-sm">
+                  {localPages.length > 1 ? (
+                    <button
+                      type="button"
+                      className="flex size-5 items-center justify-center rounded hover:bg-white/20 disabled:opacity-30"
+                      title="이전 페이지"
+                      aria-label="이전 페이지"
+                      disabled={activePageIndex <= 0}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
+                    >
+                      <ChevronLeft className="size-3.5" aria-hidden />
+                    </button>
+                  ) : null}
+                  <span
+                    className="max-w-[12rem] truncate font-medium"
+                    title="현재 페이지"
                   >
-                    재생 {activePagePlaybackSec}초
-                  </div>
-                ) : null}
+                    {activePage?.name?.trim() ||
+                      `슬라이드 ${activePageIndex + 1}`}
+                  </span>
+                  {activePagePlaybackSec != null ? (
+                    <span
+                      className="font-mono tabular-nums text-white/70"
+                      title="기준 레이어 기준 이 페이지의 슬라이드쇼 재생 시간"
+                    >
+                      · 재생 {activePagePlaybackSec}초
+                    </span>
+                  ) : null}
+                  {localPages.length > 1 ? (
+                    <>
+                      <span className="tabular-nums text-white/50">
+                        {activePageIndex + 1}/{localPages.length}
+                      </span>
+                      <button
+                        type="button"
+                        className="flex size-5 items-center justify-center rounded hover:bg-white/20 disabled:opacity-30"
+                        title="다음 페이지"
+                        aria-label="다음 페이지"
+                        disabled={activePageIndex >= localPages.length - 1}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={() =>
+                          setPageIndex((i) =>
+                            Math.min(localPages.length - 1, i + 1),
+                          )
+                        }
+                      >
+                        <ChevronRight className="size-3.5" aria-hidden />
+                      </button>
+                    </>
+                  ) : null}
+                </div>
                 <BookSlideCanvas
                   pageWidth={slideWidth}
                   pageHeight={slideHeight}

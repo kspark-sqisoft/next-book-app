@@ -1298,6 +1298,188 @@ export async function captureBookSlideToDataURL(
             opacity: elOp,
           }),
         );
+      } else if (el.type === "map") {
+        // 썸네일은 정적 자리표시자 — 실제 지도는 렌더하지 않음
+        const mw = sx(el.width);
+        const mh = sx(el.height);
+        const mp = bookElementPivotKonva({
+          x: sx(el.x),
+          y: sx(el.y),
+          width: mw,
+          height: mh,
+          rotation: el.rotation,
+        });
+        const mUserOw = resolveBookElementOutlineWidth(el);
+        const mUserOc = resolveBookElementOutlineColor(el);
+        layer.add(
+          new Konva.Rect({
+            x: mp.cx,
+            y: mp.cy,
+            offsetX: mp.offsetX,
+            offsetY: mp.offsetY,
+            width: mw,
+            height: mh,
+            rotation: mp.rotation,
+            fill: "#0f172a",
+            stroke: mUserOw > 0 ? mUserOc : "rgba(148,163,184,0.45)",
+            strokeWidth: mUserOw > 0 ? Math.max(0.5, sx(mUserOw)) : 0.5,
+            cornerRadius: Math.max(0, sx(resolveBookElementBorderRadius(el))),
+            opacity: elOp,
+          }),
+        );
+        layer.add(
+          new Konva.Text({
+            x: mp.cx,
+            y: mp.cy,
+            offsetX: mp.offsetX,
+            offsetY: mp.offsetY,
+            width: mw,
+            height: mh,
+            rotation: mp.rotation,
+            text: `📍\n${el.mapQuery?.trim() || "지도"}`,
+            fontSize: Math.max(6, 9 * scale),
+            fill: "#94a3b8",
+            align: "center",
+            verticalAlign: "middle",
+            opacity: elOp,
+          }),
+        );
+      } else if (el.type === "calendar") {
+        const cw = sx(el.width);
+        const ch = sx(el.height);
+        const cp = bookElementPivotKonva({
+          x: sx(el.x),
+          y: sx(el.y),
+          width: cw,
+          height: ch,
+          rotation: el.rotation,
+        });
+        const cUserOw = resolveBookElementOutlineWidth(el);
+        const cUserOc = resolveBookElementOutlineColor(el);
+        const now = new Date();
+        layer.add(
+          new Konva.Rect({
+            x: cp.cx,
+            y: cp.cy,
+            offsetX: cp.offsetX,
+            offsetY: cp.offsetY,
+            width: cw,
+            height: ch,
+            rotation: cp.rotation,
+            fill: "#ffffff",
+            stroke: cUserOw > 0 ? cUserOc : "rgba(148,163,184,0.45)",
+            strokeWidth: cUserOw > 0 ? Math.max(0.5, sx(cUserOw)) : 0.5,
+            cornerRadius: Math.max(0, sx(resolveBookElementBorderRadius(el))),
+            opacity: elOp,
+          }),
+        );
+        layer.add(
+          new Konva.Text({
+            x: cp.cx,
+            y: cp.cy,
+            offsetX: cp.offsetX,
+            offsetY: cp.offsetY,
+            width: cw,
+            height: ch,
+            rotation: cp.rotation,
+            text: `📅 ${now.getFullYear()}년 ${now.getMonth() + 1}월`,
+            fontSize: Math.max(6, 9 * scale),
+            fill: "#334155",
+            align: "center",
+            verticalAlign: "middle",
+            opacity: elOp,
+          }),
+        );
+      } else if (el.type === "qr") {
+        const qw = sx(el.width);
+        const qh = sx(el.height);
+        const qp = bookElementPivotKonva({
+          x: sx(el.x),
+          y: sx(el.y),
+          width: qw,
+          height: qh,
+          rotation: el.rotation,
+        });
+        const qUserOw = resolveBookElementOutlineWidth(el);
+        const qUserOc = resolveBookElementOutlineColor(el);
+        layer.add(
+          new Konva.Rect({
+            x: qp.cx,
+            y: qp.cy,
+            offsetX: qp.offsetX,
+            offsetY: qp.offsetY,
+            width: qw,
+            height: qh,
+            rotation: qp.rotation,
+            fill: "#ffffff",
+            stroke: qUserOw > 0 ? qUserOc : "rgba(148,163,184,0.45)",
+            strokeWidth: qUserOw > 0 ? Math.max(0.5, sx(qUserOw)) : 0.5,
+            cornerRadius: Math.max(0, sx(resolveBookElementBorderRadius(el))),
+            opacity: elOp,
+          }),
+        );
+        layer.add(
+          new Konva.Text({
+            x: qp.cx,
+            y: qp.cy,
+            offsetX: qp.offsetX,
+            offsetY: qp.offsetY,
+            width: qw,
+            height: qh,
+            rotation: qp.rotation,
+            text: "▪ QR",
+            fontSize: Math.max(6, 9 * scale),
+            fill: "#334155",
+            align: "center",
+            verticalAlign: "middle",
+            opacity: elOp,
+          }),
+        );
+      } else if (el.type === "chart") {
+        const cw = sx(el.width);
+        const ch = sx(el.height);
+        const cp = bookElementPivotKonva({
+          x: sx(el.x),
+          y: sx(el.y),
+          width: cw,
+          height: ch,
+          rotation: el.rotation,
+        });
+        const chUserOw = resolveBookElementOutlineWidth(el);
+        const chUserOc = resolveBookElementOutlineColor(el);
+        layer.add(
+          new Konva.Rect({
+            x: cp.cx,
+            y: cp.cy,
+            offsetX: cp.offsetX,
+            offsetY: cp.offsetY,
+            width: cw,
+            height: ch,
+            rotation: cp.rotation,
+            fill: "#ffffff",
+            stroke: chUserOw > 0 ? chUserOc : "rgba(148,163,184,0.45)",
+            strokeWidth: chUserOw > 0 ? Math.max(0.5, sx(chUserOw)) : 0.5,
+            cornerRadius: Math.max(0, sx(resolveBookElementBorderRadius(el))),
+            opacity: elOp,
+          }),
+        );
+        layer.add(
+          new Konva.Text({
+            x: cp.cx,
+            y: cp.cy,
+            offsetX: cp.offsetX,
+            offsetY: cp.offsetY,
+            width: cw,
+            height: ch,
+            rotation: cp.rotation,
+            text: "📊 차트",
+            fontSize: Math.max(6, 9 * scale),
+            fill: "#334155",
+            align: "center",
+            verticalAlign: "middle",
+            opacity: elOp,
+          }),
+        );
       } else if (el.type === "shape") {
         appendBookShapeElementToSnapshotLayer(layer, el, sx, elOp);
       } else if (el.type === "drawing") {

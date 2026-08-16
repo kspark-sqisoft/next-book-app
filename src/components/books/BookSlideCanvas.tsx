@@ -36,13 +36,17 @@ import {
   Transformer,
 } from "react-konva";
 
+import { BookCalendarWidgetOverlay } from "@/components/books/BookCalendarWidgetOverlay";
+import { BookChartWidgetOverlay } from "@/components/books/BookChartWidgetOverlay";
 import { BookDigitalClockWidgetOverlay } from "@/components/books/BookDigitalClockWidgetOverlay";
+import { BookMapWidgetOverlay } from "@/components/books/BookMapWidgetOverlay";
 import {
   type BookMediaPlaylistPlaybackUiSnapshot,
   type BookMediaPlaylistRemoteCommand,
   BookMediaPlaylistWidgetOverlay,
 } from "@/components/books/BookMediaPlaylistWidgetOverlay";
 import { BookNewsWidgetOverlay } from "@/components/books/BookNewsWidgetOverlay";
+import { BookQrWidgetOverlay } from "@/components/books/BookQrWidgetOverlay";
 import {
   BookTextWidgetInlineEditor,
   type BookTextWidgetInlineEditorHandle,
@@ -216,6 +220,10 @@ export type BookDropWidgetKind =
   | "weather"
   | "digitalClock"
   | "webview"
+  | "map"
+  | "calendar"
+  | "qr"
+  | "chart"
   | "ticker"
   | "youtube"
   | "news"
@@ -1436,6 +1444,10 @@ export function BookSlideCanvas({
       raw === "weather" ||
       raw === "digitalClock" ||
       raw === "webview" ||
+      raw === "map" ||
+      raw === "calendar" ||
+      raw === "qr" ||
+      raw === "chart" ||
       raw === "ticker" ||
       raw === "youtube" ||
       raw === "news" ||
@@ -1657,6 +1669,10 @@ export function BookSlideCanvas({
               if (
                 el.type === "digitalClock" ||
                 el.type === "webview" ||
+                el.type === "map" ||
+                el.type === "calendar" ||
+                el.type === "qr" ||
+                el.type === "chart" ||
                 el.type === "ticker" ||
                 el.type === "youtube"
               ) {
@@ -1812,6 +1828,10 @@ export function BookSlideCanvas({
                   | "weather"
                   | "digitalClock"
                   | "webview"
+                  | "map"
+                  | "calendar"
+                  | "qr"
+                  | "chart"
                   | "ticker"
                   | "youtube"
                   | "news"
@@ -1822,6 +1842,10 @@ export function BookSlideCanvas({
               e.type === "weather" ||
               e.type === "digitalClock" ||
               e.type === "webview" ||
+              e.type === "map" ||
+              e.type === "calendar" ||
+              e.type === "qr" ||
+              e.type === "chart" ||
               e.type === "ticker" ||
               e.type === "youtube" ||
               e.type === "news" ||
@@ -1946,6 +1970,18 @@ export function BookSlideCanvas({
                 />
               );
             }
+            if (el.type === "map") {
+              return (
+                <BookMapWidgetOverlay
+                  key={el.id}
+                  el={el}
+                  scale={scale}
+                  mode={mode}
+                  isSelected={selectedIdSet.has(el.id)}
+                  liveFrame={frameLive}
+                />
+              );
+            }
             if (el.type === "ticker") {
               return (
                 <BookTickerWidgetOverlay
@@ -1961,6 +1997,42 @@ export function BookSlideCanvas({
             if (el.type === "youtube") {
               return (
                 <BookYoutubeWidgetOverlay
+                  key={el.id}
+                  el={el}
+                  scale={scale}
+                  mode={mode}
+                  isSelected={selectedIdSet.has(el.id)}
+                  liveFrame={frameLive}
+                />
+              );
+            }
+            if (el.type === "calendar") {
+              return (
+                <BookCalendarWidgetOverlay
+                  key={el.id}
+                  el={el}
+                  scale={scale}
+                  mode={mode}
+                  isSelected={selectedIdSet.has(el.id)}
+                  liveFrame={frameLive}
+                />
+              );
+            }
+            if (el.type === "qr") {
+              return (
+                <BookQrWidgetOverlay
+                  key={el.id}
+                  el={el}
+                  scale={scale}
+                  mode={mode}
+                  isSelected={selectedIdSet.has(el.id)}
+                  liveFrame={frameLive}
+                />
+              );
+            }
+            if (el.type === "chart") {
+              return (
+                <BookChartWidgetOverlay
                   key={el.id}
                   el={el}
                   scale={scale}
@@ -3025,7 +3097,17 @@ function BookDigitalClockHitShape({
   /* 웹뷰·티커·유튜브도 같은 히트/변형 동작 — 프레임만 필요해 시계 히트 셰이프를 공유 */
   el: Extract<
     BookCanvasElement,
-    { type: "digitalClock" | "webview" | "ticker" | "youtube" }
+    {
+      type:
+        | "digitalClock"
+        | "webview"
+        | "map"
+        | "calendar"
+        | "qr"
+        | "chart"
+        | "ticker"
+        | "youtube";
+    }
   >;
   locked: boolean;
   liveSync: BookShapeLiveSync;

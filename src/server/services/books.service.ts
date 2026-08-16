@@ -183,6 +183,75 @@ export type BookCanvasElementPublic =
     }
   | {
       id: string;
+      type: "map";
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      mapQuery?: string;
+      mapLat?: number;
+      mapLon?: number;
+      mapBbox?: [number, number, number, number];
+      opacity?: number;
+      rotation?: number;
+      borderRadius?: number;
+      outlineWidth?: number;
+      outlineColor?: string;
+      visible?: boolean;
+      locked?: boolean;
+    }
+  | {
+      id: string;
+      type: "calendar";
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      opacity?: number;
+      rotation?: number;
+      borderRadius?: number;
+      outlineWidth?: number;
+      outlineColor?: string;
+      visible?: boolean;
+      locked?: boolean;
+    }
+  | {
+      id: string;
+      type: "qr";
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      /** QR로 인코딩할 텍스트·URL(최대 2048자) */
+      qrValue?: string;
+      opacity?: number;
+      rotation?: number;
+      borderRadius?: number;
+      outlineWidth?: number;
+      outlineColor?: string;
+      visible?: boolean;
+      locked?: boolean;
+    }
+  | {
+      id: string;
+      type: "chart";
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      chartType?: "line" | "bar" | "pie";
+      chartData?: { label: string; value: number }[];
+      chartColor?: string;
+      opacity?: number;
+      rotation?: number;
+      borderRadius?: number;
+      outlineWidth?: number;
+      outlineColor?: string;
+      visible?: boolean;
+      locked?: boolean;
+    }
+  | {
+      id: string;
       type: "ticker";
       x: number;
       y: number;
@@ -570,6 +639,10 @@ export class BooksService {
         o.type !== "weather" &&
         o.type !== "digitalClock" &&
         o.type !== "webview" &&
+        o.type !== "map" &&
+        o.type !== "calendar" &&
+        o.type !== "qr" &&
+        o.type !== "chart" &&
         o.type !== "ticker" &&
         o.type !== "youtube" &&
         o.type !== "news" &&
@@ -924,6 +997,123 @@ export class BooksService {
             throw new HttpError(
               400,
               "유튜브 재생 옵션은 true/false만 가능합니다.",
+            );
+          }
+        }
+      } else if (o.type === "map") {
+        const w = o.width;
+        const h = o.height;
+        if (
+          typeof w !== "number" ||
+          typeof h !== "number" ||
+          w < 24 ||
+          h < 24 ||
+          w > 4000 ||
+          h > 4000
+        ) {
+          throw new HttpError(400, "지도 위젯 크기가 올바르지 않습니다.");
+        }
+        if (o.mapQuery != null) {
+          if (typeof o.mapQuery !== "string" || o.mapQuery.length > 512) {
+            throw new HttpError(400, "지도 주소·지역이 올바르지 않습니다.");
+          }
+        }
+        if (o.mapLat != null) {
+          if (typeof o.mapLat !== "number" || !Number.isFinite(o.mapLat)) {
+            throw new HttpError(400, "지도 위도가 올바르지 않습니다.");
+          }
+        }
+        if (o.mapLon != null) {
+          if (typeof o.mapLon !== "number" || !Number.isFinite(o.mapLon)) {
+            throw new HttpError(400, "지도 경도가 올바르지 않습니다.");
+          }
+        }
+        if (o.mapBbox != null) {
+          if (
+            !Array.isArray(o.mapBbox) ||
+            o.mapBbox.length !== 4 ||
+            !o.mapBbox.every((n) => typeof n === "number" && Number.isFinite(n))
+          ) {
+            throw new HttpError(400, "지도 영역(bbox)이 올바르지 않습니다.");
+          }
+        }
+      } else if (o.type === "calendar") {
+        const w = o.width;
+        const h = o.height;
+        if (
+          typeof w !== "number" ||
+          typeof h !== "number" ||
+          w < 24 ||
+          h < 24 ||
+          w > 4000 ||
+          h > 4000
+        ) {
+          throw new HttpError(400, "캘린더 위젯 크기가 올바르지 않습니다.");
+        }
+      } else if (o.type === "qr") {
+        const w = o.width;
+        const h = o.height;
+        if (
+          typeof w !== "number" ||
+          typeof h !== "number" ||
+          w < 24 ||
+          h < 24 ||
+          w > 4000 ||
+          h > 4000
+        ) {
+          throw new HttpError(400, "QR 위젯 크기가 올바르지 않습니다.");
+        }
+        if (o.qrValue != null) {
+          if (typeof o.qrValue !== "string" || o.qrValue.length > 2048) {
+            throw new HttpError(400, "QR 값이 올바르지 않습니다.");
+          }
+        }
+      } else if (o.type === "chart") {
+        const w = o.width;
+        const h = o.height;
+        if (
+          typeof w !== "number" ||
+          typeof h !== "number" ||
+          w < 24 ||
+          h < 24 ||
+          w > 4000 ||
+          h > 4000
+        ) {
+          throw new HttpError(400, "차트 위젯 크기가 올바르지 않습니다.");
+        }
+        if (
+          o.chartType != null &&
+          o.chartType !== "line" &&
+          o.chartType !== "bar" &&
+          o.chartType !== "pie"
+        ) {
+          throw new HttpError(400, "차트 종류가 올바르지 않습니다.");
+        }
+        if (o.chartData != null) {
+          if (!Array.isArray(o.chartData) || o.chartData.length > 24) {
+            throw new HttpError(400, "차트 데이터가 올바르지 않습니다.");
+          }
+          for (const item of o.chartData) {
+            if (!item || typeof item !== "object" || Array.isArray(item)) {
+              throw new HttpError(400, "차트 데이터 항목이 올바르지 않습니다.");
+            }
+            const rec = item as Record<string, unknown>;
+            if (typeof rec.label !== "string" || rec.label.length > 40) {
+              throw new HttpError(400, "차트 항목 이름이 올바르지 않습니다.");
+            }
+            if (typeof rec.value !== "number" || !Number.isFinite(rec.value)) {
+              throw new HttpError(400, "차트 항목 값이 올바르지 않습니다.");
+            }
+          }
+        }
+        if (o.chartColor != null) {
+          if (typeof o.chartColor !== "string" || o.chartColor.length > 80) {
+            throw new HttpError(400, "차트 강조색이 올바르지 않습니다.");
+          }
+          if (/[<>]/.test(o.chartColor) || /url\s*\(/i.test(o.chartColor)) {
+            throw new HttpError(
+              400,
+              "차트 강조색에 허용되지 않는 문자가 있습니다.",
             );
           }
         }
