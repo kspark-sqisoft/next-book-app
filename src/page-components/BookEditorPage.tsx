@@ -64,7 +64,10 @@ import {
   DEFAULT_BOOK_CHART_WIDTH,
   DEFAULT_BOOK_DIGITAL_CLOCK_HEIGHT,
   DEFAULT_BOOK_DIGITAL_CLOCK_WIDTH,
+  DEFAULT_BOOK_MAP_BBOX,
   DEFAULT_BOOK_MAP_HEIGHT,
+  DEFAULT_BOOK_MAP_LAT,
+  DEFAULT_BOOK_MAP_LON,
   DEFAULT_BOOK_MAP_QUERY,
   DEFAULT_BOOK_MAP_WIDTH,
   DEFAULT_BOOK_MEDIA_PLAYLIST_HEIGHT,
@@ -844,6 +847,9 @@ export function BookEditorPage() {
         width: DEFAULT_BOOK_MAP_WIDTH,
         height: DEFAULT_BOOK_MAP_HEIGHT,
         mapQuery: DEFAULT_BOOK_MAP_QUERY,
+        mapLat: DEFAULT_BOOK_MAP_LAT,
+        mapLon: DEFAULT_BOOK_MAP_LON,
+        mapBbox: DEFAULT_BOOK_MAP_BBOX,
       };
       updatePages((draft) => {
         const p = draft[activePageIndex];

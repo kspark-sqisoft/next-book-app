@@ -1087,6 +1087,15 @@ export const DEFAULT_BOOK_MAP_WIDTH = 480;
 export const DEFAULT_BOOK_MAP_HEIGHT = 320;
 /** 지도 위젯 기본 검색어 */
 export const DEFAULT_BOOK_MAP_QUERY = "서울";
+/**
+ * 서울 기본 좌표·영역 — 드롭 즉시 지도가 렌더되도록(속성창에서 엔터 없이) 미리 넣는다.
+ * Nominatim "서울" 결과 근사값. bbox = [west, south, east, north].
+ */
+export const DEFAULT_BOOK_MAP_LAT = 37.5665;
+export const DEFAULT_BOOK_MAP_LON = 126.978;
+export const DEFAULT_BOOK_MAP_BBOX: [number, number, number, number] = [
+  126.7342, 37.4269, 127.2699, 37.7017,
+];
 
 /** 캘린더 위젯 기본 프레임(px) */
 export const DEFAULT_BOOK_CALENDAR_WIDTH = 320;
@@ -1095,8 +1104,8 @@ export const DEFAULT_BOOK_CALENDAR_HEIGHT = 300;
 /** QR 위젯 기본 프레임(px) */
 export const DEFAULT_BOOK_QR_WIDTH = 200;
 export const DEFAULT_BOOK_QR_HEIGHT = 200;
-/** QR 위젯 기본값(비우면 안내 문구) */
-export const DEFAULT_BOOK_QR_VALUE = "";
+/** QR 위젯 기본값 — 드롭 즉시 QR이 보이도록 샘플 URL을 넣는다(속성창에서 변경) */
+export const DEFAULT_BOOK_QR_VALUE = "https://www.google.com";
 
 /** 차트 위젯 기본 프레임(px) */
 export const DEFAULT_BOOK_CHART_WIDTH = 360;
