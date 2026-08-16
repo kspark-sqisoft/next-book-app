@@ -1601,12 +1601,12 @@ export function BookEditorPage() {
                   setSelectedIds([]);
                 }}
               >
-                {/* 캔버스 우상단 — 현재 페이지 이름 + 재생 시간, 좌우 페이지 이동(페이지 1개면 이동 숨김) */}
-                <div className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-1 text-[11px] text-white shadow-sm backdrop-blur-sm">
+                {/* 캔버스 상단 가운데 — 현재 페이지 이름 + 좌우 이동(페이지 1개면 이동 숨김) */}
+                <div className="absolute left-1/2 top-2 z-10 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-1 rounded-md bg-black/60 px-1.5 py-1 text-[11px] text-white shadow-sm backdrop-blur-sm">
                   {pages.length > 1 ? (
                     <button
                       type="button"
-                      className="flex size-5 items-center justify-center rounded hover:bg-white/20 disabled:opacity-30"
+                      className="flex size-5 shrink-0 items-center justify-center rounded hover:bg-white/20 disabled:opacity-30"
                       title="이전 페이지"
                       aria-label="이전 페이지"
                       disabled={activePageIndex <= 0}
@@ -1617,28 +1617,20 @@ export function BookEditorPage() {
                     </button>
                   ) : null}
                   <span
-                    className="max-w-[12rem] truncate font-medium"
+                    className="min-w-0 truncate font-medium"
                     title="현재 페이지"
                   >
                     {currentPage?.name?.trim() ||
                       `슬라이드 ${activePageIndex + 1}`}
                   </span>
-                  {currentPagePlaybackSec != null ? (
-                    <span
-                      className="font-mono tabular-nums text-white/70"
-                      title="기준 레이어 기준 이 페이지의 슬라이드쇼 재생 시간"
-                    >
-                      · 재생 {currentPagePlaybackSec}초
-                    </span>
-                  ) : null}
                   {pages.length > 1 ? (
                     <>
-                      <span className="tabular-nums text-white/50">
+                      <span className="shrink-0 tabular-nums text-white/50">
                         {activePageIndex + 1}/{pages.length}
                       </span>
                       <button
                         type="button"
-                        className="flex size-5 items-center justify-center rounded hover:bg-white/20 disabled:opacity-30"
+                        className="flex size-5 shrink-0 items-center justify-center rounded hover:bg-white/20 disabled:opacity-30"
                         title="다음 페이지"
                         aria-label="다음 페이지"
                         disabled={activePageIndex >= pages.length - 1}
@@ -1652,6 +1644,15 @@ export function BookEditorPage() {
                     </>
                   ) : null}
                 </div>
+                {/* 캔버스 우상단 — 페이지 재생 시간(별도) */}
+                {currentPagePlaybackSec != null ? (
+                  <div
+                    className="pointer-events-none absolute right-2 top-2 z-10 rounded-md bg-black/60 px-2 py-1 font-mono text-[11px] tabular-nums text-white shadow-sm backdrop-blur-sm"
+                    title="기준 레이어 기준 이 페이지의 슬라이드쇼 재생 시간"
+                  >
+                    재생 {currentPagePlaybackSec}초
+                  </div>
+                ) : null}
                 {currentPage ? (
                   <BookSlideCanvas
                     pageWidth={slideWidth}
