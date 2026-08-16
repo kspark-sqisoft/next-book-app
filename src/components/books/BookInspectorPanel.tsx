@@ -2886,6 +2886,24 @@ export function BookInspectorPanel({
                           value={selected.objectFit}
                           onChange={onChange}
                         />
+                        <label className="flex cursor-pointer items-start gap-2 text-sm">
+                          <Checkbox
+                            className="mt-0.5"
+                            checked={selected.videoLoop === true}
+                            onCheckedChange={(c) =>
+                              onChange(selected.id, {
+                                videoLoop: c === true ? true : undefined,
+                              })
+                            }
+                          />
+                          <span className="min-w-0">
+                            반복 재생
+                            <span className="mt-0.5 block text-[10px] leading-snug text-muted-foreground">
+                              편집 화면에서 끝까지 재생하면 처음부터 반복합니다.
+                              슬라이드쇼·프리뷰에선 무시됩니다.
+                            </span>
+                          </span>
+                        </label>
                         <ElementOpacitySlider
                           elementId={selected.id}
                           opacity={selected.opacity}

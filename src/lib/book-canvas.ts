@@ -384,6 +384,8 @@ export type BookCanvasElement =
       src: string;
       posterSrc: string | null;
       objectFit?: BookMediaObjectFit;
+      /** 끝까지 재생하면 처음부터 다시 반복 */
+      videoLoop?: boolean;
       opacity?: number;
       rotation?: number;
       borderRadius?: number;

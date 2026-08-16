@@ -768,6 +768,8 @@ function BookSlideVideoOverlay({
         playsInline
         preload="auto"
         controls={false}
+        /* 반복 재생은 편집 화면(페이지 열어 보는 상태)에서만 — 슬라이드쇼/프리뷰(view)에선 무시 */
+        loop={mode === "edit" && el.videoLoop === true}
         onError={(e) => {
           appLog("bookSlideVideo", "<video> 로드/디코드 실패", {
             elementId: el.id,

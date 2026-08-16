@@ -118,6 +118,7 @@ export type BookCanvasElementPublic =
       src: string;
       posterSrc: string | null;
       objectFit?: "cover" | "contain" | "fill" | "none" | "scale-down";
+      videoLoop?: boolean;
       opacity?: number;
       rotation?: number;
       borderRadius?: number;
@@ -1632,6 +1633,9 @@ export class BooksService {
             o.posterSrc = normPs;
           } else {
             o.posterSrc = null;
+          }
+          if (o.videoLoop != null && typeof o.videoLoop !== "boolean") {
+            throw new HttpError(400, "videoLoop 값이 올바르지 않습니다.");
           }
         }
         if (o.objectFit != null) {
