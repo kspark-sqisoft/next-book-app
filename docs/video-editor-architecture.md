@@ -20,13 +20,13 @@
 
 ## 구성 요소 (Twick SDK)
 
-| 패키지                  | 역할                                                       |
-| ----------------------- | ---------------------------------------------------------- |
-| `@twick/studio`         | 편집 UI 전체(라이브러리 패널·타임라인·캔버스·툴바)         |
-| `@twick/timeline`       | 타임라인 데이터 모델·편집 API(트랙/요소 CRUD, 분할, undo)  |
-| `@twick/live-player`    | 미리보기 실시간 재생                                       |
-| `@twick/visualizer`     | 설계도를 실제 픽셀로 그리는 렌더러(미리보기·내보내기 공용) |
-| `@twick/browser-render` | 프레임 그리기 + WebCodecs 인코딩 → MP4 조립                |
+| 패키지                  | 역할                                                               |
+| ----------------------- | ------------------------------------------------------------------ |
+| `@twick/studio`         | 편집 UI 전체(라이브러리 패널·타임라인·캔버스·툴바)                 |
+| `@twick/timeline`       | 타임라인 데이터 모델·편집 API(트랙/요소 CRUD, 분할, undo)          |
+| `@twick/live-player`    | 미리보기 실시간 재생                                               |
+| `@twick/visualizer`     | 설계도를 실제 픽셀로 그리는 렌더러(미리보기·내보내기 공용)         |
+| `@twick/browser-render` | 프레임 그리기 + WebCodecs 인코딩 + mp4-wasm/ffmpeg.wasm 먹싱 → MP4 |
 
 앱은 `BookVideoEditorDialog`가 전체 화면 포털(z-5000)로 `TwickStudio`를 띄우고,
 저장·업로드·내보내기를 우리 서버와 연결한다. 편집기가 열려 있는 동안 뒤쪽
@@ -68,7 +68,8 @@ Export를 누르면 **서버가 헤드리스 Chromium을 띄워** 같은 렌더 
                               ├─ 헤드리스 Chromium 실행 (Playwright)
                               ├─ 크롬이 자기 서버(127.0.0.1)의 /internal/render 페이지를 엶
                               ├─ 페이지가 설계도대로 프레임을 한 장씩 그림
-                              │    → WebCodecs(H.264) 인코딩 → MP4 조립
+                              │    → WebCodecs(H.264) 인코딩 → mp4-wasm 비디오 먹싱
+                              │    → (오디오 있으면) ffmpeg.wasm으로 오디오 합성·최종 먹싱
                               └─ /uploads/book-videos/ 저장 + 첫 프레임 poster 생성
 브라우저 ←──진행률 폴링(%)── getBookVideoRenderJob
         → 완료 시 미디어 라이브러리에 자동 등록 + 완료 안내
@@ -89,6 +90,49 @@ Export를 누르면 **서버가 헤드리스 Chromium을 띄워** 같은 렌더 
 - **해상도 선택(HD/FHD/QHD)** → 컴포지션 좌표계(1280×720)는 유지하고 그리기 배율
   (`quality`: 1×/1.5×/2×)만 키운다. 레이아웃 변형 없이 화질만 올라간다.
 - **렌더 상한 15분** → 헤드리스가 특정 프레임에서 멈춰도 프로세스를 무한 점유하지 않는다.
+
+### ffmpeg는 어디서 동작하나 (ffmpeg.wasm)
+
+서버에 네이티브 ffmpeg 바이너리를 설치해 쓰는 것이 아니라, **브라우저 안에서 도는
+WebAssembly 빌드(ffmpeg.wasm — `@ffmpeg/core` + `@twick/ffmpeg-web`)**가
+`@twick/browser-render` 내부에서 실행된다. 미리보기에는 관여하지 않고
+**내보내기 파이프라인에서만** 동작하며, 역할은 두 가지다.
+
+1. **최종 먹싱·오디오 합성** — WebCodecs로 인코딩한 프레임을 mp4-wasm이 비디오
+   전용 `video.mp4`로 조립한 뒤, 타임라인에 오디오가 있으면 추출한 `audio.wav`와
+   함께 ffmpeg.wasm에 넣어 최종 MP4를 만든다. 실행되는 명령의 요지:
+
+   ```
+   ffmpeg -i video.mp4 -i audio.wav -map 0:v:0 -map 1:a:0
+     -c:v libx264 -preset veryfast -crf 20     # 비디오 재인코딩
+     -c:a aac -b:a 192k                        # 오디오 AAC
+     -movflags +faststart -shortest output.mp4
+   ```
+
+   비디오를 copy하지 않고 libx264로 **재인코딩**하는 이유는 WebCodecs/mp4-wasm
+   비트스트림을 그대로 복사하면 타이밍이 틀어져 첫 1초만 재생되는 문제가 있어서다
+   (라이브러리 주석 명시).
+
+2. **소재 영상 정규화(VideoNormalizer)** — 해상도·프레임레이트·픽셀 포맷이 제각각인
+   소재를 렌더 전에 표준형으로 맞춘다:
+
+   ```
+   ffmpeg -i in.mp4 -vf scale=<w>:-2,fps=<fps>,format=yuv420p
+     -c:v libx264 -profile:v main -c:a aac -ar 48000 -ac 2
+     -movflags +faststart out.mp4
+   ```
+
+정리하면 **인코딩 파이프라인 = WebCodecs(H.264 프레임) → mp4-wasm(비디오 먹싱) →
+ffmpeg.wasm(오디오 합성·최종 먹싱)**이고, 전부 브라우저(서버 렌더 시에는 헤드리스
+Chromium) 안에서 실행되므로 서버에 별도 ffmpeg 설치가 필요 없다.
+
+관련 사항 두 가지:
+
+- `mp4-wasm.wasm`은 CDN 차단 환경에서도 동작하도록 `public/mp4-wasm.wasm`으로
+  self-host한다(`npm run setup:wasm` — `scripts/copy-mp4-wasm.mjs`).
+- 의존성 트리에는 **네이티브 ffmpeg**(`@twick/ffmpeg` → `@ffmpeg-installer/*`)도
+  들어 있지만, 이는 우리가 쓰지 않는 Twick 자체 서버 렌더러(`@twick/renderer`)의
+  전이 의존성일 뿐 이 앱의 렌더 경로에서는 실행되지 않는다.
 
 ## 4. 로컬 파일 업로드 (My assets)
 
