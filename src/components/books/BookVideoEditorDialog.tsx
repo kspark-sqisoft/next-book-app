@@ -66,6 +66,29 @@ type Rect = { top: number; bottom: number; left: number; right: number };
 /** 화면 맞춤 시 컴포지션이 뷰를 꽉 채우지 않게 남기는 여백 비율(0.9 → 상하좌우 약 5%씩) */
 const FIT_MARGIN_RATIO = 0.9;
 
+/** 초기 타임라인 — 라이브러리 기본 샘플 문구("Twick SDK")를 우리 브랜드로 교체 */
+const CRETA_INITIAL_TIMELINE_DATA: typeof INITIAL_TIMELINE_DATA = {
+  tracks: [
+    {
+      type: "element",
+      id: "t-sample",
+      name: "sample",
+      elements: [
+        {
+          id: "e-sample",
+          trackId: "t-sample",
+          name: "sample",
+          type: "text",
+          s: 0,
+          e: 5,
+          props: { text: "Creta Studio", fill: "#FFFFFF" },
+        },
+      ],
+    },
+  ],
+  version: 1,
+};
+
 /**
  * 출력 해상도 = 편집 컴포지션(1280×720 16:9) × 화질 배율(quality).
  * browser-render는 scene 좌표계를 컴포지션 크기로 유지하고 resolutionScale만 키우므로,
@@ -497,7 +520,7 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
       <div className="relative min-h-0 flex-1 pb-4">
         <LivePlayerProvider>
           <TimelineProvider
-            initialData={INITIAL_TIMELINE_DATA}
+            initialData={CRETA_INITIAL_TIMELINE_DATA}
             contextId="book-video-editor"
           >
             <TwickStudio
