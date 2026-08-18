@@ -108,7 +108,7 @@ export function BookCalendarWidgetOverlay({
         transform: fRot !== 0 ? `rotate(${fRot}deg)` : undefined,
         transformOrigin: "center center",
         borderRadius: brPx,
-        boxShadow: outlineRing || "0 12px 32px -8px rgba(0,0,0,0.28)",
+        boxShadow: outlineRing || undefined,
       }}
     >
       {/* 논리 픽셀 크기로 렌더 후 확대/축소 — 줌과 무관하게 같은 레이아웃 유지 */}

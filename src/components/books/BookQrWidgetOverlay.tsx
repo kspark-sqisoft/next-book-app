@@ -81,7 +81,7 @@ export function BookQrWidgetOverlay({
         transform: fRot !== 0 ? `rotate(${fRot}deg)` : undefined,
         transformOrigin: "center center",
         borderRadius: brPx,
-        boxShadow: outlineRing || "0 12px 32px -8px rgba(0,0,0,0.28)",
+        boxShadow: outlineRing || undefined,
       }}
     >
       {value ? (
