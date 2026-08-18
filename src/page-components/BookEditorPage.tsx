@@ -70,6 +70,7 @@ import {
   DEFAULT_BOOK_MAP_LON,
   DEFAULT_BOOK_MAP_QUERY,
   DEFAULT_BOOK_MAP_WIDTH,
+  DEFAULT_BOOK_MAP_ZOOM_PCT,
   DEFAULT_BOOK_MEDIA_PLAYLIST_HEIGHT,
   DEFAULT_BOOK_MEDIA_PLAYLIST_WIDTH,
   DEFAULT_BOOK_NEWS_WIDGET_HEIGHT,
@@ -850,6 +851,7 @@ export function BookEditorPage() {
         mapLat: DEFAULT_BOOK_MAP_LAT,
         mapLon: DEFAULT_BOOK_MAP_LON,
         mapBbox: DEFAULT_BOOK_MAP_BBOX,
+        mapZoomPct: DEFAULT_BOOK_MAP_ZOOM_PCT,
       };
       updatePages((draft) => {
         const p = draft[activePageIndex];

@@ -474,6 +474,8 @@ export type BookCanvasElement =
       mapLon?: number;
       /** OSM embed bbox `[west, south, east, north]`. 없으면 지도 미표시 */
       mapBbox?: [number, number, number, number];
+      /** 확대 배율(%) — 100=bbox 그대로, 200=2배 확대. 50~400 */
+      mapZoomPct?: number;
       opacity?: number;
       rotation?: number;
       borderRadius?: number;
@@ -1098,6 +1100,18 @@ export const DEFAULT_BOOK_MAP_LON = 126.978;
 export const DEFAULT_BOOK_MAP_BBOX: [number, number, number, number] = [
   126.7342, 37.4269, 127.2699, 37.7017,
 ];
+/** 새 지도 위젯 기본 배율(%) — 검색 영역보다 2배 확대해 보여준다 */
+export const DEFAULT_BOOK_MAP_ZOOM_PCT = 200;
+
+/**
+ * 지도 배율(%) — 100=지오코딩된 bbox 영역 그대로, 값이 클수록 중심을 기준으로 더 확대.
+ * 50~400 클램프. 미지정(기존 저장분)은 100으로 하위 호환.
+ */
+export function resolveBookMapZoomPct(raw: unknown): number {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return 100;
+  return Math.min(400, Math.max(50, Math.round(n)));
+}
 
 /** 캘린더 위젯 기본 프레임(px) */
 export const DEFAULT_BOOK_CALENDAR_WIDTH = 320;
@@ -1145,7 +1159,18 @@ export function buildBookOsmEmbedUrl(
   ) {
     return undefined;
   }
-  const [w, s, e, n] = bbox;
+  const [bw, bs, be, bn] = bbox;
+  // 배율 적용 — 중심을 유지한 채 영역 폭·높이를 100/배율 비율로 줄여 확대 효과
+  const zoomPct = resolveBookMapZoomPct(el.mapZoomPct);
+  const factor = 100 / zoomPct;
+  const cx = (bw + be) / 2;
+  const cy = (bs + bn) / 2;
+  const hw = Math.max(1e-4, (Math.abs(be - bw) / 2) * factor);
+  const hh = Math.max(1e-4, (Math.abs(bn - bs) / 2) * factor);
+  const w = cx - hw;
+  const e = cx + hw;
+  const s = cy - hh;
+  const n = cy + hh;
   let url = `https://www.openstreetmap.org/export/embed.html?bbox=${w}%2C${s}%2C${e}%2C${n}&layer=mapnik`;
   if (
     typeof el.mapLat === "number" &&
@@ -1362,7 +1387,12 @@ function normalizeBookElementsForSave(
         DEFAULT_BOOK_MAP_WIDTH,
         DEFAULT_BOOK_MAP_HEIGHT,
       );
-      return finalizeElementForApi({ ...el, ...xy, ...wh });
+      return finalizeElementForApi({
+        ...el,
+        ...xy,
+        ...wh,
+        mapZoomPct: resolveBookMapZoomPct(el.mapZoomPct),
+      });
     }
     if (el.type === "calendar") {
       const wh = finiteWH(

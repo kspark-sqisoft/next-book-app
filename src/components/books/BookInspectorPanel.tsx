@@ -69,6 +69,7 @@ import {
   resolveBookElementOutlineColor,
   resolveBookElementOutlineWidth,
   resolveBookElementRotation,
+  resolveBookMapZoomPct,
   resolveBookMediaObjectFit,
   resolveBookWeatherDisplay,
   resolveMediaPlaylistLoop,
@@ -2486,6 +2487,26 @@ export function BookInspectorPanel({
                         />
                         <p className="text-[11px] text-muted-foreground">
                           입력 후 Enter 또는 포커스를 벗어나면 위치를 찾습니다.
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[11px]">
+                          지도 배율 {resolveBookMapZoomPct(selected.mapZoomPct)}
+                          %
+                        </Label>
+                        <Slider
+                          value={[resolveBookMapZoomPct(selected.mapZoomPct)]}
+                          min={50}
+                          max={400}
+                          step={25}
+                          onValueChange={(v) =>
+                            onChange(selected.id, { mapZoomPct: v[0] })
+                          }
+                          aria-label="지도 배율(%)"
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                          100%는 검색된 영역 그대로, 값이 클수록 중심을 기준으로
+                          더 확대해 보여줍니다.
                         </p>
                       </div>
                       <ElementOpacitySlider

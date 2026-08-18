@@ -1038,6 +1038,16 @@ export class BooksService {
             throw new HttpError(400, "지도 영역(bbox)이 올바르지 않습니다.");
           }
         }
+        if (o.mapZoomPct != null) {
+          if (
+            typeof o.mapZoomPct !== "number" ||
+            !Number.isFinite(o.mapZoomPct) ||
+            o.mapZoomPct < 50 ||
+            o.mapZoomPct > 400
+          ) {
+            throw new HttpError(400, "지도 배율이 올바르지 않습니다.");
+          }
+        }
       } else if (o.type === "calendar") {
         const w = o.width;
         const h = o.height;
