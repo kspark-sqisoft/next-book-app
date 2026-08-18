@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -93,7 +94,17 @@ export function BookImageEditorDialog({ onClose, onExport }: Props) {
   const [sourceName, setSourceName] = useState("edited-image");
   const [saving, setSaving] = useState(false);
   const [savedOk, setSavedOk] = useState(false);
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // 비디오 편집기와 동일한 나가기 UX — 편집 중인 이미지가 있으면 확인 후 닫는다
+  const requestClose = useCallback(() => {
+    if (src) {
+      setExitConfirmOpen(true);
+    } else {
+      onClose();
+    }
+  }, [src, onClose]);
 
   useEffect(() => {
     return () => {
@@ -166,7 +177,7 @@ export function BookImageEditorDialog({ onClose, onExport }: Props) {
             variant="outline"
             className="h-7 px-2.5 text-xs"
             disabled={saving}
-            onClick={onClose}
+            onClick={requestClose}
           >
             <X className="mr-1.5 size-3.5" aria-hidden />
             나가기
@@ -180,7 +191,7 @@ export function BookImageEditorDialog({ onClose, onExport }: Props) {
             source={src}
             defaultSavedImageName={sourceName}
             onSave={handleSave}
-            onClose={onClose}
+            onClose={requestClose}
             savingPixelRatio={1}
             previewPixelRatio={
               typeof window !== "undefined" ? window.devicePixelRatio : 1
@@ -232,6 +243,31 @@ export function BookImageEditorDialog({ onClose, onExport }: Props) {
           if (f) pickFile(f);
         }}
       />
+
+      {/* 나가기 확인 — 저장하지 않은 편집 내용 유실 방지 (비디오 편집기와 동일 UX) */}
+      <AlertDialog open={exitConfirmOpen} onOpenChange={setExitConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>이미지 편집을 나갈까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              저장(Save)하지 않은 편집 내용은 저장되지 않고 사라집니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel type="button">계속 편집</AlertDialogCancel>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                setExitConfirmOpen(false);
+                onClose();
+              }}
+            >
+              나가기
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* 저장 성공 확인 — 명확한 피드백을 주고, 확인 시 편집기를 닫는다 */}
       <AlertDialog
