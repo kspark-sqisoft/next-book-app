@@ -331,6 +331,8 @@ function BookDetailOwnerView({
   /** 이미지·비디오 편집기(레일 메뉴) — 전체 화면 편집 창 */
   const [imageEditorOpen, setImageEditorOpen] = useState(false);
   const [videoEditorOpen, setVideoEditorOpen] = useState(false);
+  /** 전체 화면 편집기가 떠 있는 동안 북 에디터 단축키(Delete·Ctrl+S 등)가 가로채지 않게 */
+  const editorOverlayOpen = imageEditorOpen || videoEditorOpen;
   /** PDF 가져오기(팔레트) — 변환·업로드 진행 중 여부와 숨김 파일 입력 */
   const [pdfImportBusy, setPdfImportBusy] = useState(false);
   const pdfImportInputRef = useRef<HTMLInputElement>(null);
@@ -560,6 +562,8 @@ function BookDetailOwnerView({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (isBookEditorTypingTarget(e.target)) return;
+      // 비디오·이미지 편집기 안에서 Delete가 슬라이드 삭제로 오인되지 않게
+      if (editorOverlayOpen) return;
       if (widgetDeleteOpen || deleteConfirmOpen || pageDeleteOpen) return;
       if ((e.ctrlKey || e.metaKey) && e.key === "a") {
         e.preventDefault();
@@ -610,6 +614,7 @@ function BookDetailOwnerView({
     widgetDeleteOpen,
     deleteConfirmOpen,
     pageDeleteOpen,
+    editorOverlayOpen,
     localPages.length,
     activePageIndex,
   ]);
@@ -640,6 +645,7 @@ function BookDetailOwnerView({
     const onKey = (e: KeyboardEvent) => {
       if (!((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s")) return;
       if (isBookEditorTypingTarget(e.target)) return;
+      if (editorOverlayOpen) return;
       if (widgetDeleteOpen || deleteConfirmOpen || pageDeleteOpen) return;
       e.preventDefault();
       if (saveMutationRef.current.isPending) return;
@@ -647,7 +653,7 @@ function BookDetailOwnerView({
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [widgetDeleteOpen, deleteConfirmOpen, pageDeleteOpen]);
+  }, [widgetDeleteOpen, deleteConfirmOpen, pageDeleteOpen, editorOverlayOpen]);
 
   // 미저장 편집이 있으면 탭 닫기·새로고침 전에 경고
   useEffect(() => {
@@ -1979,6 +1985,7 @@ function BookDetailOwnerView({
       const k = e.key.toLowerCase();
       if (k !== "c" && k !== "x" && k !== "v") return;
       if (isBookEditorTypingTarget(e.target)) return;
+      if (editorOverlayOpen) return;
       if (widgetDeleteOpen || deleteConfirmOpen || pageDeleteOpen) return;
       if (k === "v") {
         if (!widgetClipboardHasContent) return;
@@ -1998,6 +2005,7 @@ function BookDetailOwnerView({
     widgetDeleteOpen,
     deleteConfirmOpen,
     pageDeleteOpen,
+    editorOverlayOpen,
     widgetClipboardHasContent,
     copySelectedWidgets,
     cutSelectedWidgets,
@@ -2614,6 +2622,7 @@ function BookDetailOwnerView({
                   onSelect={handleCanvasSelect}
                   onElementChange={onElementChange}
                   onElementsChange={onElementsChange}
+                  keyboardShortcutsDisabled={editorOverlayOpen}
                   onDropWidget={onDropWidget}
                   onDropShape={onDropShape}
                   onDropLibraryMedia={onDropLibraryMedia}

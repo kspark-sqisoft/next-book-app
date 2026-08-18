@@ -246,6 +246,8 @@ type BookSlideCanvasProps = {
   selectedIds: readonly string[];
   onSelect: (detail: BookCanvasSelectDetail) => void;
   onElementChange: (id: string, patch: Partial<BookCanvasElement>) => void;
+  /** 전체 화면 편집기(이미지·비디오) 등이 떠 있는 동안 캔버스 키보드 조작(화살표 이동)을 멈춤 */
+  keyboardShortcutsDisabled?: boolean;
   /** 그룹 드래그·화살표 이동처럼 여러 요소를 한 번에 — 없으면 개별 호출로 폴백(undo 엔트리가 요소 수만큼 생김) */
   onElementsChange?: (
     patches: { id: string; patch: Partial<BookCanvasElement> }[],
@@ -878,6 +880,7 @@ export function BookSlideCanvas({
   selectedIds,
   onSelect,
   onElementChange,
+  keyboardShortcutsDisabled = false,
   onElementsChange,
   onDropWidget,
   onDropShape,
@@ -1293,6 +1296,7 @@ export function BookSlideCanvas({
 
   useEffect(() => {
     if (mode !== "edit" || selectedIds.length === 0 || zMenu) return;
+    if (keyboardShortcutsDisabled) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (
         e.key !== "ArrowUp" &&
@@ -1334,7 +1338,15 @@ export function BookSlideCanvas({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [mode, selectedIds, zMenu, elements, onElementChange, onElementsChange]);
+  }, [
+    mode,
+    selectedIds,
+    zMenu,
+    elements,
+    onElementChange,
+    onElementsChange,
+    keyboardShortcutsDisabled,
+  ]);
 
   const openZMenu = useCallback(
     (elementId: string, clientX: number, clientY: number) => {
