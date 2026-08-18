@@ -701,6 +701,25 @@ export async function fetchBook(id: number): Promise<BookDetail> {
   return getBookAction(id);
 }
 
+/**
+ * 재배포 후 열린 탭이 이전 빌드의 서버 액션 id를 호출하면 Next가
+ * "Server Action ... was not found" / React #441 같은 낯선 오류를 던진다 —
+ * 사용자가 조치할 수 있는 안내(새로고침)로 바꾼다.
+ */
+export function humanizeServerActionError(e: unknown): Error {
+  const msg = e instanceof Error ? e.message : String(e);
+  if (
+    /Server Action .* was not found|Failed to find Server Action|Minified React error #441/i.test(
+      msg,
+    )
+  ) {
+    return new Error(
+      "앱이 새 버전으로 배포되었습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.",
+    );
+  }
+  return e instanceof Error ? e : new Error(msg);
+}
+
 export async function createBook(input: {
   title: string;
   pages?: BookPageInput[];
@@ -710,7 +729,11 @@ export async function createBook(input: {
 }): Promise<BookDetail> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  return createBookAction(token, input as CreateBookDto);
+  try {
+    return await createBookAction(token, input as CreateBookDto);
+  } catch (e) {
+    throw humanizeServerActionError(e);
+  }
 }
 
 export type BookLayoutAiAddWidgetDto = {
@@ -844,7 +867,11 @@ export async function updateBook(
 ): Promise<BookDetail> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  return updateBookAction(token, id, input as UpdateBookDto);
+  try {
+    return await updateBookAction(token, id, input as UpdateBookDto);
+  } catch (e) {
+    throw humanizeServerActionError(e);
+  }
 }
 
 export async function deleteBook(id: number): Promise<void> {
@@ -869,7 +896,11 @@ export async function uploadBookMedia(
   const fd = new FormData();
   fd.append("file", file);
   if (poster) fd.append("poster", poster);
-  return uploadBookMediaAction(token, bookId, fd);
+  try {
+    return await uploadBookMediaAction(token, bookId, fd);
+  } catch (e) {
+    throw humanizeServerActionError(e);
+  }
 }
 
 // --- 서버측 비디오 렌더(헤드리스 Chromium) ---

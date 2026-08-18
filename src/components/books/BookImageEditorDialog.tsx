@@ -154,7 +154,7 @@ export function BookImageEditorDialog({ onClose, onExport }: Props) {
      내부에 두면 조상 스태킹 컨텍스트에 갇혀 기존 패널이 편집기를 가린다 */
   if (typeof document === "undefined") return null;
   return createPortal(
-    <div className="fixed inset-0 z-[5000] flex flex-col bg-background">
+    <div className="book-image-editor-root fixed inset-0 z-[5000] flex flex-col bg-background">
       <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border bg-card/95 px-3">
         <h2 className="font-heading text-sm font-semibold">이미지 편집</h2>
         <div className="flex items-center gap-1.5">
@@ -190,8 +190,12 @@ export function BookImageEditorDialog({ onClose, onExport }: Props) {
           <FilerobotImageEditor
             source={src}
             defaultSavedImageName={sourceName}
+            /* Save as(파일명/포맷) 모달 생략 — 이 모달은 편집기 오버레이 뒤에 깔려 보이지 않는
+               문제가 있었고, 파일명은 어차피 자동 생성이므로 Save 즉시 저장으로 직행한다 */
+            onBeforeSave={() => false}
             onSave={handleSave}
-            onClose={requestClose}
+            /* onClose를 넘기면 Filerobot 자체 X 버튼(+가려지는 내부 확인 모달)이 생긴다 —
+               나가기는 우리 헤더 버튼 하나로 통일 */
             savingPixelRatio={1}
             previewPixelRatio={
               typeof window !== "undefined" ? window.devicePixelRatio : 1
