@@ -431,7 +431,7 @@ export function BookListPage() {
         </p>
       ) : null}
 
-      <ul className="space-y-3">
+      <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {items.map((b) => (
           <BookListItem
             key={b.id}

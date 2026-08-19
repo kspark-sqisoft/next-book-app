@@ -56,6 +56,15 @@ function headerNavClass({ isActive }: { isActive: boolean }) {
   );
 }
 
+function cretaSubNavClass({ isActive }: { isActive: boolean }) {
+  return cn(
+    "rounded-full px-3 py-1 text-xs font-medium transition-colors sm:text-sm",
+    isActive
+      ? "bg-primary text-primary-foreground"
+      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+  );
+}
+
 function footerNavClass({ isActive }: { isActive: boolean }) {
   return cn(
     "transition-colors",
@@ -70,10 +79,25 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, signOut } = useAuth();
   const router = useRouter();
   const location = { pathname: usePathname() };
-  /** 북 워크스페이스(상세·새 북 편집)만 넓게; `/books` 목록은 글 목록과 동일 `max-w-3xl` */
+  /** 크레타 하위 섹션(플레이리스트·스케줄·디바이스) — 대시보드형 화면이라 넓은 컬럼 사용 */
+  const cretaDashboardRoute =
+    location.pathname.startsWith("/playlists") ||
+    location.pathname.startsWith("/schedules") ||
+    location.pathname.startsWith("/devices");
+  /** 크레타 서브내비 노출: 북 목록 + 하위 섹션(북 편집 워크스페이스는 제외) */
+  const cretaSubNavRoute =
+    location.pathname === "/books" || cretaDashboardRoute;
+  /** 상단 “크레타” 메뉴 활성: 북·플레이리스트·스케줄·디바이스 전부 */
+  const cretaMenuActive =
+    location.pathname === "/books" ||
+    location.pathname.startsWith("/books/") ||
+    cretaDashboardRoute;
+  /** 크레타 영역(북 목록·워크스페이스·플레이리스트·스케줄·디바이스)은 넓은 컬럼(그리드·대시보드형) */
   const wideMain =
+    location.pathname === "/books" ||
     location.pathname === "/books/new" ||
-    /^\/books\/\d+/.test(location.pathname);
+    /^\/books\/\d+/.test(location.pathname) ||
+    cretaDashboardRoute;
   /** `BookWorkspaceShell` 사용 라우트 — 사이트 헤더 아래에 맞추려 main 패딩 제거·flex 높이 체인 */
   const bookShellRoute =
     location.pathname === "/books/new" ||
@@ -102,6 +126,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       "/",
       "/posts",
       "/books",
+      "/playlists",
+      "/schedules",
+      "/devices",
       "/cats",
       "/login",
       "/signup",
@@ -181,9 +208,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <NavLink href="/posts" prefetch className={headerNavClass}>
                 글
               </NavLink>
-              <NavLink href="/books" prefetch className={headerNavClass}>
-                북
-              </NavLink>
+              {/* 크레타: 북·플레이리스트·스케줄·디바이스 묶음 — 기본 진입은 북 목록 */}
+              <Link
+                href="/books"
+                prefetch
+                className={headerNavClass({ isActive: cretaMenuActive })}
+              >
+                크레타
+              </Link>
               <NavLink href="/cats" prefetch className={headerNavClass}>
                 Cats
               </NavLink>
@@ -286,6 +318,30 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       ) : null}
+      {cretaSubNavRoute ? (
+        <div className="shrink-0 border-b border-border bg-card/20">
+          <nav
+            aria-label="크레타 하위 메뉴"
+            className={cn(
+              "mx-auto flex w-full items-center gap-1 overflow-x-auto px-4 py-1.5",
+              wideMain ? "max-w-6xl" : "max-w-3xl",
+            )}
+          >
+            <NavLink href="/books" end prefetch className={cretaSubNavClass}>
+              북
+            </NavLink>
+            <NavLink href="/playlists" prefetch className={cretaSubNavClass}>
+              플레이리스트
+            </NavLink>
+            <NavLink href="/schedules" prefetch className={cretaSubNavClass}>
+              스케줄
+            </NavLink>
+            <NavLink href="/devices" prefetch className={cretaSubNavClass}>
+              디바이스
+            </NavLink>
+          </nav>
+        </div>
+      ) : null}
       <main
         id={SITE_APP_MAIN_SCROLL_ID}
         className={cn(
@@ -332,9 +388,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <NavLink href="/posts" prefetch className={footerNavClass}>
                 글
               </NavLink>
-              <NavLink href="/books" prefetch className={footerNavClass}>
-                북
-              </NavLink>
+              <Link
+                href="/books"
+                prefetch
+                className={footerNavClass({ isActive: cretaMenuActive })}
+              >
+                크레타
+              </Link>
               <NavLink href="/cats" prefetch className={footerNavClass}>
                 Cats
               </NavLink>
