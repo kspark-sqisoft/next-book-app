@@ -4,7 +4,7 @@ import { unlink } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { SQL } from "drizzle-orm";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
 
 import {
   type AuthActor,
@@ -360,9 +360,13 @@ export class PostsService {
     }
     if (cursor?.trim()) {
       const { createdAt, id } = this.decodePostListCursor(cursor.trim());
-      conds.push(
-        sql`(${post.createdAt} < ${createdAt} OR (${post.createdAt} = ${createdAt} AND ${post.id} < ${id}))`,
+      // Date를 raw sql 템플릿 파라미터로 넘기면 postgres-js가 직렬화하지 못해
+      // (Buffer.byteLength TypeError) 500 — 컬럼 연산자로 비교해 드라이버 매핑을 태운다
+      const keysetCond = or(
+        lt(post.createdAt, createdAt),
+        and(eq(post.createdAt, createdAt), lt(post.id, id)),
       );
+      if (keysetCond) conds.push(keysetCond);
     }
     const whereExpr = conds.length ? and(...conds) : undefined;
 

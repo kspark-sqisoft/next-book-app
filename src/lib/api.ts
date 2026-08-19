@@ -713,12 +713,17 @@ export async function fetchBook(id: number): Promise<BookDetail> {
 export function humanizeServerActionError(e: unknown): Error {
   const msg = e instanceof Error ? e.message : String(e);
   if (
-    /Server Action .* was not found|Failed to find Server Action|Minified React error #441/i.test(
-      msg,
-    )
+    /Server Action .* was not found|Failed to find Server Action/i.test(msg)
   ) {
     return new Error(
       "앱이 새 버전으로 배포되었습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.",
+    );
+  }
+  // 프로덕션에서 서버 액션이 던진 오류는 상세가 가려진 채 React #441로 도착한다 —
+  // 배포 불일치가 아니라 서버 쪽 오류일 수 있으므로 "새 버전 배포"로 단정하지 않는다
+  if (/Minified React error #441/i.test(msg)) {
+    return new Error(
+      "요청 처리에 실패했습니다. 잠시 후 다시 시도하고, 계속되면 페이지를 새로고침해 주세요.",
     );
   }
   return e instanceof Error ? e : new Error(msg);
