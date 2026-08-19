@@ -32,3 +32,14 @@ export const postKeys = {
     [...postKeys.details(), id, viewerKey] as const, // 로그인 여부에 따라 상세 필드가 달라짐
   comments: (postId: number) => [...postKeys.all, postId, "comments"] as const,
 };
+
+// 크레타 사이니지(플레이리스트·스케줄·디바이스)
+export const cretaKeys = {
+  all: ["creta"] as const,
+  playlists: () => [...cretaKeys.all, "playlists"] as const,
+  playlist: (id: number) => [...cretaKeys.all, "playlist", id] as const,
+  schedules: () => [...cretaKeys.all, "schedules"] as const,
+  schedule: (id: number) => [...cretaKeys.all, "schedule", id] as const,
+  devices: () => [...cretaKeys.all, "devices"] as const,
+  device: (id: number) => [...cretaKeys.all, "device", id] as const,
+};

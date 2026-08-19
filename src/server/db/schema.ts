@@ -103,7 +103,10 @@ export const postLike = pgTable(
       .references(() => post.id, { onDelete: "cascade" }),
     createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
   },
-  (t) => [unique().on(t.userId, t.postId), index("post_like_postId_idx").on(t.postId)],
+  (t) => [
+    unique().on(t.userId, t.postId),
+    index("post_like_postId_idx").on(t.postId),
+  ],
 );
 
 export const book = pgTable(
@@ -258,3 +261,146 @@ export const bookPageRelations = relations(bookPage, ({ one }) => ({
 export const studyCatsRelations = relations(studyCats, ({ one }) => ({
   owner: one(user, { fields: [studyCats.ownerId], references: [user.id] }),
 }));
+
+// ── 크레타 사이니지: 플레이리스트·스케줄·디바이스 ────────────────────────────
+
+// 여러 크레타북을 순서대로 묶어 재생하는 단위
+export const cretaPlaylist = pgTable("creta_playlist", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 120 }).notNull(),
+  description: varchar("description", { length: 300 }).notNull().default(""),
+  loop: boolean("loop").notNull().default(true),
+  visibility: varchar("visibility", { length: 20 })
+    .notNull()
+    .default("전체 공개"),
+  createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
+});
+
+// 플레이리스트에 담긴 북(순서 = position 오름차순). 북 삭제 시 항목도 제거
+export const cretaPlaylistItem = pgTable(
+  "creta_playlist_item",
+  {
+    id: serial("id").primaryKey(),
+    playlistId: integer("playlistId")
+      .notNull()
+      .references(() => cretaPlaylist.id, { onDelete: "cascade" }),
+    bookId: integer("bookId")
+      .notNull()
+      .references(() => book.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+  },
+  (t) => [
+    index("creta_playlist_item_playlistId_position_idx").on(
+      t.playlistId,
+      t.position,
+    ),
+  ],
+);
+
+// 날짜·시간대별 재생 편성표. 기본 재생(빈 시간 대체 콘텐츠)은 북/플레이리스트 참조
+export const cretaSchedule = pgTable("creta_schedule", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 120 }).notNull(),
+  defaultSourceType: varchar("defaultSourceType", { length: 16 })
+    .notNull()
+    .default("none"), // none | book | playlist
+  defaultBookId: integer("defaultBookId").references(() => book.id, {
+    onDelete: "set null",
+  }),
+  defaultPlaylistId: integer("defaultPlaylistId").references(
+    () => cretaPlaylist.id,
+    { onDelete: "set null" },
+  ),
+  autoApply: boolean("autoApply").notNull().default(true),
+  createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
+});
+
+// 스케줄의 지정 시간대(0~1440분). 참조 콘텐츠 삭제 시 시간대도 제거
+export const cretaScheduleSlot = pgTable(
+  "creta_schedule_slot",
+  {
+    id: serial("id").primaryKey(),
+    scheduleId: integer("scheduleId")
+      .notNull()
+      .references(() => cretaSchedule.id, { onDelete: "cascade" }),
+    startMin: integer("startMin").notNull(),
+    endMin: integer("endMin").notNull(),
+    sourceType: varchar("sourceType", { length: 16 }).notNull(), // book | playlist
+    bookId: integer("bookId").references(() => book.id, {
+      onDelete: "cascade",
+    }),
+    playlistId: integer("playlistId").references(() => cretaPlaylist.id, {
+      onDelete: "cascade",
+    }),
+    repeat: varchar("repeat", { length: 16 }).notNull().default("once"), // once|daily|weekday|weekend|range
+    repeatStart: varchar("repeatStart", { length: 10 }), // 기간 지정 시작일(YYYY-MM-DD)
+    repeatEnd: varchar("repeatEnd", { length: 10 }), // 기간 지정 종료일
+  },
+  (t) => [
+    index("creta_schedule_slot_scheduleId_startMin_idx").on(
+      t.scheduleId,
+      t.startMin,
+    ),
+  ],
+);
+
+// 사이니지 디바이스(시뮬레이션 대상). 재생 소스는 북/플레이리스트/스케줄 중 하나
+export const cretaDevice = pgTable("creta_device", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 120 }).notNull(),
+  location: varchar("location", { length: 120 }).notNull().default(""),
+  platform: varchar("platform", { length: 40 }).notNull().default("Windows"),
+  resolution: varchar("resolution", { length: 20 })
+    .notNull()
+    .default("1920×1080"),
+  orientation: varchar("orientation", { length: 8 }).notNull().default("가로"),
+  online: boolean("online").notNull().default(true),
+  sourceType: varchar("sourceType", { length: 16 }).notNull().default("none"), // none|book|playlist|schedule
+  sourceBookId: integer("sourceBookId").references(() => book.id, {
+    onDelete: "set null",
+  }),
+  sourcePlaylistId: integer("sourcePlaylistId").references(
+    () => cretaPlaylist.id,
+    { onDelete: "set null" },
+  ),
+  sourceScheduleId: integer("sourceScheduleId").references(
+    () => cretaSchedule.id,
+    { onDelete: "set null" },
+  ),
+  createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
+});
+
+export const cretaPlaylistRelations = relations(cretaPlaylist, ({ many }) => ({
+  items: many(cretaPlaylistItem),
+}));
+
+export const cretaPlaylistItemRelations = relations(
+  cretaPlaylistItem,
+  ({ one }) => ({
+    playlist: one(cretaPlaylist, {
+      fields: [cretaPlaylistItem.playlistId],
+      references: [cretaPlaylist.id],
+    }),
+    book: one(book, {
+      fields: [cretaPlaylistItem.bookId],
+      references: [book.id],
+    }),
+  }),
+);
+
+export const cretaScheduleRelations = relations(cretaSchedule, ({ many }) => ({
+  slots: many(cretaScheduleSlot),
+}));
+
+export const cretaScheduleSlotRelations = relations(
+  cretaScheduleSlot,
+  ({ one }) => ({
+    schedule: one(cretaSchedule, {
+      fields: [cretaScheduleSlot.scheduleId],
+      references: [cretaSchedule.id],
+    }),
+  }),
+);
