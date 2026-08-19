@@ -49,6 +49,21 @@ export function useBookPageThumbnails(
     [pages, defaultSlideWidth, defaultSlideHeight],
   );
 
+  // 세션 캐시에 이미 있는 썸네일은 디바운스를 기다리지 않고 첫 렌더부터 보여준다 —
+  // 목록 재진입 시 빈 카드가 잠깐 보였다가 채워지는 깜빡임 방지
+  const cachedNow = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const p of pages) {
+      const w = p.slideWidth ?? defaultSlideWidth;
+      const h = p.slideHeight ?? defaultSlideHeight;
+      const v = getBookSlideThumbnailCached(
+        bookSlideThumbnailCacheKey(p, w, h),
+      );
+      if (v !== undefined) out[p.clientKey] = v;
+    }
+    return out;
+  }, [pages, defaultSlideWidth, defaultSlideHeight]);
+
   useEffect(() => {
     let cancelled = false;
     const pagesNow = pagesRef.current;
@@ -104,5 +119,9 @@ export function useBookPageThumbnails(
     };
   }, [captureKey, defaultSlideWidth, defaultSlideHeight]);
 
-  return thumbnails;
+  // 비동기 캡처 결과(state)가 캐시 스냅샷보다 최신이므로 우선한다
+  return useMemo(
+    () => ({ ...cachedNow, ...thumbnails }),
+    [cachedNow, thumbnails],
+  );
 }
