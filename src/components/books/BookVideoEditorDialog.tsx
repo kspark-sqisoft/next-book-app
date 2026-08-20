@@ -7,7 +7,12 @@ import "@twick/studio/dist/studio.css";
 
 import { LivePlayerProvider } from "@twick/live-player";
 import { TwickStudio } from "@twick/studio";
-import { INITIAL_TIMELINE_DATA, TimelineProvider } from "@twick/timeline";
+import type { ProjectJSON, TimelineEditor } from "@twick/timeline";
+import {
+  INITIAL_TIMELINE_DATA,
+  TimelineProvider,
+  useTimelineContext,
+} from "@twick/timeline";
 import { Maximize2, Minus, Plus, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -23,6 +28,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import {
   API_BASE_URL,
@@ -95,11 +101,38 @@ const CRETA_INITIAL_TIMELINE_DATA: typeof INITIAL_TIMELINE_DATA = {
  * 레이아웃이 깨지지 않고 안전하게 업스케일된다. (low=1×, medium=1.5×, high=2×)
  */
 const EXPORT_QUALITIES = [
-  { id: "medium", label: "FHD · 1080p" },
-  { id: "high", label: "QHD · 1440p" },
-  { id: "low", label: "HD · 720p" },
+  { id: "medium", label: "FHD · 1080p", scale: 1.5 },
+  { id: "high", label: "QHD · 1440p", scale: 2 },
+  { id: "low", label: "HD · 720p", scale: 1 },
 ] as const;
 type ExportQuality = (typeof EXPORT_QUALITIES)[number]["id"];
+
+/** 편집 컴포지션 크기(16:9) — 요소 좌표계의 기준. 출력 = 이 크기 × 화질 배율 */
+const COMP_WIDTH = 1280;
+const COMP_HEIGHT = 720;
+
+/** TimelineProvider 내부 컨텍스트 값 중 헤더 UI가 쓰는 부분 */
+type TimelineBridgeValue = {
+  editor: TimelineEditor;
+  totalDuration: number;
+  present: ProjectJSON | null;
+};
+
+/**
+ * 헤더(프로바이더 밖)에서 전체 길이·프로젝트 저장을 다루기 위해
+ * TimelineProvider 내부 값을 부모 state로 끌어올리는 브리지.
+ */
+function TimelineBridge({
+  onChange,
+}: {
+  onChange: (value: TimelineBridgeValue) => void;
+}) {
+  const { editor, totalDuration, present } = useTimelineContext();
+  useEffect(() => {
+    onChange({ editor, totalDuration, present });
+  }, [editor, totalDuration, present, onChange]);
+  return null;
+}
 
 /**
  * 실제로 보이는 컴포지션 뷰 영역(안전 영역)과 현재 캔버스 사각형을 구한다.
@@ -160,6 +193,127 @@ function getCompositionRect(root: HTMLElement): DOMRect | null {
 export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
   const [exportProgress, setExportProgress] = useState<number | null>(null);
   const [exportQuality, setExportQuality] = useState<ExportQuality>("medium");
+  const exportScale =
+    EXPORT_QUALITIES.find((q) => q.id === exportQuality)?.scale ?? 1.5;
+
+  /** Load Project로 불러온 파일명 — 헤더 표시·다른 이름 저장의 기본값 */
+  const [loadedProjectName, setLoadedProjectName] = useState<string | null>(
+    null,
+  );
+  const [timelineBridge, setTimelineBridge] =
+    useState<TimelineBridgeValue | null>(null);
+  const handleBridgeChange = useCallback(
+    (value: TimelineBridgeValue) => setTimelineBridge(value),
+    [],
+  );
+  /** 전체 길이 입력의 편집 중 초안 — null이면 totalDuration 표시 모드 */
+  const [durationDraft, setDurationDraft] = useState<string | null>(null);
+  const [saveAsOpen, setSaveAsOpen] = useState(false);
+  const [saveAsName, setSaveAsName] = useState("");
+
+  const displayDuration = Number(
+    (timelineBridge?.totalDuration ?? 0).toFixed(2),
+  );
+
+  /**
+   * 전체 길이(초) 적용 — 늘리면 끝이 가장 늦은 요소의 e를 연장(비디오는 마지막
+   * 프레임 정지로 채워짐), 줄이면 목표보다 늦게 끝나는 모든 요소의 e를 자른다.
+   * 목표 이후에 시작하는 요소가 있으면 모호하므로 중단하고 안내한다.
+   */
+  const applyTotalDuration = useCallback(() => {
+    const draft = durationDraft;
+    setDurationDraft(null);
+    const bridge = timelineBridge;
+    if (draft === null || !bridge) return;
+    const target = Number(draft);
+    if (!Number.isFinite(target) || target <= 0) return;
+    const tracks = bridge.editor.getTimelineData()?.tracks ?? [];
+    const elements = tracks.flatMap((t) => [...t.getElements()]);
+    if (elements.length === 0) {
+      toast.error("타임라인에 요소가 없어 전체 길이를 정할 수 없습니다.");
+      return;
+    }
+    const current = Math.max(...elements.map((el) => el.getEnd()));
+    if (Math.abs(target - current) < 1e-3) return;
+    bridge.editor.pauseVideo();
+    if (target > current) {
+      const last = elements.reduce((a, b) => (b.getEnd() > a.getEnd() ? b : a));
+      bridge.editor.updateElements([
+        { elementId: last.getId(), updates: { e: target } },
+      ]);
+    } else {
+      if (elements.some((el) => el.getStart() >= target)) {
+        toast.error(
+          `${target}초 이후에 시작하는 요소가 있어 줄일 수 없습니다. 해당 요소를 먼저 옮기거나 삭제하세요.`,
+        );
+        return;
+      }
+      bridge.editor.updateElements(
+        elements
+          .filter((el) => el.getEnd() > target)
+          .map((el) => ({ elementId: el.getId(), updates: { e: target } })),
+      );
+    }
+    bridge.editor.refresh();
+  }, [durationDraft, timelineBridge]);
+
+  /**
+   * Load Project 대체 — 파일명을 받아 헤더에 표시한다. 취소·형식 오류 시
+   * resolve하지 않아 스튜디오는 아무 변화 없이 기존 편집을 유지한다.
+   */
+  const handleLoadProject = useCallback(() => {
+    return new Promise<ProjectJSON>((resolve) => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "application/json,.json";
+      input.onchange = () => {
+        const file = input.files?.[0];
+        if (!file) return;
+        void file.text().then((text) => {
+          try {
+            const json = JSON.parse(text) as ProjectJSON;
+            if (!json || !Array.isArray(json.tracks)) {
+              toast.error("프로젝트 JSON 형식이 아닙니다.");
+              return;
+            }
+            setLoadedProjectName(file.name);
+            resolve(json);
+          } catch {
+            toast.error("프로젝트 파일을 읽지 못했습니다.");
+          }
+        });
+      };
+      input.click();
+    });
+  }, []);
+
+  const openSaveAs = useCallback(() => {
+    setSaveAsName(
+      (loadedProjectName ?? "video-project.json").replace(/\.json$/i, ""),
+    );
+    setSaveAsOpen(true);
+  }, [loadedProjectName]);
+
+  /** 현재 편집 내용을 입력한 이름의 JSON 파일로 내려받고, 그 이름을 헤더에 반영 */
+  const handleSaveAs = useCallback(() => {
+    const present = timelineBridge?.present;
+    if (!present) {
+      toast.error("저장할 편집 내용이 없습니다.");
+      return;
+    }
+    const fileName = `${saveAsName.trim() || "video-project"}.json`;
+    const blob = new Blob([JSON.stringify(present)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+    setLoadedProjectName(fileName);
+    setSaveAsOpen(false);
+  }, [timelineBridge, saveAsName]);
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
   const [orientationConfirm, setOrientationConfirm] =
     useState<OrientationConfirm | null>(null);
@@ -426,13 +580,63 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
       />
       <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border bg-card/95 px-3">
         <div className="min-w-0">
-          <h2 className="font-heading text-sm font-semibold">비디오 편집</h2>
+          <div className="flex min-w-0 items-center gap-2">
+            <h2 className="font-heading shrink-0 text-sm font-semibold">
+              비디오 편집
+            </h2>
+            {loadedProjectName ? (
+              <span
+                className="truncate rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground"
+                title={`불러온 프로젝트: ${loadedProjectName}`}
+              >
+                {loadedProjectName}
+              </span>
+            ) : null}
+          </div>
           <p className="truncate text-[11px] text-muted-foreground">
             내보내기(Export) 시 서버에서 렌더링 후 미디어 라이브러리에
             저장됩니다 · 아래 트랙일수록 화면 앞에 표시됩니다
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <span
+            className="hidden text-[11px] tabular-nums text-muted-foreground md:inline"
+            title="편집 좌표계(1280×720)는 유지되고, 렌더 시 배율만 올려 출력 해상도로 내보냅니다"
+          >
+            편집 {COMP_WIDTH}×{COMP_HEIGHT} → 출력 {COMP_WIDTH * exportScale}×
+            {COMP_HEIGHT * exportScale}
+          </span>
+          <label
+            className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground"
+            title="타임라인 전체 길이(초) — 늘리면 마지막 요소의 끝이 연장되고, 줄이면 목표를 넘는 요소들의 끝이 잘립니다"
+          >
+            전체 길이
+            <input
+              type="number"
+              min={0.1}
+              step={0.1}
+              value={durationDraft ?? String(displayDuration)}
+              onFocus={() => setDurationDraft(String(displayDuration))}
+              onChange={(e) => setDurationDraft(e.target.value)}
+              onBlur={applyTotalDuration}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.currentTarget.blur();
+              }}
+              disabled={exportProgress != null || !timelineBridge}
+              className="h-7 w-16 rounded-md border border-border bg-background px-2 text-xs font-medium tabular-nums text-foreground disabled:opacity-50"
+            />
+            초
+          </label>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 px-2.5 text-xs"
+            disabled={exportProgress != null || !timelineBridge}
+            onClick={openSaveAs}
+          >
+            다른 이름으로 저장
+          </Button>
           <label className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
             출력 해상도
             <select
@@ -489,6 +693,38 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={saveAsOpen} onOpenChange={setSaveAsOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>프로젝트를 다른 이름으로 저장</AlertDialogTitle>
+            <AlertDialogDescription>
+              현재 편집 내용을 아래 이름의 JSON 파일로 내려받습니다. 저장한
+              파일은 Load Project로 다시 불러올 수 있습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex items-center gap-2">
+            <Input
+              value={saveAsName}
+              onChange={(e) => setSaveAsName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSaveAs();
+              }}
+              placeholder="video-project"
+              autoFocus
+            />
+            <span className="shrink-0 text-sm text-muted-foreground">
+              .json
+            </span>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel type="button">취소</AlertDialogCancel>
+            <Button type="button" onClick={handleSaveAs}>
+              저장
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog
         open={orientationConfirm != null}
         onOpenChange={(open) => {
@@ -523,10 +759,13 @@ export function BookVideoEditorDialog({ onClose, bookId, onRendered }: Props) {
             initialData={CRETA_INITIAL_TIMELINE_DATA}
             contextId="book-video-editor"
           >
+            <TimelineBridge onChange={handleBridgeChange} />
             <TwickStudio
               studioConfig={{
-                videoProps: { width: 1280, height: 720 },
+                videoProps: { width: COMP_WIDTH, height: COMP_HEIGHT },
                 exportVideo: handleExportVideo,
+                // Load Project 파일 선택을 우리가 처리 — 파일명을 헤더에 표시
+                loadProject: handleLoadProject,
                 // "My assets"에 로컬 파일 업로드 활성화 — Twick의 gcs 방식(FormData "file" POST → { url }).
                 // 우리 엔드포인트가 UPLOAD_ROOT에 저장하고 /uploads/... URL을 돌려준다.
                 uploadConfig: {
