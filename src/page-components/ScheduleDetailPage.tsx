@@ -5,7 +5,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, MonitorCheck, Plus, X } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -33,6 +33,7 @@ import {
   updateCretaSchedule,
   updateCretaScheduleSlot,
 } from "@/lib/creta-api";
+import { goBackOrPush } from "@/lib/navigate-back";
 import { cretaKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/stores/auth-store";
@@ -161,6 +162,7 @@ const SLOT_COLORS = [
 
 export function ScheduleDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const scheduleId = Number(params.id);
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -346,13 +348,14 @@ export function ScheduleDetailPage() {
 
   return (
     <div className="space-y-5">
-      <Link
-        href="/schedules"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      <button
+        type="button"
+        onClick={() => goBackOrPush(router, "/schedules")}
+        className="inline-flex cursor-pointer items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="size-4" aria-hidden />
         스케줄
-      </Link>
+      </button>
 
       <Card>
         <CardContent className="flex flex-wrap items-center justify-between gap-4">

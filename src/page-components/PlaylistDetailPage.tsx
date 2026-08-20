@@ -35,6 +35,7 @@ import {
   removeCretaPlaylistItem,
   updateCretaDeviceSource,
 } from "@/lib/creta-api";
+import { goBackOrPush } from "@/lib/navigate-back";
 import { cretaKeys } from "@/lib/query-keys";
 import { useAuth } from "@/stores/auth-store";
 
@@ -141,13 +142,14 @@ export function PlaylistDetailPage() {
 
   return (
     <div className="space-y-5">
-      <Link
-        href="/playlists"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      <button
+        type="button"
+        onClick={() => goBackOrPush(router, "/playlists")}
+        className="inline-flex cursor-pointer items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="size-4" aria-hidden />
         플레이리스트
-      </Link>
+      </button>
 
       <Card>
         <CardContent className="flex flex-wrap items-center justify-between gap-4">

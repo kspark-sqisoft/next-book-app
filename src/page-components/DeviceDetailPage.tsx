@@ -13,7 +13,7 @@ import {
   Square,
 } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -37,6 +37,7 @@ import {
   updateCretaDeviceOnline,
   updateCretaDeviceSource,
 } from "@/lib/creta-api";
+import { goBackOrPush } from "@/lib/navigate-back";
 import { cretaKeys } from "@/lib/query-keys";
 import { useAuth } from "@/stores/auth-store";
 
@@ -71,6 +72,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 export function DeviceDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const deviceId = Number(params.id);
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -169,13 +171,14 @@ export function DeviceDetailPage() {
 
   return (
     <div className="space-y-5">
-      <Link
-        href="/devices"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      <button
+        type="button"
+        onClick={() => goBackOrPush(router, "/devices")}
+        className="inline-flex cursor-pointer items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="size-4" aria-hidden />
         디바이스
-      </Link>
+      </button>
 
       <Card>
         <CardContent className="flex flex-wrap items-center justify-between gap-4">

@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { type ReactNode, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { goBackOrPush } from "@/lib/navigate-back";
 import { cn } from "@/lib/utils";
 
 type BookWorkspaceShellProps = {
@@ -131,8 +132,9 @@ export function BookWorkspaceShell({
           variant="ghost"
           size="icon"
           className="size-8 shrink-0 rounded-md text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-          onClick={() => void router.push("/books")}
-          aria-label="북 목록으로"
+          /* 목록·플레이리스트 등 진입했던 화면으로 복귀, 직접 진입이면 북 목록 */
+          onClick={() => goBackOrPush(router, "/books")}
+          aria-label="뒤로 가기"
         >
           <ArrowLeft className="size-4" />
         </Button>
