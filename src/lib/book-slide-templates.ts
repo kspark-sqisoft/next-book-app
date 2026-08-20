@@ -69,10 +69,16 @@ export type BookSlideTemplateId =
   | "menuPriceBoard"
   | "menuQuadGrid"
   | "menuStackedPhotos"
+  | "menuLunchAB"
+  | "menuSoldOut"
   | "noticeBoard"
   | "noticeWeeklyHours"
   | "noticeEmergency"
   | "noticeParkingInfo"
+  | "noticeHolidayClosure"
+  | "noticeMaintenance"
+  | "noticeDirections"
+  | "noticeRecruit"
   | "lifeWifiGuest"
   | "lifeRestroom"
   | "lifeFloorDirectory"
@@ -83,19 +89,27 @@ export type BookSlideTemplateId =
   | "lifeMeetingRoom"
   | "lifeStorefront"
   | "lifeEventGate"
+  | "lifeShuttleTimetable"
+  | "lifeQueueNumber"
+  | "lifeCelebration"
+  | "lifeEvacuation"
+  | "lifeLobbyInfoBoard"
   | "newsFlash"
   | "newsFeature"
   | "newsDual"
   | "newsTriptych"
   | "newsBulletin"
   | "newsPhotoSide"
+  | "newsPeople"
   | "photoHero"
   | "editorialSplit"
   | "coverPhoto"
   | "visualFilmRow"
   | "visualMosaicL"
   | "visualTypoCenter"
-  | "visualMagazineTop";
+  | "visualMagazineTop"
+  | "visualCountdown"
+  | "visualSeasonsGreeting";
 
 export type BookSlideTemplateDef = {
   id: BookSlideTemplateId;
@@ -129,8 +143,8 @@ export type BookSlideTemplatePreviewLayer =
       topPct: number;
       widthPct: number;
       heightPct: number;
-      /** 공지 강조 등 */
-      variant: "alert";
+      /** alert: 공지 강조 띠, widget: 위젯(시계·날씨·뉴스) 자리 표시 */
+      variant: "alert" | "widget";
     };
 
 export function getBookSlideTemplatePreviewLayers(
@@ -531,6 +545,41 @@ export function getBookSlideTemplatePreviewLayers(
           topPct: 76,
           widthPct: 88,
           heightPct: 18,
+          tone: "caption",
+        },
+      ];
+    case "noticeHolidayClosure":
+      return [
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 6,
+          widthPct: 88,
+          heightPct: 10,
+          tone: "title",
+        },
+        {
+          kind: "accent",
+          leftPct: 12,
+          topPct: 24,
+          widthPct: 76,
+          heightPct: 20,
+          variant: "alert",
+        },
+        {
+          kind: "text",
+          leftPct: 10,
+          topPct: 52,
+          widthPct: 80,
+          heightPct: 32,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 88,
+          widthPct: 88,
+          heightPct: 8,
           tone: "caption",
         },
       ];
@@ -1333,6 +1382,470 @@ export function getBookSlideTemplatePreviewLayers(
           tone: "caption",
         },
       ];
+    case "menuLunchAB":
+      return [
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 4,
+          widthPct: 88,
+          heightPct: 10,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 5,
+          topPct: 18,
+          widthPct: 43,
+          heightPct: 66,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 52,
+          topPct: 18,
+          widthPct: 43,
+          heightPct: 66,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 88,
+          widthPct: 88,
+          heightPct: 7,
+          tone: "caption",
+        },
+      ];
+    case "menuSoldOut":
+      return [
+        {
+          kind: "accent",
+          leftPct: 0,
+          topPct: 0,
+          widthPct: 100,
+          heightPct: 10,
+          variant: "alert",
+        },
+        {
+          kind: "text",
+          leftPct: 5,
+          topPct: 2,
+          widthPct: 90,
+          heightPct: 6,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 8,
+          topPct: 16,
+          widthPct: 84,
+          heightPct: 58,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 84,
+          widthPct: 88,
+          heightPct: 10,
+          tone: "caption",
+        },
+      ];
+    case "noticeMaintenance":
+      return [
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 6,
+          widthPct: 88,
+          heightPct: 10,
+          tone: "title",
+        },
+        {
+          kind: "accent",
+          leftPct: 12,
+          topPct: 22,
+          widthPct: 76,
+          heightPct: 14,
+          variant: "alert",
+        },
+        {
+          kind: "text",
+          leftPct: 8,
+          topPct: 44,
+          widthPct: 84,
+          heightPct: 34,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 88,
+          widthPct: 88,
+          heightPct: 8,
+          tone: "caption",
+        },
+      ];
+    case "noticeDirections":
+      return [
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 5,
+          widthPct: 88,
+          heightPct: 10,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 5,
+          topPct: 20,
+          widthPct: 28,
+          heightPct: 60,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 36,
+          topPct: 20,
+          widthPct: 28,
+          heightPct: 60,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 67,
+          topPct: 20,
+          widthPct: 28,
+          heightPct: 60,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 86,
+          widthPct: 88,
+          heightPct: 8,
+          tone: "caption",
+        },
+      ];
+    case "noticeRecruit":
+      return [
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 6,
+          widthPct: 88,
+          heightPct: 10,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 20,
+          widthPct: 62,
+          heightPct: 12,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 8,
+          topPct: 38,
+          widthPct: 84,
+          heightPct: 44,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 88,
+          widthPct: 88,
+          heightPct: 8,
+          tone: "caption",
+        },
+      ];
+    case "lifeShuttleTimetable":
+      return [
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 5,
+          widthPct: 88,
+          heightPct: 10,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 5,
+          topPct: 20,
+          widthPct: 43,
+          heightPct: 64,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 52,
+          topPct: 20,
+          widthPct: 43,
+          heightPct: 64,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 88,
+          widthPct: 88,
+          heightPct: 7,
+          tone: "caption",
+        },
+      ];
+    case "lifeQueueNumber":
+      return [
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 6,
+          widthPct: 88,
+          heightPct: 10,
+          tone: "title",
+        },
+        {
+          kind: "accent",
+          leftPct: 30,
+          topPct: 24,
+          widthPct: 40,
+          heightPct: 30,
+          variant: "alert",
+        },
+        {
+          kind: "text",
+          leftPct: 10,
+          topPct: 60,
+          widthPct: 80,
+          heightPct: 20,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 86,
+          widthPct: 88,
+          heightPct: 8,
+          tone: "caption",
+        },
+      ];
+    case "lifeCelebration":
+      return [
+        {
+          kind: "text",
+          leftPct: 10,
+          topPct: 10,
+          widthPct: 80,
+          heightPct: 14,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 20,
+          topPct: 32,
+          widthPct: 60,
+          heightPct: 18,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 15,
+          topPct: 56,
+          widthPct: 70,
+          heightPct: 22,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 10,
+          topPct: 84,
+          widthPct: 80,
+          heightPct: 8,
+          tone: "caption",
+        },
+      ];
+    case "lifeEvacuation":
+      return [
+        {
+          kind: "accent",
+          leftPct: 0,
+          topPct: 0,
+          widthPct: 100,
+          heightPct: 11,
+          variant: "alert",
+        },
+        {
+          kind: "text",
+          leftPct: 5,
+          topPct: 3,
+          widthPct: 90,
+          heightPct: 7,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 7,
+          topPct: 16,
+          widthPct: 86,
+          heightPct: 54,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 76,
+          widthPct: 88,
+          heightPct: 18,
+          tone: "caption",
+        },
+      ];
+    case "lifeLobbyInfoBoard":
+      return [
+        {
+          kind: "accent",
+          leftPct: 6,
+          topPct: 6,
+          widthPct: 45,
+          heightPct: 28,
+          variant: "widget",
+        },
+        {
+          kind: "accent",
+          leftPct: 55,
+          topPct: 6,
+          widthPct: 39,
+          heightPct: 28,
+          variant: "widget",
+        },
+        {
+          kind: "text",
+          leftPct: 6,
+          topPct: 42,
+          widthPct: 88,
+          heightPct: 10,
+          tone: "title",
+        },
+        {
+          kind: "accent",
+          leftPct: 6,
+          topPct: 58,
+          widthPct: 88,
+          heightPct: 36,
+          variant: "widget",
+        },
+      ];
+    case "newsPeople":
+      return [
+        {
+          kind: "image",
+          leftPct: 5,
+          topPct: 8,
+          widthPct: 34,
+          heightPct: 72,
+          stockIndex: 9,
+          radiusPx: 4,
+        },
+        {
+          kind: "text",
+          leftPct: 44,
+          topPct: 10,
+          widthPct: 52,
+          heightPct: 10,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 44,
+          topPct: 24,
+          widthPct: 52,
+          heightPct: 12,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 44,
+          topPct: 40,
+          widthPct: 52,
+          heightPct: 40,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 44,
+          topPct: 84,
+          widthPct: 52,
+          heightPct: 10,
+          tone: "caption",
+        },
+      ];
+    case "visualCountdown":
+      return [
+        {
+          kind: "text",
+          leftPct: 10,
+          topPct: 8,
+          widthPct: 80,
+          heightPct: 10,
+          tone: "title",
+        },
+        {
+          kind: "accent",
+          leftPct: 28,
+          topPct: 26,
+          widthPct: 44,
+          heightPct: 34,
+          variant: "alert",
+        },
+        {
+          kind: "text",
+          leftPct: 15,
+          topPct: 68,
+          widthPct: 70,
+          heightPct: 8,
+          tone: "caption",
+        },
+        {
+          kind: "text",
+          leftPct: 12,
+          topPct: 80,
+          widthPct: 76,
+          heightPct: 12,
+          tone: "body",
+        },
+      ];
+    case "visualSeasonsGreeting":
+      return [
+        {
+          kind: "text",
+          leftPct: 10,
+          topPct: 26,
+          widthPct: 80,
+          heightPct: 18,
+          tone: "title",
+        },
+        {
+          kind: "text",
+          leftPct: 16,
+          topPct: 50,
+          widthPct: 68,
+          heightPct: 14,
+          tone: "body",
+        },
+        {
+          kind: "text",
+          leftPct: 15,
+          topPct: 78,
+          widthPct: 70,
+          heightPct: 8,
+          tone: "caption",
+        },
+      ];
     default:
       return [];
   }
@@ -1382,6 +1895,18 @@ export const BOOK_SLIDE_TEMPLATE_LIST: BookSlideTemplateDef[] = [
     description: "왼쪽 세로 썸네일 스택 + 오른쪽 풀 텍스트 메뉴",
   },
   {
+    id: "menuLunchAB",
+    categoryId: "menu",
+    name: "런치 A/B 세트",
+    description: "좌·우 세트 비교 + 가격(구내식당·점심 한정)",
+  },
+  {
+    id: "menuSoldOut",
+    categoryId: "menu",
+    name: "품절·교체 안내",
+    description: "품절 목록 + 대체 추천(베이커리·카페)",
+  },
+  {
     id: "noticeBoard",
     categoryId: "notice",
     name: "공지 보드",
@@ -1404,6 +1929,30 @@ export const BOOK_SLIDE_TEMPLATE_LIST: BookSlideTemplateDef[] = [
     categoryId: "notice",
     name: "방문·주차 안내",
     description: "제목 + 안내 문구 + 하단 문의(로비·몰 디렉터리)",
+  },
+  {
+    id: "noticeHolidayClosure",
+    categoryId: "notice",
+    name: "휴무·연휴 안내",
+    description: "큰 날짜 강조 + 대체 이용·재개 안내(명절·정기 휴무)",
+  },
+  {
+    id: "noticeMaintenance",
+    categoryId: "notice",
+    name: "시설 점검 예고",
+    description: "점검 일시 강조 + 영향 범위·우회 안내",
+  },
+  {
+    id: "noticeDirections",
+    categoryId: "notice",
+    name: "오시는 길·교통",
+    description: "지하철·버스·주차 3열 요약(로비·안내데스크)",
+  },
+  {
+    id: "noticeRecruit",
+    categoryId: "notice",
+    name: "채용 공고",
+    description: "직무 강조 + 자격·우대·지원 방법",
   },
   {
     id: "lifeWifiGuest",
@@ -1466,6 +2015,36 @@ export const BOOK_SLIDE_TEMPLATE_LIST: BookSlideTemplateDef[] = [
     description: "행사명·게이트·티켓·준수 사항(페스티벌·컨퍼런스)",
   },
   {
+    id: "lifeShuttleTimetable",
+    categoryId: "life",
+    name: "셔틀버스 시간표",
+    description: "출근·퇴근편 2열 시간표 + 승차 위치",
+  },
+  {
+    id: "lifeQueueNumber",
+    categoryId: "life",
+    name: "대기 순번 안내",
+    description: "큰 순번 강조 + 대기·마감 안내(창구·접수처)",
+  },
+  {
+    id: "lifeCelebration",
+    categoryId: "life",
+    name: "축하 보드",
+    description: "이름 강조 + 축하 메시지(생일·승진·기념일)",
+  },
+  {
+    id: "lifeEvacuation",
+    categoryId: "life",
+    name: "비상 대피 안내",
+    description: "대피 경로·집결지·금지 사항(층별 안내)",
+  },
+  {
+    id: "lifeLobbyInfoBoard",
+    categoryId: "life",
+    name: "로비 인포 보드",
+    description: "시계·날씨·뉴스 위젯 조합 + 환영 문구(실시간 로비 화면)",
+  },
+  {
     id: "newsFlash",
     categoryId: "news",
     name: "속보",
@@ -1500,6 +2079,12 @@ export const BOOK_SLIDE_TEMPLATE_LIST: BookSlideTemplateDef[] = [
     categoryId: "news",
     name: "사진 좌·글 우",
     description: "세로 이미지 + 우측 기사형 본문(인터뷰·현장)",
+  },
+  {
+    id: "newsPeople",
+    categoryId: "news",
+    name: "인물 소개",
+    description: "프로필 사진 + 이름·직함·소개(신규 입사·수상)",
   },
   {
     id: "photoHero",
@@ -1542,6 +2127,18 @@ export const BOOK_SLIDE_TEMPLATE_LIST: BookSlideTemplateDef[] = [
     categoryId: "visual",
     name: "매거진 상단 화보",
     description: "상단 와이드 이미지 + 헤드라인 + 2열 본문",
+  },
+  {
+    id: "visualCountdown",
+    categoryId: "visual",
+    name: "D-Day 카운트다운",
+    description: "대형 D-N 강조 + 행사 일정(오픈·행사 예고)",
+  },
+  {
+    id: "visualSeasonsGreeting",
+    categoryId: "visual",
+    name: "명절 인사 카드",
+    description: "큰 인사말 + 감사 문구(설·추석 시즌)",
   },
 ];
 
@@ -1596,6 +2193,25 @@ function newImage(
     src,
     objectFit: opts?.objectFit ?? "cover",
     ...(opts?.borderRadius != null ? { borderRadius: opts.borderRadius } : {}),
+  };
+}
+
+/** 위젯 요소 — 세부 설정은 생략해 위젯 기본값(테마·표시 항목)을 따르게 한다 */
+function newWidget(
+  type: "digitalClock" | "weather" | "news",
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+): BookCanvasElement {
+  return {
+    id: crypto.randomUUID(),
+    type,
+    x,
+    y,
+    width,
+    height,
+    borderRadius: 12,
   };
 }
 
@@ -2027,6 +2643,48 @@ export function instantiateBookSlideTemplate(
           "#64748b",
           w,
           ph * 0.12,
+        ),
+      ];
+    }
+    case "noticeHolidayClosure": {
+      const w = pw - padX * 2;
+      const dateW = pw * 0.76;
+      return [
+        newText(
+          padX,
+          padY,
+          "설 연휴 휴무 안내",
+          Math.round(ph * 0.046),
+          "#0f172a",
+          w,
+          ph * 0.1,
+        ),
+        newText(
+          mx - dateW / 2,
+          ph * 0.24,
+          "2월 9일(월) ~ 2월 12일(목)",
+          Math.round(ph * 0.06),
+          "#b91c1c",
+          dateW,
+          ph * 0.2,
+        ),
+        newText(
+          padX + pw * 0.05,
+          ph * 0.5,
+          "위 기간 동안 매장과 고객센터 운영을 쉬어갑니다.\n\n• 온라인 주문은 정상 접수되며 연휴 이후 순차 발송\n• 긴급 문의: 010-0000-0000 (시설 담당)\n• 2월 13일(금) 09:00부터 정상 영업",
+          Math.round(ph * 0.026),
+          "#334155",
+          pw * 0.9 - pw * 0.1,
+          ph * 0.34,
+        ),
+        newText(
+          padX,
+          ph - padY - ph * 0.09,
+          "가족과 함께 따뜻한 명절 보내세요 · ○○○ 드림",
+          Math.round(ph * 0.022),
+          "#64748b",
+          w,
+          ph * 0.08,
         ),
       ];
     }
@@ -2923,6 +3581,531 @@ export function instantiateBookSlideTemplate(
           "#94a3b8",
           pw - padX * 2,
           ph * 0.06,
+        ),
+      ];
+    }
+    case "menuLunchAB": {
+      const colW = (pw - padX * 3) / 2;
+      const lx = padX;
+      const rx = padX + colW + padX;
+      const w = pw - padX * 2;
+      return [
+        newText(
+          padX,
+          padY,
+          "오늘의 런치",
+          Math.round(ph * 0.048),
+          "#0f172a",
+          w,
+          ph * 0.1,
+        ),
+        newText(
+          lx,
+          ph * 0.18,
+          "A 세트  ·  ₩ 9,500\n\n제육볶음 정식\n미역국 · 반찬 3종\n공깃밥 추가 무료",
+          Math.round(ph * 0.028),
+          "#1e293b",
+          colW,
+          ph * 0.6,
+        ),
+        newText(
+          rx,
+          ph * 0.18,
+          "B 세트  ·  ₩ 10,500\n\n연어 포케 볼\n샐러드 · 오늘의 수프\n음료 1잔 포함",
+          Math.round(ph * 0.028),
+          "#1e293b",
+          colW,
+          ph * 0.6,
+        ),
+        newText(
+          padX,
+          ph - padY - ph * 0.09,
+          "11:30 – 14:00  ·  포장 가능  ·  카드·간편결제",
+          Math.round(ph * 0.022),
+          "#64748b",
+          w,
+          ph * 0.08,
+        ),
+      ];
+    }
+    case "menuSoldOut": {
+      const w = pw - padX * 2;
+      return [
+        newText(
+          padX,
+          padY,
+          "품절 안내",
+          Math.round(ph * 0.05),
+          "#b91c1c",
+          w,
+          ph * 0.1,
+        ),
+        newText(
+          padX,
+          padY + ph * 0.13,
+          "아래 메뉴가 금일 준비 수량 소진으로 품절되었습니다.\n\n• 딸기 생크림 케이크\n• 소금빵 (17시 재입고 예정)\n\n대체 추천: 초코 크루아상 · 치아바타 샌드위치",
+          Math.round(ph * 0.027),
+          "#1e293b",
+          w,
+          ph * 0.56,
+        ),
+        newText(
+          padX,
+          ph - padY - ph * 0.1,
+          "이용에 불편을 드려 죄송합니다. 내일은 넉넉히 준비하겠습니다.",
+          Math.round(ph * 0.022),
+          "#64748b",
+          w,
+          ph * 0.08,
+        ),
+      ];
+    }
+    case "noticeMaintenance": {
+      const w = pw - padX * 2;
+      const dateW = pw * 0.76;
+      return [
+        newText(
+          padX,
+          padY,
+          "시설 점검 안내",
+          Math.round(ph * 0.046),
+          "#0f172a",
+          w,
+          ph * 0.1,
+        ),
+        newText(
+          mx - dateW / 2,
+          ph * 0.2,
+          "1월 25일(토) 02:00 ~ 06:00",
+          Math.round(ph * 0.05),
+          "#b45309",
+          dateW,
+          ph * 0.14,
+        ),
+        newText(
+          padX + pw * 0.03,
+          ph * 0.4,
+          "• 대상: 전 층 전기 설비·승강기 정기 점검\n• 영향: 점검 시간 중 승강기와 일부 조명 사용 불가\n• 우회: 비상계단 이용, 야간 출입은 서문을 이용해 주세요\n• 작업 중 소음이 발생할 수 있습니다",
+          Math.round(ph * 0.026),
+          "#334155",
+          pw * 0.84,
+          ph * 0.42,
+        ),
+        newText(
+          padX,
+          ph - padY - ph * 0.09,
+          "시설관리팀 02-0000-0000 · 일정은 사정에 따라 변경될 수 있습니다",
+          Math.round(ph * 0.022),
+          "#64748b",
+          w,
+          ph * 0.08,
+        ),
+      ];
+    }
+    case "noticeDirections": {
+      const gap = padX * 0.6;
+      const colW = (pw - padX * 2 - gap * 2) / 3;
+      const topY = ph * 0.2;
+      const colH = ph * 0.58;
+      const w = pw - padX * 2;
+      return [
+        newText(
+          padX,
+          padY,
+          "오시는 길 안내",
+          Math.round(ph * 0.046),
+          "#0f172a",
+          w,
+          ph * 0.1,
+        ),
+        newText(
+          padX,
+          topY,
+          "지하철\n\n2호선 강남역\n3번 출구 도보 5분",
+          Math.round(ph * 0.026),
+          "#1e293b",
+          colW,
+          colH,
+        ),
+        newText(
+          padX + colW + gap,
+          topY,
+          "버스\n\n간선 146 · 360\n지선 4412\n강남역 정류장 하차",
+          Math.round(ph * 0.026),
+          "#1e293b",
+          colW,
+          colH,
+        ),
+        newText(
+          padX + (colW + gap) * 2,
+          topY,
+          "주차\n\n건물 지하 2~4층\n30분 무료\n이후 10분당 500원",
+          Math.round(ph * 0.026),
+          "#1e293b",
+          colW,
+          colH,
+        ),
+        newText(
+          padX,
+          ph - padY - ph * 0.09,
+          "내비게이션 검색: '크레타 타워'  ·  안내데스크 1층 로비",
+          Math.round(ph * 0.022),
+          "#64748b",
+          w,
+          ph * 0.08,
+        ),
+      ];
+    }
+    case "noticeRecruit": {
+      const w = pw - padX * 2;
+      return [
+        newText(
+          padX,
+          padY,
+          "함께할 동료를 찾습니다",
+          Math.round(ph * 0.044),
+          "#0f172a",
+          w,
+          ph * 0.1,
+        ),
+        newText(
+          padX,
+          padY + ph * 0.12,
+          "프론트엔드 개발자 (경력 3년 이상)",
+          Math.round(ph * 0.036),
+          "#4338ca",
+          w,
+          ph * 0.1,
+        ),
+        newText(
+          padX + pw * 0.02,
+          padY + ph * 0.26,
+          "• 담당: 사이니지 편집기·플레이어 개발\n• 자격: React·TypeScript 실무 경험\n• 우대: Canvas/WebGL, 영상 처리 경험\n• 형태: 정규직 · 서울 본사 (하이브리드 근무)",
+          Math.round(ph * 0.026),
+          "#334155",
+          pw * 0.86,
+          ph * 0.44,
+        ),
+        newText(
+          padX,
+          ph - padY - ph * 0.09,
+          "지원: recruit@example.com  ·  마감 3월 31일  ·  자세한 내용은 채용 페이지",
+          Math.round(ph * 0.022),
+          "#64748b",
+          w,
+          ph * 0.08,
+        ),
+      ];
+    }
+    case "lifeShuttleTimetable": {
+      const colW = (pw - padX * 3) / 2;
+      const lx = padX;
+      const rx = padX + colW + padX;
+      const topY = ph * 0.18;
+      const w = pw - padX * 2;
+      return [
+        newText(
+          padX,
+          padY,
+          "셔틀버스 시간표",
+          Math.round(ph * 0.046),
+          "#0f172a",
+          w,
+          ph * 0.1,
+        ),
+        newText(
+          lx,
+          topY,
+          "출근편 (본사 방면)\n\n07:30 · 08:00 · 08:30\n09:00 · 09:30\n\n승차: 역 2번 출구 앞",
+          Math.round(ph * 0.026),
+          "#1e293b",
+          colW,
+          ph * 0.6,
+        ),
+        newText(
+          rx,
+          topY,
+          "퇴근편 (역 방면)\n\n17:30 · 18:00 · 18:30\n19:00 · 20:00\n\n승차: 본관 정문",
+          Math.round(ph * 0.026),
+          "#1e293b",
+          colW,
+          ph * 0.6,
+        ),
+        newText(
+          padX,
+          ph - padY - ph * 0.08,
+          "금요일은 30분 단축 운행  ·  문의 총무팀 (내선 200)",
+          Math.round(ph * 0.022),
+          "#64748b",
+          w,
+          ph * 0.07,
+        ),
+      ];
+    }
+    case "lifeQueueNumber": {
+      const w = pw - padX * 2;
+      const numW = pw * 0.6;
+      return [
+        newText(
+          padX,
+          padY,
+          "지금 접수 중인 순번",
+          Math.round(ph * 0.042),
+          "#0f172a",
+          w,
+          ph * 0.1,
+        ),
+        newText(
+          mx - numW / 2,
+          ph * 0.2,
+          "037",
+          Math.round(ph * 0.24),
+          "#0f766e",
+          numW,
+          ph * 0.36,
+        ),
+        newText(
+          padX,
+          ph * 0.64,
+          "대기 8팀  ·  예상 대기 시간 약 15분",
+          Math.round(ph * 0.03),
+          "#334155",
+          w,
+          ph * 0.12,
+        ),
+        newText(
+          padX,
+          ph - padY - ph * 0.09,
+          "순번이 지나면 데스크에서 재접수해 주세요  ·  접수 마감 17:30",
+          Math.round(ph * 0.022),
+          "#64748b",
+          w,
+          ph * 0.08,
+        ),
+      ];
+    }
+    case "lifeCelebration": {
+      const w = pw - padX * 2;
+      return [
+        newText(
+          padX,
+          ph * 0.1,
+          "🎉 축하합니다 🎉",
+          Math.round(ph * 0.055),
+          "#be123c",
+          w,
+          ph * 0.14,
+        ),
+        newText(
+          padX,
+          ph * 0.3,
+          "김민수 님의 승진을 축하합니다",
+          Math.round(ph * 0.042),
+          "#0f172a",
+          w,
+          ph * 0.12,
+        ),
+        newText(
+          padX + pw * 0.05,
+          ph * 0.5,
+          "함께한 노력과 성과에 감사드립니다.\n앞으로의 여정도 응원합니다!",
+          Math.round(ph * 0.028),
+          "#475569",
+          pw * 0.8,
+          ph * 0.24,
+        ),
+        newText(
+          padX,
+          ph - padY - ph * 0.1,
+          "— 크레타 팀 일동 —",
+          Math.round(ph * 0.024),
+          "#64748b",
+          w,
+          ph * 0.08,
+        ),
+      ];
+    }
+    case "lifeEvacuation": {
+      const w = pw - padX * 2;
+      return [
+        newText(
+          padX,
+          padY,
+          "비상 대피 안내",
+          Math.round(ph * 0.05),
+          "#b91c1c",
+          w,
+          ph * 0.1,
+        ),
+        newText(
+          padX,
+          padY + ph * 0.13,
+          "• 대피 경로: 비상계단 A(동측) · B(서측)\n• 집결지: 정문 앞 광장\n• 엘리베이터 사용 금지\n• 자세를 낮추고 안내 방송을 따르세요",
+          Math.round(ph * 0.028),
+          "#1e293b",
+          w,
+          ph * 0.48,
+        ),
+        newText(
+          padX,
+          ph * 0.7,
+          "화재 신고 119  ·  방재실 내선 911",
+          Math.round(ph * 0.028),
+          "#b91c1c",
+          w,
+          ph * 0.1,
+        ),
+        newText(
+          padX,
+          ph - padY - ph * 0.09,
+          "이 안내판의 위치를 평소에 확인해 두세요",
+          Math.round(ph * 0.022),
+          "#64748b",
+          w,
+          ph * 0.08,
+        ),
+      ];
+    }
+    case "lifeLobbyInfoBoard": {
+      const topH = ph * 0.3;
+      const weatherW = pw * 0.46;
+      const clockW = pw * 0.38;
+      const newsY = ph * 0.58;
+      const w = pw - padX * 2;
+      return [
+        newWidget("weather", padX, padY, weatherW, topH),
+        newWidget("digitalClock", pw - padX - clockW, padY, clockW, topH),
+        newText(
+          padX,
+          ph * 0.42,
+          "어서 오세요, 크레타 라운지입니다",
+          Math.round(ph * 0.04),
+          "#0f172a",
+          w,
+          ph * 0.1,
+        ),
+        newWidget("news", padX, newsY, w, ph - newsY - padY),
+      ];
+    }
+    case "newsPeople": {
+      const imgW = pw * 0.32;
+      const imgH = ph * 0.72;
+      const tx = padX + imgW + pw * 0.04;
+      const tw = pw - tx - padX;
+      return [
+        newImage(padX, padY + ph * 0.03, imgW, imgH, stockPath(9), {
+          borderRadius: 14,
+          objectFit: "cover",
+        }),
+        newText(
+          tx,
+          padY + ph * 0.03,
+          "새로운 동료를 소개합니다",
+          Math.round(ph * 0.036),
+          "#0f172a",
+          tw,
+          ph * 0.09,
+        ),
+        newText(
+          tx,
+          padY + ph * 0.15,
+          "박지현 · 프로덕트 디자이너",
+          Math.round(ph * 0.032),
+          "#4338ca",
+          tw,
+          ph * 0.09,
+        ),
+        newText(
+          tx,
+          padY + ph * 0.28,
+          '3월부터 디자인팀에 합류했습니다. 사이니지 편집기 UX 개선을 담당합니다.\n\n"만나서 반갑습니다! 커피 챗 언제든 환영해요."',
+          Math.round(ph * 0.026),
+          "#334155",
+          tw,
+          ph * 0.42,
+        ),
+        newText(
+          tx,
+          ph - padY - ph * 0.1,
+          "자리: 5층 동측  ·  사내 메신저 @jihyun",
+          Math.round(ph * 0.022),
+          "#64748b",
+          tw,
+          ph * 0.08,
+        ),
+      ];
+    }
+    case "visualCountdown": {
+      const w = pw - padX * 2;
+      const dW = pw * 0.6;
+      return [
+        newText(
+          padX,
+          ph * 0.07,
+          "2026 크레타 컨퍼런스",
+          Math.round(ph * 0.044),
+          "#0f172a",
+          w,
+          ph * 0.1,
+        ),
+        newText(
+          mx - dW / 2,
+          ph * 0.22,
+          "D-7",
+          Math.round(ph * 0.26),
+          "#dc2626",
+          dW,
+          ph * 0.38,
+        ),
+        newText(
+          padX,
+          ph * 0.68,
+          "3월 12일(목) 10:00  ·  코엑스 그랜드볼룸",
+          Math.round(ph * 0.03),
+          "#334155",
+          w,
+          ph * 0.1,
+        ),
+        newText(
+          padX,
+          ph - padY - ph * 0.09,
+          "사전 등록 마감 임박 — 안내데스크 또는 QR로 등록하세요",
+          Math.round(ph * 0.022),
+          "#64748b",
+          w,
+          ph * 0.08,
+        ),
+      ];
+    }
+    case "visualSeasonsGreeting": {
+      const w = pw - padX * 2;
+      return [
+        newText(
+          padX,
+          ph * 0.24,
+          "풍성한 한가위 보내세요",
+          Math.round(ph * 0.065),
+          "#92400e",
+          w,
+          ph * 0.16,
+        ),
+        newText(
+          padX + pw * 0.06,
+          ph * 0.48,
+          "언제나 함께해 주시는 고객 여러분께 감사드립니다.\n가족과 함께 넉넉하고 따뜻한 명절 되시길 바랍니다.",
+          Math.round(ph * 0.028),
+          "#57534e",
+          pw * 0.78,
+          ph * 0.2,
+        ),
+        newText(
+          padX,
+          ph * 0.76,
+          "— 크레타 임직원 일동 —",
+          Math.round(ph * 0.024),
+          "#78716c",
+          w,
+          ph * 0.08,
         ),
       ];
     }

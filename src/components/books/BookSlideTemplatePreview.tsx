@@ -111,6 +111,8 @@ export function BookSlideTemplatePreview({
               className={cn(
                 "absolute rounded-[1px]",
                 layer.variant === "alert" && "bg-red-600/88 dark:bg-red-700/78",
+                layer.variant === "widget" &&
+                  "rounded-[2px] bg-sky-500/65 dark:bg-sky-600/55",
               )}
               style={{
                 left: `${layer.leftPct}%`,
