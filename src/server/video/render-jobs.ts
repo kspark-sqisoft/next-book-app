@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 import { saveBookMainAndPoster } from "@/server/books/save-book-media";
 import { BooksService } from "@/server/services/books.service";
 
+import { concatUploadedVideosToMp4 } from "./concat-videos";
 import {
   capturePosterFromMp4,
   renderTwickProjectToMp4,
@@ -101,31 +102,73 @@ async function runJob(
       // 저장 단계(마지막 5%)를 위해 렌더는 0~0.95로 매핑
       job.progress = Math.min(0.95, p * 0.95);
     });
-
-    job.status = "saving";
-    // 결과 영상의 첫 프레임을 poster(JPEG)로 만들어 함께 저장 → 미디어 라이브러리 썸네일.
-    const posterBuf = await capturePosterFromMp4(buf).catch(() => null);
-    // Node Buffer → BlobPart(Uint8Array)로 감싸 File 생성(TS 타입 호환)
-    const file = new File([new Uint8Array(buf)], "edited-video.mp4", {
-      type: "video/mp4",
-    });
-    const poster = posterBuf
-      ? new File([new Uint8Array(posterBuf)], "poster.jpg", {
-          type: "image/jpeg",
-        })
-      : null;
-    const { main, posterFilename } = await saveBookMainAndPoster(file, poster);
-    const books = new BooksService();
-    const meta = books.mapUploadedFile(main);
-    const posterUrl = posterFilename
-      ? books.mapPosterFile({ filename: posterFilename })
-      : null;
-
-    job.result = { kind: meta.kind, url: meta.url, posterUrl };
-    job.progress = 1;
-    job.status = "done";
+    await finishJobWithMp4(job, buf, "edited-video.mp4");
   } catch (e) {
     job.error = e instanceof Error ? e.message : String(e);
     job.status = "error";
   }
+}
+
+/** 업로드된 비디오 여러 개를 이어붙이는 잡 — 진행률·저장 흐름은 렌더 잡과 동일 */
+export function startConcatJob(params: {
+  bookId: number;
+  urls: string[];
+}): string {
+  gcJobs();
+  const id = randomUUID();
+  const job: RenderJob = {
+    id,
+    bookId: params.bookId,
+    status: "pending",
+    progress: 0,
+    result: null,
+    error: null,
+    createdAt: Date.now(),
+  };
+  jobs.set(id, job);
+  void runConcatJob(job, params.urls);
+  return id;
+}
+
+async function runConcatJob(job: RenderJob, urls: string[]): Promise<void> {
+  try {
+    job.status = "rendering";
+    const buf = await concatUploadedVideosToMp4(urls, (p) => {
+      job.progress = Math.min(0.95, p * 0.95);
+    });
+    await finishJobWithMp4(job, buf, "concat-video.mp4");
+  } catch (e) {
+    job.error = e instanceof Error ? e.message : String(e);
+    job.status = "error";
+  }
+}
+
+/** 완성된 MP4를 업로드 경로에 저장하고 poster를 만들어 잡을 완료 상태로 만든다 */
+async function finishJobWithMp4(
+  job: RenderJob,
+  buf: Buffer,
+  fileName: string,
+): Promise<void> {
+  job.status = "saving";
+  // 결과 영상의 첫 프레임을 poster(JPEG)로 만들어 함께 저장 → 미디어 라이브러리 썸네일.
+  const posterBuf = await capturePosterFromMp4(buf).catch(() => null);
+  // Node Buffer → BlobPart(Uint8Array)로 감싸 File 생성(TS 타입 호환)
+  const file = new File([new Uint8Array(buf)], fileName, {
+    type: "video/mp4",
+  });
+  const poster = posterBuf
+    ? new File([new Uint8Array(posterBuf)], "poster.jpg", {
+        type: "image/jpeg",
+      })
+    : null;
+  const { main, posterFilename } = await saveBookMainAndPoster(file, poster);
+  const books = new BooksService();
+  const meta = books.mapUploadedFile(main);
+  const posterUrl = posterFilename
+    ? books.mapPosterFile({ filename: posterFilename })
+    : null;
+
+  job.result = { kind: meta.kind, url: meta.url, posterUrl };
+  job.progress = 1;
+  job.status = "done";
 }

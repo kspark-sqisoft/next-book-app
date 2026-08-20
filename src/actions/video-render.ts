@@ -11,6 +11,7 @@ import { BooksService } from "@/server/services/books.service";
 import {
   getRenderJob,
   type RenderJobView,
+  startConcatJob,
   startRenderJob,
   toRenderJobView,
 } from "@/server/video/render-jobs";
@@ -36,6 +37,34 @@ export async function startBookVideoRenderAction(
       throw new HttpError(400, "렌더할 트랙이 없습니다.");
     }
     const jobId = startRenderJob({ bookId: id, input, settings });
+    return { jobId };
+  } catch (e) {
+    rethrowActionError(e, "video-render");
+  }
+}
+
+/** 업로드된 비디오들을 순서대로 이어붙이는 잡 시작 — 진행 조회는 렌더 잡과 공용 */
+export async function startBookVideoConcatAction(
+  accessToken: string | null | undefined,
+  bookId: number,
+  urls: string[],
+): Promise<{ jobId: string }> {
+  try {
+    const user = await requireUserFromToken(accessToken);
+    const id = assertPositiveIntId(bookId);
+    await new BooksService().assertBookOwner(id, {
+      id: user.sub,
+      role: user.role,
+    });
+    if (
+      !Array.isArray(urls) ||
+      urls.length < 2 ||
+      urls.length > 10 ||
+      urls.some((u) => typeof u !== "string" || !u)
+    ) {
+      throw new HttpError(400, "이어붙일 비디오를 2~10개 선택하세요.");
+    }
+    const jobId = startConcatJob({ bookId: id, urls });
     return { jobId };
   } catch (e) {
     rethrowActionError(e, "video-render");

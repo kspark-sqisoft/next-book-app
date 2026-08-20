@@ -2,6 +2,7 @@
 import {
   ChevronDown,
   ChevronUp,
+  Eye,
   Film,
   GripVertical,
   ImagePlus,
@@ -11,6 +12,7 @@ import {
 } from "lucide-react";
 import {
   type DragEvent,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
@@ -18,6 +20,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 
 import { BOOK_LIBRARY_DRAG_TYPE } from "@/components/books/BookSlideCanvas";
@@ -33,7 +36,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { publicAssetUrl, uploadBookMedia } from "@/lib/api";
+import {
+  getBookVideoRenderJob,
+  publicAssetUrl,
+  startBookVideoConcat,
+  uploadBookMedia,
+} from "@/lib/api";
 import {
   appendBookMediaLibraryItem,
   BOOK_MEDIA_LIBRARY_CHANGED,
@@ -188,6 +196,110 @@ function useBookMediaLibraryCore(bookId: number) {
   return { items, fileRef, uploading, onPickFile, onDragStartItem };
 }
 
+/**
+ * 아이템 옆에 뜨는 미리보기 팝업 — 이미지 원본 표시, 비디오는 무음 무한 반복 재생.
+ * 패널이 스크롤 컨테이너라 잘리지 않도록 body 포털 + fixed 배치. 기본은 타일
+ * 오른쪽, 공간이 없으면 왼쪽으로 뒤집고 화면 안으로 클램프한다.
+ */
+function MediaPreviewPopup({
+  item,
+  anchor,
+  onClose,
+}: {
+  item: BookMediaLibraryItem;
+  anchor: DOMRect;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const m = 8;
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let left = anchor.right + m;
+    if (left + w > vw - m) left = anchor.left - w - m;
+    if (left < m) left = Math.min(Math.max(m, anchor.left), vw - w - m);
+    const top = Math.min(
+      Math.max(m, anchor.top + anchor.height / 2 - h / 2),
+      Math.max(m, vh - h - m),
+    );
+    setPos({ left, top });
+  }, [anchor, item]);
+
+  useEffect(() => {
+    const onPointerDown = (ev: PointerEvent) => {
+      const target = ev.target as HTMLElement | null;
+      if (!target) return;
+      if (ref.current?.contains(target)) return;
+      // 토글 버튼은 자체 click 핸들러가 열고 닫음 — 여기서 닫으면 다시 열려버린다
+      if (target.closest("[data-media-preview-toggle]")) return;
+      onClose();
+    };
+    const onKeyDown = (ev: KeyboardEvent) => {
+      if (ev.key === "Escape") onClose();
+    };
+    const onRelayout = () => onClose();
+    window.addEventListener("pointerdown", onPointerDown, true);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("scroll", onRelayout, true);
+    window.addEventListener("resize", onRelayout);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown, true);
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("scroll", onRelayout, true);
+      window.removeEventListener("resize", onRelayout);
+    };
+  }, [onClose]);
+
+  const src = publicAssetUrl(item.src) ?? item.src;
+  return createPortal(
+    <div
+      ref={ref}
+      role="dialog"
+      aria-label="미디어 미리보기"
+      className="fixed z-[130] w-96 max-w-[90vw] overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+      style={{ left: pos?.left ?? -9999, top: pos?.top ?? -9999 }}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      {item.kind === "image" ? (
+        // 미리보기 전용 이미지 — 팝업 안에서 원본 비율 유지
+        <img
+          src={src}
+          alt="미디어 미리보기"
+          className="max-h-[55vh] w-full bg-black/50 object-contain"
+          draggable={false}
+        />
+      ) : (
+        <video
+          src={src}
+          autoPlay
+          muted
+          loop
+          playsInline
+          controls
+          className="max-h-[60vh] w-full bg-black object-contain"
+        />
+      )}
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        aria-label="미리보기 닫기"
+        className="absolute right-1 top-1 size-6 rounded-full bg-background/80 text-muted-foreground shadow-sm hover:text-foreground"
+        onClick={onClose}
+      >
+        <X className="size-3.5" />
+      </Button>
+    </div>,
+    document.body,
+  );
+}
+
 function MediaGrid({
   bookId,
   items,
@@ -201,6 +313,103 @@ function MediaGrid({
 }) {
   const [pendingDelete, setPendingDelete] =
     useState<BookMediaLibraryItem | null>(null);
+  // 이어붙이기 — 선택 모드에서 비디오를 누른 순서대로 서버 ffmpeg으로 결합
+  const [concatMode, setConcatMode] = useState(false);
+  const [concatSel, setConcatSel] = useState<string[]>([]);
+  const [concatProgress, setConcatProgress] = useState<number | null>(null);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const videoCount = items.filter((it) => it.kind === "video").length;
+  const concatRunning = concatProgress !== null;
+
+  /** 미리보기 팝업 — 타일 옆에 떠서 이미지 표시·비디오 반복 재생 */
+  const [preview, setPreview] = useState<{
+    item: BookMediaLibraryItem;
+    anchor: DOMRect;
+  } | null>(null);
+
+  const togglePreview = useCallback(
+    (e: ReactMouseEvent, item: BookMediaLibraryItem) => {
+      e.stopPropagation();
+      const tile = (e.currentTarget as HTMLElement).closest("li");
+      const rect = tile?.getBoundingClientRect();
+      setPreview((prev) =>
+        prev?.item.id === item.id ? null : rect ? { item, anchor: rect } : null,
+      );
+    },
+    [],
+  );
+
+  // 미리보기 중인 항목이 목록에서 사라지면(삭제 등) 팝업도 닫는다
+  useEffect(() => {
+    setPreview((prev) =>
+      prev && !items.some((it) => it.id === prev.item.id) ? null : prev,
+    );
+  }, [items]);
+
+  const toggleConcatSelect = useCallback((id: string) => {
+    setConcatSel((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }, []);
+
+  const startConcat = useCallback(async () => {
+    const urls = concatSel
+      .map((id) => items.find((it) => it.id === id)?.src)
+      .filter((u): u is string => Boolean(u));
+    if (urls.length < 2) return;
+    setConcatProgress(0);
+    try {
+      const { jobId } = await startBookVideoConcat(bookId, urls);
+      const result = await new Promise<{
+        kind: "image" | "video";
+        url: string;
+        posterUrl: string | null;
+      }>((resolve, reject) => {
+        const poll = async () => {
+          try {
+            const job = await getBookVideoRenderJob(jobId);
+            if (job.status === "done" && job.result) {
+              resolve(job.result);
+              return;
+            }
+            if (job.status === "error") {
+              reject(new Error(job.error || "이어붙이기에 실패했습니다."));
+              return;
+            }
+            if (mountedRef.current) setConcatProgress(job.progress ?? 0);
+            setTimeout(() => void poll(), 1000);
+          } catch (e) {
+            reject(e as Error);
+          }
+        };
+        void poll();
+      });
+      appendBookMediaLibraryItem(bookId, {
+        kind: result.kind,
+        src: result.url,
+        posterUrl: result.posterUrl,
+      });
+      toast.success(
+        `동영상 ${urls.length}개를 이어붙여 라이브러리에 추가했습니다.`,
+      );
+      if (mountedRef.current) {
+        setConcatMode(false);
+        setConcatSel([]);
+      }
+    } catch (e) {
+      toast.error((e as Error).message || "이어붙이기에 실패했습니다.");
+    } finally {
+      if (mountedRef.current) setConcatProgress(null);
+    }
+  }, [bookId, concatSel, items]);
+
   if (items.length === 0) {
     return (
       <p className="py-6 text-center text-xs text-muted-foreground">
@@ -210,19 +419,90 @@ function MediaGrid({
   }
   return (
     <>
+      {videoCount >= 2 || concatMode ? (
+        <div className="mb-2 space-y-1.5">
+          {concatRunning ? (
+            <div className="flex items-center gap-2 rounded-md border border-border/70 bg-muted/30 px-2 py-1.5 text-[11px] text-muted-foreground">
+              <Spinner className="size-3.5 shrink-0" />
+              동영상 이어붙이는 중… {Math.round((concatProgress ?? 0) * 100)}%
+            </div>
+          ) : concatMode ? (
+            <>
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                이어붙일 동영상을 순서대로 누르세요. 완성본은 라이브러리에
+                추가됩니다.
+              </p>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-7 flex-1 gap-1.5 px-2 text-xs"
+                  disabled={concatSel.length < 2}
+                  onClick={() => void startConcat()}
+                >
+                  <Film className="size-3.5" aria-hidden />
+                  {concatSel.length}개 이어붙이기
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => {
+                    setConcatMode(false);
+                    setConcatSel([]);
+                  }}
+                >
+                  취소
+                </Button>
+              </div>
+            </>
+          ) : (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 w-full gap-1.5 px-2 text-xs"
+              onClick={() => setConcatMode(true)}
+            >
+              <Film className="size-3.5" aria-hidden />
+              동영상 이어붙이기
+            </Button>
+          )}
+        </div>
+      ) : null}
       <ul className={cn("grid gap-2", gridClassName)}>
         {items.map((item) => {
           const thumb =
             item.kind === "image"
               ? publicAssetUrl(item.src)
               : publicAssetUrl(item.posterSrc);
+          const selectable = concatMode && !concatRunning;
+          const selectedOrder = concatSel.indexOf(item.id);
+          const dimmed = concatMode && item.kind !== "video";
           return (
             <li key={item.id} className="relative">
               <div
-                draggable
-                onDragStart={(e) => onDragStartItem(e, item)}
+                draggable={!concatMode}
+                onDragStart={(e) => {
+                  if (!concatMode) onDragStartItem(e, item);
+                }}
                 onPointerDown={(e) => e.stopPropagation()}
-                className="group relative aspect-square cursor-grab select-none overflow-hidden rounded-lg border border-border/80 bg-muted/40 active:cursor-grabbing hover:border-violet-400/50"
+                onClick={() => {
+                  if (selectable && item.kind === "video")
+                    toggleConcatSelect(item.id);
+                }}
+                className={cn(
+                  "group relative aspect-square select-none overflow-hidden rounded-lg border border-border/80 bg-muted/40",
+                  concatMode
+                    ? item.kind === "video"
+                      ? "cursor-pointer"
+                      : "cursor-default"
+                    : "cursor-grab active:cursor-grabbing hover:border-violet-400/50",
+                  dimmed && "opacity-35",
+                  selectedOrder >= 0 &&
+                    "border-violet-500 ring-2 ring-violet-500/60",
+                )}
               >
                 {thumb ? (
                   <img
@@ -239,22 +519,52 @@ function MediaGrid({
                 <span className="pointer-events-none absolute bottom-0.5 left-0.5 rounded bg-background/85 px-1 text-[9px] font-medium text-foreground/90">
                   {item.kind === "image" ? "IMG" : "MOV"}
                 </span>
+                {selectedOrder >= 0 ? (
+                  <span className="pointer-events-none absolute left-1 top-1 flex size-5 items-center justify-center rounded-full bg-violet-600 text-[11px] font-bold text-white shadow">
+                    {selectedOrder + 1}
+                  </span>
+                ) : null}
               </div>
+              {!concatMode ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="absolute -right-1 -top-1 size-6 rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm hover:bg-destructive/15 hover:text-destructive"
+                  aria-label="라이브러리에서 제거"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => setPendingDelete(item)}
+                >
+                  <Trash2 className="size-3" />
+                </Button>
+              ) : null}
               <Button
                 type="button"
                 variant="ghost"
                 size="icon-sm"
-                className="absolute -right-1 -top-1 size-6 rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm hover:bg-destructive/15 hover:text-destructive"
-                aria-label="라이브러리에서 제거"
+                data-media-preview-toggle
+                aria-label="미리보기"
+                title="미리보기"
+                className={cn(
+                  "absolute bottom-0.5 right-0.5 size-6 rounded-full bg-background/85 text-muted-foreground shadow-sm hover:text-foreground",
+                  preview?.item.id === item.id && "text-violet-500",
+                )}
                 onPointerDown={(e) => e.stopPropagation()}
-                onClick={() => setPendingDelete(item)}
+                onClick={(e) => togglePreview(e, item)}
               >
-                <Trash2 className="size-3" />
+                <Eye className="size-3" />
               </Button>
             </li>
           );
         })}
       </ul>
+      {preview ? (
+        <MediaPreviewPopup
+          item={preview.item}
+          anchor={preview.anchor}
+          onClose={() => setPreview(null)}
+        />
+      ) : null}
       <AlertDialog
         open={pendingDelete != null}
         onOpenChange={(open) => {

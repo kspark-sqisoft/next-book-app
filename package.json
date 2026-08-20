@@ -45,6 +45,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@emnapi/core": "1.9.2",
     "@emnapi/runtime": "1.9.2",
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@fontsource-variable/geist": "^5.2.8",
     "@hookform/resolvers": "^5.2.2",
     "@react-three/drei": "^10.7.7",
