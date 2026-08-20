@@ -796,8 +796,9 @@ function BookSlideVideoOverlay({
               : "pointer-events-none opacity-0",
           )}
           onMouseDown={(e) => e.stopPropagation()}
+          /* 버블 단계 차단만 — 캡처 단계에서 끊으면 자식(진행 바)의 pointerdown
+             시크 핸들러까지 실행되지 않는다(재생 버튼은 click 기반이라 동작했음) */
           onPointerDown={(e) => e.stopPropagation()}
-          onPointerDownCapture={(e) => e.stopPropagation()}
           onPointerEnter={onBarPointerEnter}
           onPointerLeave={onBarPointerLeave}
         >

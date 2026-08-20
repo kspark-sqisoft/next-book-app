@@ -128,11 +128,14 @@ export function BookMediaPlaylistWidgetOverlay({
     (node: HTMLVideoElement | null) => {
       videoRef.current = node;
       if (!node || current?.kind !== "video") return;
-      if (mode === "view" || !paused) {
+      // paused가 바뀌면 ref 콜백이 다시 실행된다 — 여기서 paused를 무시하고
+      // 재생하면(과거 `mode === "view" ||` 조건) 보기 모드에서 멈춤 버튼을
+      // 눌러도 곧바로 다시 재생돼 버린다. 자동 재생은 "멈춤이 아닐 때"만.
+      if (!paused) {
         queueMicrotask(() => void node.play().catch(() => undefined));
       }
     },
-    [current?.kind, mode, paused],
+    [current?.kind, paused],
   );
 
   useEffect(() => {
@@ -272,6 +275,25 @@ export function BookMediaPlaylistWidgetOverlay({
     imageRemainingMsRef.current = null;
     setProgress(0);
   }, []);
+
+  /** 진행 바 클릭/드래그 시크 — 비디오 항목 전용(이미지 슬라이드는 표시만) */
+  const seekFromClientX = useCallback(
+    (track: HTMLDivElement, clientX: number) => {
+      if (current?.kind !== "video") return;
+      const v = videoRef.current;
+      if (!v) return;
+      const dur = v.duration;
+      if (!Number.isFinite(dur) || dur <= 0) return;
+      const r = track.getBoundingClientRect();
+      const w = r.width || 1;
+      const t = (Math.min(Math.max(0, clientX - r.left), w) / w) * dur;
+      v.currentTime = t;
+      setProgress(Math.min(1, t / dur));
+      setTimeUi({ current: t, total: dur });
+    },
+    [current?.kind],
+  );
+  const seekable = current?.kind === "video";
 
   const goNext = useCallback(() => {
     const len = items.length;
@@ -425,6 +447,8 @@ export function BookMediaPlaylistWidgetOverlay({
   return (
     <div
       className={cn(
+        // z-index를 주지 않는다 — 오버레이 래퍼(z-5) 안에서 형제 위젯(뉴스·시계 등)과
+        // DOM 순서(=레이어 순서)로 쌓여야 한다. z를 올리면 레이어상 위의 위젯을 가린다.
         "pointer-events-none absolute overflow-hidden bg-zinc-900",
         isSelected && mode === "edit" && "ring-2 ring-primary ring-offset-0",
       )}
@@ -511,8 +535,9 @@ export function BookMediaPlaylistWidgetOverlay({
                 : "pointer-events-none opacity-0",
             )}
             onMouseDown={(e) => e.stopPropagation()}
+            /* 버블 단계 차단만 — 캡처 단계(onPointerDownCapture)에서 끊으면
+               자식(진행 바)의 pointerdown 시크 핸들러까지 실행되지 않는다 */
             onPointerDown={(e) => e.stopPropagation()}
-            onPointerDownCapture={(e) => e.stopPropagation()}
             onPointerEnter={onBarPointerEnter}
             onPointerLeave={onBarPointerLeave}
           >
@@ -547,8 +572,42 @@ export function BookMediaPlaylistWidgetOverlay({
               <SkipForward className="size-3.5" aria-hidden />
             </button>
             <div
-              className="relative min-w-0 flex-1 rounded-full bg-white/15"
+              className={cn(
+                "relative min-w-0 flex-1 rounded-full bg-white/15",
+                seekable ? "cursor-pointer" : "cursor-default",
+              )}
               style={{ height: videoBarProgressH }}
+              role="slider"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(progress * 100)}
+              aria-label="재생 위치"
+              aria-disabled={!seekable}
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!seekable) return;
+                const track = e.currentTarget;
+                seekFromClientX(track, e.clientX);
+                try {
+                  track.setPointerCapture(e.pointerId);
+                } catch {
+                  /* 캡처 실패해도 클릭 시크는 이미 반영됨 */
+                }
+                const onMove = (ev: PointerEvent) =>
+                  seekFromClientX(track, ev.clientX);
+                const cleanup = (ev: PointerEvent) => {
+                  if (track.hasPointerCapture(ev.pointerId)) {
+                    track.releasePointerCapture(ev.pointerId);
+                  }
+                  track.removeEventListener("pointermove", onMove);
+                  track.removeEventListener("pointerup", cleanup);
+                  track.removeEventListener("pointercancel", cleanup);
+                };
+                track.addEventListener("pointermove", onMove);
+                track.addEventListener("pointerup", cleanup);
+                track.addEventListener("pointercancel", cleanup);
+              }}
             >
               <div
                 className="pointer-events-none absolute inset-y-0 left-0 rounded-full bg-sky-400/90"
