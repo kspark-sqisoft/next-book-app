@@ -208,27 +208,58 @@ function mapServerPagesToLocal(pages: BookPageDto[]): BookEditorPageState[] {
       presentationTransitionMs: clampBookPresentationTransitionMs(
         p.presentationTransitionMs,
       ),
+      presentationVisible: p.presentationVisible !== false,
     })),
   );
 }
 
-// 헤더 액션: /preview 새 탭
-function BookSlidePreviewOpenButton({ bookId }: { bookId: number }) {
+// 헤더 액션: /preview 새 탭 — 처음부터 + (현재 인덱스가 있으면) 현재 페이지부터
+function BookSlidePreviewOpenButton({
+  bookId,
+  currentIndex,
+}: {
+  bookId: number;
+  currentIndex?: number;
+}) {
   return (
-    <Button
-      type="button"
-      size="sm"
-      asChild
-      className="relative h-7 overflow-hidden border-0 bg-linear-to-br from-violet-600 via-fuchsia-600 to-rose-500 px-2.5 text-xs font-semibold leading-none text-white shadow-[0_2px_14px_-2px_rgba(124,58,237,0.55)] ring-1 ring-white/25 transition [text-shadow:0_1px_1px_rgba(0,0,0,0.2)] hover:brightness-110 hover:shadow-[0_4px_20px_-2px_rgba(168,85,247,0.55)] focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 dark:from-violet-500 dark:via-fuchsia-600 dark:to-rose-600 dark:shadow-[0_2px_18px_-4px_rgba(167,139,250,0.45)]"
-    >
-      <Link href={`/books/${bookId}/preview`} target="_blank" rel="noreferrer">
-        <MonitorPlay
-          className="mr-1.5 size-3.5 shrink-0 drop-shadow-sm"
-          aria-hidden
-        />
-        미리보기
-      </Link>
-    </Button>
+    <div className="flex items-center gap-1.5">
+      <Button
+        type="button"
+        size="sm"
+        asChild
+        className="relative h-7 overflow-hidden border-0 bg-linear-to-br from-violet-600 via-fuchsia-600 to-rose-500 px-2.5 text-xs font-semibold leading-none text-white shadow-[0_2px_14px_-2px_rgba(124,58,237,0.55)] ring-1 ring-white/25 transition [text-shadow:0_1px_1px_rgba(0,0,0,0.2)] hover:brightness-110 hover:shadow-[0_4px_20px_-2px_rgba(168,85,247,0.55)] focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 dark:from-violet-500 dark:via-fuchsia-600 dark:to-rose-600 dark:shadow-[0_2px_18px_-4px_rgba(167,139,250,0.45)]"
+      >
+        <Link
+          href={`/books/${bookId}/preview`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <MonitorPlay
+            className="mr-1.5 size-3.5 shrink-0 drop-shadow-sm"
+            aria-hidden
+          />
+          미리보기
+        </Link>
+      </Button>
+      {currentIndex != null ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          asChild
+          className="h-7 px-2 text-xs"
+          title="현재 페이지부터 미리보기 (파워포인트의 '현재 슬라이드부터')"
+        >
+          <Link
+            href={`/books/${bookId}/preview?start=${currentIndex}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            현재부터
+          </Link>
+        </Button>
+      ) : null}
+    </div>
   );
 }
 
@@ -954,6 +985,22 @@ function BookDetailOwnerView({
       });
     },
     [activePageIndex, updatePages],
+  );
+
+  /** 눈 토글 — 미리보기 재생 목록 포함/제외(숨긴 페이지는 사이드바에 흐리게) */
+  const togglePageVisibleAt = useCallback(
+    (idx: number) => {
+      updatePages((draft) => {
+        const p = draft[idx];
+        if (p) p.presentationVisible = p.presentationVisible === false;
+      });
+    },
+    [updatePages],
+  );
+
+  const pageVisibles = useMemo(
+    () => localPages.map((p) => p.presentationVisible !== false),
+    [localPages],
   );
 
   const addTextAt = useCallback(
@@ -2236,7 +2283,10 @@ function BookDetailOwnerView({
           actions={
             <>
               <div className="flex flex-wrap items-center justify-end gap-2">
-                <BookSlidePreviewOpenButton bookId={bookId} />
+                <BookSlidePreviewOpenButton
+                  bookId={bookId}
+                  currentIndex={activePageIndex}
+                />
                 <Button
                   type="button"
                   size="sm"
@@ -2409,7 +2459,10 @@ function BookDetailOwnerView({
         actions={
           <>
             <div className="flex flex-wrap items-center justify-end gap-2">
-              <BookSlidePreviewOpenButton bookId={bookId} />
+              <BookSlidePreviewOpenButton
+                bookId={bookId}
+                currentIndex={activePageIndex}
+              />
               <Button
                 type="button"
                 size="sm"
@@ -2475,6 +2528,8 @@ function BookDetailOwnerView({
                     onRemovePageAtIndex={requestRemovePageAt}
                     onDuplicatePageAtIndex={duplicatePageAt}
                     canRemovePage={localPages.length > 1}
+                    pageVisibles={pageVisibles}
+                    onTogglePageVisibleAtIndex={togglePageVisibleAt}
                     slideWidth={slideWidth}
                     slideHeight={slideHeight}
                   />
@@ -3044,7 +3099,10 @@ function BookDetailGuestBookView({
       }
       actions={
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <BookSlidePreviewOpenButton bookId={data.id} />
+          <BookSlidePreviewOpenButton
+            bookId={data.id}
+            currentIndex={safeIndex}
+          />
         </div>
       }
       left={
@@ -3056,6 +3114,9 @@ function BookDetailGuestBookView({
           pageLabels={guestPageLabels}
           onSelectPage={setPageIndex}
           mode="view"
+          pageVisibles={sortedPagesView.map(
+            (p) => p.presentationVisible !== false,
+          )}
           slideWidth={guestSlideW}
           slideHeight={guestSlideH}
         />

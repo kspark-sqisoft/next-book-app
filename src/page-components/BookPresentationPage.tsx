@@ -4,9 +4,16 @@
 import "@/book-presentation-transitions.css";
 
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  Maximize2,
+  Pause,
+  Play,
+} from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -38,6 +45,7 @@ import {
   normalizeBookPresentationTransition,
 } from "@/lib/book-presentation-transition";
 import { bookCanvasStageMatClass } from "@/lib/book-workspace-ui";
+import { goBackOrPush } from "@/lib/navigate-back";
 import { bookKeys } from "@/lib/query-keys";
 import {
   BOOK_CANVAS_PRESENTATION_DISPLAY_OPTS,
@@ -67,20 +75,34 @@ const PRESENTATION_FULLSCREEN_POINTER_GRACE_MS = 650;
 function BookPresentationInner({
   bookId,
   data,
+  startSortOrder,
 }: {
   bookId: number;
   data: BookDetail;
+  /** `?start=` — 이 sortOrder(편집 화면 페이지 순번)부터 재생 시작 */
+  startSortOrder?: number;
 }) {
+  const router = useRouter();
   /** 전체 화면 API 대상(헤더 제외, 슬라이드 영역만) */
   const presentationFsTargetRef = useRef<HTMLDivElement>(null);
   const canvasWrapRef = useRef<HTMLDivElement>(null);
 
   const sortedPages = useMemo(() => {
     if (!data.pages?.length) return [];
-    return [...data.pages].sort((a, b) => a.sortOrder - b.sortOrder);
+    return (
+      [...data.pages]
+        // 눈 토글로 숨긴 페이지는 재생 목록에서 제외
+        .filter((p) => p.presentationVisible !== false)
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+    );
   }, [data]);
 
-  const [slideIndex, setSlideIndex] = useState(0);
+  const [slideIndex, setSlideIndex] = useState(() => {
+    // "현재 페이지부터 미리보기": 해당 순번 이후의 첫 보이는 페이지에서 시작
+    if (startSortOrder == null || startSortOrder <= 0) return 0;
+    const idx = sortedPages.findIndex((p) => p.sortOrder >= startSortOrder);
+    return idx === -1 ? Math.max(0, sortedPages.length - 1) : idx;
+  });
   /**
    * 슬라이드로 **실제 이동할 때마다** 증가. 래퍼 `key`로 remount → `book-pres-enter` CSS 애니메이션이
    * 매 페이지마다 다시 돌게 함(같은 노드에 클래스만 유지하면 브라우저가 애니를 재생하지 않음).
@@ -244,16 +266,55 @@ function BookPresentationInner({
 
   const [elapsedSec, setElapsedSec] = useState(0);
 
+  /** 일시정지 — 슬라이드 진행·자동 넘김을 멈추고, 재개하면 남은 시간부터 이어간다 */
+  const [presentationPaused, setPresentationPaused] = useState(false);
+  /** 일시정지 시점까지의 누적 경과(초) — 재개 시 이 값에서 이어서 계산 */
+  const elapsedBaseRef = useRef(0);
+
+  // 슬라이드가 바뀌면 누적 경과 리셋(아래 티커 effect보다 먼저 선언되어 먼저 실행).
+  // 일시정지 중 수동 이동 시 표시도 0으로 — 동기 setState 캐스케이드를 피해 microtask로.
   useEffect(() => {
+    elapsedBaseRef.current = 0;
+    queueMicrotask(() => setElapsedSec(0));
+  }, [safeIdx]);
+
+  useEffect(() => {
+    if (presentationPaused) return;
+    const base = elapsedBaseRef.current;
     const start = performance.now();
-    const tick = () =>
-      setElapsedSec(
-        Math.min(slideDurationSec, (performance.now() - start) / 1000),
+    const tick = () => {
+      const next = Math.min(
+        slideDurationSec,
+        base + (performance.now() - start) / 1000,
       );
+      elapsedBaseRef.current = next;
+      setElapsedSec(next);
+    };
     const t = window.setInterval(tick, 100);
     queueMicrotask(tick);
     return () => clearInterval(t);
-  }, [safeIdx, slideDurationSec]);
+  }, [safeIdx, slideDurationSec, presentationPaused]);
+
+  /** 일시정지/재개 시 슬라이드 안에서 재생 중이던 비디오·오디오도 같은 시점에서 멈췄다 이어간다 */
+  const pausedMediaRef = useRef<HTMLMediaElement[]>([]);
+  useEffect(() => {
+    const root = presentationFsTargetRef.current;
+    if (!root) return;
+    if (presentationPaused) {
+      const playing = Array.from(root.querySelectorAll("video, audio")).filter(
+        (m): m is HTMLMediaElement =>
+          m instanceof HTMLMediaElement && !m.paused,
+      );
+      for (const m of playing) m.pause();
+      pausedMediaRef.current = playing;
+      return;
+    }
+    const toResume = pausedMediaRef.current;
+    pausedMediaRef.current = [];
+    for (const m of toResume) {
+      if (m.isConnected) void m.play().catch(() => undefined);
+    }
+  }, [presentationPaused]);
   const progressPct =
     slideDurationSec > 0
       ? Math.min(100, (100 * elapsedSec) / slideDurationSec)
@@ -271,6 +332,7 @@ function BookPresentationInner({
   );
 
   useEffect(() => {
+    if (presentationPaused) return; // 재개 시 이 effect가 다시 돌며 남은 시간으로 재예약
     if (sortedPages.length === 0) return;
     const cur = sortedPages[safeIdx];
     if (!cur) return;
@@ -285,13 +347,17 @@ function BookPresentationInner({
       { videoDurationSecById: videoDurationByElementId },
     );
     const ms = Math.max(500, Math.round(sec * 1000));
+    const remaining = Math.max(
+      300,
+      ms - Math.round(elapsedBaseRef.current * 1000),
+    );
     const t = window.setTimeout(() => {
       navigateToSlideIndex((i) => {
         const clamped = Math.min(i, sortedPages.length - 1);
         if (clamped + 1 < sortedPages.length) return clamped + 1;
         return loop ? 0 : clamped;
       });
-    }, ms);
+    }, remaining);
     return () => clearTimeout(t);
   }, [
     loop,
@@ -300,6 +366,7 @@ function BookPresentationInner({
     sortedPages,
     videoDurationByElementId,
     manualNavEpoch,
+    presentationPaused,
   ]);
 
   const pageTitle =
@@ -435,15 +502,12 @@ function BookPresentationInner({
             variant="ghost"
             size="sm"
             className="h-7 w-7 shrink-0 p-0 text-zinc-200 hover:bg-zinc-800 hover:text-zinc-50"
-            asChild
+            aria-label="뒤로 가기"
+            title="돌아가기"
+            /* 상세·디바이스 등 진입했던 화면으로 복귀, 직접 진입이면 북 상세 */
+            onClick={() => goBackOrPush(router, `/books/${bookId}`)}
           >
-            <Link
-              href={`/books/${bookId}`}
-              aria-label="북으로 돌아가기"
-              title="돌아가기"
-            >
-              <ArrowLeft className="size-3.5" />
-            </Link>
+            <ArrowLeft className="size-3.5" />
           </Button>
           <div className="min-w-0 truncate leading-tight pointer-events-none">
             <span className="text-[11px] font-semibold text-zinc-100">
@@ -459,6 +523,31 @@ function BookPresentationInner({
           className="pointer-events-auto relative z-20 flex shrink-0 items-center gap-0.5 sm:gap-1"
           aria-label="슬라이드 조작"
         >
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 shrink-0 touch-manipulation p-0 text-zinc-200 hover:bg-zinc-800 hover:text-zinc-50"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setPresentationPaused((p) => !p);
+            }}
+            aria-pressed={presentationPaused}
+            aria-label={presentationPaused ? "재생" : "일시정지"}
+            title={
+              presentationPaused
+                ? "이어서 재생 (슬라이드·비디오가 멈춘 지점부터)"
+                : "일시정지 (슬라이드 넘김·비디오 정지)"
+            }
+          >
+            {presentationPaused ? (
+              <Play className="size-4 pl-0.5" />
+            ) : (
+              <Pause className="size-4" />
+            )}
+          </Button>
           <Button
             type="button"
             variant="ghost"
@@ -739,6 +828,16 @@ export function BookPresentationPage() {
       key={`${id}-${data.updatedAt}`}
       bookId={id}
       data={data}
+      startSortOrder={readPreviewStartParam()}
     />
   );
+}
+
+/** `?start=N` — 편집 화면 "현재부터 미리보기"가 넘긴 시작 페이지 순번(0-based) */
+function readPreviewStartParam(): number | undefined {
+  if (typeof window === "undefined") return undefined;
+  const raw = new URLSearchParams(window.location.search).get("start");
+  if (raw == null) return undefined;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : undefined;
 }

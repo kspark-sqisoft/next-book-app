@@ -151,6 +151,8 @@ export const bookPage = pgTable(
     presentationTransitionMs: integer("presentationTransitionMs")
       .notNull()
       .default(450),
+    /** false면 미리보기(슬라이드쇼) 재생 목록에서 제외(편집 화면에는 흐리게 표시) */
+    presentationVisible: boolean("presentationVisible").notNull().default(true),
   },
   (t) => [index("book_page_bookId_sortOrder_idx").on(t.bookId, t.sortOrder)],
 );

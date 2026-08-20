@@ -7,6 +7,8 @@ export type BookPageInputDto = {
   presentationTimingElementId?: string | null;
   presentationTransition?: string;
   presentationTransitionMs?: number;
+  /** false면 미리보기 재생 목록에서 제외(기본 true) */
+  presentationVisible?: boolean;
 };
 
 export type CreateBookDto = {

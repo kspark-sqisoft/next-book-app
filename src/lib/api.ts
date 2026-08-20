@@ -26,6 +26,7 @@ import {
 } from "@/actions/posts";
 import {
   getBookVideoRenderJobAction,
+  startBookVideoConcatAction,
   startBookVideoRenderAction,
 } from "@/actions/video-render";
 import { appLog } from "@/lib/app-log";
@@ -633,6 +634,8 @@ export type BookPageDto = {
   presentationTransition?: string;
   /** 전환 지속(ms) */
   presentationTransitionMs?: number;
+  /** false면 미리보기(슬라이드쇼) 재생 목록에서 제외(기본 true) */
+  presentationVisible?: boolean;
 };
 
 /** 북 목록 카드 — 첫 슬라이드 썸네일 합성용 */
@@ -922,6 +925,16 @@ export async function startBookVideoRender(
   return runAction(() =>
     startBookVideoRenderAction(token, bookId, input, settings),
   );
+}
+
+/** 업로드된 비디오들을 순서대로 이어붙이는 잡 시작 — 진행 조회는 getBookVideoRenderJob 공용 */
+export async function startBookVideoConcat(
+  bookId: number,
+  urls: string[],
+): Promise<{ jobId: string }> {
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  return runAction(() => startBookVideoConcatAction(token, bookId, urls));
 }
 
 /** 렌더 잡 상태·진행률·결과 조회 */

@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Copy, FileStack, Plus, Trash2 } from "lucide-react";
+import { Copy, Eye, EyeOff, FileStack, Plus, Trash2 } from "lucide-react";
 import {
   Fragment,
   type MouseEvent,
@@ -67,6 +67,10 @@ type BookPageSidebarProps = {
   /** 편집 모드: 인덱스별 삭제(하단 버튼·우클릭 메뉴) */
   onRemovePageAtIndex?: (index: number) => void;
   canRemovePage?: boolean;
+  /** 길이는 pageCount와 같아야 함. false인 페이지는 흐리게(미리보기 제외) 표시 */
+  pageVisibles?: boolean[];
+  /** 편집 모드: 페이지 보이기/숨기기 토글(휴지통 왼쪽 눈 버튼) */
+  onTogglePageVisibleAtIndex?: (index: number) => void;
   /** 편집 모드: 우클릭 — 복사본을 해당 페이지 바로 아래에 삽입 */
   onDuplicatePageAtIndex?: (index: number) => void;
   /** 왼쪽 툴레일 옆 열에 넣을 때 true — 전체 너비에 맞추고 옆 테두리 제거 */
@@ -297,6 +301,8 @@ function SortableSlideRow({
   onRemovePageAtIndex,
   canRemovePage,
   onDuplicatePageAtIndex,
+  visible = true,
+  onToggleVisibleAtIndex,
 }: {
   id: string;
   index: number;
@@ -310,6 +316,9 @@ function SortableSlideRow({
   onRemovePageAtIndex?: (i: number) => void;
   canRemovePage?: boolean;
   onDuplicatePageAtIndex?: (i: number) => void;
+  /** false면 미리보기 제외 페이지 — 흐리게 표시 */
+  visible?: boolean;
+  onToggleVisibleAtIndex?: (i: number) => void;
 }) {
   const {
     attributes,
@@ -332,10 +341,10 @@ function SortableSlideRow({
   };
 
   const rowClass = cn(
-    "flex w-full min-w-0 items-stretch rounded-md border border-transparent",
+    "group/slide relative flex w-full min-w-0 items-stretch rounded-md border border-transparent",
     fluid ? "gap-1 p-1" : "gap-0.5 p-0.5",
     "cursor-grab touch-none active:cursor-grabbing",
-    isDragging && "relative z-[1] opacity-[0.35]",
+    isDragging && "z-[1] opacity-[0.35]",
   );
 
   const ctxEnabled =
@@ -432,7 +441,11 @@ function SortableSlideRow({
         <button
           type="button"
           onClick={() => onSelect(index)}
-          className={slideRowClass(index === activeIndex, fluid)}
+          className={cn(
+            slideRowClass(index === activeIndex, fluid),
+            // 미리보기 제외 페이지 — "사용 안 함" 느낌으로 흐리게
+            !visible && "opacity-40 saturate-50",
+          )}
         >
           <SlideCardPreview
             fluid={fluid}
@@ -443,6 +456,51 @@ function SortableSlideRow({
             slideHeight={slideHeight}
           />
         </button>
+
+        {/* 휴지통 왼쪽 눈 토글 — 미리보기 재생 목록 포함/제외 */}
+        {onToggleVisibleAtIndex ? (
+          <button
+            type="button"
+            aria-label={visible ? `${label} 숨기기` : `${label} 보이기`}
+            aria-pressed={!visible}
+            title={visible ? "북에서 이 페이지 제거" : "북에 이 페이지 포함"}
+            className={cn(
+              "absolute right-8 top-1.5 z-10 flex size-6 cursor-pointer items-center justify-center rounded-full border border-border bg-background/90 text-muted-foreground shadow-sm transition-opacity hover:text-foreground focus-visible:opacity-100",
+              // 숨김 상태면 항상 노출해 상태가 보이게, 아니면 hover 시에만
+              visible
+                ? "opacity-0 group-hover/slide:opacity-100"
+                : "opacity-100",
+            )}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleVisibleAtIndex(index);
+            }}
+          >
+            {visible ? (
+              <Eye className="size-3" aria-hidden />
+            ) : (
+              <EyeOff className="size-3" aria-hidden />
+            )}
+          </button>
+        ) : null}
+
+        {/* 북 카드·미디어 라이브러리와 동일한 우상단 휴지통 — 마우스 오버 시 표시 */}
+        {onRemovePageAtIndex && canRemovePage ? (
+          <button
+            type="button"
+            aria-label={`${label} 삭제`}
+            title="이 페이지 삭제"
+            className="absolute right-1.5 top-1.5 z-10 flex size-6 cursor-pointer items-center justify-center rounded-full border border-border bg-background/90 text-muted-foreground opacity-0 shadow-sm transition-opacity hover:bg-destructive/15 hover:text-destructive focus-visible:opacity-100 group-hover/slide:opacity-100"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemovePageAtIndex(index);
+            }}
+          >
+            <Trash2 className="size-3" aria-hidden />
+          </button>
+        ) : null}
       </div>
       {menuPortal}
     </>
@@ -458,6 +516,7 @@ function StaticSlideRow({
   slideWidth,
   slideHeight,
   onSelect,
+  visible = true,
 }: {
   index: number;
   activeIndex: number;
@@ -467,6 +526,8 @@ function StaticSlideRow({
   slideWidth: number;
   slideHeight: number;
   onSelect: (i: number) => void;
+  /** false면 미리보기 제외 페이지 — 흐리게 표시 */
+  visible?: boolean;
 }) {
   return (
     <div
@@ -478,7 +539,10 @@ function StaticSlideRow({
       <button
         type="button"
         onClick={() => onSelect(index)}
-        className={slideRowClass(index === activeIndex, fluid)}
+        className={cn(
+          slideRowClass(index === activeIndex, fluid),
+          !visible && "opacity-40 saturate-50",
+        )}
       >
         <SlideCardPreview
           fluid={fluid}
@@ -549,6 +613,8 @@ export function BookPageSidebar({
   onAddPageAtInsertIndex,
   onRemovePageAtIndex,
   canRemovePage,
+  pageVisibles,
+  onTogglePageVisibleAtIndex,
   onDuplicatePageAtIndex,
   fluid = false,
   slideWidth: slideWidthProp,
@@ -650,6 +716,10 @@ export function BookPageSidebar({
                   onSelect={onSelectPage}
                   onRemovePageAtIndex={edit ? onRemovePageAtIndex : undefined}
                   canRemovePage={canRemovePage}
+                  visible={pageVisibles?.[i] !== false}
+                  onToggleVisibleAtIndex={
+                    edit ? onTogglePageVisibleAtIndex : undefined
+                  }
                   onDuplicatePageAtIndex={
                     edit ? onDuplicatePageAtIndex : undefined
                   }
@@ -700,6 +770,7 @@ export function BookPageSidebar({
             slideWidth={slideWidth}
             slideHeight={slideHeight}
             onSelect={onSelectPage}
+            visible={pageVisibles?.[i] !== false}
           />
         ))}
       </div>

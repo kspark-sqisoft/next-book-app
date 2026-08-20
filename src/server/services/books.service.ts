@@ -427,6 +427,8 @@ export type BookPagePublic = {
   presentationTransition: string;
   /** 전환 지속(ms) */
   presentationTransitionMs: number;
+  /** false면 미리보기 재생 목록에서 제외 */
+  presentationVisible: boolean;
 };
 
 /** 목록 카드 배경용 첫 슬라이드 미리보기 */
@@ -1780,6 +1782,7 @@ export class BooksService {
     presentationTimingElementId: string | null;
     presentationTransition: string;
     presentationTransitionMs: number;
+    presentationVisible: boolean;
   }> {
     if (pages == null || pages.length === 0) {
       return [
@@ -1791,6 +1794,7 @@ export class BooksService {
           presentationTimingElementId: null,
           presentationTransition: DEFAULT_PRESENTATION_TRANSITION,
           presentationTransitionMs: DEFAULT_PRESENTATION_TRANSITION_MS,
+          presentationVisible: true,
         },
       ];
     }
@@ -1849,6 +1853,7 @@ export class BooksService {
         presentationTransitionMs: normalizeBookPagePresentationTransitionMs(
           p.presentationTransitionMs,
         ),
+        presentationVisible: p.presentationVisible !== false,
       };
     });
   }
@@ -1979,6 +1984,7 @@ export class BooksService {
         presentationTransitionMs: normalizeBookPagePresentationTransitionMs(
           p.presentationTransitionMs,
         ),
+        presentationVisible: p.presentationVisible !== false,
       })),
     };
   }
@@ -2022,6 +2028,7 @@ export class BooksService {
             presentationTimingElementId: p.presentationTimingElementId,
             presentationTransition: p.presentationTransition,
             presentationTransitionMs: p.presentationTransitionMs,
+            presentationVisible: p.presentationVisible,
           })),
         );
       }
@@ -2096,6 +2103,7 @@ export class BooksService {
               presentationTimingElementId: p.presentationTimingElementId,
               presentationTransition: p.presentationTransition,
               presentationTransitionMs: p.presentationTransitionMs,
+              presentationVisible: p.presentationVisible,
             })),
           );
         }

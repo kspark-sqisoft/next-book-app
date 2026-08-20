@@ -1058,6 +1058,8 @@ export type BookEditorPageState = {
   presentationTransition?: BookPresentationTransitionId;
   /** 전환 지속(ms) */
   presentationTransitionMs?: number;
+  /** false면 미리보기 재생 목록에서 제외(사이드바에 흐리게 표시). 생략 = 보임 */
+  presentationVisible?: boolean;
 };
 
 /**
@@ -1825,6 +1827,7 @@ export function toBookPagePayloads(pages: BookEditorPageState[]) {
     presentationTransitionMs: clampBookPresentationTransitionMs(
       p.presentationTransitionMs,
     ),
+    presentationVisible: p.presentationVisible !== false,
   }));
 }
 
