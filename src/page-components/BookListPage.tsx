@@ -21,6 +21,15 @@ import { toast } from "sonner";
 
 import { BookListItem } from "@/components/books/BookListItem";
 import { FormErrorAlert } from "@/components/forms/FormErrorAlert";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
@@ -28,10 +37,12 @@ import {
   BOOK_PAGE_DEFAULT,
   type BookListItem as BookListItemModel,
   createBook,
+  deleteBook,
   fetchBooksPage,
 } from "@/lib/api";
 import { SITE_APP_MAIN_SCROLL_ID } from "@/lib/app-layout-scroll";
 import { appLog } from "@/lib/app-log";
+import { canEditAsOwnerOrAdmin } from "@/lib/authz";
 import { DEFAULT_SLIDE_HEIGHT, DEFAULT_SLIDE_WIDTH } from "@/lib/book-canvas";
 import { bookKeys } from "@/lib/query-keys";
 import { useBookPageThumbnails } from "@/lib/use-book-page-thumbnails";
@@ -308,6 +319,20 @@ export function BookListPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  /** 목록에서 바로 삭제 — 작성자·관리자만 버튼이 보이고, 확인 다이얼로그를 거친다 */
+  const [pendingDelete, setPendingDelete] = useState<BookListItemModel | null>(
+    null,
+  );
+  const deleteBookMutation = useMutation({
+    mutationFn: (id: number) => deleteBook(id),
+    onSuccess: (_res, id) => {
+      toast.success("북을 삭제했습니다.");
+      void queryClient.invalidateQueries({ queryKey: bookKeys.lists() });
+      queryClient.removeQueries({ queryKey: bookKeys.detail(id) });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const listThumbPages = useMemo(
     () =>
       items
@@ -437,9 +462,45 @@ export function BookListPage() {
             key={b.id}
             book={b}
             coverThumbDataUrl={listCoverThumbnails[`book-list-${b.id}`]}
+            onDelete={
+              canEditAsOwnerOrAdmin(user, b.author.id)
+                ? () => setPendingDelete(b)
+                : undefined
+            }
           />
         ))}
       </ul>
+
+      <AlertDialog
+        open={pendingDelete != null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>북을 삭제할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              “{pendingDelete?.title}” 북과 포함된 모든 페이지가 삭제됩니다. 이
+              작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel type="button">취소</AlertDialogCancel>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deleteBookMutation.isPending}
+              onClick={() => {
+                if (pendingDelete) deleteBookMutation.mutate(pendingDelete.id);
+                setPendingDelete(null);
+              }}
+            >
+              삭제
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {hasMore ? (
         <div className="flex min-h-12 flex-col items-center justify-center gap-3 py-4">

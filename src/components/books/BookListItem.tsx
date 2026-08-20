@@ -1,7 +1,8 @@
-import { BookMarked } from "lucide-react";
+import { BookMarked, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 import { AuthorAvatarInline } from "@/components/posts/AuthorAvatarInline";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SafeImage } from "@/components/ui/safe-image";
 import type { BookListItem as BookListItemType } from "@/lib/api";
@@ -11,9 +12,11 @@ type Props = {
   book: BookListItemType;
   /** `useBookPageThumbnails` 등으로 만든 첫 슬라이드 PNG data URL */
   coverThumbDataUrl: string | null | undefined;
+  /** 있으면 카드에 삭제 버튼 표시(작성자·관리자) — 확인 다이얼로그는 호출측 책임 */
+  onDelete?: () => void;
 };
 
-export function BookListItem({ book, coverThumbDataUrl }: Props) {
+export function BookListItem({ book, coverThumbDataUrl, onDelete }: Props) {
   const hasPreview = book.coverPreview != null;
   const showImage = Boolean(coverThumbDataUrl);
 
@@ -73,6 +76,24 @@ export function BookListItem({ book, coverThumbDataUrl }: Props) {
               </p>
             </Link>
           </div>
+
+          {onDelete ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="북 삭제"
+              title="북 삭제"
+              className="absolute right-2 top-2 z-20 size-7 rounded-full border border-border bg-background/90 text-muted-foreground opacity-0 shadow-sm transition-opacity hover:bg-destructive/15 hover:text-destructive focus-visible:opacity-100 group-hover/card:opacity-100"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onDelete();
+              }}
+            >
+              <Trash2 className="size-3.5" />
+            </Button>
+          ) : null}
         </div>
       </Card>
     </li>
