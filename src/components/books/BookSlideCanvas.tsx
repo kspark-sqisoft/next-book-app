@@ -958,6 +958,31 @@ export function BookSlideCanvas({
     [elements],
   );
 
+  /**
+   * 편집 중 선택이 있을 때 HTML 오버레이 래퍼를 캔버스(z-1) 아래로 내려도 되는지.
+   * Transformer 핸들은 캔버스에 그려지므로, 전체 화면 미디어(플레이리스트) 같은
+   * 불투명 오버레이가 위(z-5)에 있으면 핸들이 가려진다. 단, 이미지·동영상·도형처럼
+   * 픽셀이 캔버스에 직접 그려지는 요소가 있으면 래퍼를 내렸을 때 그 픽셀이
+   * 오버레이 위젯들을 덮어버리므로, 오버레이 타입만 있는 슬라이드에서만 내린다.
+   */
+  const canLowerOverlayWrapper = useMemo(() => {
+    const overlayOnly = new Set([
+      "text",
+      "weather",
+      "digitalClock",
+      "webview",
+      "map",
+      "calendar",
+      "qr",
+      "chart",
+      "ticker",
+      "youtube",
+      "news",
+      "mediaPlaylist",
+    ]);
+    return visibleElements.every((e) => overlayOnly.has(e.type));
+  }, [visibleElements]);
+
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   const registerKonvaNode = useCallback(
@@ -1830,7 +1855,17 @@ export function BookSlideCanvas({
           </p>
         </div>
       ) : null}
-      <div className="pointer-events-none absolute inset-0 z-[5] overflow-hidden">
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-0 overflow-hidden",
+          // 편집 중 선택이 있으면 캔버스(z-1) 아래로 — Transformer 핸들(캔버스에 그려짐)이
+          // 전체 화면 미디어 등 불투명 오버레이에 가려지지 않게 한다. 캔버스는 이 경우
+          // 오버레이 자리에서 투명하므로 화면은 그대로 보이고, 해제하면 z-5로 복귀.
+          mode === "edit" && selectedIds.length > 0 && canLowerOverlayWrapper
+            ? "z-0"
+            : "z-[5]",
+        )}
+      >
         {visibleElements
           .filter(
             (
