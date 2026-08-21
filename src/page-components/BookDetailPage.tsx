@@ -255,6 +255,7 @@ function BookSlidePreviewOpenButton({
             target="_blank"
             rel="noreferrer"
           >
+            <MonitorPlay className="mr-1.5 size-3.5 shrink-0" aria-hidden />
             현재부터
           </Link>
         </Button>
