@@ -1,14 +1,19 @@
 // 북·페이지·캔버스 요소 CRUD, 미디어 업로드 한도·전환 키 검증
 import { join } from "node:path";
 
-import { asc, count, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
 
 import {
   type AuthActor,
   canMutateOwnedResource,
 } from "@/server/auth/auth-policy";
 import { getDb } from "@/server/db";
-import { book as bookTable, bookPage } from "@/server/db/schema";
+import {
+  book as bookTable,
+  bookPage,
+  bookShare,
+  user as userTable,
+} from "@/server/db/schema";
 import {
   AVATARS_SUBDIR,
   BOOK_IMAGES_SUBDIR,
@@ -18,6 +23,8 @@ import {
 } from "@/server/env";
 import { HttpError } from "@/server/http/http-error";
 import { sanitizePostContentHtml } from "@/server/posts/post-content-sanitize";
+import { CretaCommentsService } from "@/server/services/creta-comments.service";
+import { CretaLikesService } from "@/server/services/creta-likes.service";
 import { tryUnlink } from "@/server/uploads/write-file";
 
 import type {
@@ -27,6 +34,11 @@ import type {
 } from "./books-types";
 
 const TITLE_MAX = 200;
+
+/** Playwright E2E 픽스처 계정 패턴(e2e/helpers/auth.ts) */
+function isE2eFixtureEmail(email: string | undefined | null): boolean {
+  return /^e2e-.*@example.com$/i.test(String(email ?? ""));
+}
 const MAX_PAGES = 80;
 const MAX_ELEMENTS_PER_PAGE = 120;
 const DEFAULT_PAGE_W = 960;
@@ -46,6 +58,15 @@ const BOOK_PAGE_PRESENTATION_TRANSITIONS = new Set([
 ]);
 const DEFAULT_PRESENTATION_TRANSITION = "none";
 const DEFAULT_PRESENTATION_TRANSITION_MS = 450;
+
+/** 날씨 위젯 2열 배치 블록 — 프론트 `book-canvas.ts` BOOK_WEATHER_BLOCK_KEYS와 동일 */
+const BOOK_WEATHER_BLOCK_KEYS = new Set([
+  "main",
+  "time",
+  "location",
+  "air",
+  "secondary",
+]);
 
 /** 텍스트 위젯 애니메이션 — 프론트 `book-text-animation.ts` BOOK_TEXT_ANIMATION_IDS와 동일 키 유지 */
 const BOOK_TEXT_ANIMATIONS = new Set([
@@ -155,6 +176,10 @@ export type BookCanvasElementPublic =
       height: number;
       cityQuery?: string;
       weatherDisplay?: Record<string, boolean>;
+      /** auto | columns | single (프론트 `BOOK_WEATHER_LAYOUT_VALUES`) */
+      weatherLayout?: string;
+      /** 좌우 2열에서 오른쪽에 둘 블록 키 목록 */
+      weatherRightBlocks?: string[];
       weatherBackground?: string;
       weatherTextColor?: string;
       opacity?: number;
@@ -467,6 +492,10 @@ export type BookListItemPublic = {
   pageCount: number;
   /** 첫 페이지(정렬 기준) — 없으면 null */
   coverPreview: BookListCoverPreviewPublic | null;
+  /** 공유받은 사용자(공유 순) — 목록 카드 "○○에게 공유됨" 표시용 */
+  sharedWith: { id: number; name: string }[];
+  /** true면 모든 로그인 사용자가 편집 가능 */
+  sharedToAll: boolean;
 };
 
 export type BookPublic = {
@@ -481,6 +510,18 @@ export type BookPublic = {
   updatedAt: Date;
   author: BookAuthorPublic;
   pages: BookPagePublic[];
+  /** 이 북을 공유받은 사용자 id — 공유받은 사용자는 편집 가능 */
+  sharedUserIds: number[];
+  /** true면 모든 로그인 사용자가 편집 가능 */
+  sharedToAll: boolean;
+};
+
+/** 공유 대상으로 고를 수 있는 회원(공개 정보만) */
+export type BookShareUserPublic = {
+  id: number;
+  name: string;
+  email: string;
+  imageUrl: string | null;
 };
 
 type BookPageRow = typeof bookPage.$inferSelect;
@@ -788,6 +829,30 @@ export class BooksService {
         if (o.cityQuery != null) {
           if (typeof o.cityQuery !== "string" || o.cityQuery.length > 120) {
             throw new HttpError(400, "날씨 도시 검색어가 올바르지 않습니다.");
+          }
+        }
+        if (o.weatherLayout != null) {
+          if (
+            o.weatherLayout !== "auto" &&
+            o.weatherLayout !== "columns" &&
+            o.weatherLayout !== "single"
+          ) {
+            throw new HttpError(
+              400,
+              "날씨 weatherLayout은 auto, columns, single 중 하나여야 합니다.",
+            );
+          }
+        }
+        if (o.weatherRightBlocks != null) {
+          if (
+            !Array.isArray(o.weatherRightBlocks) ||
+            o.weatherRightBlocks.length > 5 ||
+            !o.weatherRightBlocks.every((k) => BOOK_WEATHER_BLOCK_KEYS.has(k))
+          ) {
+            throw new HttpError(
+              400,
+              "날씨 weatherRightBlocks 값이 올바르지 않습니다.",
+            );
           }
         }
         if (o.weatherDisplay != null) {
@@ -1958,6 +2023,26 @@ export class BooksService {
       }
     }
 
+    // 공유 대상 이름 — 페이지 내 북 전부를 한 번에 조회
+    const sharedMap = new Map<number, { id: number; name: string }[]>();
+    if (ids.length > 0) {
+      const shares = await db
+        .select({
+          bookId: bookShare.bookId,
+          userId: userTable.id,
+          name: userTable.name,
+        })
+        .from(bookShare)
+        .innerJoin(userTable, eq(userTable.id, bookShare.userId))
+        .where(inArray(bookShare.bookId, ids))
+        .orderBy(asc(bookShare.id));
+      for (const s of shares) {
+        const list = sharedMap.get(s.bookId) ?? [];
+        list.push({ id: s.userId, name: s.name });
+        sharedMap.set(s.bookId, list);
+      }
+    }
+
     const items: BookListItemPublic[] = rows.map((b) => {
       const fp = firstPageByBookId.get(b.id);
       let coverPreview: BookListCoverPreviewPublic | null = null;
@@ -1987,6 +2072,8 @@ export class BooksService {
         author: this.mapAuthor(b.author),
         pageCount: countMap.get(b.id) ?? 0,
         coverPreview,
+        sharedWith: sharedMap.get(b.id) ?? [],
+        sharedToAll: b.sharedToAll === true,
       };
     });
 
@@ -2030,7 +2117,125 @@ export class BooksService {
         ),
         presentationVisible: p.presentationVisible !== false,
       })),
+      sharedUserIds: await this.sharedUserIds(id),
+      sharedToAll: book.sharedToAll === true,
     };
+  }
+
+  // ── 공유 ─────────────────────────────────────────────────────────
+
+  private async sharedUserIds(bookId: number): Promise<number[]> {
+    const rows = await this.db()
+      .select({ userId: bookShare.userId })
+      .from(bookShare)
+      .where(eq(bookShare.bookId, bookId))
+      .orderBy(asc(bookShare.id));
+    return rows.map((r) => r.userId);
+  }
+
+  /** 작성자·관리자 또는 공유받은 사용자(전체 공유 포함) — 저장·업로드 권한 */
+  private async canEditBook(
+    actor: AuthActor,
+    bookId: number,
+    authorId: number,
+    sharedToAll?: boolean,
+  ): Promise<boolean> {
+    if (canMutateOwnedResource(actor, authorId)) return true;
+    if (sharedToAll === true) return true;
+    const [row] = await this.db()
+      .select({ id: bookShare.id })
+      .from(bookShare)
+      .where(and(eq(bookShare.bookId, bookId), eq(bookShare.userId, actor.id)))
+      .limit(1);
+    return Boolean(row);
+  }
+
+  /**
+   * 공유 대상 목록 — 로그인 사용자 누구나 조회(이름·이메일·아바타만).
+   * E2E가 매 실행 만드는 임시 계정(`e2e-…@example.com`)은 실제 사용자에게 보이지 않게 제외한다.
+   * 요청자 자신이 E2E 계정이면(테스트 실행 중) 제외하지 않는다.
+   */
+  async listShareableUsers(
+    viewerEmail?: string,
+  ): Promise<BookShareUserPublic[]> {
+    const rows = await this.db()
+      .select({
+        id: userTable.id,
+        name: userTable.name,
+        email: userTable.email,
+        profileImageFilename: userTable.profileImageFilename,
+      })
+      .from(userTable)
+      .orderBy(asc(userTable.name), asc(userTable.id));
+    const viewerIsE2e = isE2eFixtureEmail(viewerEmail);
+    return rows
+      .filter((u) => viewerIsE2e || !isE2eFixtureEmail(u.email))
+      .map((u) => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        imageUrl: this.authorAvatarUrl(u.profileImageFilename),
+      }));
+  }
+
+  /** 공유 추가/해제 — 작성자·관리자만. 작성자 본인은 대상이 될 수 없음 */
+  async setShare(
+    bookId: number,
+    actor: AuthActor,
+    userId: number,
+    shared: boolean,
+  ): Promise<BookPublic> {
+    const db = this.db();
+    const book = await db.query.book.findFirst({
+      where: eq(bookTable.id, bookId),
+      with: { author: true },
+    });
+    if (!book) throw new HttpError(404, "북을 찾을 수 없습니다.");
+    if (!canMutateOwnedResource(actor, book.author.id)) {
+      throw new HttpError(403, "공유 설정 권한이 없습니다.");
+    }
+    if (userId === book.author.id) {
+      throw new HttpError(400, "작성자에게는 공유할 수 없습니다.");
+    }
+    const target = await db.query.user.findFirst({
+      where: eq(userTable.id, userId),
+      columns: { id: true },
+    });
+    if (!target) throw new HttpError(404, "사용자를 찾을 수 없습니다.");
+
+    if (shared) {
+      await db
+        .insert(bookShare)
+        .values({ bookId, userId })
+        .onConflictDoNothing();
+    } else {
+      await db
+        .delete(bookShare)
+        .where(and(eq(bookShare.bookId, bookId), eq(bookShare.userId, userId)));
+    }
+    return this.findOne(bookId);
+  }
+
+  /** 모든 사용자 공유 켜기/끄기 — 작성자·관리자만 */
+  async setShareAll(
+    bookId: number,
+    actor: AuthActor,
+    shared: boolean,
+  ): Promise<BookPublic> {
+    const db = this.db();
+    const book = await db.query.book.findFirst({
+      where: eq(bookTable.id, bookId),
+      with: { author: true },
+    });
+    if (!book) throw new HttpError(404, "북을 찾을 수 없습니다.");
+    if (!canMutateOwnedResource(actor, book.author.id)) {
+      throw new HttpError(403, "공유 설정 권한이 없습니다.");
+    }
+    await db
+      .update(bookTable)
+      .set({ sharedToAll: shared })
+      .where(eq(bookTable.id, bookId));
+    return this.findOne(bookId);
   }
 
   async create(userId: number, body: CreateBookDto): Promise<BookPublic> {
@@ -2093,7 +2298,9 @@ export class BooksService {
       with: { author: true },
     });
     if (!book) throw new HttpError(404, "북을 찾을 수 없습니다.");
-    if (!canMutateOwnedResource(actor, book.author.id)) {
+    if (
+      !(await this.canEditBook(actor, bookId, book.author.id, book.sharedToAll))
+    ) {
       throw new HttpError(403, "수정 권한이 없습니다.");
     }
 
@@ -2209,6 +2416,9 @@ export class BooksService {
       pages.map((p) => p.elementsJson),
     );
 
+    // 커뮤니티 댓글(대상 FK가 없어 별도 정리)
+    await new CretaCommentsService().removeAllForTarget("book", bookId);
+    await new CretaLikesService().removeAllForTarget("book", bookId);
     // 페이지·북 삭제를 원자 처리 — 중간 실패 시 고아 행 방지
     await db.transaction(async (tx) => {
       await tx.delete(bookPage).where(eq(bookPage.bookId, bookId));
@@ -2229,7 +2439,7 @@ export class BooksService {
       with: { author: true },
     });
     if (!b) throw new HttpError(404, "북을 찾을 수 없습니다.");
-    if (!canMutateOwnedResource(actor, b.author.id)) {
+    if (!(await this.canEditBook(actor, bookId, b.author.id, b.sharedToAll))) {
       throw new HttpError(403, "업로드 권한이 없습니다.");
     }
     return b;

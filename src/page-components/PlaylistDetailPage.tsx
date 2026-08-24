@@ -11,6 +11,7 @@ import {
   Play,
   Plus,
   Repeat,
+  Share2,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -23,16 +24,21 @@ import {
   useCretaCoverThumbs,
 } from "@/components/creta/CretaCoverThumb";
 import { CretaSourceDialog } from "@/components/creta/CretaSourceDialog";
+import { MemberShareDialog } from "@/components/share/MemberShareDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
+import { canEditOwnedOrShared, canManageOwned } from "@/lib/authz";
 import {
   addCretaPlaylistItem,
   type CretaPlaylistDetail,
   fetchCretaPlaylist,
   moveCretaPlaylistItem,
   removeCretaPlaylistItem,
+  setCretaPlaylistShare,
+  setCretaPlaylistShareAll,
+  sharedWithSummary,
   updateCretaDeviceSource,
 } from "@/lib/creta-api";
 import { goBackOrPush } from "@/lib/navigate-back";
@@ -47,6 +53,7 @@ export function PlaylistDetailPage() {
   const queryClient = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const {
     data: playlist,
@@ -113,6 +120,27 @@ export function PlaylistDetailPage() {
     }
     return true;
   };
+  /** 편집 권한: 공용(소유자 없음)은 로그인 사용자 누구나, 그 외 소유자·관리자·공유받은 사용자 */
+  const canEdit = playlist
+    ? canEditOwnedOrShared(
+        user,
+        playlist.owner?.id ?? null,
+        playlist.sharedUserIds,
+        playlist.sharedToAll,
+      )
+    : false;
+  /** 공유 관리: 소유자·관리자(공용은 관리자만) */
+  const canManage = playlist
+    ? canManageOwned(user, playlist.owner?.id ?? null)
+    : false;
+  const requireEdit = (): boolean => {
+    if (!requireLogin()) return false;
+    if (!canEdit) {
+      toast.error("편집 권한이 없습니다. 소유자에게 공유를 요청하세요.");
+      return false;
+    }
+    return true;
+  };
 
   if (isLoading) {
     return (
@@ -172,8 +200,47 @@ export function PlaylistDetailPage() {
               크레타북 {items.length}개 · 총 {totalPages}페이지
               {playlist.description ? ` · ${playlist.description}` : ""}
             </p>
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+              <span>
+                작성자{" "}
+                <span className="font-medium text-foreground">
+                  {playlist.owner?.name || "공용"}
+                </span>
+              </span>
+              {playlist.sharedToAll ? (
+                <span className="inline-flex items-center gap-1 text-primary">
+                  <Share2 className="size-3" aria-hidden />
+                  모든 사용자에게 공유됨
+                </span>
+              ) : playlist.sharedWith.length > 0 ? (
+                <span className="inline-flex items-center gap-1 text-primary">
+                  <Share2 className="size-3" aria-hidden />
+                  {sharedWithSummary(playlist.sharedWith)}에게 공유됨
+                </span>
+              ) : null}
+              {!canEdit ? (
+                <span className="text-amber-700 dark:text-amber-400">
+                  보기 전용
+                </span>
+              ) : null}
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {canManage ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShareOpen(true)}
+              >
+                <Share2 className="size-4" aria-hidden />
+                공유
+                {playlist.sharedUserIds.length > 0 ? (
+                  <span className="ml-1 rounded-full bg-primary/10 px-1.5 text-[10px] font-semibold text-primary">
+                    {playlist.sharedUserIds.length}
+                  </span>
+                ) : null}
+              </Button>
+            ) : null}
             <Button
               type="button"
               disabled={items.length === 0}
@@ -189,7 +256,7 @@ export function PlaylistDetailPage() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => requireLogin() && setAddOpen(true)}
+              onClick={() => requireEdit() && setAddOpen(true)}
             >
               <Plus className="size-4" aria-hidden />북 추가
             </Button>
@@ -244,7 +311,7 @@ export function PlaylistDetailPage() {
                     aria-label={`${item.title} 위로 이동`}
                     disabled={index === 0 || moveMutation.isPending}
                     onClick={() =>
-                      requireLogin() &&
+                      requireEdit() &&
                       moveMutation.mutate({
                         itemId: item.itemId,
                         direction: -1,
@@ -262,7 +329,7 @@ export function PlaylistDetailPage() {
                       index === items.length - 1 || moveMutation.isPending
                     }
                     onClick={() =>
-                      requireLogin() &&
+                      requireEdit() &&
                       moveMutation.mutate({ itemId: item.itemId, direction: 1 })
                     }
                   >
@@ -275,7 +342,7 @@ export function PlaylistDetailPage() {
                     aria-label={`${item.title} 빼기`}
                     disabled={removeMutation.isPending}
                     onClick={() =>
-                      requireLogin() && removeMutation.mutate(item.itemId)
+                      requireEdit() && removeMutation.mutate(item.itemId)
                     }
                   >
                     <X className="size-3.5" aria-hidden />
@@ -297,6 +364,27 @@ export function PlaylistDetailPage() {
           kinds={["book"]}
           pending={addMutation.isPending}
           onSubmit={(_kind, option) => addMutation.mutate(option.id)}
+        />
+      ) : null}
+
+      {/* 공유 */}
+      {canManage && shareOpen ? (
+        <MemberShareDialog
+          open={shareOpen}
+          onOpenChange={setShareOpen}
+          title="플레이리스트 공유"
+          description={`「${playlist.name}」을(를) 함께 편집할 회원을 고르세요. 공유받은 사용자는 북 추가·순서 변경을 할 수 있고, 삭제·공유 관리는 소유자만 할 수 있습니다.`}
+          ownerId={playlist.owner?.id ?? null}
+          sharedUserIds={playlist.sharedUserIds}
+          sharedToAll={playlist.sharedToAll}
+          onToggle={async (userId, shared) => {
+            applyDetail(
+              await setCretaPlaylistShare(playlistId, userId, shared),
+            );
+          }}
+          onToggleShareAll={async (shared) => {
+            applyDetail(await setCretaPlaylistShareAll(playlistId, shared));
+          }}
         />
       ) : null}
 

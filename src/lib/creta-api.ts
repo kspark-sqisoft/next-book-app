@@ -11,13 +11,20 @@ import {
   getCretaDeviceAction,
   getCretaPlaylistAction,
   getCretaScheduleAction,
+  getMyCretaOverviewAction,
   listCretaDevicesAction,
   listCretaPlaylistsAction,
   listCretaSchedulesAction,
   moveCretaPlaylistItemAction,
   removeCretaPlaylistItemAction,
   removeCretaScheduleSlotAction,
+  setCretaPlaylistShareAction,
+  setCretaPlaylistShareAllAction,
+  setCretaScheduleShareAction,
+  setCretaScheduleShareAllAction,
+  updateCretaDeviceHealthAction,
   updateCretaDeviceOnlineAction,
+  updateCretaDevicePowerAction,
   updateCretaDeviceSourceAction,
   updateCretaScheduleAction,
   updateCretaScheduleSlotAction,
@@ -37,6 +44,15 @@ export type CretaContentRef = {
   cover: BookListCoverPreview | null;
 };
 
+/** 소유자(공개 정보). null = 공용 항목(소유자 도입 이전 데이터) */
+export type CretaOwner = {
+  id: number;
+  name: string;
+  imageUrl: string | null;
+};
+
+export type CretaSharedUser = { id: number; name: string };
+
 export type CretaPlaylistListItem = {
   id: number;
   name: string;
@@ -46,6 +62,10 @@ export type CretaPlaylistListItem = {
   itemCount: number;
   cover: BookListCoverPreview | null;
   updatedAt: string;
+  owner: CretaOwner | null;
+  sharedWith: CretaSharedUser[];
+  /** true면 모든 로그인 사용자가 편집 가능 */
+  sharedToAll: boolean;
 };
 
 export type CretaPlaylistItem = {
@@ -63,6 +83,11 @@ export type CretaPlaylistDetail = {
   loop: boolean;
   visibility: string;
   items: CretaPlaylistItem[];
+  owner: CretaOwner | null;
+  sharedUserIds: number[];
+  sharedWith: CretaSharedUser[];
+  /** true면 모든 로그인 사용자가 편집 가능 */
+  sharedToAll: boolean;
 };
 
 export type CretaSlotRepeat =
@@ -96,7 +121,13 @@ export type CretaScheduleListItem = {
   slotCount: number;
   autoApply: boolean;
   defaultContent: CretaContentRef | null;
+  /** 지금 편성된 시간대의 콘텐츠(없으면 기본 재생) */
+  currentContent: CretaContentRef | null;
   appliedDeviceNames: string[];
+  owner: CretaOwner | null;
+  sharedWith: CretaSharedUser[];
+  /** true면 모든 로그인 사용자가 편집 가능 */
+  sharedToAll: boolean;
 };
 
 export type CretaScheduleDetail = {
@@ -106,7 +137,45 @@ export type CretaScheduleDetail = {
   defaultContent: CretaContentRef | null;
   slots: CretaScheduleSlot[];
   appliedDevices: { id: number; name: string }[];
+  owner: CretaOwner | null;
+  sharedUserIds: number[];
+  sharedWith: CretaSharedUser[];
+  /** true면 모든 로그인 사용자가 편집 가능 */
+  sharedToAll: boolean;
 };
+
+/** 크레타 > 계정: 항목 한 줄 */
+export type CretaOverviewItem = {
+  id: number;
+  title: string;
+  updatedAt: string;
+  ownerName: string | null;
+  sharedWith: string[];
+};
+
+export type CretaMyOverview = {
+  user: {
+    id: number;
+    name: string;
+    email: string;
+    role: "user" | "admin";
+    imageUrl: string | null;
+  };
+  books: { owned: CretaOverviewItem[]; shared: CretaOverviewItem[] };
+  playlists: { owned: CretaOverviewItem[]; shared: CretaOverviewItem[] };
+  schedules: { owned: CretaOverviewItem[]; shared: CretaOverviewItem[] };
+};
+
+/** 공유 대상 요약: "A, B, C 외 2명" */
+export function sharedWithSummary(
+  users: readonly CretaSharedUser[],
+  max = 3,
+): string {
+  const names = users.map((u) => u.name.trim() || "이름 없음");
+  const head = names.slice(0, max).join(", ");
+  const rest = names.length - max;
+  return rest > 0 ? `${head} 외 ${rest}명` : head;
+}
 
 export type CretaDevice = {
   id: number;
@@ -117,7 +186,42 @@ export type CretaDevice = {
   orientation: string;
   online: boolean;
   source: CretaContentRef | null;
+  /** 전원 예약 "HH:MM"(매일). null = 예약 없음 */
+  powerOnTime: string | null;
+  powerOffTime: string | null;
+  /** 전원 예약 제외 요일(0=일…6=토) */
+  powerExcludeDays: number[];
+  /** 전원 예약 제외 날짜(YYYY-MM-DD) */
+  powerExcludeDates: string[];
+  /** 단말 상태(시뮬레이션): ok | error */
+  health: "ok" | "error";
   createdAt: string;
+};
+
+export type CretaDevicePowerInput = {
+  powerOnTime: string | null;
+  powerOffTime: string | null;
+  powerExcludeDays: number[];
+  powerExcludeDates: string[];
+};
+
+export const WEEKDAY_SHORT_LABEL = ["일", "월", "화", "수", "목", "금", "토"];
+
+export type CretaDeviceStatus = "online" | "offline" | "error";
+
+/** 목록·상세 공통 상태: 오프라인이 최우선, 그다음 비정상, 나머지 온라인 */
+export function cretaDeviceStatus(
+  device: Pick<CretaDevice, "online" | "health">,
+): CretaDeviceStatus {
+  if (!device.online) return "offline";
+  if (device.health === "error") return "error";
+  return "online";
+}
+
+export const CRETA_DEVICE_STATUS_LABEL: Record<CretaDeviceStatus, string> = {
+  online: "온라인",
+  offline: "오프라인",
+  error: "비정상",
 };
 
 export const PLAY_SOURCE_LABEL: Record<
@@ -143,20 +247,27 @@ export function minutesToTime(min: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-/** 디바이스 시뮬레이션 파생값(IP·플레이어 버전 등) — DB에 없는 가짜 메타 */
+/** 디바이스 시뮬레이션 파생값(IP·플레이어 버전·리소스 사용률 등) — DB에 없는 가짜 메타 */
 export function deviceSimMeta(device: CretaDevice): {
   ip: string;
   player: string;
   uptime: string;
   lastSync: string;
+  /** 0~100 (%) — 비정상 단말은 CPU·RAM이 높게 나오도록 */
+  cpuPct: number;
+  ramPct: number;
+  ssdPct: number;
 } {
+  const id = device.id;
+  const abnormal = device.health === "error";
   return {
-    ip: `192.168.0.${(device.id % 230) + 20}`,
+    ip: `192.168.0.${(id % 230) + 20}`,
     player: "Creta Player v1.1.0",
-    uptime: device.online
-      ? `${(device.id % 14) + 1}일 ${device.id % 24}시간`
-      : "—",
+    uptime: device.online ? `${(id % 14) + 1}일 ${id % 24}시간` : "—",
     lastSync: device.online ? "방금" : "연결 끊김",
+    cpuPct: abnormal ? 91 + (id % 7) : 18 + ((id * 13) % 45),
+    ramPct: abnormal ? 86 + (id % 9) : 35 + ((id * 17) % 40),
+    ssdPct: 40 + ((id * 23) % 45),
   };
 }
 
@@ -235,6 +346,55 @@ export async function moveCretaPlaylistItem(
 }
 
 // 스케줄
+/** 크레타 > 계정 현황(로그인 필요) */
+export async function fetchMyCretaOverview(): Promise<CretaMyOverview> {
+  return run(() =>
+    getMyCretaOverviewAction(requireToken()),
+  ) as unknown as CretaMyOverview;
+}
+
+/** 플레이리스트 공유 추가/해제 — 갱신된 상세 반환 */
+export async function setCretaPlaylistShare(
+  id: number,
+  userId: number,
+  shared: boolean,
+): Promise<CretaPlaylistDetail> {
+  return run(() =>
+    setCretaPlaylistShareAction(requireToken(), id, userId, shared),
+  ) as unknown as CretaPlaylistDetail;
+}
+
+/** 스케줄 공유 추가/해제 — 갱신된 상세 반환 */
+export async function setCretaScheduleShare(
+  id: number,
+  userId: number,
+  shared: boolean,
+): Promise<CretaScheduleDetail> {
+  return run(() =>
+    setCretaScheduleShareAction(requireToken(), id, userId, shared),
+  ) as unknown as CretaScheduleDetail;
+}
+
+/** 플레이리스트 모든 사용자 공유 켜기/끄기 — 소유자·관리자만 */
+export async function setCretaPlaylistShareAll(
+  id: number,
+  shared: boolean,
+): Promise<CretaPlaylistDetail> {
+  return run(() =>
+    setCretaPlaylistShareAllAction(requireToken(), id, shared),
+  ) as unknown as CretaPlaylistDetail;
+}
+
+/** 스케줄 모든 사용자 공유 켜기/끄기 — 소유자·관리자만 */
+export async function setCretaScheduleShareAll(
+  id: number,
+  shared: boolean,
+): Promise<CretaScheduleDetail> {
+  return run(() =>
+    setCretaScheduleShareAllAction(requireToken(), id, shared),
+  ) as unknown as CretaScheduleDetail;
+}
+
 export async function fetchCretaSchedules(): Promise<CretaScheduleListItem[]> {
   return run(() =>
     listCretaSchedulesAction(),
@@ -352,6 +512,24 @@ export async function updateCretaDeviceOnline(
 ): Promise<CretaDevice> {
   return run(() =>
     updateCretaDeviceOnlineAction(requireToken(), id, online),
+  ) as unknown as CretaDevice;
+}
+
+export async function updateCretaDeviceHealth(
+  id: number,
+  health: "ok" | "error",
+): Promise<CretaDevice> {
+  return run(() =>
+    updateCretaDeviceHealthAction(requireToken(), id, health),
+  ) as unknown as CretaDevice;
+}
+
+export async function updateCretaDevicePower(
+  id: number,
+  body: CretaDevicePowerInput,
+): Promise<CretaDevice> {
+  return run(() =>
+    updateCretaDevicePowerAction(requireToken(), id, body),
   ) as unknown as CretaDevice;
 }
 

@@ -31,7 +31,16 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import {
   BOOK_PAGE_DEFAULT,
@@ -304,20 +313,31 @@ export function BookListPage() {
     };
   }, [isFetchingNextPage]);
 
-  const createDefaultBook = useMutation({
-    mutationFn: () =>
+  /** 새 북 — 플레이리스트처럼 제목을 먼저 받는 다이얼로그 → 생성 후 편집 화면으로 push(뒤로가기 = 이 목록) */
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createTitle, setCreateTitle] = useState("");
+  const createBookMutation = useMutation({
+    mutationFn: (title: string) =>
       createBook({
-        title: "제목 없음",
+        title,
         slideWidth: DEFAULT_SLIDE_WIDTH,
         slideHeight: DEFAULT_SLIDE_HEIGHT,
       }),
     onSuccess: (res) => {
       void queryClient.invalidateQueries({ queryKey: bookKeys.lists() });
       void queryClient.setQueryData(bookKeys.detail(res.id), res);
-      router.replace(`/books/${res.id}`);
+      setCreateOpen(false);
+      setCreateTitle("");
+      // replace가 아니라 push — 목록 항목을 히스토리에 남겨 상세의 "뒤로"가 북 목록으로 돌아오게
+      router.push(`/books/${res.id}`);
     },
     onError: (e: Error) => toast.error(e.message),
   });
+  const submitCreateBook = () => {
+    const title = createTitle.trim();
+    if (!title || createBookMutation.isPending) return;
+    createBookMutation.mutate(title);
+  };
 
   /** 목록에서 바로 삭제 — 작성자·관리자만 버튼이 보이고, 확인 다이얼로그를 거친다 */
   const [pendingDelete, setPendingDelete] = useState<BookListItemModel | null>(
@@ -362,7 +382,7 @@ export function BookListPage() {
         <div className="min-w-0 flex-1 space-y-3">
           <div>
             <h1 className="font-heading text-2xl font-semibold tracking-tight">
-              북
+              스튜디오 (크레타북)
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               제목으로 검색할 수 있습니다. 처음 {BOOK_PAGE_DEFAULT}개만
@@ -425,22 +445,76 @@ export function BookListPage() {
           ) : null}
         </div>
         {user ? (
-          <Button
-            type="button"
-            disabled={createDefaultBook.isPending}
-            onClick={() => createDefaultBook.mutate()}
-          >
-            {createDefaultBook.isPending ? (
-              <Spinner className="mr-1.5 size-4" aria-hidden />
-            ) : (
-              <Plus className="mr-1.5 size-4" aria-hidden />
-            )}
-            새 북
+          <Button type="button" onClick={() => setCreateOpen(true)}>
+            <Plus className="mr-1.5 size-4" aria-hidden />새 북
           </Button>
         ) : null}
       </div>
 
       <FormErrorAlert message={error} />
+
+      {/* 새 북 다이얼로그 — 제목 입력 후 만들기(Enter 가능) */}
+      <Dialog
+        open={createOpen}
+        onOpenChange={(open) => {
+          if (createBookMutation.isPending) return;
+          setCreateOpen(open);
+          if (!open) setCreateTitle("");
+        }}
+      >
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>새 북</DialogTitle>
+            <DialogDescription>
+              만든 뒤 편집 화면에서 슬라이드와 위젯을 구성합니다.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="space-y-1.5"
+            onSubmit={(e) => {
+              e.preventDefault();
+              submitCreateBook();
+            }}
+          >
+            <Label htmlFor="book-create-title">제목</Label>
+            <Input
+              id="book-create-title"
+              autoFocus
+              value={createTitle}
+              onChange={(e) => setCreateTitle(e.target.value)}
+              placeholder="예: 매장 안내 보드"
+              maxLength={200}
+            />
+          </form>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={createBookMutation.isPending}
+              onClick={() => {
+                setCreateOpen(false);
+                setCreateTitle("");
+              }}
+            >
+              취소
+            </Button>
+            <Button
+              type="button"
+              disabled={!createTitle.trim() || createBookMutation.isPending}
+              onClick={submitCreateBook}
+            >
+              {createBookMutation.isPending ? (
+                <>
+                  <Spinner className="mr-1.5 size-4" aria-hidden />
+                  만드는 중…
+                </>
+              ) : (
+                "만들기"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {isPending ? (
         <div className="flex justify-center py-16">
@@ -456,7 +530,7 @@ export function BookListPage() {
         </p>
       ) : null}
 
-      <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((b) => (
           <BookListItem
             key={b.id}

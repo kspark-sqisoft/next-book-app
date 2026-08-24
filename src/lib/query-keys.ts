@@ -5,12 +5,21 @@ export const userKeys = {
   adminList: () => [...userKeys.all, "admin", "list", "v3"] as const, // 스키마 버전 bump 시 v4 등으로
 };
 
+export const orgKeys = {
+  all: ["orgs"] as const,
+  capabilities: () => [...orgKeys.all, "capabilities"] as const,
+  list: () => [...orgKeys.all, "list"] as const,
+  members: (orgId: number) => [...orgKeys.all, "members", orgId] as const,
+};
+
 export const bookKeys = {
   all: ["books"] as const,
   lists: () => [...bookKeys.all, "list"] as const,
   list: (search: string) => [...bookKeys.lists(), search] as const, // 검색어 포함
   details: () => [...bookKeys.all, "detail"] as const,
   detail: (id: number) => [...bookKeys.details(), id] as const,
+  /** 북 미디어 라이브러리(서버 보관 목록 + 공유받은 파일) */
+  mediaLibrary: (id: number) => [...bookKeys.all, "media-library", id] as const,
 };
 
 // Cats React Query 계층: invalidateQueries({ queryKey: catKeys.all })로 일괄 무효화
@@ -42,4 +51,14 @@ export const cretaKeys = {
   schedule: (id: number) => [...cretaKeys.all, "schedule", id] as const,
   devices: () => [...cretaKeys.all, "devices"] as const,
   device: (id: number) => [...cretaKeys.all, "device", id] as const,
+  /** 크레타 > 계정: 내가 만든/공유받은 북·플레이리스트·스케줄 */
+  overview: (userId: number) => [...cretaKeys.all, "overview", userId] as const,
+  /** 커뮤니티 댓글 */
+  comments: (kind: string, targetId: number) =>
+    [...cretaKeys.all, "comments", kind, targetId] as const,
+  commentCounts: (kind: string, ids: readonly number[]) =>
+    [...cretaKeys.all, "comment-counts", kind, ids.join(",")] as const,
+  /** 커뮤니티 좋아요(개수 + 내가 눌렀는지 — viewer별) */
+  likes: (kind: string, ids: readonly number[], viewer: number | "anon") =>
+    [...cretaKeys.all, "likes", kind, ids.join(","), viewer] as const,
 };

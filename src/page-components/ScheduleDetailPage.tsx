@@ -3,7 +3,7 @@
 // 스케줄 상세: DB 시간대 편성. 시간대 추가(크레타북/플레이리스트 지정)·삭제,
 // 기본 재생 지정, 자동 적용 토글, 디바이스 배정이 실제로 반영된다.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, MonitorCheck, Plus, X } from "lucide-react";
+import { ArrowLeft, MonitorCheck, Plus, Share2, X } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -15,12 +15,14 @@ import {
   type CretaSlotDraft,
 } from "@/components/creta/CretaSlotAddDialog";
 import { CretaSourceDialog } from "@/components/creta/CretaSourceDialog";
+import { MemberShareDialog } from "@/components/share/MemberShareDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SafeImage } from "@/components/ui/safe-image";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
+import { canEditOwnedOrShared, canManageOwned } from "@/lib/authz";
 import {
   addCretaScheduleSlot,
   type CretaScheduleDetail,
@@ -28,6 +30,9 @@ import {
   fetchCretaSchedule,
   minutesToTime,
   removeCretaScheduleSlot,
+  setCretaScheduleShare,
+  setCretaScheduleShareAll,
+  sharedWithSummary,
   SLOT_REPEAT_LABEL,
   updateCretaDeviceSource,
   updateCretaSchedule,
@@ -170,6 +175,7 @@ export function ScheduleDetailPage() {
   const [editSlot, setEditSlot] = useState<CretaScheduleSlot | null>(null);
   const [defaultOpen, setDefaultOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   // 현재 시각 마커는 마운트 후 계산(SSR-클라이언트 불일치 방지)
   const [nowMarker, setNowMarker] = useState<{
     top: number;
@@ -294,6 +300,27 @@ export function ScheduleDetailPage() {
     }
     return true;
   };
+  /** 편집 권한: 공용(소유자 없음)은 로그인 사용자 누구나, 그 외 소유자·관리자·공유받은 사용자 */
+  const canEdit = schedule
+    ? canEditOwnedOrShared(
+        user,
+        schedule.owner?.id ?? null,
+        schedule.sharedUserIds,
+        schedule.sharedToAll,
+      )
+    : false;
+  /** 공유 관리: 소유자·관리자(공용은 관리자만) */
+  const canManage = schedule
+    ? canManageOwned(user, schedule.owner?.id ?? null)
+    : false;
+  const requireEdit = (): boolean => {
+    if (!requireLogin()) return false;
+    if (!canEdit) {
+      toast.error("편집 권한이 없습니다. 소유자에게 공유를 요청하세요.");
+      return false;
+    }
+    return true;
+  };
 
   if (isLoading) {
     return (
@@ -366,14 +393,55 @@ export function ScheduleDetailPage() {
                 ? `적용 디바이스 ${schedule.appliedDevices.length}대 · ${schedule.appliedDevices.map((d) => d.name).join(", ")}`
                 : "적용된 디바이스 없음"}
             </p>
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+              <span>
+                작성자{" "}
+                <span className="font-medium text-foreground">
+                  {schedule.owner?.name || "공용"}
+                </span>
+              </span>
+              {schedule.sharedToAll ? (
+                <span className="inline-flex items-center gap-1 text-primary">
+                  <Share2 className="size-3" aria-hidden />
+                  모든 사용자에게 공유됨
+                </span>
+              ) : schedule.sharedWith.length > 0 ? (
+                <span className="inline-flex items-center gap-1 text-primary">
+                  <Share2 className="size-3" aria-hidden />
+                  {sharedWithSummary(schedule.sharedWith)}에게 공유됨
+                </span>
+              ) : null}
+              {!canEdit ? (
+                <span className="text-amber-700 dark:text-amber-400">
+                  보기 전용
+                </span>
+              ) : null}
+            </p>
           </div>
-          <Button
-            type="button"
-            onClick={() => requireLogin() && setAssignOpen(true)}
-          >
-            <MonitorCheck className="size-4" aria-hidden />
-            디바이스 배정
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {canManage ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShareOpen(true)}
+              >
+                <Share2 className="size-4" aria-hidden />
+                공유
+                {schedule.sharedUserIds.length > 0 ? (
+                  <span className="ml-1 rounded-full bg-primary/10 px-1.5 text-[10px] font-semibold text-primary">
+                    {schedule.sharedUserIds.length}
+                  </span>
+                ) : null}
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              onClick={() => requireLogin() && setAssignOpen(true)}
+            >
+              <MonitorCheck className="size-4" aria-hidden />
+              디바이스 배정
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -504,7 +572,7 @@ export function ScheduleDetailPage() {
                   variant="outline"
                   size="sm"
                   className="shrink-0"
-                  onClick={() => requireLogin() && setDefaultOpen(true)}
+                  onClick={() => requireEdit() && setDefaultOpen(true)}
                 >
                   변경
                 </Button>
@@ -515,7 +583,7 @@ export function ScheduleDetailPage() {
                   checked={schedule.autoApply}
                   disabled={updateMutation.isPending}
                   onCheckedChange={(checked) =>
-                    requireLogin() &&
+                    requireEdit() &&
                     updateMutation.mutate({ autoApply: checked })
                   }
                   aria-label="스케줄 자동 적용"
@@ -554,7 +622,7 @@ export function ScheduleDetailPage() {
               </div>
               <Button
                 type="button"
-                onClick={() => requireLogin() && setSlotOpen(true)}
+                onClick={() => requireEdit() && setSlotOpen(true)}
               >
                 <Plus className="size-4" aria-hidden />
                 시간대 추가
@@ -641,7 +709,7 @@ export function ScheduleDetailPage() {
                           aria-label={`${seg.title} 시간대 수정`}
                           title="클릭해서 수정"
                           className="relative z-10 flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5 text-left text-[11px] outline-none focus-visible:underline sm:text-xs"
-                          onClick={() => requireLogin() && setEditSlot(slot)}
+                          onClick={() => requireEdit() && setEditSlot(slot)}
                         >
                           {inner}
                         </button>
@@ -657,7 +725,7 @@ export function ScheduleDetailPage() {
                           aria-label={`${seg.title} 시간대 삭제`}
                           disabled={removeSlotMutation.isPending}
                           onClick={() =>
-                            requireLogin() &&
+                            requireEdit() &&
                             removeSlotMutation.mutate(seg.slotId!)
                           }
                         >
@@ -758,14 +826,37 @@ export function ScheduleDetailPage() {
         />
       ) : null}
 
+      {/* 공유 */}
+      {canManage && shareOpen ? (
+        <MemberShareDialog
+          open={shareOpen}
+          onOpenChange={setShareOpen}
+          title="스케줄 공유"
+          description={`「${schedule.name}」을(를) 함께 편성할 회원을 고르세요. 공유받은 사용자는 시간대·기본 재생을 바꿀 수 있고, 삭제·공유 관리는 소유자만 할 수 있습니다.`}
+          ownerId={schedule.owner?.id ?? null}
+          sharedUserIds={schedule.sharedUserIds}
+          sharedToAll={schedule.sharedToAll}
+          onToggle={async (userId, shared) => {
+            applyDetail(
+              await setCretaScheduleShare(scheduleId, userId, shared),
+            );
+          }}
+          onToggleShareAll={async (shared) => {
+            applyDetail(await setCretaScheduleShareAll(scheduleId, shared));
+          }}
+        />
+      ) : null}
+
       {/* 디바이스 배정 */}
       {assignOpen ? (
         <CretaSourceDialog
           open={assignOpen}
           onOpenChange={setAssignOpen}
           title="디바이스 배정"
-          description="선택한 디바이스의 재생 소스를 이 스케줄로 지정합니다."
+          description="선택한 디바이스의 재생 소스를 이 스케줄로 지정합니다. 이미 이 스케줄이 적용된 디바이스는 체크로 표시됩니다."
           kinds={["device"]}
+          appliedIds={schedule.appliedDevices.map((d) => d.id)}
+          appliedLabel="적용 중"
           pending={assignMutation.isPending}
           onSubmit={(_kind, option) => assignMutation.mutate(option.id)}
         />

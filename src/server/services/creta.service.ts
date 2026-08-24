@@ -1,22 +1,34 @@
 // 크레타 사이니지 도메인 서비스: 플레이리스트·스케줄·디바이스 CRUD와
 // 썸네일(북 첫 페이지 커버) 해석. 디바이스의 IP·플레이어 버전 등은 시뮬레이션 파생값.
-import { asc, count, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
+import {
+  type AuthActor,
+  canMutateOwnedResource,
+  isAdminRole,
+} from "@/server/auth/auth-policy";
 import { getDb } from "@/server/db";
 import {
   book as bookTable,
   bookPage,
+  bookShare,
   cretaDevice,
   cretaPlaylist,
   cretaPlaylistItem,
+  cretaPlaylistShare,
   cretaSchedule,
+  cretaScheduleShare,
   cretaScheduleSlot,
+  user as userTable,
 } from "@/server/db/schema";
+import { AVATARS_SUBDIR } from "@/server/env";
 import { HttpError } from "@/server/http/http-error";
 import type {
   BookCanvasElementPublic,
   BookListCoverPreviewPublic,
 } from "@/server/services/books.service";
+import { CretaCommentsService } from "@/server/services/creta-comments.service";
+import { CretaLikesService } from "@/server/services/creta-likes.service";
 
 export type CretaCoverPublic = BookListCoverPreviewPublic | null;
 
@@ -26,6 +38,49 @@ export type CretaContentRefPublic = {
   id: number;
   title: string;
   cover: CretaCoverPublic;
+};
+
+/** 소유자(공개 정보). null = 공용 항목 */
+export type CretaOwnerPublic = {
+  id: number;
+  name: string;
+  imageUrl: string | null;
+};
+
+/** 공유받은 사용자 요약 */
+export type CretaSharedUserPublic = { id: number; name: string };
+
+/** 크레타 > 계정: 항목 한 줄 */
+export type CretaOverviewItemPublic = {
+  id: number;
+  title: string;
+  updatedAt: Date;
+  /** 소유자 이름(공용이면 null) */
+  ownerName: string | null;
+  /** 내가 만든 항목일 때 공유한 사람들 이름 */
+  sharedWith: string[];
+};
+
+export type CretaMyOverviewPublic = {
+  user: {
+    id: number;
+    name: string;
+    email: string;
+    role: "user" | "admin";
+    imageUrl: string | null;
+  };
+  books: {
+    owned: CretaOverviewItemPublic[];
+    shared: CretaOverviewItemPublic[];
+  };
+  playlists: {
+    owned: CretaOverviewItemPublic[];
+    shared: CretaOverviewItemPublic[];
+  };
+  schedules: {
+    owned: CretaOverviewItemPublic[];
+    shared: CretaOverviewItemPublic[];
+  };
 };
 
 export type CretaPlaylistListItemPublic = {
@@ -38,6 +93,10 @@ export type CretaPlaylistListItemPublic = {
   /** 대표 썸네일 = 첫 북의 커버 */
   cover: CretaCoverPublic;
   updatedAt: Date;
+  owner: CretaOwnerPublic | null;
+  sharedWith: CretaSharedUserPublic[];
+  /** true면 모든 로그인 사용자가 편집 가능 */
+  sharedToAll: boolean;
 };
 
 export type CretaPlaylistItemPublic = {
@@ -55,6 +114,11 @@ export type CretaPlaylistDetailPublic = {
   loop: boolean;
   visibility: string;
   items: CretaPlaylistItemPublic[];
+  owner: CretaOwnerPublic | null;
+  sharedUserIds: number[];
+  sharedWith: CretaSharedUserPublic[];
+  /** true면 모든 로그인 사용자가 편집 가능 */
+  sharedToAll: boolean;
 };
 
 export type CretaSlotRepeat =
@@ -92,7 +156,13 @@ export type CretaScheduleListItemPublic = {
   slotCount: number;
   autoApply: boolean;
   defaultContent: CretaContentRefPublic | null;
+  /** 지금(KST) 편성된 시간대의 콘텐츠, 없으면 기본 재생 — 목록 카드 배경용 */
+  currentContent: CretaContentRefPublic | null;
   appliedDeviceNames: string[];
+  owner: CretaOwnerPublic | null;
+  sharedWith: CretaSharedUserPublic[];
+  /** true면 모든 로그인 사용자가 편집 가능 */
+  sharedToAll: boolean;
 };
 
 export type CretaScheduleDetailPublic = {
@@ -102,6 +172,11 @@ export type CretaScheduleDetailPublic = {
   defaultContent: CretaContentRefPublic | null;
   slots: CretaScheduleSlotPublic[];
   appliedDevices: { id: number; name: string }[];
+  owner: CretaOwnerPublic | null;
+  sharedUserIds: number[];
+  sharedWith: CretaSharedUserPublic[];
+  /** true면 모든 로그인 사용자가 편집 가능 */
+  sharedToAll: boolean;
 };
 
 export type CretaDevicePublic = {
@@ -113,10 +188,89 @@ export type CretaDevicePublic = {
   orientation: string;
   online: boolean;
   source: CretaContentRefPublic | null;
+  /** 전원 예약 "HH:MM"(매일). null = 예약 없음 */
+  powerOnTime: string | null;
+  powerOffTime: string | null;
+  /** 전원 예약 제외 요일(0=일…6=토) */
+  powerExcludeDays: number[];
+  /** 전원 예약 제외 날짜(YYYY-MM-DD, 오름차순) */
+  powerExcludeDates: string[];
+  /** 단말 상태(시뮬레이션): ok | error */
+  health: "ok" | "error";
   createdAt: Date;
 };
 
 const NAME_MAX = 120;
+const HHMM_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+const YMD_RE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+const POWER_EXCLUDE_DATES_MAX = 60;
+
+/** CSV → 요일 배열(0~6, 중복 제거·정렬) */
+function parseExcludeDays(raw: string | null | undefined): number[] {
+  if (!raw) return [];
+  const out = new Set<number>();
+  for (const part of raw.split(",")) {
+    const n = Number(part.trim());
+    if (Number.isInteger(n) && n >= 0 && n <= 6) out.add(n);
+  }
+  return [...out].sort((a, b) => a - b);
+}
+
+/** CSV → 날짜 배열(YYYY-MM-DD, 중복 제거·정렬) */
+function parseExcludeDates(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  const out = new Set<string>();
+  for (const part of raw.split(",")) {
+    const s = part.trim();
+    if (YMD_RE.test(s)) out.add(s);
+  }
+  return [...out].sort();
+}
+
+function assertExcludeDays(raw: unknown): number[] {
+  if (raw == null) return [];
+  if (!Array.isArray(raw))
+    throw new HttpError(400, "제외 요일 형식이 올바르지 않습니다.");
+  const out = new Set<number>();
+  for (const v of raw) {
+    const n = Number(v);
+    if (!Number.isInteger(n) || n < 0 || n > 6)
+      throw new HttpError(400, "제외 요일은 0(일)~6(토) 사이여야 합니다.");
+    out.add(n);
+  }
+  if (out.size >= 7)
+    throw new HttpError(400, "모든 요일을 제외할 수는 없습니다.");
+  return [...out].sort((a, b) => a - b);
+}
+
+function assertExcludeDates(raw: unknown): string[] {
+  if (raw == null) return [];
+  if (!Array.isArray(raw))
+    throw new HttpError(400, "제외 날짜 형식이 올바르지 않습니다.");
+  const out = new Set<string>();
+  for (const v of raw) {
+    const s = String(v ?? "").trim();
+    if (!YMD_RE.test(s))
+      throw new HttpError(400, "제외 날짜는 YYYY-MM-DD 형식이어야 합니다.");
+    out.add(s);
+  }
+  if (out.size > POWER_EXCLUDE_DATES_MAX)
+    throw new HttpError(
+      400,
+      `제외 날짜는 최대 ${POWER_EXCLUDE_DATES_MAX}개까지 지정할 수 있습니다.`,
+    );
+  return [...out].sort();
+}
+
+/** 전원 예약 시각 — "HH:MM" 또는 null(해제). 그 외는 400 */
+function assertPowerTime(raw: unknown, label: string): string | null {
+  if (raw == null || raw === "") return null;
+  const s = String(raw).trim();
+  if (!HHMM_RE.test(s)) {
+    throw new HttpError(400, `${label}은(는) HH:MM 형식이어야 합니다.`);
+  }
+  return s;
+}
 
 /** [aStart,aEnd) 와 [bStart,bEnd) 가 겹치는지 */
 export function cretaRangesOverlap(
@@ -134,6 +288,50 @@ function assertName(raw: unknown, label: string): string {
   if (name.length > NAME_MAX)
     throw new HttpError(400, `${label}은(는) ${NAME_MAX}자 이하여야 합니다.`);
   return name;
+}
+
+/** 서버 시간대와 무관하게 한국 시각 기준(스케줄 분 단위는 현장 시각 의미) */
+type KstNow = { minutes: number; weekday: number; iso: string };
+function kstNow(): KstNow {
+  const d = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return {
+    minutes: d.getUTCHours() * 60 + d.getUTCMinutes(),
+    weekday: d.getUTCDay(),
+    iso: `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`,
+  };
+}
+
+/** 반복 규칙·시각 범위상 지금 이 시간대가 편성 중인지 */
+function slotAppliesNow(
+  s: {
+    startMin: number;
+    endMin: number;
+    repeat: string;
+    repeatStart: string | null;
+    repeatEnd: string | null;
+  },
+  now: KstNow,
+): boolean {
+  if (!(s.startMin <= now.minutes && now.minutes < s.endMin)) return false;
+  switch (s.repeat) {
+    case "daily":
+      return true;
+    case "weekday":
+      return now.weekday >= 1 && now.weekday <= 5;
+    case "weekend":
+      return now.weekday === 0 || now.weekday === 6;
+    case "range":
+      return Boolean(
+        s.repeatStart &&
+        s.repeatEnd &&
+        s.repeatStart <= now.iso &&
+        now.iso <= s.repeatEnd,
+      );
+    default:
+      // once: 날짜가 지정돼 있으면 그날만, 없으면 매일로 간주
+      return s.repeatStart ? s.repeatStart === now.iso : true;
+  }
 }
 
 const SLOT_REPEATS: CretaSlotRepeat[] = [
@@ -338,6 +536,10 @@ export class CretaService {
       for (const c of counts) countsMap.set(c.playlistId, Number(c.n));
     }
     const refs = await this.playlistRefs(ids);
+    const [owners, shares] = await Promise.all([
+      this.ownerRefs(rows.map((r) => r.ownerId)),
+      this.sharesFor("playlist", ids),
+    ]);
     return rows.map((r) => ({
       id: r.id,
       name: r.name,
@@ -347,7 +549,260 @@ export class CretaService {
       itemCount: countsMap.get(r.id) ?? 0,
       cover: refs.get(r.id)?.cover ?? null,
       updatedAt: r.updatedAt,
+      owner: r.ownerId != null ? (owners.get(r.ownerId) ?? null) : null,
+      sharedWith: shares.get(r.id) ?? [],
+      sharedToAll: r.sharedToAll === true,
     }));
+  }
+
+  // ── 소유자·공유 ───────────────────────────────────────────────────
+
+  /** 사용자 id → 소유자 공개 정보 */
+  private async ownerRefs(
+    ids: (number | null)[],
+  ): Promise<Map<number, CretaOwnerPublic>> {
+    const map = new Map<number, CretaOwnerPublic>();
+    const uniq = [...new Set(ids.filter((n): n is number => n != null))];
+    if (uniq.length === 0) return map;
+    const rows = await this.db()
+      .select({
+        id: userTable.id,
+        name: userTable.name,
+        profileImageFilename: userTable.profileImageFilename,
+      })
+      .from(userTable)
+      .where(inArray(userTable.id, uniq));
+    for (const u of rows) {
+      map.set(u.id, {
+        id: u.id,
+        name: u.name,
+        imageUrl: u.profileImageFilename
+          ? `/uploads/${AVATARS_SUBDIR}/${u.profileImageFilename}`
+          : null,
+      });
+    }
+    return map;
+  }
+
+  /** 항목 id → 공유받은 사용자 목록(공유 순) */
+  private async sharesFor(
+    kind: "playlist" | "schedule",
+    ids: number[],
+  ): Promise<Map<number, CretaSharedUserPublic[]>> {
+    const map = new Map<number, CretaSharedUserPublic[]>();
+    if (ids.length === 0) return map;
+    const db = this.db();
+    const rows =
+      kind === "playlist"
+        ? await db
+            .select({
+              targetId: cretaPlaylistShare.playlistId,
+              userId: userTable.id,
+              name: userTable.name,
+            })
+            .from(cretaPlaylistShare)
+            .innerJoin(userTable, eq(userTable.id, cretaPlaylistShare.userId))
+            .where(inArray(cretaPlaylistShare.playlistId, ids))
+            .orderBy(asc(cretaPlaylistShare.id))
+        : await db
+            .select({
+              targetId: cretaScheduleShare.scheduleId,
+              userId: userTable.id,
+              name: userTable.name,
+            })
+            .from(cretaScheduleShare)
+            .innerJoin(userTable, eq(userTable.id, cretaScheduleShare.userId))
+            .where(inArray(cretaScheduleShare.scheduleId, ids))
+            .orderBy(asc(cretaScheduleShare.id));
+    for (const r of rows) {
+      const list = map.get(r.targetId) ?? [];
+      list.push({ id: r.userId, name: r.name });
+      map.set(r.targetId, list);
+    }
+    return map;
+  }
+
+  /**
+   * 편집 권한: 소유자 없음(공용) = 로그인 사용자 누구나, 그 외 소유자·관리자·공유받은 사용자.
+   * 404/403은 호출부 메시지로 통일하기 위해 label을 받는다.
+   */
+  private async assertCanEdit(
+    kind: "playlist" | "schedule",
+    actor: AuthActor,
+    id: number,
+    label: string,
+  ): Promise<{ ownerId: number | null }> {
+    const db = this.db();
+    const row =
+      kind === "playlist"
+        ? await db.query.cretaPlaylist.findFirst({
+            where: eq(cretaPlaylist.id, id),
+            columns: { ownerId: true, sharedToAll: true },
+          })
+        : await db.query.cretaSchedule.findFirst({
+            where: eq(cretaSchedule.id, id),
+            columns: { ownerId: true, sharedToAll: true },
+          });
+    if (!row) throw new HttpError(404, `${label}을(를) 찾을 수 없습니다.`);
+    if (row.ownerId == null) return row; // 공용
+    if (row.sharedToAll === true) return row; // 모든 사용자 공유
+    if (canMutateOwnedResource(actor, row.ownerId)) return row;
+    const shared =
+      kind === "playlist"
+        ? await db.query.cretaPlaylistShare.findFirst({
+            where: and(
+              eq(cretaPlaylistShare.playlistId, id),
+              eq(cretaPlaylistShare.userId, actor.id),
+            ),
+            columns: { id: true },
+          })
+        : await db.query.cretaScheduleShare.findFirst({
+            where: and(
+              eq(cretaScheduleShare.scheduleId, id),
+              eq(cretaScheduleShare.userId, actor.id),
+            ),
+            columns: { id: true },
+          });
+    if (!shared)
+      throw new HttpError(
+        403,
+        `${label} 편집 권한이 없습니다. 소유자에게 공유를 요청하세요.`,
+      );
+    return row;
+  }
+
+  /** 삭제·공유 관리: 소유자·관리자만. 공용 항목은 관리자만 */
+  private async assertCanManage(
+    kind: "playlist" | "schedule",
+    actor: AuthActor,
+    id: number,
+    label: string,
+  ): Promise<{ ownerId: number | null }> {
+    const db = this.db();
+    const row =
+      kind === "playlist"
+        ? await db.query.cretaPlaylist.findFirst({
+            where: eq(cretaPlaylist.id, id),
+            columns: { ownerId: true },
+          })
+        : await db.query.cretaSchedule.findFirst({
+            where: eq(cretaSchedule.id, id),
+            columns: { ownerId: true },
+          });
+    if (!row) throw new HttpError(404, `${label}을(를) 찾을 수 없습니다.`);
+    if (row.ownerId == null) {
+      if (!isAdminRole(actor.role))
+        throw new HttpError(
+          403,
+          `공용 ${label}은(는) 관리자만 관리할 수 있습니다.`,
+        );
+      return row;
+    }
+    if (!canMutateOwnedResource(actor, row.ownerId))
+      throw new HttpError(403, `${label} 소유자·관리자만 할 수 있습니다.`);
+    return row;
+  }
+
+  private async assertShareTarget(userId: number, ownerId: number | null) {
+    if (ownerId != null && userId === ownerId)
+      throw new HttpError(400, "소유자에게는 공유할 수 없습니다.");
+    const target = await this.db().query.user.findFirst({
+      where: eq(userTable.id, userId),
+      columns: { id: true },
+    });
+    if (!target) throw new HttpError(404, "사용자를 찾을 수 없습니다.");
+  }
+
+  async setPlaylistShare(
+    id: number,
+    actor: AuthActor,
+    userId: number,
+    shared: boolean,
+  ): Promise<CretaPlaylistDetailPublic> {
+    const { ownerId } = await this.assertCanManage(
+      "playlist",
+      actor,
+      id,
+      "플레이리스트",
+    );
+    await this.assertShareTarget(userId, ownerId);
+    const db = this.db();
+    if (shared) {
+      await db
+        .insert(cretaPlaylistShare)
+        .values({ playlistId: id, userId })
+        .onConflictDoNothing();
+    } else {
+      await db
+        .delete(cretaPlaylistShare)
+        .where(
+          and(
+            eq(cretaPlaylistShare.playlistId, id),
+            eq(cretaPlaylistShare.userId, userId),
+          ),
+        );
+    }
+    return this.getPlaylist(id);
+  }
+
+  /** 모든 사용자 공유 켜기/끄기 — 소유자·관리자만 */
+  async setPlaylistShareAll(
+    id: number,
+    actor: AuthActor,
+    shared: boolean,
+  ): Promise<CretaPlaylistDetailPublic> {
+    await this.assertCanManage("playlist", actor, id, "플레이리스트");
+    await this.db()
+      .update(cretaPlaylist)
+      .set({ sharedToAll: shared })
+      .where(eq(cretaPlaylist.id, id));
+    return this.getPlaylist(id);
+  }
+
+  /** 모든 사용자 공유 켜기/끄기 — 소유자·관리자만 */
+  async setScheduleShareAll(
+    id: number,
+    actor: AuthActor,
+    shared: boolean,
+  ): Promise<CretaScheduleDetailPublic> {
+    await this.assertCanManage("schedule", actor, id, "스케줄");
+    await this.db()
+      .update(cretaSchedule)
+      .set({ sharedToAll: shared })
+      .where(eq(cretaSchedule.id, id));
+    return this.getSchedule(id);
+  }
+
+  async setScheduleShare(
+    id: number,
+    actor: AuthActor,
+    userId: number,
+    shared: boolean,
+  ): Promise<CretaScheduleDetailPublic> {
+    const { ownerId } = await this.assertCanManage(
+      "schedule",
+      actor,
+      id,
+      "스케줄",
+    );
+    await this.assertShareTarget(userId, ownerId);
+    const db = this.db();
+    if (shared) {
+      await db
+        .insert(cretaScheduleShare)
+        .values({ scheduleId: id, userId })
+        .onConflictDoNothing();
+    } else {
+      await db
+        .delete(cretaScheduleShare)
+        .where(
+          and(
+            eq(cretaScheduleShare.scheduleId, id),
+            eq(cretaScheduleShare.userId, userId),
+          ),
+        );
+    }
+    return this.getSchedule(id);
   }
 
   async getPlaylist(id: number): Promise<CretaPlaylistDetailPublic> {
@@ -377,6 +832,11 @@ export class CretaService {
         .groupBy(bookPage.bookId);
       for (const c of counts) pageCounts.set(c.bookId, Number(c.n));
     }
+    const [owners, shares] = await Promise.all([
+      this.ownerRefs([row.ownerId]),
+      this.sharesFor("playlist", [id]),
+    ]);
+    const sharedWith = shares.get(id) ?? [];
     return {
       id: row.id,
       name: row.name,
@@ -390,15 +850,22 @@ export class CretaService {
         pageCount: pageCounts.get(it.bookId) ?? 0,
         cover: covers.get(it.bookId) ?? null,
       })),
+      owner: row.ownerId != null ? (owners.get(row.ownerId) ?? null) : null,
+      sharedUserIds: sharedWith.map((u) => u.id),
+      sharedWith,
+      sharedToAll: row.sharedToAll === true,
     };
   }
 
-  async createPlaylist(input: {
-    name: string;
-    description?: string;
-    loop?: boolean;
-    visibility?: string;
-  }): Promise<CretaPlaylistDetailPublic> {
+  async createPlaylist(
+    input: {
+      name: string;
+      description?: string;
+      loop?: boolean;
+      visibility?: string;
+    },
+    ownerId: number,
+  ): Promise<CretaPlaylistDetailPublic> {
     const name = assertName(input.name, "플레이리스트 이름");
     const description = String(input.description ?? "")
       .trim()
@@ -413,13 +880,15 @@ export class CretaService {
         description,
         loop: input.loop !== false,
         visibility,
+        ownerId,
       })
       .returning();
     if (!row) throw new HttpError(500, "플레이리스트 생성에 실패했습니다.");
     return this.getPlaylist(row.id);
   }
 
-  async deletePlaylist(id: number): Promise<void> {
+  async deletePlaylist(id: number, actor: AuthActor): Promise<void> {
+    await this.assertCanManage("playlist", actor, id, "플레이리스트");
     const db = this.db();
     const deleted = await db
       .delete(cretaPlaylist)
@@ -427,12 +896,16 @@ export class CretaService {
       .returning({ id: cretaPlaylist.id });
     if (deleted.length === 0)
       throw new HttpError(404, "플레이리스트를 찾을 수 없습니다.");
+    await new CretaCommentsService().removeAllForTarget("playlist", id);
+    await new CretaLikesService().removeAllForTarget("playlist", id);
   }
 
   async addPlaylistItem(
     playlistId: number,
+    actor: AuthActor,
     bookId: number,
   ): Promise<CretaPlaylistDetailPublic> {
+    await this.assertCanEdit("playlist", actor, playlistId, "플레이리스트");
     const db = this.db();
     const playlist = await db.query.cretaPlaylist.findFirst({
       where: eq(cretaPlaylist.id, playlistId),
@@ -460,8 +933,10 @@ export class CretaService {
 
   async removePlaylistItem(
     playlistId: number,
+    actor: AuthActor,
     itemId: number,
   ): Promise<CretaPlaylistDetailPublic> {
+    await this.assertCanEdit("playlist", actor, playlistId, "플레이리스트");
     const db = this.db();
     const deleted = await db
       .delete(cretaPlaylistItem)
@@ -476,9 +951,11 @@ export class CretaService {
   /** 항목을 위(-1)/아래(+1)로 한 칸 이동 — 인접 항목과 position 교환 */
   async movePlaylistItem(
     playlistId: number,
+    actor: AuthActor,
     itemId: number,
     direction: -1 | 1,
   ): Promise<CretaPlaylistDetailPublic> {
+    await this.assertCanEdit("playlist", actor, playlistId, "플레이리스트");
     const db = this.db();
     const items = await db
       .select({
@@ -549,16 +1026,60 @@ export class CretaService {
         deviceNames.get(d.scheduleId)!.push(d.name);
       }
     }
-    const defaults = await Promise.all(
-      rows.map((r) => this.resolveScheduleDefault(r)),
-    );
+    // 지금 이 순간 편성된 시간대의 콘텐츠 — 목록 카드 배경 썸네일용(없으면 기본 재생)
+    const currentMap = new Map<number, CretaContentRefPublic | null>();
+    if (ids.length > 0) {
+      const slotRows = await db
+        .select()
+        .from(cretaScheduleSlot)
+        .where(inArray(cretaScheduleSlot.scheduleId, ids))
+        .orderBy(asc(cretaScheduleSlot.startMin), asc(cretaScheduleSlot.id));
+      const now = kstNow();
+      const active = new Map<number, (typeof slotRows)[number]>();
+      for (const s of slotRows) {
+        if (active.has(s.scheduleId)) continue;
+        if (slotAppliesNow(s, now)) active.set(s.scheduleId, s);
+      }
+      const activeSlots = [...active.values()];
+      const [bRefs, pRefs] = await Promise.all([
+        this.bookRefs(
+          activeSlots
+            .filter((s) => s.sourceType === "book" && s.bookId)
+            .map((s) => s.bookId!),
+        ),
+        this.playlistRefs(
+          activeSlots
+            .filter((s) => s.sourceType === "playlist" && s.playlistId)
+            .map((s) => s.playlistId!),
+        ),
+      ]);
+      for (const [sid, s] of active) {
+        currentMap.set(
+          sid,
+          s.sourceType === "book" && s.bookId
+            ? (bRefs.get(s.bookId) ?? null)
+            : s.sourceType === "playlist" && s.playlistId
+              ? (pRefs.get(s.playlistId) ?? null)
+              : null,
+        );
+      }
+    }
+    const [defaults, owners, shares] = await Promise.all([
+      Promise.all(rows.map((r) => this.resolveScheduleDefault(r))),
+      this.ownerRefs(rows.map((r) => r.ownerId)),
+      this.sharesFor("schedule", ids),
+    ]);
     return rows.map((r, i) => ({
       id: r.id,
       name: r.name,
       slotCount: slotCounts.get(r.id) ?? 0,
       autoApply: r.autoApply,
       defaultContent: defaults[i] ?? null,
+      currentContent: currentMap.get(r.id) ?? defaults[i] ?? null,
       appliedDeviceNames: deviceNames.get(r.id) ?? [],
+      owner: r.ownerId != null ? (owners.get(r.ownerId) ?? null) : null,
+      sharedWith: shares.get(r.id) ?? [],
+      sharedToAll: r.sharedToAll === true,
     }));
   }
 
@@ -589,10 +1110,19 @@ export class CretaService {
       .select({ id: cretaDevice.id, name: cretaDevice.name })
       .from(cretaDevice)
       .where(eq(cretaDevice.sourceScheduleId, id));
+    const [owners, shares] = await Promise.all([
+      this.ownerRefs([row.ownerId]),
+      this.sharesFor("schedule", [id]),
+    ]);
+    const sharedWith = shares.get(id) ?? [];
     return {
       id: row.id,
       name: row.name,
       autoApply: row.autoApply,
+      owner: row.ownerId != null ? (owners.get(row.ownerId) ?? null) : null,
+      sharedUserIds: sharedWith.map((u) => u.id),
+      sharedWith,
+      sharedToAll: row.sharedToAll === true,
       defaultContent: await this.resolveScheduleDefault(row),
       slots: slots.map((s) => ({
         id: s.id,
@@ -614,17 +1144,22 @@ export class CretaService {
     };
   }
 
-  async createSchedule(input: {
-    name: string;
-  }): Promise<CretaScheduleDetailPublic> {
+  async createSchedule(
+    input: { name: string },
+    ownerId: number,
+  ): Promise<CretaScheduleDetailPublic> {
     const name = assertName(input.name, "스케줄 이름");
     const db = this.db();
-    const [row] = await db.insert(cretaSchedule).values({ name }).returning();
+    const [row] = await db
+      .insert(cretaSchedule)
+      .values({ name, ownerId })
+      .returning();
     if (!row) throw new HttpError(500, "스케줄 생성에 실패했습니다.");
     return this.getSchedule(row.id);
   }
 
-  async deleteSchedule(id: number): Promise<void> {
+  async deleteSchedule(id: number, actor: AuthActor): Promise<void> {
+    await this.assertCanManage("schedule", actor, id, "스케줄");
     const db = this.db();
     const deleted = await db
       .delete(cretaSchedule)
@@ -636,6 +1171,7 @@ export class CretaService {
 
   async updateSchedule(
     id: number,
+    actor: AuthActor,
     patch: {
       autoApply?: boolean;
       defaultSourceType?: "none" | "book" | "playlist";
@@ -643,6 +1179,7 @@ export class CretaService {
       defaultPlaylistId?: number | null;
     },
   ): Promise<CretaScheduleDetailPublic> {
+    await this.assertCanEdit("schedule", actor, id, "스케줄");
     const db = this.db();
     const row = await db.query.cretaSchedule.findFirst({
       where: eq(cretaSchedule.id, id),
@@ -786,8 +1323,10 @@ export class CretaService {
 
   async addScheduleSlot(
     scheduleId: number,
+    actor: AuthActor,
     input: CretaSlotInput,
   ): Promise<CretaScheduleDetailPublic> {
+    await this.assertCanEdit("schedule", actor, scheduleId, "스케줄");
     const db = this.db();
     const values = await this.prepareSlotValues(scheduleId, input);
     await db.insert(cretaScheduleSlot).values({ scheduleId, ...values });
@@ -801,9 +1340,11 @@ export class CretaService {
   /** 지정 시간대 수정(시각·재생 대상·반복) */
   async updateScheduleSlot(
     scheduleId: number,
+    actor: AuthActor,
     slotId: number,
     input: CretaSlotInput,
   ): Promise<CretaScheduleDetailPublic> {
+    await this.assertCanEdit("schedule", actor, scheduleId, "스케줄");
     const db = this.db();
     const slot = await db.query.cretaScheduleSlot.findFirst({
       where: eq(cretaScheduleSlot.id, slotId),
@@ -824,8 +1365,10 @@ export class CretaService {
 
   async removeScheduleSlot(
     scheduleId: number,
+    actor: AuthActor,
     slotId: number,
   ): Promise<CretaScheduleDetailPublic> {
+    await this.assertCanEdit("schedule", actor, scheduleId, "스케줄");
     const db = this.db();
     const deleted = await db
       .delete(cretaScheduleSlot)
@@ -834,6 +1377,190 @@ export class CretaService {
     if (deleted.length === 0 || deleted[0]!.scheduleId !== scheduleId)
       throw new HttpError(404, "시간대를 찾을 수 없습니다.");
     return this.getSchedule(scheduleId);
+  }
+
+  // ── 계정 현황(내가 만든/공유받은 항목) ────────────────────────────
+
+  async myOverview(userId: number): Promise<CretaMyOverviewPublic> {
+    const db = this.db();
+    const me = await db.query.user.findFirst({
+      where: eq(userTable.id, userId),
+      columns: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        profileImageFilename: true,
+      },
+    });
+    if (!me) throw new HttpError(404, "사용자를 찾을 수 없습니다.");
+
+    const bookSharesTable = bookShare;
+    const [
+      ownedBooks,
+      sharedBooksRows,
+      ownedPl,
+      sharedPlRows,
+      ownedSc,
+      sharedScRows,
+    ] = await Promise.all([
+      db
+        .select({
+          id: bookTable.id,
+          title: bookTable.title,
+          updatedAt: bookTable.updatedAt,
+        })
+        .from(bookTable)
+        .where(eq(bookTable.authorId, userId))
+        .orderBy(desc(bookTable.updatedAt)),
+      db
+        .select({
+          id: bookTable.id,
+          title: bookTable.title,
+          updatedAt: bookTable.updatedAt,
+          ownerName: userTable.name,
+        })
+        .from(bookSharesTable)
+        .innerJoin(bookTable, eq(bookTable.id, bookSharesTable.bookId))
+        .innerJoin(userTable, eq(userTable.id, bookTable.authorId))
+        .where(eq(bookSharesTable.userId, userId))
+        .orderBy(desc(bookTable.updatedAt)),
+      db
+        .select({
+          id: cretaPlaylist.id,
+          title: cretaPlaylist.name,
+          updatedAt: cretaPlaylist.updatedAt,
+        })
+        .from(cretaPlaylist)
+        .where(eq(cretaPlaylist.ownerId, userId))
+        .orderBy(desc(cretaPlaylist.updatedAt)),
+      db
+        .select({
+          id: cretaPlaylist.id,
+          title: cretaPlaylist.name,
+          updatedAt: cretaPlaylist.updatedAt,
+          ownerName: userTable.name,
+        })
+        .from(cretaPlaylistShare)
+        .innerJoin(
+          cretaPlaylist,
+          eq(cretaPlaylist.id, cretaPlaylistShare.playlistId),
+        )
+        .leftJoin(userTable, eq(userTable.id, cretaPlaylist.ownerId))
+        .where(eq(cretaPlaylistShare.userId, userId))
+        .orderBy(desc(cretaPlaylist.updatedAt)),
+      db
+        .select({
+          id: cretaSchedule.id,
+          title: cretaSchedule.name,
+          updatedAt: cretaSchedule.updatedAt,
+        })
+        .from(cretaSchedule)
+        .where(eq(cretaSchedule.ownerId, userId))
+        .orderBy(desc(cretaSchedule.updatedAt)),
+      db
+        .select({
+          id: cretaSchedule.id,
+          title: cretaSchedule.name,
+          updatedAt: cretaSchedule.updatedAt,
+          ownerName: userTable.name,
+        })
+        .from(cretaScheduleShare)
+        .innerJoin(
+          cretaSchedule,
+          eq(cretaSchedule.id, cretaScheduleShare.scheduleId),
+        )
+        .leftJoin(userTable, eq(userTable.id, cretaSchedule.ownerId))
+        .where(eq(cretaScheduleShare.userId, userId))
+        .orderBy(desc(cretaSchedule.updatedAt)),
+    ]);
+
+    // 내가 만든 항목의 공유 대상 이름
+    const [bookShareNames, plShareNames, scShareNames] = await Promise.all([
+      this.shareNamesForBooks(ownedBooks.map((b) => b.id)),
+      this.sharesFor(
+        "playlist",
+        ownedPl.map((p) => p.id),
+      ),
+      this.sharesFor(
+        "schedule",
+        ownedSc.map((s) => s.id),
+      ),
+    ]);
+
+    const owned = (
+      rows: { id: number; title: string; updatedAt: Date }[],
+      names: Map<number, CretaSharedUserPublic[]>,
+    ): CretaOverviewItemPublic[] =>
+      rows.map((r) => ({
+        id: r.id,
+        title: r.title,
+        updatedAt: r.updatedAt,
+        ownerName: me.name,
+        sharedWith: (names.get(r.id) ?? []).map((u) => u.name),
+      }));
+    const shared = (
+      rows: {
+        id: number;
+        title: string;
+        updatedAt: Date;
+        ownerName: string | null;
+      }[],
+    ): CretaOverviewItemPublic[] =>
+      rows.map((r) => ({
+        id: r.id,
+        title: r.title,
+        updatedAt: r.updatedAt,
+        ownerName: r.ownerName,
+        sharedWith: [],
+      }));
+
+    return {
+      user: {
+        id: me.id,
+        name: me.name,
+        email: me.email,
+        role: me.role === "admin" ? "admin" : "user",
+        imageUrl: me.profileImageFilename
+          ? `/uploads/${AVATARS_SUBDIR}/${me.profileImageFilename}`
+          : null,
+      },
+      books: {
+        owned: owned(ownedBooks, bookShareNames),
+        shared: shared(sharedBooksRows),
+      },
+      playlists: {
+        owned: owned(ownedPl, plShareNames),
+        shared: shared(sharedPlRows),
+      },
+      schedules: {
+        owned: owned(ownedSc, scShareNames),
+        shared: shared(sharedScRows),
+      },
+    };
+  }
+
+  private async shareNamesForBooks(
+    ids: number[],
+  ): Promise<Map<number, CretaSharedUserPublic[]>> {
+    const map = new Map<number, CretaSharedUserPublic[]>();
+    if (ids.length === 0) return map;
+    const rows = await this.db()
+      .select({
+        targetId: bookShare.bookId,
+        userId: userTable.id,
+        name: userTable.name,
+      })
+      .from(bookShare)
+      .innerJoin(userTable, eq(userTable.id, bookShare.userId))
+      .where(inArray(bookShare.bookId, ids))
+      .orderBy(asc(bookShare.id));
+    for (const r of rows) {
+      const list = map.get(r.targetId) ?? [];
+      list.push({ id: r.userId, name: r.name });
+      map.set(r.targetId, list);
+    }
+    return map;
   }
 
   // ── 디바이스 ─────────────────────────────────────────────────────
@@ -875,8 +1602,66 @@ export class CretaService {
             : r.sourceType === "schedule" && r.sourceScheduleId
               ? (sRefs.get(r.sourceScheduleId) ?? null)
               : null,
+      powerOnTime: r.powerOnTime ?? null,
+      powerOffTime: r.powerOffTime ?? null,
+      powerExcludeDays: parseExcludeDays(r.powerExcludeDays),
+      powerExcludeDates: parseExcludeDates(r.powerExcludeDates),
+      health: r.health === "error" ? "error" : "ok",
       createdAt: r.createdAt,
     }));
+  }
+
+  /** 단말 상태 시뮬레이션(정상/비정상) */
+  async updateDeviceHealth(
+    id: number,
+    health: "ok" | "error",
+  ): Promise<CretaDevicePublic> {
+    const db = this.db();
+    const updated = await db
+      .update(cretaDevice)
+      .set({
+        health: health === "error" ? "error" : "ok",
+        updatedAt: new Date(),
+      })
+      .where(eq(cretaDevice.id, id))
+      .returning({ id: cretaDevice.id });
+    if (updated.length === 0)
+      throw new HttpError(404, "디바이스를 찾을 수 없습니다.");
+    return this.getDevice(id);
+  }
+
+  /** 디바이스 전원 예약(매일 켜짐/꺼짐 시각). 둘 다 null이면 예약 해제 */
+  async updateDevicePower(
+    id: number,
+    input: {
+      powerOnTime?: string | null;
+      powerOffTime?: string | null;
+      powerExcludeDays?: number[] | null;
+      powerExcludeDates?: string[] | null;
+    },
+  ): Promise<CretaDevicePublic> {
+    const powerOnTime = assertPowerTime(input.powerOnTime, "켜짐 시각");
+    const powerOffTime = assertPowerTime(input.powerOffTime, "꺼짐 시각");
+    if (powerOnTime && powerOffTime && powerOnTime === powerOffTime) {
+      throw new HttpError(400, "켜짐 시각과 꺼짐 시각이 같을 수 없습니다.");
+    }
+    const days = assertExcludeDays(input.powerExcludeDays);
+    const dates = assertExcludeDates(input.powerExcludeDates);
+    const db = this.db();
+    const updated = await db
+      .update(cretaDevice)
+      .set({
+        powerOnTime,
+        powerOffTime,
+        powerExcludeDays: days.length ? days.join(",") : null,
+        powerExcludeDates: dates.length ? dates.join(",") : null,
+        updatedAt: new Date(),
+      })
+      .where(eq(cretaDevice.id, id))
+      .returning({ id: cretaDevice.id });
+    if (updated.length === 0)
+      throw new HttpError(404, "디바이스를 찾을 수 없습니다.");
+    return this.getDevice(id);
   }
 
   async listDevices(): Promise<CretaDevicePublic[]> {

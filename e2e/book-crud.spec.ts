@@ -1,17 +1,17 @@
 import { expect, test } from "@playwright/test";
 
+import { signupUser } from "./helpers/auth";
+
 /**
  * 로그인 → 북 생성 → 저장 → 삭제까지 실제 사용자 흐름 1개.
  * 계정은 매 실행 고유 이메일로 API 가입(레이트 리밋: signup 5/분 이내).
  */
 test("로그인 후 북 생성·저장·삭제", async ({ page, request }) => {
+  test.setTimeout(120_000); // 가입 레이트 리밋 재시도 포함
   const email = `e2e-${Date.now()}@example.com`;
   const password = "e2e-pass-123!";
 
-  const signup = await request.post("/api/auth/signup", {
-    data: { email, password, name: "E2E 사용자" },
-  });
-  expect(signup.ok()).toBeTruthy();
+  await signupUser(request, { email, password, name: "E2E 사용자" });
 
   // 로그인
   await page.goto("/login");

@@ -42,6 +42,8 @@ import {
   BOOK_MEDIA_OBJECT_FIT_VALUES,
   BOOK_NEWS_CATEGORIES,
   BOOK_SHAPE_KINDS,
+  BOOK_WEATHER_BLOCK_OPTIONS,
+  BOOK_WEATHER_LAYOUT_OPTIONS,
   BOOK_WIDGET_DEFAULT_ROUNDED_RADIUS,
   type BookCanvasElement,
   type BookChartDatum,
@@ -73,6 +75,8 @@ import {
   resolveBookMapZoomPct,
   resolveBookMediaObjectFit,
   resolveBookWeatherDisplay,
+  resolveBookWeatherLayout,
+  resolveBookWeatherRightBlocks,
   resolveMediaPlaylistLoop,
   resolveMediaPlaylistShowControls,
 } from "@/lib/book-canvas";
@@ -1947,6 +1951,107 @@ export function BookInspectorPanel({
                             );
                           })}
                         </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="insp-weather-layout">배치</Label>
+                        <p className="text-[11px] leading-snug text-muted-foreground">
+                          좌우 2열은 왼쪽 날씨·오른쪽 시계/위치/대기, 세로 1열은
+                          모두 위아래로 쌓습니다. 시계만·대기만·기온만 켠 전용
+                          카드에는 적용되지 않습니다.
+                        </p>
+                        <Select
+                          value={resolveBookWeatherLayout(
+                            selected.weatherLayout,
+                          )}
+                          onValueChange={(v) => {
+                            const next = resolveBookWeatherLayout(v);
+                            onChange(selected.id, {
+                              weatherLayout: next === "auto" ? undefined : next,
+                            });
+                          }}
+                        >
+                          <SelectTrigger
+                            id="insp-weather-layout"
+                            size="sm"
+                            className="h-8 w-full"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {BOOK_WEATHER_LAYOUT_OPTIONS.map((o) => (
+                              <SelectItem key={o.id} value={o.id}>
+                                {o.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {resolveBookWeatherLayout(selected.weatherLayout) ===
+                        "columns" ? (
+                          <div className="space-y-1 rounded-md border border-border/70 bg-muted/[0.06] p-2">
+                            <p className="text-[11px] font-medium">
+                              블록별 좌/우 배치
+                            </p>
+                            <p className="text-[11px] leading-snug text-muted-foreground">
+                              켜 둔 항목만 표시되며, 각 블록을 왼쪽·오른쪽 열 중
+                              어디에 둘지 고릅니다.
+                            </p>
+                            {BOOK_WEATHER_BLOCK_OPTIONS.map((b) => {
+                              const right = resolveBookWeatherRightBlocks(
+                                selected.weatherRightBlocks,
+                              );
+                              const isRight = right.includes(b.id);
+                              const setSide = (side: "left" | "right") => {
+                                const next = right.filter((k) => k !== b.id);
+                                if (side === "right") next.push(b.id);
+                                onChange(selected.id, {
+                                  weatherRightBlocks: next,
+                                });
+                              };
+                              return (
+                                <div
+                                  key={b.id}
+                                  className="flex items-center justify-between gap-2"
+                                >
+                                  <span className="min-w-0 truncate text-xs">
+                                    {b.label}
+                                  </span>
+                                  <div
+                                    className="flex shrink-0 overflow-hidden rounded-md border border-border"
+                                    role="group"
+                                    aria-label={`${b.label} 배치`}
+                                  >
+                                    <button
+                                      type="button"
+                                      aria-pressed={!isRight}
+                                      onClick={() => setSide("left")}
+                                      className={cn(
+                                        "px-2 py-0.5 text-[11px] font-medium transition-colors",
+                                        !isRight
+                                          ? "bg-primary text-primary-foreground"
+                                          : "bg-background text-muted-foreground hover:bg-muted",
+                                      )}
+                                    >
+                                      왼쪽
+                                    </button>
+                                    <button
+                                      type="button"
+                                      aria-pressed={isRight}
+                                      onClick={() => setSide("right")}
+                                      className={cn(
+                                        "border-l border-border px-2 py-0.5 text-[11px] font-medium transition-colors",
+                                        isRight
+                                          ? "bg-primary text-primary-foreground"
+                                          : "bg-background text-muted-foreground hover:bg-muted",
+                                      )}
+                                    >
+                                      오른쪽
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : null}
                       </div>
                       <OptionalWidgetBackdropFields
                         elementId={selected.id}

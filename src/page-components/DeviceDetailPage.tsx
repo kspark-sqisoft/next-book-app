@@ -22,6 +22,10 @@ import {
   useCretaCoverThumbs,
 } from "@/components/creta/CretaCoverThumb";
 import { CretaSourceDialog } from "@/components/creta/CretaSourceDialog";
+import { DevicePowerScheduleCard } from "@/components/creta/DevicePowerScheduleCard";
+import { DeviceResourceGauges } from "@/components/creta/DeviceResourceGauges";
+import { DeviceSampleLogCard } from "@/components/creta/DeviceSampleLogCard";
+import { DeviceStatusBadge } from "@/components/creta/DeviceStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,10 +35,13 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   type CretaDevice,
+  type CretaDevicePowerInput,
   deviceSimMeta,
   fetchCretaDevice,
   PLAY_SOURCE_LABEL,
+  updateCretaDeviceHealth,
   updateCretaDeviceOnline,
+  updateCretaDevicePower,
   updateCretaDeviceSource,
 } from "@/lib/creta-api";
 import { goBackOrPush } from "@/lib/navigate-back";
@@ -43,23 +50,6 @@ import { useAuth } from "@/stores/auth-store";
 
 /** 재생 소스 탭에서 다루는 타입 */
 type AssignableSource = "book" | "playlist" | "schedule";
-
-function OnlineBadge({ online }: { online: boolean }) {
-  return online ? (
-    <Badge className="gap-1 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-      <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />
-      온라인
-    </Badge>
-  ) : (
-    <Badge variant="outline" className="gap-1 text-muted-foreground">
-      <span
-        className="size-1.5 rounded-full bg-muted-foreground/50"
-        aria-hidden
-      />
-      오프라인
-    </Badge>
-  );
-}
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
@@ -115,6 +105,25 @@ export function DeviceDetailPage() {
   const onlineMutation = useMutation({
     mutationFn: (online: boolean) => updateCretaDeviceOnline(deviceId, online),
     onSuccess: applyDevice,
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const healthMutation = useMutation({
+    mutationFn: (health: "ok" | "error") =>
+      updateCretaDeviceHealth(deviceId, health),
+    onSuccess: applyDevice,
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const powerMutation = useMutation({
+    mutationFn: (input: CretaDevicePowerInput) =>
+      updateCretaDevicePower(deviceId, input),
+    onSuccess: (res) => {
+      applyDevice(res);
+      toast.success(
+        res.powerOnTime || res.powerOffTime
+          ? `전원 예약을 저장했습니다 (${res.powerOnTime ?? "—"} 켜짐 · ${res.powerOffTime ?? "—"} 꺼짐).`
+          : "전원 예약을 해제했습니다.",
+      );
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -185,7 +194,7 @@ export function DeviceDetailPage() {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="font-heading text-xl font-bold">{device.name}</h1>
-              <OnlineBadge online={device.online} />
+              <DeviceStatusBadge device={device} />
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
               {device.location || "위치 미지정"} · {device.platform} ·{" "}
@@ -202,6 +211,18 @@ export function DeviceDetailPage() {
                   requireLogin() && onlineMutation.mutate(checked)
                 }
                 aria-label="온라인 상태 전환"
+              />
+            </label>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              비정상 시뮬레이션
+              <Switch
+                checked={device.health === "error"}
+                disabled={healthMutation.isPending}
+                onCheckedChange={(checked) =>
+                  requireLogin() &&
+                  healthMutation.mutate(checked ? "error" : "ok")
+                }
+                aria-label="비정상 단말 상태 전환"
               />
             </label>
             <div className="flex flex-wrap items-center gap-2">
@@ -346,6 +367,18 @@ export function DeviceDetailPage() {
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardContent className="space-y-3">
+              <p className="text-sm font-semibold">리소스 사용률</p>
+              <DeviceResourceGauges
+                cpuPct={meta.cpuPct}
+                ramPct={meta.ramPct}
+                ssdPct={meta.ssdPct}
+                offline={!device.online}
+              />
+            </CardContent>
+          </Card>
         </div>
 
         <div className="space-y-4">
@@ -419,8 +452,22 @@ export function DeviceDetailPage() {
               </p>
             </CardContent>
           </Card>
+
+          {/* 서버 값이 바뀌면 key로 다시 마운트해 입력값을 동기화 */}
+          <DevicePowerScheduleCard
+            key={`${device.id}|${device.powerOnTime ?? ""}|${device.powerOffTime ?? ""}|${device.powerExcludeDays.join(",")}|${device.powerExcludeDates.join(",")}`}
+            powerOnTime={device.powerOnTime}
+            powerOffTime={device.powerOffTime}
+            powerExcludeDays={device.powerExcludeDays}
+            powerExcludeDates={device.powerExcludeDates}
+            pending={powerMutation.isPending}
+            canEdit={requireLogin}
+            onSave={(next) => powerMutation.mutate(next)}
+          />
         </div>
       </div>
+
+      <DeviceSampleLogCard device={device} />
 
       {/* 재생 소스 변경 */}
       {changeOpen ? (

@@ -3,7 +3,7 @@
 // 콘텐츠 선택 리스트(북/플레이리스트/스케줄) — 시간대 추가·재생 소스 변경 등
 // 다이얼로그 안에서 공용으로 사용. 북은 제목 검색을 지원.
 import { useQuery } from "@tanstack/react-query";
-import { Check, Search } from "lucide-react";
+import { Check, CheckCircle2, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import {
@@ -14,6 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { type BookListCoverPreview, fetchBooksPage } from "@/lib/api";
 import {
+  CRETA_DEVICE_STATUS_LABEL,
+  cretaDeviceStatus,
   fetchCretaDevices,
   fetchCretaPlaylists,
   fetchCretaSchedules,
@@ -34,13 +36,19 @@ export function CretaSourcePicker({
   kind,
   selectedId,
   onSelect,
+  appliedIds,
+  appliedLabel = "적용 중",
 }: {
   kind: CretaPickerKind;
   selectedId: number | null;
   /** 선택 시 대상의 id·제목 전달 */
   onSelect: (option: { id: number; title: string }) => void;
+  /** 이미 적용된 항목 id — 체크 배지로 표시하고 다시 고를 수 없게 함(예: 이 스케줄이 배정된 디바이스) */
+  appliedIds?: readonly number[];
+  appliedLabel?: string;
 }) {
   const [search, setSearch] = useState("");
+  const appliedSet = useMemo(() => new Set(appliedIds ?? []), [appliedIds]);
 
   const booksQuery = useQuery({
     queryKey: [...cretaKeys.all, "picker", "book", search],
@@ -84,7 +92,7 @@ export function CretaSourcePicker({
       return (devicesQuery.data ?? []).map((d) => ({
         id: d.id,
         title: d.name,
-        meta: `${d.location || "위치 미지정"} · ${d.resolution} · ${d.online ? "온라인" : "오프라인"}`,
+        meta: `${d.location || "위치 미지정"} · ${d.resolution} · ${CRETA_DEVICE_STATUS_LABEL[cretaDeviceStatus(d)]}`,
         cover: d.source?.cover ?? null,
       }));
     }
@@ -153,36 +161,48 @@ export function CretaSourcePicker({
             {emptyLabel}
           </p>
         ) : (
-          options.map((o) => (
-            <button
-              key={o.id}
-              type="button"
-              onClick={() => onSelect({ id: o.id, title: o.title })}
-              className={cn(
-                "flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left transition-colors",
-                selectedId === o.id
-                  ? "bg-primary/10 ring-1 ring-primary/40"
-                  : "hover:bg-muted",
-              )}
-            >
-              <CretaCoverThumb
-                dataUrl={thumbs[`picker-${kind}-${o.id}`]}
-                title={o.title}
-                className="h-9 w-14"
-              />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium">
-                  {o.title}
+          options.map((o) => {
+            const applied = appliedSet.has(o.id);
+            return (
+              <button
+                key={o.id}
+                type="button"
+                disabled={applied}
+                aria-pressed={selectedId === o.id}
+                onClick={() => onSelect({ id: o.id, title: o.title })}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left transition-colors",
+                  applied
+                    ? "cursor-default bg-emerald-500/8"
+                    : selectedId === o.id
+                      ? "bg-primary/10 ring-1 ring-primary/40"
+                      : "hover:bg-muted",
+                )}
+              >
+                <CretaCoverThumb
+                  dataUrl={thumbs[`picker-${kind}-${o.id}`]}
+                  title={o.title}
+                  className="h-9 w-14"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">
+                    {o.title}
+                  </span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {o.meta}
+                  </span>
                 </span>
-                <span className="block truncate text-xs text-muted-foreground">
-                  {o.meta}
-                </span>
-              </span>
-              {selectedId === o.id ? (
-                <Check className="size-4 shrink-0 text-primary" aria-hidden />
-              ) : null}
-            </button>
-          ))
+                {applied ? (
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                    <CheckCircle2 className="size-3.5" aria-hidden />
+                    {appliedLabel}
+                  </span>
+                ) : selectedId === o.id ? (
+                  <Check className="size-4 shrink-0 text-primary" aria-hidden />
+                ) : null}
+              </button>
+            );
+          })
         )}
       </div>
     </div>

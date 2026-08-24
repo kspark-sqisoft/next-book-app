@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner";
 
 import { FormErrorAlert } from "@/components/forms/FormErrorAlert";
+import { OrgManagementCard } from "@/components/orgs/OrgManagementCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -510,6 +511,8 @@ export function MyInfoPage() {
           </div>
         </CardContent>
       </Card>
+
+      <OrgManagementCard />
 
       {isAdmin ? (
         <Card>

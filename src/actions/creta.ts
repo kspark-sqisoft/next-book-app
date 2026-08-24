@@ -7,8 +7,10 @@ import {
   requireUserFromToken,
   rethrowActionError,
 } from "@/actions/session-token";
+import type { AuthActor } from "@/server/auth/auth-policy";
 import {
   type CretaDevicePublic,
+  type CretaMyOverviewPublic,
   type CretaPlaylistDetailPublic,
   type CretaPlaylistListItemPublic,
   type CretaScheduleDetailPublic,
@@ -18,6 +20,100 @@ import {
 } from "@/server/services/creta.service";
 
 const TAG = "creta-actions";
+
+/** JWT payload → 서비스 권한 판정용 actor */
+function actorOf(user: { sub: number; role: AuthActor["role"] }): AuthActor {
+  return { id: user.sub, role: user.role };
+}
+
+// ── 공유 ─────────────────────────────────────────────────────────
+
+/** 모든 사용자 공유 켜기/끄기 — 소유자·관리자만 */
+export async function setCretaPlaylistShareAllAction(
+  accessToken: string | null | undefined,
+  playlistId: number,
+  shared: boolean,
+): Promise<CretaPlaylistDetailPublic> {
+  try {
+    const user = await requireUserFromToken(accessToken);
+    return await new CretaService().setPlaylistShareAll(
+      assertPositiveIntId(playlistId),
+      actorOf(user),
+      Boolean(shared),
+    );
+  } catch (e) {
+    rethrowActionError(e, TAG);
+  }
+}
+
+/** 모든 사용자 공유 켜기/끄기 — 소유자·관리자만 */
+export async function setCretaScheduleShareAllAction(
+  accessToken: string | null | undefined,
+  scheduleId: number,
+  shared: boolean,
+): Promise<CretaScheduleDetailPublic> {
+  try {
+    const user = await requireUserFromToken(accessToken);
+    return await new CretaService().setScheduleShareAll(
+      assertPositiveIntId(scheduleId),
+      actorOf(user),
+      Boolean(shared),
+    );
+  } catch (e) {
+    rethrowActionError(e, TAG);
+  }
+}
+
+export async function setCretaPlaylistShareAction(
+  accessToken: string | null | undefined,
+  playlistId: number,
+  userId: number,
+  shared: boolean,
+): Promise<CretaPlaylistDetailPublic> {
+  try {
+    const user = await requireUserFromToken(accessToken);
+    return await new CretaService().setPlaylistShare(
+      assertPositiveIntId(playlistId),
+      actorOf(user),
+      assertPositiveIntId(userId),
+      Boolean(shared),
+    );
+  } catch (e) {
+    rethrowActionError(e, TAG);
+  }
+}
+
+export async function setCretaScheduleShareAction(
+  accessToken: string | null | undefined,
+  scheduleId: number,
+  userId: number,
+  shared: boolean,
+): Promise<CretaScheduleDetailPublic> {
+  try {
+    const user = await requireUserFromToken(accessToken);
+    return await new CretaService().setScheduleShare(
+      assertPositiveIntId(scheduleId),
+      actorOf(user),
+      assertPositiveIntId(userId),
+      Boolean(shared),
+    );
+  } catch (e) {
+    rethrowActionError(e, TAG);
+  }
+}
+
+// ── 계정 현황 ─────────────────────────────────────────────────────
+
+export async function getMyCretaOverviewAction(
+  accessToken: string | null | undefined,
+): Promise<CretaMyOverviewPublic> {
+  try {
+    const user = await requireUserFromToken(accessToken);
+    return await new CretaService().myOverview(user.sub);
+  } catch (e) {
+    rethrowActionError(e, TAG);
+  }
+}
 
 // ── 플레이리스트 ──────────────────────────────────────────────────
 
@@ -52,8 +148,8 @@ export async function createCretaPlaylistAction(
   },
 ): Promise<CretaPlaylistDetailPublic> {
   try {
-    await requireUserFromToken(accessToken);
-    return await new CretaService().createPlaylist(body);
+    const user = await requireUserFromToken(accessToken);
+    return await new CretaService().createPlaylist(body, user.sub);
   } catch (e) {
     rethrowActionError(e, TAG);
   }
@@ -64,9 +160,9 @@ export async function deleteCretaPlaylistAction(
   playlistId: number,
 ): Promise<void> {
   try {
-    await requireUserFromToken(accessToken);
+    const user = await requireUserFromToken(accessToken);
     const id = assertPositiveIntId(playlistId);
-    await new CretaService().deletePlaylist(id);
+    await new CretaService().deletePlaylist(id, actorOf(user));
   } catch (e) {
     rethrowActionError(e, TAG);
   }
@@ -78,9 +174,10 @@ export async function addCretaPlaylistItemAction(
   bookId: number,
 ): Promise<CretaPlaylistDetailPublic> {
   try {
-    await requireUserFromToken(accessToken);
+    const user = await requireUserFromToken(accessToken);
     return await new CretaService().addPlaylistItem(
       assertPositiveIntId(playlistId),
+      actorOf(user),
       assertPositiveIntId(bookId),
     );
   } catch (e) {
@@ -94,9 +191,10 @@ export async function removeCretaPlaylistItemAction(
   itemId: number,
 ): Promise<CretaPlaylistDetailPublic> {
   try {
-    await requireUserFromToken(accessToken);
+    const user = await requireUserFromToken(accessToken);
     return await new CretaService().removePlaylistItem(
       assertPositiveIntId(playlistId),
+      actorOf(user),
       assertPositiveIntId(itemId),
     );
   } catch (e) {
@@ -111,10 +209,11 @@ export async function moveCretaPlaylistItemAction(
   direction: -1 | 1,
 ): Promise<CretaPlaylistDetailPublic> {
   try {
-    await requireUserFromToken(accessToken);
+    const user = await requireUserFromToken(accessToken);
     const dir = direction === -1 ? -1 : 1;
     return await new CretaService().movePlaylistItem(
       assertPositiveIntId(playlistId),
+      actorOf(user),
       assertPositiveIntId(itemId),
       dir,
     );
@@ -152,8 +251,8 @@ export async function createCretaScheduleAction(
   body: { name: string },
 ): Promise<CretaScheduleDetailPublic> {
   try {
-    await requireUserFromToken(accessToken);
-    return await new CretaService().createSchedule(body);
+    const user = await requireUserFromToken(accessToken);
+    return await new CretaService().createSchedule(body, user.sub);
   } catch (e) {
     rethrowActionError(e, TAG);
   }
@@ -164,8 +263,11 @@ export async function deleteCretaScheduleAction(
   scheduleId: number,
 ): Promise<void> {
   try {
-    await requireUserFromToken(accessToken);
-    await new CretaService().deleteSchedule(assertPositiveIntId(scheduleId));
+    const user = await requireUserFromToken(accessToken);
+    await new CretaService().deleteSchedule(
+      assertPositiveIntId(scheduleId),
+      actorOf(user),
+    );
   } catch (e) {
     rethrowActionError(e, TAG);
   }
@@ -182,9 +284,10 @@ export async function updateCretaScheduleAction(
   },
 ): Promise<CretaScheduleDetailPublic> {
   try {
-    await requireUserFromToken(accessToken);
+    const user = await requireUserFromToken(accessToken);
     return await new CretaService().updateSchedule(
       assertPositiveIntId(scheduleId),
+      actorOf(user),
       patch,
     );
   } catch (e) {
@@ -207,9 +310,10 @@ export async function addCretaScheduleSlotAction(
   },
 ): Promise<CretaScheduleDetailPublic> {
   try {
-    await requireUserFromToken(accessToken);
+    const user = await requireUserFromToken(accessToken);
     return await new CretaService().addScheduleSlot(
       assertPositiveIntId(scheduleId),
+      actorOf(user),
       body,
     );
   } catch (e) {
@@ -233,9 +337,10 @@ export async function updateCretaScheduleSlotAction(
   },
 ): Promise<CretaScheduleDetailPublic> {
   try {
-    await requireUserFromToken(accessToken);
+    const user = await requireUserFromToken(accessToken);
     return await new CretaService().updateScheduleSlot(
       assertPositiveIntId(scheduleId),
+      actorOf(user),
       assertPositiveIntId(slotId),
       body,
     );
@@ -250,9 +355,10 @@ export async function removeCretaScheduleSlotAction(
   slotId: number,
 ): Promise<CretaScheduleDetailPublic> {
   try {
-    await requireUserFromToken(accessToken);
+    const user = await requireUserFromToken(accessToken);
     return await new CretaService().removeScheduleSlot(
       assertPositiveIntId(scheduleId),
+      actorOf(user),
       assertPositiveIntId(slotId),
     );
   } catch (e) {
@@ -320,6 +426,43 @@ export async function updateCretaDeviceOnlineAction(
     return await new CretaService().updateDeviceOnline(
       assertPositiveIntId(deviceId),
       Boolean(online),
+    );
+  } catch (e) {
+    rethrowActionError(e, TAG);
+  }
+}
+
+export async function updateCretaDeviceHealthAction(
+  accessToken: string | null | undefined,
+  deviceId: number,
+  health: "ok" | "error",
+): Promise<CretaDevicePublic> {
+  try {
+    await requireUserFromToken(accessToken);
+    return await new CretaService().updateDeviceHealth(
+      assertPositiveIntId(deviceId),
+      health === "error" ? "error" : "ok",
+    );
+  } catch (e) {
+    rethrowActionError(e, TAG);
+  }
+}
+
+export async function updateCretaDevicePowerAction(
+  accessToken: string | null | undefined,
+  deviceId: number,
+  body: {
+    powerOnTime?: string | null;
+    powerOffTime?: string | null;
+    powerExcludeDays?: number[] | null;
+    powerExcludeDates?: string[] | null;
+  },
+): Promise<CretaDevicePublic> {
+  try {
+    await requireUserFromToken(accessToken);
+    return await new CretaService().updateDevicePower(
+      assertPositiveIntId(deviceId),
+      body,
     );
   } catch (e) {
     rethrowActionError(e, TAG);

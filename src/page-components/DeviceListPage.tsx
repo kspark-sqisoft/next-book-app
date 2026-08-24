@@ -13,6 +13,7 @@ import {
   CretaCoverThumb,
   useCretaCoverThumbs,
 } from "@/components/creta/CretaCoverThumb";
+import { DeviceStatusBadge } from "@/components/creta/DeviceStatusBadge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,29 +42,13 @@ import { Spinner } from "@/components/ui/spinner";
 import {
   createCretaDevice,
   type CretaDevice,
+  cretaDeviceStatus,
   deleteCretaDevice,
   fetchCretaDevices,
   PLAY_SOURCE_LABEL,
 } from "@/lib/creta-api";
 import { cretaKeys } from "@/lib/query-keys";
 import { useAuth } from "@/stores/auth-store";
-
-function OnlineBadge({ online }: { online: boolean }) {
-  return online ? (
-    <Badge className="gap-1 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-      <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />
-      온라인
-    </Badge>
-  ) : (
-    <Badge variant="outline" className="gap-1 text-muted-foreground">
-      <span
-        className="size-1.5 rounded-full bg-muted-foreground/50"
-        aria-hidden
-      />
-      오프라인
-    </Badge>
-  );
-}
 
 export function DeviceListPage() {
   const { user } = useAuth();
@@ -116,13 +101,22 @@ export function DeviceListPage() {
   });
 
   const list: CretaDevice[] = useMemo(() => devices ?? [], [devices]);
-  const onlineCount = list.filter((d) => d.online).length;
-  const stats = [
-    { label: "전체 디바이스", value: list.length, dot: false },
-    { label: "온라인", value: onlineCount, dot: true },
-    { label: "오프라인", value: list.length - onlineCount, dot: false },
-    { label: "HostSync 그룹", value: 1, dot: false },
-  ];
+  const onlineCount = list.filter(
+    (d) => cretaDeviceStatus(d) === "online",
+  ).length;
+  const errorCount = list.filter(
+    (d) => cretaDeviceStatus(d) === "error",
+  ).length;
+  const offlineCount = list.filter(
+    (d) => cretaDeviceStatus(d) === "offline",
+  ).length;
+  const stats: { label: string; value: number; dot: "ok" | "error" | null }[] =
+    [
+      { label: "전체 디바이스", value: list.length, dot: null },
+      { label: "온라인", value: onlineCount, dot: "ok" },
+      { label: "비정상", value: errorCount, dot: "error" },
+      { label: "오프라인", value: offlineCount, dot: null },
+    ];
 
   const thumbEntries = useMemo(
     () =>
@@ -150,9 +144,14 @@ export function DeviceListPage() {
               <p className="text-xs text-muted-foreground">{stat.label}</p>
               <p className="mt-1 flex items-center gap-1.5 text-2xl font-bold tabular-nums">
                 {stat.value}
-                {stat.dot ? (
+                {stat.dot === "ok" ? (
                   <span
                     className="size-2 rounded-full bg-emerald-500"
+                    aria-hidden
+                  />
+                ) : stat.dot === "error" ? (
+                  <span
+                    className="size-2 rounded-full bg-red-500"
                     aria-hidden
                   />
                 ) : null}
@@ -214,7 +213,7 @@ export function DeviceListPage() {
                       <p className="truncate text-sm font-medium">
                         {device.name}
                       </p>
-                      <OnlineBadge online={device.online} />
+                      <DeviceStatusBadge device={device} />
                     </div>
                     <p className="mt-0.5 truncate text-xs text-muted-foreground">
                       {device.location || "위치 미지정"} · {device.resolution}

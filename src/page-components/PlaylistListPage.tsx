@@ -2,7 +2,7 @@
 
 // 플레이리스트 목록: DB 기반 CRUD. 대표 썸네일은 첫 북의 커버.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ListVideo, Plus, Repeat, Trash2 } from "lucide-react";
+import { ListVideo, Plus, Repeat, Share2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -37,10 +37,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
+import { canManageOwned } from "@/lib/authz";
 import {
   createCretaPlaylist,
   deleteCretaPlaylist,
   fetchCretaPlaylists,
+  sharedWithSummary,
 } from "@/lib/creta-api";
 import { cretaKeys } from "@/lib/query-keys";
 import { useAuth } from "@/stores/auth-store";
@@ -164,6 +166,24 @@ export function PlaylistListPage() {
                     <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
                       {playlist.description || "설명 없음"}
                     </p>
+                    <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 text-[11px] text-muted-foreground">
+                      <span className="truncate">
+                        작성자 {playlist.owner?.name || "공용"}
+                      </span>
+                      {playlist.sharedWith.length > 0 ? (
+                        <span
+                          className="inline-flex min-w-0 items-center gap-1 text-primary"
+                          title={playlist.sharedWith
+                            .map((u) => u.name)
+                            .join(", ")}
+                        >
+                          <Share2 className="size-3 shrink-0" aria-hidden />
+                          <span className="truncate">
+                            {sharedWithSummary(playlist.sharedWith)}에게 공유됨
+                          </span>
+                        </span>
+                      ) : null}
+                    </p>
                   </div>
                 </Link>
                 <div className="flex items-center justify-between gap-2">
@@ -178,22 +198,23 @@ export function PlaylistListPage() {
                     )}
                     <Badge variant="outline">{playlist.visibility}</Badge>
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={`${playlist.name} 삭제`}
-                    className="text-muted-foreground hover:text-destructive"
-                    onClick={() => {
-                      if (!user) {
-                        toast.error("로그인이 필요합니다.");
-                        return;
+                  {canManageOwned(user, playlist.owner?.id ?? null) ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`${playlist.name} 삭제`}
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() =>
+                        setDeleteTarget({
+                          id: playlist.id,
+                          name: playlist.name,
+                        })
                       }
-                      setDeleteTarget({ id: playlist.id, name: playlist.name });
-                    }}
-                  >
-                    <Trash2 className="size-3.5" aria-hidden />
-                  </Button>
+                    >
+                      <Trash2 className="size-3.5" aria-hidden />
+                    </Button>
+                  ) : null}
                 </div>
               </CardContent>
             </Card>

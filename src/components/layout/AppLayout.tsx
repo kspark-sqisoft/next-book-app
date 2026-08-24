@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { startTransition, useEffect, useRef, useState } from "react";
 
 import { ChatDock } from "@/components/chat/ChatDock";
+import { CretaSidebar } from "@/components/layout/CretaSidebar";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
@@ -81,9 +82,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const location = { pathname: usePathname() };
   /** 크레타 하위 섹션(플레이리스트·스케줄·디바이스) — 대시보드형 화면이라 넓은 컬럼 사용 */
   const cretaDashboardRoute =
+    location.pathname.startsWith("/community") ||
     location.pathname.startsWith("/playlists") ||
     location.pathname.startsWith("/schedules") ||
-    location.pathname.startsWith("/devices");
+    location.pathname.startsWith("/devices") ||
+    location.pathname.startsWith("/account");
   /** 크레타 서브내비 노출: 북 목록 + 하위 섹션(북 편집 워크스페이스는 제외) */
   const cretaSubNavRoute =
     location.pathname === "/books" || cretaDashboardRoute;
@@ -126,9 +129,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       "/",
       "/posts",
       "/books",
+      "/community",
       "/playlists",
       "/schedules",
       "/devices",
+      "/account",
       "/cats",
       "/login",
       "/signup",
@@ -180,6 +185,24 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const showBookSiteFooter =
     !bookShellRoute || !bookDetailChromeRoute || !bookSiteFooterCollapsed;
 
+  /** 본문 — 크레타 영역에서는 사이드바 옆에, 그 외에는 단독으로 배치 */
+  const mainEl = (
+    <main
+      id={SITE_APP_MAIN_SCROLL_ID}
+      className={cn(
+        "w-full min-h-0 flex-1",
+        fullViewportShell
+          ? "flex max-w-none flex-col overflow-hidden p-0"
+          : cn(
+              "overflow-y-auto overscroll-contain mx-auto px-4 py-8",
+              wideMain ? "max-w-6xl" : "max-w-3xl",
+            ),
+      )}
+    >
+      {children}
+    </main>
+  );
+
   return (
     <div
       className={cn(
@@ -208,9 +231,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <NavLink href="/posts" prefetch className={headerNavClass}>
                 글
               </NavLink>
-              {/* 크레타: 북·플레이리스트·스케줄·디바이스 묶음 — 기본 진입은 북 목록 */}
+              {/* 크레타: 커뮤니티·북·플레이리스트·스케줄·디바이스 묶음 — 기본 진입은 커뮤니티 */}
               <Link
-                href="/books"
+                href="/community"
                 prefetch
                 className={headerNavClass({ isActive: cretaMenuActive })}
               >
@@ -319,7 +342,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       ) : null}
       {cretaSubNavRoute ? (
-        <div className="shrink-0 border-b border-border bg-card/20">
+        /* 모바일 전용 가로 메뉴 — sm 이상은 왼쪽 사이드바(CretaSidebar) */
+        <div className="shrink-0 border-b border-border bg-card/20 sm:hidden">
           <nav
             aria-label="크레타 하위 메뉴"
             className={cn(
@@ -327,6 +351,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               wideMain ? "max-w-6xl" : "max-w-3xl",
             )}
           >
+            <NavLink href="/community" prefetch className={cretaSubNavClass}>
+              커뮤니티
+            </NavLink>
             <NavLink href="/books" end prefetch className={cretaSubNavClass}>
               북
             </NavLink>
@@ -339,23 +366,21 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <NavLink href="/devices" prefetch className={cretaSubNavClass}>
               디바이스
             </NavLink>
+            <NavLink href="/account" prefetch className={cretaSubNavClass}>
+              계정
+            </NavLink>
           </nav>
         </div>
       ) : null}
-      <main
-        id={SITE_APP_MAIN_SCROLL_ID}
-        className={cn(
-          "w-full min-h-0 flex-1",
-          fullViewportShell
-            ? "flex max-w-none flex-col overflow-hidden p-0"
-            : cn(
-                "overflow-y-auto overscroll-contain mx-auto px-4 py-8",
-                wideMain ? "max-w-6xl" : "max-w-3xl",
-              ),
-        )}
-      >
-        {children}
-      </main>
+      {cretaSubNavRoute ? (
+        /* 크레타 영역: 왼쪽 사이드바 + 본문(본문만 스크롤) */
+        <div className="flex min-h-0 w-full flex-1 overflow-hidden">
+          <CretaSidebar />
+          {mainEl}
+        </div>
+      ) : (
+        mainEl
+      )}
       {showBookSiteFooter ? (
         <footer className="relative z-280 shrink-0 border-t border-border bg-card/40 backdrop-blur-sm">
           <div

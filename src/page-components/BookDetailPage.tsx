@@ -7,6 +7,7 @@ import {
   ChevronRight,
   MonitorPlay,
   Save,
+  Share2,
   Trash2,
 } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -57,6 +58,7 @@ import type {
 } from "@/components/books/BookMediaPlaylistWidgetOverlay";
 import { BookPagePropertiesPanel } from "@/components/books/BookPagePropertiesPanel";
 import { BookPageSidebar } from "@/components/books/BookPageSidebar";
+import { BookShareDialog } from "@/components/books/BookShareDialog";
 import {
   type BookCanvasSelectDetail,
   type BookDropWidgetKind,
@@ -84,6 +86,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import {
+  addBookMediaLibraryItem,
   type BookCanvasElement,
   type BookDetail,
   type BookPageDto,
@@ -92,7 +95,10 @@ import {
   updateBook,
   uploadBookMedia,
 } from "@/lib/api";
-import { canEditAsOwnerOrAdmin } from "@/lib/authz";
+import {
+  canEditAsOwnerOrAdmin,
+  canEditBookAsOwnerAdminOrShared,
+} from "@/lib/authz";
 import {
   applyAutoSlideNamesByIndex,
   BOOK_CANVAS_DRAG_GRID_PX,
@@ -154,7 +160,6 @@ import {
   writeFloatingWidgetPaletteVisible,
 } from "@/lib/book-floating-ui-prefs";
 import { warmBookCanvasImagesForNeighborPages } from "@/lib/book-image-cache";
-import { appendBookMediaLibraryItem } from "@/lib/book-media-library";
 import { renderPdfFileToPageImages } from "@/lib/book-pdf-import";
 import { computeSlidePresentationDurationSec } from "@/lib/book-presentation";
 import {
@@ -274,6 +279,25 @@ function BookDetailOwnerView({
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  /** 업로드 결과를 서버 미디어 라이브러리에 기록(실패해도 편집 흐름은 계속) */
+  const appendToMediaLibrary = useCallback(
+    (meta: {
+      kind: "image" | "video";
+      src: string;
+      posterUrl: string | null;
+    }) => {
+      void addBookMediaLibraryItem(bookId, {
+        kind: meta.kind,
+        src: meta.src,
+        posterSrc: meta.posterUrl,
+      })
+        .then((lib) =>
+          queryClient.setQueryData(bookKeys.mediaLibrary(bookId), lib),
+        )
+        .catch(() => undefined);
+    },
+    [bookId, queryClient],
+  );
   const [bookTitle, setBookTitle] = useState(serverBook.title);
   const [pageIndex, setPageIndex] = useState(0);
   const canvasWrapRef = useRef<HTMLDivElement>(null);
@@ -307,6 +331,10 @@ function BookDetailOwnerView({
   >(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  /** 공유 다이얼로그 — 작성자·관리자만 열 수 있음(공유받은 편집자는 버튼 없음) */
+  const [shareOpen, setShareOpen] = useState(false);
+  const { user: authUser } = useAuth();
+  const canManageShare = canEditAsOwnerOrAdmin(authUser, serverBook.author.id);
   const [widgetDeleteOpen, setWidgetDeleteOpen] = useState(false);
   const [widgetDeleteIds, setWidgetDeleteIds] = useState<string[]>([]);
   const [pageDeleteOpen, setPageDeleteOpen] = useState(false);
@@ -709,6 +737,33 @@ function BookDetailOwnerView({
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  // 공유 다이얼로그 — 공유 목록이 바뀌면 상세 캐시의 sharedUserIds만 갱신(편집 중인 페이지는 건드리지 않음)
+  const shareBookDialog =
+    canManageShare && shareOpen ? (
+      <BookShareDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        bookId={bookId}
+        bookTitle={bookTitle.trim() || serverBook.title}
+        authorId={serverBook.author.id}
+        sharedUserIds={serverBook.sharedUserIds ?? []}
+        sharedToAll={serverBook.sharedToAll === true}
+        onChanged={(book) =>
+          queryClient.setQueryData<BookDetail>(
+            bookKeys.detail(bookId),
+            (old) =>
+              old
+                ? {
+                    ...old,
+                    sharedUserIds: book.sharedUserIds ?? [],
+                    sharedToAll: book.sharedToAll === true,
+                  }
+                : old,
+          )
+        }
+      />
+    ) : null;
 
   const deleteBookDialog = (
     <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
@@ -1288,7 +1343,7 @@ function BookDetailOwnerView({
             });
           }
         });
-        appendBookMediaLibraryItem(bookId, {
+        appendToMediaLibrary({
           kind: res.kind,
           src: res.url,
           posterUrl: res.posterUrl,
@@ -1325,7 +1380,7 @@ function BookDetailOwnerView({
         if (p) p.elements.push(el);
       });
       setSelectedIds([id]);
-      appendBookMediaLibraryItem(bookId, {
+      appendToMediaLibrary({
         kind: res.kind,
         src: res.url,
         posterUrl: res.posterUrl,
@@ -1411,7 +1466,7 @@ function BookDetailOwnerView({
           return;
         }
         if (!applied) return;
-        appendBookMediaLibraryItem(bookId, {
+        appendToMediaLibrary({
           kind: res.kind,
           src: res.url,
           posterUrl: res.posterUrl,
@@ -1421,7 +1476,7 @@ function BookDetailOwnerView({
         setUploadError((e as Error).message);
       }
     },
-    [activePageIndex, bookId, updatePages],
+    [activePageIndex, appendToMediaLibrary, bookId, updatePages],
   );
 
   /** PDF 가져오기 — 각 페이지를 PNG로 변환·업로드해 미디어 재생목록 위젯으로 추가 */
@@ -1654,7 +1709,7 @@ function BookDetailOwnerView({
     async (file: File) => {
       try {
         const res = await uploadBookMedia(bookId, file, null);
-        appendBookMediaLibraryItem(bookId, {
+        appendToMediaLibrary({
           kind: res.kind,
           src: res.url,
           posterUrl: res.posterUrl,
@@ -1665,7 +1720,7 @@ function BookDetailOwnerView({
         throw e;
       }
     },
-    [bookId],
+    [appendToMediaLibrary, bookId],
   );
 
   /** 비디오 편집기 서버 렌더 완료 — 결과 URL을 미디어 라이브러리에 등록(성공/실패 토스트는 다이얼로그가 담당) */
@@ -1675,13 +1730,13 @@ function BookDetailOwnerView({
       url: string;
       posterUrl: string | null;
     }) => {
-      appendBookMediaLibraryItem(bookId, {
+      appendToMediaLibrary({
         kind: media.kind,
         src: media.url,
         posterUrl: media.posterUrl,
       });
     },
-    [bookId],
+    [appendToMediaLibrary],
   );
 
   /** 팔레트 더블 클릭 — 위젯을 슬라이드 가운데에 바로 추가 */
@@ -2259,6 +2314,37 @@ function BookDetailOwnerView({
     slideHeight,
   );
 
+  /** 헤더 작성자 표시 — 내가 공유받은 북(개별/전체 공유)이면 배지로 구분 */
+  const isNotAuthor = Boolean(
+    authUser && Number(authUser.sub) !== Number(serverBook.author.id),
+  );
+  const isSharedToMe = Boolean(
+    isNotAuthor &&
+    authUser &&
+    (serverBook.sharedUserIds ?? []).some(
+      (uid) => Number(uid) === Number(authUser.sub),
+    ),
+  );
+  const isSharedToAllForMe = Boolean(
+    isNotAuthor && !isSharedToMe && serverBook.sharedToAll === true,
+  );
+  const authorTitleInfo = (
+    <span className="inline-flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+      <span className="truncate">
+        작성자{" "}
+        <span className="font-medium text-foreground">
+          {serverBook.author.name}
+        </span>
+      </span>
+      {isSharedToMe || isSharedToAllForMe ? (
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+          <Share2 className="size-3" aria-hidden />
+          {isSharedToMe ? "공유받은 북" : "전체 공유 북"}
+        </span>
+      ) : null}
+    </span>
+  );
+
   if (localPages.length === 0) {
     return (
       <>
@@ -2279,6 +2365,7 @@ function BookDetailOwnerView({
                 onChangeSlideWidth={setSlideWidth}
                 onChangeSlideHeight={setSlideHeight}
               />
+              {authorTitleInfo}
             </div>
           }
           actions={
@@ -2288,6 +2375,23 @@ function BookDetailOwnerView({
                   bookId={bookId}
                   currentIndex={activePageIndex}
                 />
+                {canManageShare ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2.5 text-xs"
+                    onClick={() => setShareOpen(true)}
+                  >
+                    <Share2 className="mr-1.5 size-3.5" />
+                    공유
+                    {serverBook.sharedUserIds?.length ? (
+                      <span className="ml-1 rounded-full bg-primary/10 px-1.5 text-[10px] font-semibold text-primary">
+                        {serverBook.sharedUserIds.length}
+                      </span>
+                    ) : null}
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
                   size="sm"
@@ -2429,6 +2533,7 @@ function BookDetailOwnerView({
             </aside>
           }
         />
+        {shareBookDialog}
         {deleteBookDialog}
         {widgetDeleteDialog}
         {pageDeleteDialog}
@@ -2455,6 +2560,7 @@ function BookDetailOwnerView({
               onChangeSlideWidth={setSlideWidth}
               onChangeSlideHeight={setSlideHeight}
             />
+            {authorTitleInfo}
           </div>
         }
         actions={
@@ -2464,6 +2570,23 @@ function BookDetailOwnerView({
                 bookId={bookId}
                 currentIndex={activePageIndex}
               />
+              {canManageShare ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2.5 text-xs"
+                  onClick={() => setShareOpen(true)}
+                >
+                  <Share2 className="mr-1.5 size-3.5" />
+                  공유
+                  {serverBook.sharedUserIds?.length ? (
+                    <span className="ml-1 rounded-full bg-primary/10 px-1.5 text-[10px] font-semibold text-primary">
+                      {serverBook.sharedUserIds.length}
+                    </span>
+                  ) : null}
+                </Button>
+              ) : null}
               <Button
                 type="button"
                 size="sm"
@@ -2940,6 +3063,7 @@ function BookDetailOwnerView({
           </aside>
         }
       />
+      {shareBookDialog}
       {deleteBookDialog}
       {widgetDeleteDialog}
       {pageDeleteDialog}
@@ -3189,9 +3313,16 @@ export function BookDetailPage() {
     refetchOnWindowFocus: false,
   });
 
-  /** 작성자 또는 관리자만 편집 UI */
+  /** 작성자·관리자 또는 공유받은 사용자(모든 사용자 공유 포함)만 편집 UI */
   const canEdit = Boolean(
-    user && data && canEditAsOwnerOrAdmin(user, data.author.id),
+    user &&
+    data &&
+    canEditBookAsOwnerAdminOrShared(
+      user,
+      data.author.id,
+      data.sharedUserIds,
+      data.sharedToAll,
+    ),
   );
 
   const sortedPagesView = useMemo(() => {

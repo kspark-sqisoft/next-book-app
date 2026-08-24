@@ -1,6 +1,7 @@
 /**
- * 북별 미디어 라이브러리 — 업로드된 URL 목록을 브라우저에만 보관(재배치용).
- * 실제 파일은 서버 `/books/:id/upload`와 동일합니다.
+ * (레거시) 북별 미디어 라이브러리 — 예전에는 업로드 URL 목록을 브라우저
+ * localStorage에만 보관했다. 지금은 서버(book_media_item)에 저장하며,
+ * 이 모듈은 남아 있는 로컬 목록을 서버로 1회 이관할 때만 쓰인다.
  */
 
 export type BookMediaLibraryItem = {
@@ -12,9 +13,6 @@ export type BookMediaLibraryItem = {
 };
 
 const PREFIX = "book-media-lib:v1:";
-const MAX_ITEMS = 80;
-
-export const BOOK_MEDIA_LIBRARY_CHANGED = "book-media-library-changed";
 
 function key(bookId: number): string {
   return `${PREFIX}${bookId}`;
@@ -46,53 +44,11 @@ export function loadBookMediaLibrary(bookId: number): BookMediaLibraryItem[] {
   }
 }
 
-/** 저장 성공 여부를 반환 — 쿼터 초과를 조용히 성공으로 위장하지 않는다 */
-function saveBookMediaLibrary(
-  bookId: number,
-  items: BookMediaLibraryItem[],
-): boolean {
-  let ok = true;
+/** 서버 이관 완료 후 로컬 목록 제거 */
+export function clearBookMediaLibrary(bookId: number): void {
   try {
-    localStorage.setItem(key(bookId), JSON.stringify(items));
+    localStorage.removeItem(key(bookId));
   } catch {
-    ok = false; // quota 초과 등
+    /* ignore */
   }
-  window.dispatchEvent(
-    new CustomEvent(BOOK_MEDIA_LIBRARY_CHANGED, { detail: { bookId } }),
-  );
-  return ok;
-}
-
-export type AppendBookMediaLibraryResult = {
-  saved: boolean;
-  /** MAX_ITEMS 초과로 목록에서 밀려난 오래된 항목 수(파일은 서버에 남음) */
-  truncated: number;
-};
-
-/** 목록 앞에 추가(최대 개수 유지) */
-export function appendBookMediaLibraryItem(
-  bookId: number,
-  meta: { kind: "image" | "video"; src: string; posterUrl: string | null },
-): AppendBookMediaLibraryResult {
-  const items = loadBookMediaLibrary(bookId);
-  const item: BookMediaLibraryItem = {
-    id: crypto.randomUUID(),
-    kind: meta.kind,
-    src: meta.src,
-    posterSrc: meta.posterUrl,
-    addedAt: Date.now(),
-  };
-  const dedup = items.filter((x) => x.src !== item.src);
-  const merged = [item, ...dedup];
-  const next = merged.slice(0, MAX_ITEMS);
-  const saved = saveBookMediaLibrary(bookId, next);
-  return { saved, truncated: merged.length - next.length };
-}
-
-export function removeBookMediaLibraryItem(
-  bookId: number,
-  itemId: string,
-): void {
-  const items = loadBookMediaLibrary(bookId).filter((x) => x.id !== itemId);
-  saveBookMediaLibrary(bookId, items);
 }

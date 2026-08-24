@@ -100,6 +100,7 @@ export function BookEditorToolRail({
               railBtn,
               activeTab === "media" && mediaLibraryEnabled && railBtnActive,
             )}
+            aria-label="미디어 라이브러리"
             aria-pressed={activeTab === "media"}
             disabled={!mediaLibraryEnabled}
             onClick={() => {

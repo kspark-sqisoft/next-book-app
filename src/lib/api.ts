@@ -3,12 +3,22 @@
 import axios, { type InternalAxiosRequestConfig, isAxiosError } from "axios";
 
 import {
+  addBookMediaLibraryItemAction,
+  listBookMediaLibraryAction,
+  removeBookMediaLibraryItemAction,
+  setBookMediaShareAction,
+  setBookMediaShareAllAction,
+} from "@/actions/book-media";
+import {
   createBookAction,
   deleteBookAction,
   fetchBookAiChatAction,
   getBookAction,
   listBooksAction,
+  listBookShareUsersAction,
   requestBookLayoutAiAction,
+  setBookShareAction,
+  setBookShareAllAction,
   updateBookAction,
   uploadBookMediaAction,
 } from "@/actions/books";
@@ -389,6 +399,135 @@ export async function adminSetUserRoleByEmail(input: {
   }
 }
 
+export type OrgListItem = {
+  id: number;
+  name: string;
+  parentId: number | null;
+  memberCount: number;
+};
+
+export type OrgMemberItem = {
+  userId: number;
+  email: string;
+  name: string;
+  imageUrl: string | null;
+  role: "admin" | "member";
+};
+
+export type OrgCapabilities = {
+  isSuperOrgAdmin: boolean;
+  adminOrganizationIds: number[];
+  memberOrganizationIds: number[];
+};
+
+export async function fetchOrgCapabilities(): Promise<OrgCapabilities> {
+  try {
+    const { data } = await api.get<OrgCapabilities>("/orgs", {
+      params: { capabilities: "1" },
+    });
+    return data;
+  } catch (e) {
+    rethrowAsApiError(e);
+  }
+}
+
+export async function fetchOrganizations(): Promise<OrgListItem[]> {
+  try {
+    const { data } = await api.get<{ items: OrgListItem[] }>("/orgs");
+    return data.items;
+  } catch (e) {
+    rethrowAsApiError(e);
+  }
+}
+
+export async function createOrganization(input: {
+  name: string;
+  parentId?: number | null;
+}): Promise<OrgListItem> {
+  try {
+    const { data } = await api.post<OrgListItem>("/orgs", {
+      name: input.name,
+      parentId: input.parentId ?? null,
+    });
+    return data;
+  } catch (e) {
+    rethrowAsApiError(e);
+  }
+}
+
+export async function renameOrganization(
+  id: number,
+  name: string,
+): Promise<OrgListItem> {
+  try {
+    const { data } = await api.patch<OrgListItem>(`/orgs/${id}`, { name });
+    return data;
+  } catch (e) {
+    rethrowAsApiError(e);
+  }
+}
+
+export async function deleteOrganization(id: number): Promise<void> {
+  try {
+    await api.delete(`/orgs/${id}`);
+  } catch (e) {
+    rethrowAsApiError(e);
+  }
+}
+
+export async function fetchOrgMembers(orgId: number): Promise<OrgMemberItem[]> {
+  try {
+    const { data } = await api.get<{ items: OrgMemberItem[] }>(
+      `/orgs/${orgId}/members`,
+    );
+    return data.items;
+  } catch (e) {
+    rethrowAsApiError(e);
+  }
+}
+
+export async function addOrgMember(
+  orgId: number,
+  input: { email: string; role?: "admin" | "member" },
+): Promise<OrgMemberItem> {
+  try {
+    const { data } = await api.post<OrgMemberItem>(`/orgs/${orgId}/members`, {
+      email: input.email.trim(),
+      role: input.role ?? "member",
+    });
+    return data;
+  } catch (e) {
+    rethrowAsApiError(e);
+  }
+}
+
+export async function setOrgMemberRole(
+  orgId: number,
+  userId: number,
+  role: "admin" | "member",
+): Promise<OrgMemberItem> {
+  try {
+    const { data } = await api.patch<OrgMemberItem>(
+      `/orgs/${orgId}/members/${userId}`,
+      { role },
+    );
+    return data;
+  } catch (e) {
+    rethrowAsApiError(e);
+  }
+}
+
+export async function removeOrgMember(
+  orgId: number,
+  userId: number,
+): Promise<void> {
+  try {
+    await api.delete(`/orgs/${orgId}/members/${userId}`);
+  } catch (e) {
+    rethrowAsApiError(e);
+  }
+}
+
 export type PostsPageResponse = {
   items: Post[];
   /** 다음 요청에 `cursor`로 전달 */
@@ -654,6 +793,10 @@ export type BookListItem = {
   author: PostAuthor;
   pageCount: number;
   coverPreview: BookListCoverPreview | null;
+  /** 공유받은 사용자(이름) — 구버전 응답은 생략될 수 있음 */
+  sharedWith?: { id: number; name: string }[];
+  /** true면 모든 로그인 사용자가 편집 가능 */
+  sharedToAll?: boolean;
 };
 
 export type BookDetail = {
@@ -668,6 +811,18 @@ export type BookDetail = {
   updatedAt: string;
   author: PostAuthor;
   pages: BookPageDto[];
+  /** 공유받은 사용자 id(편집 가능). 구버전 응답은 생략될 수 있음 */
+  sharedUserIds?: number[];
+  /** true면 모든 로그인 사용자가 편집 가능 */
+  sharedToAll?: boolean;
+};
+
+/** 북 공유 대상으로 고를 수 있는 회원 */
+export type BookShareUser = {
+  id: number;
+  name: string;
+  email: string;
+  imageUrl: string | null;
 };
 
 export type BookPageInput = {
@@ -885,6 +1040,104 @@ export async function updateBook(
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
   return runAction(() => updateBookAction(token, id, input as UpdateBookDto));
+}
+
+/** 공유 대상 회원 목록(로그인 필요) */
+export async function fetchBookShareUsers(): Promise<BookShareUser[]> {
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  return runAction(() => listBookShareUsersAction(token));
+}
+
+/** 북 공유 추가/해제 — 갱신된 북(sharedUserIds 포함) 반환 */
+export async function setBookShare(
+  bookId: number,
+  userId: number,
+  shared: boolean,
+): Promise<BookDetail> {
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  return runAction(() => setBookShareAction(token, bookId, userId, shared));
+}
+
+/** 북 모든 사용자 공유 켜기/끄기 — 작성자·관리자만 */
+export async function setBookShareAll(
+  bookId: number,
+  shared: boolean,
+): Promise<BookDetail> {
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  return runAction(() => setBookShareAllAction(token, bookId, shared));
+}
+
+// --- 북 미디어 라이브러리(서버 보관 목록 + 파일별 공유) ---
+
+export type BookMediaLibraryItemDto = {
+  id: number;
+  kind: "image" | "video";
+  src: string;
+  posterSrc: string | null;
+  ownerId: number;
+  ownerName: string;
+  sharedToAll: boolean;
+  sharedUserIds: number[];
+};
+
+export type BookMediaLibraryDto = {
+  /** 이 북의 라이브러리 항목(최신순) */
+  items: BookMediaLibraryItemDto[];
+  /** 다른 사용자가 나에게(또는 전체에) 공유한 파일 */
+  sharedItems: BookMediaLibraryItemDto[];
+};
+
+export async function fetchBookMediaLibrary(
+  bookId: number,
+): Promise<BookMediaLibraryDto> {
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  return runAction(() => listBookMediaLibraryAction(token, bookId));
+}
+
+/** 업로드 결과를 서버 라이브러리에 기록 — 갱신된 목록 반환 */
+export async function addBookMediaLibraryItem(
+  bookId: number,
+  input: { kind: "image" | "video"; src: string; posterSrc?: string | null },
+): Promise<BookMediaLibraryDto> {
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  return runAction(() => addBookMediaLibraryItemAction(token, bookId, input));
+}
+
+/** 라이브러리 목록에서 제거 — 업로드한 사용자·관리자만 */
+export async function removeBookMediaLibraryItem(
+  mediaId: number,
+): Promise<void> {
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  await runAction(() => removeBookMediaLibraryItemAction(token, mediaId));
+}
+
+/** 미디어 파일 특정 회원 공유 추가/해제 */
+export async function setBookMediaShare(
+  mediaId: number,
+  userId: number,
+  shared: boolean,
+): Promise<void> {
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  await runAction(() =>
+    setBookMediaShareAction(token, mediaId, userId, shared),
+  );
+}
+
+/** 미디어 파일 모든 사용자 공유 켜기/끄기 */
+export async function setBookMediaShareAll(
+  mediaId: number,
+  shared: boolean,
+): Promise<void> {
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  await runAction(() => setBookMediaShareAllAction(token, mediaId, shared));
 }
 
 export async function deleteBook(id: number): Promise<void> {

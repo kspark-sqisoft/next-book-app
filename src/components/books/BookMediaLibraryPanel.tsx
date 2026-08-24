@@ -1,4 +1,5 @@
-// 업로드된 북 미디어 라이브러리: 그리드·재생·삭제
+// 업로드된 북 미디어 라이브러리(서버 보관): 그리드·재생·삭제·파일별 공유 + 공유받은 파일
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ChevronDown,
   ChevronUp,
@@ -7,6 +8,7 @@ import {
   GripVertical,
   ImagePlus,
   PictureInPicture2,
+  Share2,
   Trash2,
   X,
 } from "lucide-react";
@@ -24,6 +26,7 @@ import { createPortal } from "react-dom";
 import { toast } from "sonner";
 
 import { BOOK_LIBRARY_DRAG_TYPE } from "@/components/books/BookSlideCanvas";
+import { MemberShareDialog } from "@/components/share/MemberShareDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,17 +40,22 @@ import {
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import {
+  addBookMediaLibraryItem,
+  type BookMediaLibraryDto,
+  type BookMediaLibraryItemDto,
+  fetchBookMediaLibrary,
   getBookVideoRenderJob,
   publicAssetUrl,
+  removeBookMediaLibraryItem,
+  setBookMediaShare,
+  setBookMediaShareAll,
   startBookVideoConcat,
   uploadBookMedia,
 } from "@/lib/api";
+import { isAdminUser } from "@/lib/authz";
 import {
-  appendBookMediaLibraryItem,
-  BOOK_MEDIA_LIBRARY_CHANGED,
-  type BookMediaLibraryItem,
+  clearBookMediaLibrary,
   loadBookMediaLibrary,
-  removeBookMediaLibraryItem,
 } from "@/lib/book-media-library";
 import {
   bookDockedPanelHeaderIconClass,
@@ -55,8 +63,10 @@ import {
   bookDockedPanelHeadingClass,
   bookDockedPanelRootClass,
 } from "@/lib/book-workspace-ui";
+import { bookKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { captureVideoPosterJpeg } from "@/lib/video-poster";
+import { useAuth } from "@/stores/auth-store";
 
 const STORAGE_KEY = "book-media-library-panel";
 const PANEL_MAX_W = 320;
@@ -108,37 +118,56 @@ function clampCoords(
 }
 
 function useBookMediaLibraryCore(bookId: number) {
-  const [items, setItems] = useState<BookMediaLibraryItem[]>(() =>
-    loadBookMediaLibrary(bookId),
-  );
+  const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    setItems(loadBookMediaLibrary(bookId));
-  }, [bookId]);
+  const libraryQuery = useQuery({
+    queryKey: bookKeys.mediaLibrary(bookId),
+    queryFn: () => fetchBookMediaLibrary(bookId),
+  });
+  const items = libraryQuery.data?.items ?? [];
+  const sharedItems = libraryQuery.data?.sharedItems ?? [];
 
+  const setLibrary = useCallback(
+    (lib: BookMediaLibraryDto) => {
+      queryClient.setQueryData(bookKeys.mediaLibrary(bookId), lib);
+    },
+    [bookId, queryClient],
+  );
+  const refresh = useCallback(() => {
+    void queryClient.invalidateQueries({
+      queryKey: bookKeys.mediaLibrary(bookId),
+    });
+  }, [bookId, queryClient]);
+
+  // 예전 브라우저(localStorage) 목록을 서버로 1회 이관
+  const migratedBookRef = useRef<number | null>(null);
   useEffect(() => {
-    const fn = (ev: Event) => {
-      const d = (ev as CustomEvent<{ bookId?: number }>).detail;
-      if (d?.bookId === bookId) setItems(loadBookMediaLibrary(bookId));
-    };
-    // 커스텀 이벤트는 같은 탭 전용 — 다른 탭의 변경은 storage 이벤트로 동기화
-    const onStorage = (ev: StorageEvent) => {
-      if (ev.key === `book-media-lib:v1:${bookId}`) {
-        setItems(loadBookMediaLibrary(bookId));
+    if (migratedBookRef.current === bookId) return;
+    migratedBookRef.current = bookId;
+    const legacy = loadBookMediaLibrary(bookId);
+    if (legacy.length === 0) return;
+    void (async () => {
+      // 오래된 항목부터 넣어 서버 목록도 최신순 유지
+      for (const it of [...legacy].reverse()) {
+        try {
+          await addBookMediaLibraryItem(bookId, {
+            kind: it.kind,
+            src: it.src,
+            posterSrc: it.posterSrc,
+          });
+        } catch {
+          /* 형식이 맞지 않는 항목은 건너뜀 */
+        }
       }
-    };
-    window.addEventListener(BOOK_MEDIA_LIBRARY_CHANGED, fn);
-    window.addEventListener("storage", onStorage);
-    return () => {
-      window.removeEventListener(BOOK_MEDIA_LIBRARY_CHANGED, fn);
-      window.removeEventListener("storage", onStorage);
-    };
-  }, [bookId]);
+      clearBookMediaLibrary(bookId);
+      refresh();
+    })();
+  }, [bookId, refresh]);
 
   const onDragStartItem = useCallback(
-    (e: DragEvent, item: BookMediaLibraryItem) => {
+    (e: DragEvent, item: BookMediaLibraryItemDto) => {
       e.dataTransfer.setData(
         BOOK_LIBRARY_DRAG_TYPE,
         JSON.stringify({
@@ -165,20 +194,12 @@ function useBookMediaLibraryCore(bookId: number) {
           ? await captureVideoPosterJpeg(f)
           : null;
         const res = await uploadBookMedia(bookId, f, poster);
-        const appended = appendBookMediaLibraryItem(bookId, {
+        const lib = await addBookMediaLibraryItem(bookId, {
           kind: res.kind,
           src: res.url,
-          posterUrl: res.posterUrl,
+          posterSrc: res.posterUrl,
         });
-        if (!appended.saved) {
-          toast.error(
-            "브라우저 저장 공간이 가득 차 라이브러리 목록에 기록하지 못했습니다. (파일 업로드는 완료)",
-          );
-        } else if (appended.truncated > 0) {
-          toast.info(
-            `라이브러리 최대 개수를 넘어 오래된 항목 ${appended.truncated}개가 목록에서 제외됐습니다.`,
-          );
-        }
+        setLibrary(lib);
         toast.success(
           res.kind === "image"
             ? "라이브러리에 이미지를 추가했습니다."
@@ -190,10 +211,19 @@ function useBookMediaLibraryCore(bookId: number) {
         setUploading(false);
       }
     },
-    [bookId],
+    [bookId, setLibrary],
   );
 
-  return { items, fileRef, uploading, onPickFile, onDragStartItem };
+  return {
+    items,
+    sharedItems,
+    fileRef,
+    uploading,
+    onPickFile,
+    onDragStartItem,
+    setLibrary,
+    refresh,
+  };
 }
 
 /**
@@ -206,7 +236,7 @@ function MediaPreviewPopup({
   anchor,
   onClose,
 }: {
-  item: BookMediaLibraryItem;
+  item: BookMediaLibraryItemDto;
   anchor: DOMRect;
   onClose: () => void;
 }) {
@@ -305,17 +335,34 @@ function MediaGrid({
   items,
   onDragStartItem,
   gridClassName,
+  setLibrary,
+  refresh,
 }: {
   bookId: number;
-  items: BookMediaLibraryItem[];
-  onDragStartItem: (e: DragEvent, item: BookMediaLibraryItem) => void;
+  items: BookMediaLibraryItemDto[];
+  onDragStartItem: (e: DragEvent, item: BookMediaLibraryItemDto) => void;
   gridClassName?: string;
+  setLibrary: (lib: BookMediaLibraryDto) => void;
+  refresh: () => void;
 }) {
+  const { user } = useAuth();
   const [pendingDelete, setPendingDelete] =
-    useState<BookMediaLibraryItem | null>(null);
+    useState<BookMediaLibraryItemDto | null>(null);
+  /** 파일별 공유 다이얼로그 — 항목은 최신 목록에서 다시 찾는다(공유 토글 후 갱신 반영) */
+  const [shareItemId, setShareItemId] = useState<number | null>(null);
+  const shareItem = items.find((it) => it.id === shareItemId) ?? null;
+  /** 업로드한 사용자·관리자만 파일 공유/삭제 관리 */
+  const canManageItem = useCallback(
+    (item: BookMediaLibraryItemDto) =>
+      Boolean(
+        user &&
+        (isAdminUser(user) || Number(user.sub) === Number(item.ownerId)),
+      ),
+    [user],
+  );
   // 이어붙이기 — 선택 모드에서 비디오를 누른 순서대로 서버 ffmpeg으로 결합
   const [concatMode, setConcatMode] = useState(false);
-  const [concatSel, setConcatSel] = useState<string[]>([]);
+  const [concatSel, setConcatSel] = useState<number[]>([]);
   const [concatProgress, setConcatProgress] = useState<number | null>(null);
   const mountedRef = useRef(true);
   useEffect(() => {
@@ -330,12 +377,12 @@ function MediaGrid({
 
   /** 미리보기 팝업 — 타일 옆에 떠서 이미지 표시·비디오 반복 재생 */
   const [preview, setPreview] = useState<{
-    item: BookMediaLibraryItem;
+    item: BookMediaLibraryItemDto;
     anchor: DOMRect;
   } | null>(null);
 
   const togglePreview = useCallback(
-    (e: ReactMouseEvent, item: BookMediaLibraryItem) => {
+    (e: ReactMouseEvent, item: BookMediaLibraryItemDto) => {
       e.stopPropagation();
       const tile = (e.currentTarget as HTMLElement).closest("li");
       const rect = tile?.getBoundingClientRect();
@@ -353,7 +400,7 @@ function MediaGrid({
     );
   }, [items]);
 
-  const toggleConcatSelect = useCallback((id: string) => {
+  const toggleConcatSelect = useCallback((id: number) => {
     setConcatSel((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
@@ -391,11 +438,12 @@ function MediaGrid({
         };
         void poll();
       });
-      appendBookMediaLibraryItem(bookId, {
+      const lib = await addBookMediaLibraryItem(bookId, {
         kind: result.kind,
         src: result.url,
-        posterUrl: result.posterUrl,
+        posterSrc: result.posterUrl,
       });
+      setLibrary(lib);
       toast.success(
         `동영상 ${urls.length}개를 이어붙여 라이브러리에 추가했습니다.`,
       );
@@ -408,7 +456,7 @@ function MediaGrid({
     } finally {
       if (mountedRef.current) setConcatProgress(null);
     }
-  }, [bookId, concatSel, items]);
+  }, [bookId, concatSel, items, setLibrary]);
 
   if (items.length === 0) {
     return (
@@ -525,18 +573,43 @@ function MediaGrid({
                   </span>
                 ) : null}
               </div>
-              {!concatMode ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="absolute -right-1 -top-1 size-6 rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm hover:bg-destructive/15 hover:text-destructive"
-                  aria-label="라이브러리에서 제거"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => setPendingDelete(item)}
-                >
-                  <Trash2 className="size-3" />
-                </Button>
+              {!concatMode && canManageItem(item) ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="absolute -right-1 -top-1 size-6 rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm hover:bg-destructive/15 hover:text-destructive"
+                    aria-label="라이브러리에서 제거"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={() => setPendingDelete(item)}
+                  >
+                    <Trash2 className="size-3" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className={cn(
+                      "absolute -left-1 -top-1 size-6 rounded-full border border-border bg-background/95 shadow-sm hover:text-primary",
+                      item.sharedToAll || item.sharedUserIds.length > 0
+                        ? "text-primary"
+                        : "text-muted-foreground",
+                    )}
+                    aria-label="파일 공유"
+                    title={
+                      item.sharedToAll
+                        ? "모든 사용자에게 공유 중"
+                        : item.sharedUserIds.length > 0
+                          ? `${item.sharedUserIds.length}명에게 공유 중`
+                          : "파일 공유"
+                    }
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={() => setShareItemId(item.id)}
+                  >
+                    <Share2 className="size-3" />
+                  </Button>
+                </>
               ) : null}
               <Button
                 type="button"
@@ -584,8 +657,13 @@ function MediaGrid({
             <AlertDialogAction
               className="bg-destructive text-white hover:bg-destructive/90"
               onClick={() => {
-                if (pendingDelete)
-                  removeBookMediaLibraryItem(bookId, pendingDelete.id);
+                if (pendingDelete) {
+                  void removeBookMediaLibraryItem(pendingDelete.id)
+                    .then(() => refresh())
+                    .catch((e: Error) =>
+                      toast.error(e.message || "삭제에 실패했습니다."),
+                    );
+                }
                 setPendingDelete(null);
               }}
             >
@@ -594,7 +672,127 @@ function MediaGrid({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {shareItem ? (
+        <MemberShareDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setShareItemId(null);
+          }}
+          title="미디어 파일 공유"
+          description="이 파일을 함께 쓸 회원을 고르세요. 공유받은 사용자는 자기 북의 미디어 라이브러리 「공유받은 파일」에서 이 파일을 쓸 수 있습니다."
+          ownerId={shareItem.ownerId}
+          sharedUserIds={shareItem.sharedUserIds}
+          sharedToAll={shareItem.sharedToAll}
+          onToggle={async (userId, shared) => {
+            await setBookMediaShare(shareItem.id, userId, shared);
+            refresh();
+          }}
+          onToggleShareAll={async (shared) => {
+            await setBookMediaShareAll(shareItem.id, shared);
+            refresh();
+          }}
+        />
+      ) : null}
     </>
+  );
+}
+
+/** 다른 사용자가 나에게(또는 전체에) 공유한 파일 — 드래그·미리보기만 */
+function SharedMediaGrid({
+  items,
+  onDragStartItem,
+  gridClassName,
+}: {
+  items: BookMediaLibraryItemDto[];
+  onDragStartItem: (e: DragEvent, item: BookMediaLibraryItemDto) => void;
+  gridClassName?: string;
+}) {
+  const [preview, setPreview] = useState<{
+    item: BookMediaLibraryItemDto;
+    anchor: DOMRect;
+  } | null>(null);
+
+  const togglePreview = useCallback(
+    (e: ReactMouseEvent, item: BookMediaLibraryItemDto) => {
+      e.stopPropagation();
+      const tile = (e.currentTarget as HTMLElement).closest("li");
+      const rect = tile?.getBoundingClientRect();
+      setPreview((prev) =>
+        prev?.item.id === item.id ? null : rect ? { item, anchor: rect } : null,
+      );
+    },
+    [],
+  );
+
+  if (items.length === 0) return null;
+  return (
+    <div className="mt-3 border-t border-border/60 pt-2">
+      <p className="mb-1.5 flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+        <Share2 className="size-3 text-primary" aria-hidden />
+        공유받은 파일
+      </p>
+      <ul className={cn("grid gap-2", gridClassName)}>
+        {items.map((item) => {
+          const thumb =
+            item.kind === "image"
+              ? publicAssetUrl(item.src)
+              : publicAssetUrl(item.posterSrc);
+          return (
+            <li key={item.id} className="relative">
+              <div
+                draggable
+                onDragStart={(e) => onDragStartItem(e, item)}
+                onPointerDown={(e) => e.stopPropagation()}
+                className="group relative aspect-square cursor-grab select-none overflow-hidden rounded-lg border border-border/80 bg-muted/40 hover:border-primary/50 active:cursor-grabbing"
+                title={`${item.ownerName}님이 공유`}
+              >
+                {thumb ? (
+                  <img
+                    src={thumb}
+                    alt=""
+                    className="size-full object-cover"
+                    draggable={false}
+                  />
+                ) : (
+                  <div className="flex size-full items-center justify-center text-muted-foreground">
+                    <Film className="size-8" aria-hidden />
+                  </div>
+                )}
+                <span className="pointer-events-none absolute bottom-0.5 left-0.5 rounded bg-background/85 px-1 text-[9px] font-medium text-foreground/90">
+                  {item.kind === "image" ? "IMG" : "MOV"}
+                </span>
+                <span className="pointer-events-none absolute left-0.5 top-0.5 max-w-[calc(100%-0.75rem)] truncate rounded bg-primary/85 px-1 text-[9px] font-medium text-primary-foreground">
+                  {item.ownerName}
+                </span>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                data-media-preview-toggle
+                aria-label="미리보기"
+                title="미리보기"
+                className={cn(
+                  "absolute bottom-0.5 right-0.5 size-6 rounded-full bg-background/85 text-muted-foreground shadow-sm hover:text-foreground",
+                  preview?.item.id === item.id && "text-violet-500",
+                )}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => togglePreview(e, item)}
+              >
+                <Eye className="size-3" />
+              </Button>
+            </li>
+          );
+        })}
+      </ul>
+      {preview ? (
+        <MediaPreviewPopup
+          item={preview.item}
+          anchor={preview.anchor}
+          onClose={() => setPreview(null)}
+        />
+      ) : null}
+    </div>
   );
 }
 
@@ -607,8 +805,16 @@ function BookMediaLibraryDocked({
   className?: string;
   onRequestFloat?: () => void;
 }) {
-  const { items, fileRef, uploading, onPickFile, onDragStartItem } =
-    useBookMediaLibraryCore(bookId);
+  const {
+    items,
+    sharedItems,
+    fileRef,
+    uploading,
+    onPickFile,
+    onDragStartItem,
+    setLibrary,
+    refresh,
+  } = useBookMediaLibraryCore(bookId);
 
   return (
     <div
@@ -666,6 +872,13 @@ function BookMediaLibraryDocked({
           items={items}
           onDragStartItem={onDragStartItem}
           gridClassName="grid-cols-2 sm:grid-cols-3"
+          setLibrary={setLibrary}
+          refresh={refresh}
+        />
+        <SharedMediaGrid
+          items={sharedItems}
+          onDragStartItem={onDragStartItem}
+          gridClassName="grid-cols-2 sm:grid-cols-3"
         />
       </div>
     </div>
@@ -687,8 +900,16 @@ function BookMediaLibraryFloating({
   stackZIndex?: number;
   onRaiseStack?: () => void;
 }) {
-  const { items, fileRef, uploading, onPickFile, onDragStartItem } =
-    useBookMediaLibraryCore(bookId);
+  const {
+    items,
+    sharedItems,
+    fileRef,
+    uploading,
+    onPickFile,
+    onDragStartItem,
+    setLibrary,
+    refresh,
+  } = useBookMediaLibraryCore(bookId);
   const rootRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
     pointerId: number;
@@ -934,6 +1155,13 @@ function BookMediaLibraryFloating({
             <MediaGrid
               bookId={bookId}
               items={items}
+              onDragStartItem={onDragStartItem}
+              gridClassName="grid-cols-3"
+              setLibrary={setLibrary}
+              refresh={refresh}
+            />
+            <SharedMediaGrid
+              items={sharedItems}
               onDragStartItem={onDragStartItem}
               gridClassName="grid-cols-3"
             />

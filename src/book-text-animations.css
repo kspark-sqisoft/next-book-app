@@ -170,8 +170,13 @@
   }
 }
 
-/* ───── 웨이브(글자, 무한 반복 — 음수 지연으로 위상만 어긋나게 해 즉시 시작) ───── */
+/* ───── 웨이브(글자, 무한 반복 — 음수 지연으로 위상만 어긋나게 해 즉시 시작) ─────
+   글자가 위로 0.28em까지 떠오르므로, 첫 줄이 박스 상단에 붙어 있으면 위젯 프레임
+   (overflow hidden)에 윗부분이 잘린다 — 진폭만큼 위 여백을 예약해 잘림 방지 */
 
+.book-ta--wave {
+  padding-top: 0.3em;
+}
 .book-ta--wave .bta-u {
   display: inline-block;
   animation: bta-wave var(--bta-dur) ease-in-out infinite;

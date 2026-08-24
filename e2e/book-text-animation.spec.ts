@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { signupUser } from "./helpers/auth";
+
 /**
  * 텍스트 위젯 애니메이션: 편집기에서 효과 설정(인스펙터 미리보기) → 저장 → 슬라이드쇼(/preview)에서 재생.
  * 계정은 매 실행 고유 이메일로 API 가입(book-crud.spec과 동일 패턴).
@@ -8,14 +10,11 @@ test("텍스트 위젯 애니메이션 — 인스펙터 미리보기와 프레�
   page,
   request,
 }) => {
-  test.setTimeout(90_000); // 편집·저장·슬라이드쇼까지 한 흐름
+  test.setTimeout(150_000); // 편집·저장·슬라이드쇼까지 한 흐름(가입 재시도 포함)
   const email = `e2e-ta-${Date.now()}@example.com`;
   const password = "e2e-pass-123!";
 
-  const signup = await request.post("/api/auth/signup", {
-    data: { email, password, name: "E2E 애니메이션" },
-  });
-  expect(signup.ok()).toBeTruthy();
+  await signupUser(request, { email, password, name: "E2E 애니메이션" });
 
   await page.goto("/login");
   await page.fill('input[name="email"]', email);

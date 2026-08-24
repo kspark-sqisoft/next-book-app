@@ -414,6 +414,16 @@ export type BookCanvasElement =
       cityQuery?: string;
       /** 항목별 표시. `false`만 숨김, 생략·undefined는 표시(기본). */
       weatherDisplay?: BookWeatherDisplay;
+      /**
+       * 배치: auto(생략) = 켠 항목에 따라 자동, columns = 좌우 2열(날씨 | 시계·위치·대기),
+       * single = 세로 1열. 시계만·대기만·기온만 켠 전용 카드에는 영향 없음.
+       */
+      weatherLayout?: BookWeatherLayout;
+      /**
+       * 좌우 2열(columns)일 때 오른쪽 열에 둘 블록. 나머지는 왼쪽.
+       * 생략 = 기본(날씨 왼쪽, 시계·위치·대기질·부가 정보 오른쪽).
+       */
+      weatherRightBlocks?: BookWeatherBlockKey[];
       /** 카드 배경 CSS 색. 없으면 기본 일러스트 배경. */
       weatherBackground?: string;
       /** 본문·아이콘 색(CSS). 없으면 배경 테마에 맞는 기본 톤. */
@@ -843,6 +853,75 @@ export type BookWeatherDisplayResolved = {
   clock: boolean;
   date: boolean;
 };
+
+export const BOOK_WEATHER_LAYOUT_VALUES = [
+  "auto",
+  "columns",
+  "single",
+] as const;
+export type BookWeatherLayout = (typeof BOOK_WEATHER_LAYOUT_VALUES)[number];
+
+export const BOOK_WEATHER_LAYOUT_OPTIONS: {
+  id: BookWeatherLayout;
+  label: string;
+}[] = [
+  { id: "auto", label: "자동 (켠 항목에 따라)" },
+  { id: "columns", label: "좌우 2열" },
+  { id: "single", label: "세로 1열" },
+];
+
+/** 알 수 없는 값·생략은 auto */
+export function resolveBookWeatherLayout(raw: unknown): BookWeatherLayout {
+  return raw === "columns" || raw === "single" ? raw : "auto";
+}
+
+/** 좌우 2열에서 좌/우를 고를 수 있는 블록(표시 항목 묶음) */
+export const BOOK_WEATHER_BLOCK_KEYS = [
+  "main",
+  "time",
+  "location",
+  "air",
+  "secondary",
+] as const;
+export type BookWeatherBlockKey = (typeof BOOK_WEATHER_BLOCK_KEYS)[number];
+
+export const BOOK_WEATHER_BLOCK_OPTIONS: {
+  id: BookWeatherBlockKey;
+  label: string;
+}[] = [
+  { id: "main", label: "날씨 (아이콘·상태·기온)" },
+  { id: "time", label: "시계·날짜" },
+  { id: "location", label: "위치" },
+  { id: "air", label: "대기질 (PM·지수)" },
+  { id: "secondary", label: "부가 정보 (체감·습도·바람)" },
+];
+
+/** 좌우 2열 기본 배치: 날씨는 왼쪽, 나머지는 오른쪽 */
+export const DEFAULT_BOOK_WEATHER_RIGHT_BLOCKS: BookWeatherBlockKey[] = [
+  "time",
+  "location",
+  "air",
+  "secondary",
+];
+
+export function isBookWeatherBlockKey(s: unknown): s is BookWeatherBlockKey {
+  return (
+    typeof s === "string" &&
+    (BOOK_WEATHER_BLOCK_KEYS as readonly string[]).includes(s)
+  );
+}
+
+/** 저장값 → 오른쪽 열 블록 집합(정규화). 생략·비정상은 기본값 */
+export function resolveBookWeatherRightBlocks(
+  raw: unknown,
+): BookWeatherBlockKey[] {
+  if (!Array.isArray(raw)) return [...DEFAULT_BOOK_WEATHER_RIGHT_BLOCKS];
+  const out: BookWeatherBlockKey[] = [];
+  for (const v of raw) {
+    if (isBookWeatherBlockKey(v) && !out.includes(v)) out.push(v);
+  }
+  return out;
+}
 
 /** 모두 끄면 기본(전체 표시)으로 되돌립니다. */
 export function resolveBookWeatherDisplay(

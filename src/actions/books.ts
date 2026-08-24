@@ -16,7 +16,10 @@ import type {
 import { saveBookMainAndPoster } from "@/server/books/save-book-media";
 import { HttpError } from "@/server/http/http-error";
 import { BookAiService } from "@/server/services/book-ai.service";
-import { BooksService } from "@/server/services/books.service";
+import {
+  type BookShareUserPublic,
+  BooksService,
+} from "@/server/services/books.service";
 import type {
   CreateBookDto,
   UpdateBookDto,
@@ -86,6 +89,59 @@ export async function updateBookAction(
       id,
       { id: user.sub, role: user.role },
       body,
+    )) as unknown as BookDetail;
+  } catch (e) {
+    rethrowActionError(e, "books-actions");
+  }
+}
+
+/** 공유 대상 회원 목록(로그인 필요) */
+export async function listBookShareUsersAction(
+  accessToken: string | null | undefined,
+): Promise<BookShareUserPublic[]> {
+  try {
+    const user = await requireUserFromToken(accessToken);
+    return await new BooksService().listShareableUsers(user.email);
+  } catch (e) {
+    rethrowActionError(e, "books-actions");
+  }
+}
+
+/** 북 공유 추가/해제 — 작성자·관리자만 */
+export async function setBookShareAction(
+  accessToken: string | null | undefined,
+  bookId: number,
+  userId: number,
+  shared: boolean,
+): Promise<BookDetail> {
+  try {
+    const user = await requireUserFromToken(accessToken);
+    const id = assertPositiveIntId(bookId);
+    const target = assertPositiveIntId(userId);
+    return (await new BooksService().setShare(
+      id,
+      { id: user.sub, role: user.role },
+      target,
+      Boolean(shared),
+    )) as unknown as BookDetail;
+  } catch (e) {
+    rethrowActionError(e, "books-actions");
+  }
+}
+
+/** 북 모든 사용자 공유 켜기/끄기 — 작성자·관리자만 */
+export async function setBookShareAllAction(
+  accessToken: string | null | undefined,
+  bookId: number,
+  shared: boolean,
+): Promise<BookDetail> {
+  try {
+    const user = await requireUserFromToken(accessToken);
+    const id = assertPositiveIntId(bookId);
+    return (await new BooksService().setShareAll(
+      id,
+      { id: user.sub, role: user.role },
+      Boolean(shared),
     )) as unknown as BookDetail;
   } catch (e) {
     rethrowActionError(e, "books-actions");

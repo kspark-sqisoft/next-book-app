@@ -1,5 +1,6 @@
+import { useQuery } from "@tanstack/react-query";
 import { Film, Library } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -10,13 +11,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { publicAssetUrl } from "@/lib/api";
-import {
-  BOOK_MEDIA_LIBRARY_CHANGED,
-  type BookMediaLibraryItem,
-  loadBookMediaLibrary,
-} from "@/lib/book-media-library";
+import { fetchBookMediaLibrary, publicAssetUrl } from "@/lib/api";
+import { bookKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
+
+/** 선택 결과 — 위젯 교체·재생목록 추가에 필요한 필드만 */
+export type BookMediaPick = {
+  kind: "image" | "video";
+  src: string;
+  posterSrc: string | null;
+};
 
 export function BookMediaLibraryPickDialog({
   open,
@@ -29,29 +33,23 @@ export function BookMediaLibraryPickDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   bookId: number;
-  acceptKind: "image" | "video" | "both";
+  acceptKind: "image" | "video" | "both" | null;
   title?: string;
-  onPick: (item: BookMediaLibraryItem) => void;
+  onPick: (item: BookMediaPick) => void;
 }) {
-  const [libraryEpoch, setLibraryEpoch] = useState(0);
+  const libraryQuery = useQuery({
+    queryKey: bookKeys.mediaLibrary(bookId),
+    queryFn: () => fetchBookMediaLibrary(bookId),
+    enabled: open,
+  });
 
   const items = useMemo(() => {
-    if (!open) return [];
-    void libraryEpoch;
-    const all = loadBookMediaLibrary(bookId);
-    if (acceptKind === "both") return all;
+    if (!open || !libraryQuery.data) return [];
+    // 내 북 라이브러리 + 공유받은 파일을 함께 보여준다
+    const all = [...libraryQuery.data.items, ...libraryQuery.data.sharedItems];
+    if (acceptKind === "both" || acceptKind == null) return all;
     return all.filter((x) => x.kind === acceptKind);
-  }, [open, bookId, acceptKind, libraryEpoch]);
-
-  useEffect(() => {
-    if (!open) return;
-    const fn = (ev: Event) => {
-      const d = (ev as CustomEvent<{ bookId?: number }>).detail;
-      if (d?.bookId === bookId) setLibraryEpoch((k) => k + 1);
-    };
-    window.addEventListener(BOOK_MEDIA_LIBRARY_CHANGED, fn);
-    return () => window.removeEventListener(BOOK_MEDIA_LIBRARY_CHANGED, fn);
-  }, [open, bookId]);
+  }, [open, libraryQuery.data, acceptKind]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

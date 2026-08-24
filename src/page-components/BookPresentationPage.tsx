@@ -77,11 +77,14 @@ function BookPresentationInner({
   bookId,
   data,
   startSortOrder,
+  embed = false,
 }: {
   bookId: number;
   data: BookDetail;
   /** `?start=` — 이 sortOrder(편집 화면 페이지 순번)부터 재생 시작 */
   startSortOrder?: number;
+  /** `?embed=1` — 커뮤니티 등 iframe 안: 상단 컨트롤 바 숨김 */
+  embed?: boolean;
 }) {
   const router = useRouter();
   /** 전체 화면 API 대상(헤더 제외, 슬라이드 영역만) */
@@ -498,244 +501,246 @@ function BookPresentationInner({
 
   const shell = (
     <div className="fixed inset-0 z-[10000] flex flex-col bg-zinc-950 text-zinc-100">
-      <header className="pointer-events-auto relative z-10 grid h-9 min-h-9 min-w-0 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-1.5 border-b border-zinc-800 bg-zinc-950 px-1.5 sm:gap-x-2 sm:px-2">
-        <div className="flex min-w-0 items-center gap-1 overflow-hidden justify-self-start">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 shrink-0 p-0 text-zinc-200 hover:bg-zinc-800 hover:text-zinc-50"
-            aria-label="뒤로 가기"
-            title="돌아가기"
-            /* 상세·디바이스 등 진입했던 화면으로 복귀, 직접 진입이면 북 상세 */
-            onClick={() => goBackOrPush(router, `/books/${bookId}`)}
-          >
-            <ArrowLeft className="size-3.5" />
-          </Button>
-          <div className="min-w-0 truncate leading-tight pointer-events-none">
-            <span className="text-[11px] font-semibold text-zinc-100">
-              {pageTitle}
-            </span>
-            <span className="mx-0.5 text-zinc-600" aria-hidden>
-              ·
-            </span>
-            <span className="text-[9px] text-zinc-500">{data.title}</span>
-          </div>
-        </div>
-        <nav
-          className="pointer-events-auto relative z-20 flex shrink-0 items-center gap-0.5 sm:gap-1"
-          aria-label="슬라이드 조작"
-        >
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 shrink-0 touch-manipulation p-0 text-zinc-200 hover:bg-zinc-800 hover:text-zinc-50"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setPresentationPaused((p) => !p);
-            }}
-            aria-pressed={presentationPaused}
-            aria-label={presentationPaused ? "재생" : "일시정지"}
-            title={
-              presentationPaused
-                ? "이어서 재생 (슬라이드·비디오가 멈춘 지점부터)"
-                : "일시정지 (슬라이드 넘김·비디오 정지)"
-            }
-          >
-            {presentationPaused ? (
-              <Play className="size-4 pl-0.5" />
-            ) : (
-              <Pause className="size-4" />
-            )}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className={cn(
-              "h-8 w-8 shrink-0 touch-manipulation p-0 text-zinc-200 hover:bg-zinc-800 hover:text-zinc-50",
-              prevDisabled &&
-                "cursor-not-allowed opacity-35 hover:bg-transparent hover:text-zinc-200",
-            )}
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (prevDisabled) return;
-              goPrevSlide();
-            }}
-            aria-disabled={prevDisabled}
-            aria-label="이전 슬라이드"
-            title={
-              prevDisabled
-                ? "첫 슬라이드입니다 (반복 재생 시 마지막으로 이동)"
-                : "이전 슬라이드"
-            }
-          >
-            <ChevronLeft className="size-5" />
-          </Button>
-          <div className="flex min-w-0 max-w-[min(52vw,16rem)] items-center gap-1 rounded-md border border-zinc-700/80 bg-zinc-900/70 px-1 py-px sm:max-w-[min(56vw,20rem)] sm:gap-1.5 sm:px-1.5">
-            <div
-              className="hidden h-0.5 min-h-0.5 w-[min(16vw,5rem)] overflow-hidden rounded-full bg-zinc-800 sm:block"
-              role="progressbar"
-              aria-valuenow={Math.round(progressPct)}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label="이 슬라이드 진행"
+      {embed ? null : (
+        <header className="pointer-events-auto relative z-10 grid h-9 min-h-9 min-w-0 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-1.5 border-b border-zinc-800 bg-zinc-950 px-1.5 sm:gap-x-2 sm:px-2">
+          <div className="flex min-w-0 items-center gap-1 overflow-hidden justify-self-start">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 shrink-0 p-0 text-zinc-200 hover:bg-zinc-800 hover:text-zinc-50"
+              aria-label="뒤로 가기"
+              title="돌아가기"
+              /* 상세·디바이스 등 진입했던 화면으로 복귀, 직접 진입이면 북 상세 */
+              onClick={() => goBackOrPush(router, `/books/${bookId}`)}
             >
-              <div
-                className="h-full rounded-full bg-emerald-500/90 transition-[width] duration-100 ease-linear"
-                style={{ width: `${progressPct}%` }}
-              />
-            </div>
-            <span
-              className="hidden shrink-0 tabular-nums text-[8px] text-zinc-500 md:inline"
-              title="남은 시간 · 슬라이드 길이"
-            >
-              {remainingSec}s/{slideDurationSec}s
-            </span>
-            <span className="shrink-0 tabular-nums text-[9px] text-zinc-400">
-              {safeIdx + 1}/{sortedPages.length}
-            </span>
-            <span className="hidden shrink-0 text-[8px] text-zinc-600 lg:inline">
-              {loop ? "반복" : "1회"}
-            </span>
-            <div
-              className="flex shrink-0 items-center gap-px rounded border border-zinc-700/60 bg-zinc-950/50 p-px"
-              onPointerDown={(e) => e.stopPropagation()}
-            >
-              <Button
-                type="button"
-                variant="ghost"
-                className="h-5 w-5 shrink-0 p-0 text-[10px] text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  zoomOut();
-                }}
-                aria-label="축소"
-              >
-                −
-              </Button>
-              <span className="min-w-7 text-center text-[8px] tabular-nums text-zinc-400">
-                {zoomPercent}%
+              <ArrowLeft className="size-3.5" />
+            </Button>
+            <div className="min-w-0 truncate leading-tight pointer-events-none">
+              <span className="text-[11px] font-semibold text-zinc-100">
+                {pageTitle}
               </span>
-              <Button
-                type="button"
-                variant="ghost"
-                className="h-5 w-5 shrink-0 p-0 text-[10px] text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  zoomIn();
-                }}
-                aria-label="확대"
-              >
-                +
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                className="h-5 px-1 text-[8px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  zoomReset();
-                }}
-                aria-label="줌·배율 초기화"
-                title="자동 맞춤 배율과 줌 100%로 되돌리기"
-              >
-                초기
-              </Button>
+              <span className="mx-0.5 text-zinc-600" aria-hidden>
+                ·
+              </span>
+              <span className="text-[9px] text-zinc-500">{data.title}</span>
             </div>
           </div>
-          <ToggleGroup
-            type="single"
-            value={presentationFitMode}
-            onValueChange={(v) => {
-              if (v === "contain" || v === "cover" || v === "fill") {
-                setPresentationFitMode(v);
+          <nav
+            className="pointer-events-auto relative z-20 flex shrink-0 items-center gap-0.5 sm:gap-1"
+            aria-label="슬라이드 조작"
+          >
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 shrink-0 touch-manipulation p-0 text-zinc-200 hover:bg-zinc-800 hover:text-zinc-50"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setPresentationPaused((p) => !p);
+              }}
+              aria-pressed={presentationPaused}
+              aria-label={presentationPaused ? "재생" : "일시정지"}
+              title={
+                presentationPaused
+                  ? "이어서 재생 (슬라이드·비디오가 멈춘 지점부터)"
+                  : "일시정지 (슬라이드 넘김·비디오 정지)"
               }
-            }}
-            variant="outline"
-            size="sm"
-            spacing={0}
-            className="shrink-0 border border-zinc-700/70 bg-zinc-950/40"
-            aria-label="화면 표시 방식(창·전체 화면 동일)"
-          >
-            <ToggleGroupItem
-              value="contain"
-              aria-label="전체 보기 contain"
-              title="전체 — 슬라이드가 잘리지 않게 보임(여백 가능)"
-              className="h-7 rounded-none border-0 px-1.5 text-[9px] text-zinc-300 data-[state=on]:bg-zinc-700 data-[state=on]:text-zinc-50"
             >
-              전체
-            </ToggleGroupItem>
-            <ToggleGroupItem
-              value="cover"
-              aria-label="덮기 cover"
-              title="덮기 — 화면을 가득, 잘림 가능"
-              className="h-7 rounded-none border-0 border-l border-zinc-700/60 px-1.5 text-[9px] text-zinc-300 data-[state=on]:bg-zinc-700 data-[state=on]:text-zinc-50"
+              {presentationPaused ? (
+                <Play className="size-4 pl-0.5" />
+              ) : (
+                <Pause className="size-4" />
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "h-8 w-8 shrink-0 touch-manipulation p-0 text-zinc-200 hover:bg-zinc-800 hover:text-zinc-50",
+                prevDisabled &&
+                  "cursor-not-allowed opacity-35 hover:bg-transparent hover:text-zinc-200",
+              )}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (prevDisabled) return;
+                goPrevSlide();
+              }}
+              aria-disabled={prevDisabled}
+              aria-label="이전 슬라이드"
+              title={
+                prevDisabled
+                  ? "첫 슬라이드입니다 (반복 재생 시 마지막으로 이동)"
+                  : "이전 슬라이드"
+              }
             >
-              덮기
-            </ToggleGroupItem>
-            <ToggleGroupItem
-              value="fill"
-              aria-label="꽉 채우기 fill"
-              title="꽉 채우기 — 비율 무시로 빈틈 없음"
-              className="h-7 rounded-none border-0 border-l border-zinc-700/60 px-1.5 text-[9px] text-zinc-300 data-[state=on]:bg-zinc-700 data-[state=on]:text-zinc-50"
+              <ChevronLeft className="size-5" />
+            </Button>
+            <div className="flex min-w-0 max-w-[min(52vw,16rem)] items-center gap-1 rounded-md border border-zinc-700/80 bg-zinc-900/70 px-1 py-px sm:max-w-[min(56vw,20rem)] sm:gap-1.5 sm:px-1.5">
+              <div
+                className="hidden h-0.5 min-h-0.5 w-[min(16vw,5rem)] overflow-hidden rounded-full bg-zinc-800 sm:block"
+                role="progressbar"
+                aria-valuenow={Math.round(progressPct)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label="이 슬라이드 진행"
+              >
+                <div
+                  className="h-full rounded-full bg-emerald-500/90 transition-[width] duration-100 ease-linear"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+              <span
+                className="hidden shrink-0 tabular-nums text-[8px] text-zinc-500 md:inline"
+                title="남은 시간 · 슬라이드 길이"
+              >
+                {remainingSec}s/{slideDurationSec}s
+              </span>
+              <span className="shrink-0 tabular-nums text-[9px] text-zinc-400">
+                {safeIdx + 1}/{sortedPages.length}
+              </span>
+              <span className="hidden shrink-0 text-[8px] text-zinc-600 lg:inline">
+                {loop ? "반복" : "1회"}
+              </span>
+              <div
+                className="flex shrink-0 items-center gap-px rounded border border-zinc-700/60 bg-zinc-950/50 p-px"
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-5 w-5 shrink-0 p-0 text-[10px] text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    zoomOut();
+                  }}
+                  aria-label="축소"
+                >
+                  −
+                </Button>
+                <span className="min-w-7 text-center text-[8px] tabular-nums text-zinc-400">
+                  {zoomPercent}%
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-5 w-5 shrink-0 p-0 text-[10px] text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    zoomIn();
+                  }}
+                  aria-label="확대"
+                >
+                  +
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-5 px-1 text-[8px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    zoomReset();
+                  }}
+                  aria-label="줌·배율 초기화"
+                  title="자동 맞춤 배율과 줌 100%로 되돌리기"
+                >
+                  초기
+                </Button>
+              </div>
+            </div>
+            <ToggleGroup
+              type="single"
+              value={presentationFitMode}
+              onValueChange={(v) => {
+                if (v === "contain" || v === "cover" || v === "fill") {
+                  setPresentationFitMode(v);
+                }
+              }}
+              variant="outline"
+              size="sm"
+              spacing={0}
+              className="shrink-0 border border-zinc-700/70 bg-zinc-950/40"
+              aria-label="화면 표시 방식(창·전체 화면 동일)"
             >
-              꽉
-            </ToggleGroupItem>
-          </ToggleGroup>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 shrink-0 touch-manipulation p-0 text-zinc-200 hover:bg-zinc-800 hover:text-zinc-50"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              enterPresentationFullscreen();
-            }}
-            aria-label="전체 화면"
-            title="전체 화면(Esc로 나가기). 위 표시 방식이 그대로 적용됩니다."
-          >
-            <Maximize2 className="size-4" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className={cn(
-              "h-8 w-8 shrink-0 touch-manipulation p-0 text-zinc-200 hover:bg-zinc-800 hover:text-zinc-50",
-              nextDisabled &&
-                "cursor-not-allowed opacity-35 hover:bg-transparent hover:text-zinc-200",
-            )}
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (nextDisabled) return;
-              goNextSlide();
-            }}
-            aria-disabled={nextDisabled}
-            aria-label="다음 슬라이드"
-            title={
-              nextDisabled
-                ? "마지막 슬라이드입니다 (반복 재생 시 처음으로 이동)"
-                : "다음 슬라이드"
-            }
-          >
-            <ChevronRight className="size-5" />
-          </Button>
-        </nav>
-        <div className="min-w-0 justify-self-end" aria-hidden />
-      </header>
+              <ToggleGroupItem
+                value="contain"
+                aria-label="전체 보기 contain"
+                title="전체 — 슬라이드가 잘리지 않게 보임(여백 가능)"
+                className="h-7 rounded-none border-0 px-1.5 text-[9px] text-zinc-300 data-[state=on]:bg-zinc-700 data-[state=on]:text-zinc-50"
+              >
+                전체
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="cover"
+                aria-label="덮기 cover"
+                title="덮기 — 화면을 가득, 잘림 가능"
+                className="h-7 rounded-none border-0 border-l border-zinc-700/60 px-1.5 text-[9px] text-zinc-300 data-[state=on]:bg-zinc-700 data-[state=on]:text-zinc-50"
+              >
+                덮기
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="fill"
+                aria-label="꽉 채우기 fill"
+                title="꽉 채우기 — 비율 무시로 빈틈 없음"
+                className="h-7 rounded-none border-0 border-l border-zinc-700/60 px-1.5 text-[9px] text-zinc-300 data-[state=on]:bg-zinc-700 data-[state=on]:text-zinc-50"
+              >
+                꽉
+              </ToggleGroupItem>
+            </ToggleGroup>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 shrink-0 touch-manipulation p-0 text-zinc-200 hover:bg-zinc-800 hover:text-zinc-50"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                enterPresentationFullscreen();
+              }}
+              aria-label="전체 화면"
+              title="전체 화면(Esc로 나가기). 위 표시 방식이 그대로 적용됩니다."
+            >
+              <Maximize2 className="size-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "h-8 w-8 shrink-0 touch-manipulation p-0 text-zinc-200 hover:bg-zinc-800 hover:text-zinc-50",
+                nextDisabled &&
+                  "cursor-not-allowed opacity-35 hover:bg-transparent hover:text-zinc-200",
+              )}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (nextDisabled) return;
+                goNextSlide();
+              }}
+              aria-disabled={nextDisabled}
+              aria-label="다음 슬라이드"
+              title={
+                nextDisabled
+                  ? "마지막 슬라이드입니다 (반복 재생 시 처음으로 이동)"
+                  : "다음 슬라이드"
+              }
+            >
+              <ChevronRight className="size-5" />
+            </Button>
+          </nav>
+          <div className="min-w-0 justify-self-end" aria-hidden />
+        </header>
+      )}
       <div
         ref={presentationFsTargetRef}
         className={cn(
@@ -832,8 +837,16 @@ export function BookPresentationPage() {
       bookId={id}
       data={data}
       startSortOrder={readPreviewStartParam()}
+      embed={readPreviewEmbedParam()}
     />
   );
+}
+
+/** `?embed=1` — iframe 임베드(커뮤니티 미리보기): 상단 컨트롤 숨김 */
+function readPreviewEmbedParam(): boolean {
+  if (typeof window === "undefined") return false;
+  const raw = new URLSearchParams(window.location.search).get("embed");
+  return raw === "1" || raw === "true";
 }
 
 /** `?start=N` — 편집 화면 "현재부터 미리보기"가 넘긴 시작 페이지 순번(0-based) */

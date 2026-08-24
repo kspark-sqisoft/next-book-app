@@ -16,7 +16,7 @@ test("글 목록 페이지", async ({ page }) => {
 test("북 목록 페이지", async ({ page }) => {
   await page.goto("/books");
   await expect(
-    page.getByRole("heading", { name: "북", level: 1 }),
+    page.getByRole("heading", { name: "스튜디오 (크레타북)", level: 1 }),
   ).toBeVisible();
 });
 

@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   boolean,
   index,
   integer,
@@ -32,6 +33,76 @@ export const refreshToken = pgTable(
     expiresAt: timestamp("expiresAt", { mode: "date" }).notNull(),
   },
   (t) => [index("refresh_token_userId_idx").on(t.userId)],
+);
+
+/**
+ * 조직 트리(예: 현대 자동차 → 아산 공장 / 울산 공장).
+ * parentId null = 최상위(대그룹).
+ */
+export const organization = pgTable(
+  "organization",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 200 }).notNull(),
+    parentId: integer("parentId").references(
+      (): AnyPgColumn => organization.id,
+      { onDelete: "cascade" },
+    ),
+    createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("organization_parentId_idx").on(t.parentId),
+    index("organization_name_idx").on(t.name),
+  ],
+);
+
+/** 조직 멤버십. role: admin | member (플랫폼 user.role 과 별개) */
+export const organizationMember = pgTable(
+  "organization_member",
+  {
+    id: serial("id").primaryKey(),
+    organizationId: integer("organizationId")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    userId: integer("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    role: varchar("role", { length: 16 }).notNull().default("member"),
+    createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique().on(t.organizationId, t.userId),
+    index("organization_member_org_idx").on(t.organizationId),
+    index("organization_member_user_idx").on(t.userId),
+  ],
+);
+
+export const organizationRelations = relations(
+  organization,
+  ({ one, many }) => ({
+    parent: one(organization, {
+      fields: [organization.parentId],
+      references: [organization.id],
+      relationName: "organization_tree",
+    }),
+    children: many(organization, { relationName: "organization_tree" }),
+    members: many(organizationMember),
+  }),
+);
+
+export const organizationMemberRelations = relations(
+  organizationMember,
+  ({ one }) => ({
+    organization: one(organization, {
+      fields: [organizationMember.organizationId],
+      references: [organization.id],
+    }),
+    user: one(user, {
+      fields: [organizationMember.userId],
+      references: [user.id],
+    }),
+  }),
 );
 
 export const post = pgTable(
@@ -120,6 +191,8 @@ export const book = pgTable(
     authorId: integer("authorId")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    // true면 모든 로그인 사용자가 공유받은 것처럼 편집 가능
+    sharedToAll: boolean("sharedToAll").notNull().default(false),
     createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
   },
@@ -250,9 +323,94 @@ export const postLikeRelations = relations(postLike, ({ one }) => ({
   post: one(post, { fields: [postLike.postId], references: [post.id] }),
 }));
 
+/** 북 공유 — 공유받은 사용자는 작성자처럼 편집(저장·업로드)할 수 있다. 삭제는 작성자·관리자만 */
+export const bookShare = pgTable(
+  "book_share",
+  {
+    id: serial("id").primaryKey(),
+    bookId: integer("bookId")
+      .notNull()
+      .references(() => book.id, { onDelete: "cascade" }),
+    userId: integer("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique().on(t.bookId, t.userId),
+    index("book_share_bookId_idx").on(t.bookId),
+    index("book_share_userId_idx").on(t.userId),
+  ],
+);
+
+/**
+ * 북 미디어 라이브러리 — 업로드 파일 목록(서버 보관, 브라우저 localStorage 대체).
+ * src는 업로드 URL(`/uploads/...`); 파일 자체는 디스크에 있고 행 삭제 시 목록에서만 빠진다.
+ */
+export const bookMediaItem = pgTable(
+  "book_media_item",
+  {
+    id: serial("id").primaryKey(),
+    bookId: integer("bookId")
+      .notNull()
+      .references(() => book.id, { onDelete: "cascade" }),
+    ownerId: integer("ownerId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    kind: varchar("kind", { length: 8 }).notNull(), // image | video
+    src: varchar("src", { length: 512 }).notNull(),
+    posterSrc: varchar("posterSrc", { length: 512 }),
+    // true면 모든 로그인 사용자의 라이브러리 "공유받은 파일"에 노출
+    sharedToAll: boolean("sharedToAll").notNull().default(false),
+    createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("book_media_item_bookId_idx").on(t.bookId),
+    index("book_media_item_ownerId_idx").on(t.ownerId),
+  ],
+);
+
+/** 미디어 파일 개별 공유 — 공유받은 사용자의 라이브러리에 노출 */
+export const bookMediaShare = pgTable(
+  "book_media_share",
+  {
+    id: serial("id").primaryKey(),
+    mediaId: integer("mediaId")
+      .notNull()
+      .references(() => bookMediaItem.id, { onDelete: "cascade" }),
+    userId: integer("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique().on(t.mediaId, t.userId),
+    index("book_media_share_userId_idx").on(t.userId),
+  ],
+);
+
+export const bookMediaItemRelations = relations(bookMediaItem, ({ one }) => ({
+  book: one(book, { fields: [bookMediaItem.bookId], references: [book.id] }),
+  owner: one(user, { fields: [bookMediaItem.ownerId], references: [user.id] }),
+}));
+
+export const bookMediaShareRelations = relations(bookMediaShare, ({ one }) => ({
+  media: one(bookMediaItem, {
+    fields: [bookMediaShare.mediaId],
+    references: [bookMediaItem.id],
+  }),
+  user: one(user, { fields: [bookMediaShare.userId], references: [user.id] }),
+}));
+
 export const bookRelations = relations(book, ({ one, many }) => ({
   author: one(user, { fields: [book.authorId], references: [user.id] }),
   pages: many(bookPage),
+  shares: many(bookShare),
+}));
+
+export const bookShareRelations = relations(bookShare, ({ one }) => ({
+  book: one(book, { fields: [bookShare.bookId], references: [book.id] }),
+  user: one(user, { fields: [bookShare.userId], references: [user.id] }),
 }));
 
 export const bookPageRelations = relations(bookPage, ({ one }) => ({
@@ -275,6 +433,12 @@ export const cretaPlaylist = pgTable("creta_playlist", {
   visibility: varchar("visibility", { length: 20 })
     .notNull()
     .default("전체 공개"),
+  // 소유자. null = 공용(소유자 도입 이전 데이터 — 로그인 사용자 누구나 편집)
+  ownerId: integer("ownerId").references(() => user.id, {
+    onDelete: "set null",
+  }),
+  // true면 모든 로그인 사용자가 공유받은 것처럼 편집 가능
+  sharedToAll: boolean("sharedToAll").notNull().default(false),
   createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
   updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
 });
@@ -315,6 +479,12 @@ export const cretaSchedule = pgTable("creta_schedule", {
     { onDelete: "set null" },
   ),
   autoApply: boolean("autoApply").notNull().default(true),
+  // 소유자. null = 공용(소유자 도입 이전 데이터 — 로그인 사용자 누구나 편집)
+  ownerId: integer("ownerId").references(() => user.id, {
+    onDelete: "set null",
+  }),
+  // true면 모든 로그인 사용자가 공유받은 것처럼 편집 가능
+  sharedToAll: boolean("sharedToAll").notNull().default(false),
   createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
   updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
 });
@@ -371,13 +541,139 @@ export const cretaDevice = pgTable("creta_device", {
     () => cretaSchedule.id,
     { onDelete: "set null" },
   ),
+  // 전원 예약 "HH:MM"(매일). null = 예약 없음
+  powerOnTime: varchar("powerOnTime", { length: 5 }),
+  powerOffTime: varchar("powerOffTime", { length: 5 }),
+  // 전원 예약 제외 — 요일(0=일…6=토) CSV "0,6", 특정일(YYYY-MM-DD) CSV. null/빈 문자열 = 제외 없음
+  powerExcludeDays: text("powerExcludeDays"),
+  powerExcludeDates: text("powerExcludeDates"),
+  // 단말 상태(시뮬레이션): ok | error — online과 별개로 "비정상 단말" 표시
+  health: varchar("health", { length: 12 }).notNull().default("ok"),
   createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
   updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
 });
 
+/** 플레이리스트 공유 — 공유받은 사용자는 소유자처럼 편집 가능(삭제·공유 관리는 소유자·관리자) */
+export const cretaPlaylistShare = pgTable(
+  "creta_playlist_share",
+  {
+    id: serial("id").primaryKey(),
+    playlistId: integer("playlistId")
+      .notNull()
+      .references(() => cretaPlaylist.id, { onDelete: "cascade" }),
+    userId: integer("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique().on(t.playlistId, t.userId),
+    index("creta_playlist_share_playlistId_idx").on(t.playlistId),
+  ],
+);
+
+/** 스케줄 공유 — 위와 동일 규칙 */
+export const cretaScheduleShare = pgTable(
+  "creta_schedule_share",
+  {
+    id: serial("id").primaryKey(),
+    scheduleId: integer("scheduleId")
+      .notNull()
+      .references(() => cretaSchedule.id, { onDelete: "cascade" }),
+    userId: integer("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique().on(t.scheduleId, t.userId),
+    index("creta_schedule_share_scheduleId_idx").on(t.scheduleId),
+  ],
+);
+
 export const cretaPlaylistRelations = relations(cretaPlaylist, ({ many }) => ({
   items: many(cretaPlaylistItem),
+  shares: many(cretaPlaylistShare),
 }));
+
+export const cretaPlaylistShareRelations = relations(
+  cretaPlaylistShare,
+  ({ one }) => ({
+    playlist: one(cretaPlaylist, {
+      fields: [cretaPlaylistShare.playlistId],
+      references: [cretaPlaylist.id],
+    }),
+    user: one(user, {
+      fields: [cretaPlaylistShare.userId],
+      references: [user.id],
+    }),
+  }),
+);
+
+export const cretaScheduleShareRelations = relations(
+  cretaScheduleShare,
+  ({ one }) => ({
+    schedule: one(cretaSchedule, {
+      fields: [cretaScheduleShare.scheduleId],
+      references: [cretaSchedule.id],
+    }),
+    user: one(user, {
+      fields: [cretaScheduleShare.userId],
+      references: [user.id],
+    }),
+  }),
+);
+
+/**
+ * 커뮤니티 댓글(북·플레이리스트 대상, 2단: 루트 + 답글). 대상 삭제 시 서비스에서 정리,
+ * 부모 댓글 삭제 시 답글은 cascade.
+ */
+export const cretaComment = pgTable(
+  "creta_comment",
+  {
+    id: serial("id").primaryKey(),
+    targetKind: varchar("targetKind", { length: 16 }).notNull(), // book | playlist
+    targetId: integer("targetId").notNull(),
+    parentId: integer("parentId").references(
+      (): AnyPgColumn => cretaComment.id,
+      {
+        onDelete: "cascade",
+      },
+    ),
+    userId: integer("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    content: varchar("content", { length: 2000 }).notNull(),
+    createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("creta_comment_target_idx").on(t.targetKind, t.targetId),
+    index("creta_comment_parentId_idx").on(t.parentId),
+  ],
+);
+
+export const cretaCommentRelations = relations(cretaComment, ({ one }) => ({
+  user: one(user, { fields: [cretaComment.userId], references: [user.id] }),
+}));
+
+/** 커뮤니티 좋아요(북·플레이리스트 대상). 사용자당 대상 하나에 1회 */
+export const cretaLike = pgTable(
+  "creta_like",
+  {
+    id: serial("id").primaryKey(),
+    targetKind: varchar("targetKind", { length: 16 }).notNull(), // book | playlist
+    targetId: integer("targetId").notNull(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique().on(t.targetKind, t.targetId, t.userId),
+    index("creta_like_target_idx").on(t.targetKind, t.targetId),
+  ],
+);
 
 export const cretaPlaylistItemRelations = relations(
   cretaPlaylistItem,

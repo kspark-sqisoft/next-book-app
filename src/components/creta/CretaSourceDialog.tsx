@@ -35,6 +35,8 @@ export function CretaSourceDialog({
   pending,
   clearLabel,
   onClear,
+  appliedIds,
+  appliedLabel,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -51,6 +53,9 @@ export function CretaSourceDialog({
   /** 지정 해제 버튼(예: "기본 재생 없음") — 없으면 숨김 */
   clearLabel?: string;
   onClear?: () => void;
+  /** 이미 적용된 항목 id — 목록에서 체크 배지로 표시(예: 이 스케줄이 배정된 디바이스) */
+  appliedIds?: readonly number[];
+  appliedLabel?: string;
 }) {
   const [kind, setKind] = useState<CretaPickerKind>(
     initialKind ?? kinds[0] ?? "book",
@@ -98,6 +103,8 @@ export function CretaSourceDialog({
             kind={activeKind}
             selectedId={selected?.id ?? null}
             onSelect={setSelected}
+            appliedIds={appliedIds}
+            appliedLabel={appliedLabel}
           />
         </div>
 

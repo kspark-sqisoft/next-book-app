@@ -23,6 +23,17 @@ export const BOOTSTRAP_ADMIN_EMAILS = (
   .map((s) => s.trim().toLowerCase())
   .filter(Boolean);
 
+/**
+ * 조직(대그룹·하위 공장 등) 트리 생성·조직 관리자 지정 전용 슈퍼 권한.
+ * 미설정 시 기본: noa99kee@gmail.com
+ */
+export const SUPER_ORG_ADMIN_EMAILS = (
+  process.env.SUPER_ORG_ADMIN_EMAILS?.trim() || "noa99kee@gmail.com"
+)
+  .split(",")
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+
 // 정적 업로드 루트(프로덕션에서는 볼륨 마운트 경로로 덮어쓰기)
 export const UPLOAD_ROOT =
   process.env.UPLOAD_ROOT?.trim() || join(process.cwd(), "uploads");

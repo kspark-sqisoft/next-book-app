@@ -37,6 +37,8 @@ import {
   resolveBookElementOutlineWidth,
   resolveBookElementRotation,
   resolveBookWeatherDisplay,
+  resolveBookWeatherLayout,
+  resolveBookWeatherRightBlocks,
 } from "@/lib/book-canvas";
 import { cn } from "@/lib/utils";
 
@@ -524,10 +526,29 @@ export function BookWeatherWidgetOverlay({
       : variant === "standard"
         ? Boolean(disp.icon || disp.description || disp.temp)
         : true;
+  /** 사용자 지정 배치(auto = 켠 항목에 따라 자동) — 표준·대기 분할 카드에만 적용 */
+  const layoutPref = resolveBookWeatherLayout(el.weatherLayout);
+  const gridVariant = variant === "standard" || variant === "split-air";
   const useWeatherTimeColumns =
-    (variant === "standard" || variant === "split-air") &&
+    layoutPref === "single"
+      ? false
+      : layoutPref === "columns"
+        ? gridVariant && (variant === "split-air" || leftHasPrimary)
+        : gridVariant &&
+          showTimeCol &&
+          (variant === "split-air" || leftHasPrimary);
+  /** 왼쪽이 빌 때의 시계-왼쪽 가로 배치 — 세로 1열을 고르면 사용하지 않음 */
+  const useTimeLeftRow =
+    variant === "standard" &&
     showTimeCol &&
-    (variant === "split-air" || leftHasPrimary);
+    !leftHasPrimary &&
+    layoutPref !== "single";
+  /** 사용자가 "좌우 2열"을 고른 경우: 블록별 좌/우 배치를 따른다 */
+  const customColumns = layoutPref === "columns" && useWeatherTimeColumns;
+  const rightBlocks = resolveBookWeatherRightBlocks(el.weatherRightBlocks);
+  /** 1열(하단 블록)에서 시계·날짜를 그려야 하는 경우 — 2열이 아닐 때 시계가 켜져 있으면 */
+  const showTimeInStack =
+    showTimeCol && !useWeatherTimeColumns && !useTimeLeftRow;
 
   const ringAccent =
     variant === "split-air"
@@ -959,7 +980,7 @@ export function BookWeatherWidgetOverlay({
                 {data.locationLabel}
               </div>
             </div>
-          ) : variant === "standard" && showTimeCol && !leftHasPrimary ? (
+          ) : useTimeLeftRow ? (
             <div
               className={cn(
                 "relative z-1 flex h-full min-h-0 min-w-0 overflow-hidden px-[5%] py-[5%]",
@@ -1024,126 +1045,101 @@ export function BookWeatherWidgetOverlay({
                 paddingBottom: weatherContentPadY,
               }}
             >
-              <div
-                className={cn(
-                  "grid max-h-full min-h-0 w-full min-w-0",
-                  useWeatherTimeColumns
-                    ? "grid-cols-[minmax(0,1.12fr)_minmax(0,0.98fr)]"
-                    : "grid-cols-1",
-                )}
-                style={{
-                  columnGap: gridGapX,
-                  rowGap: gridGapY,
-                  alignItems: "start",
-                }}
-              >
-                <div
-                  className="flex min-h-0 min-w-0 flex-col justify-start"
-                  style={{ gap: iconToTempGap }}
-                >
-                  {disp.description || disp.icon ? (
-                    <div
-                      className="flex min-w-0 items-center"
-                      style={{ gap: layoutGapSm }}
-                    >
-                      {disp.icon ? (
-                        <div
-                          className={cn(
-                            "flex shrink-0 items-center justify-center rounded-xl border backdrop-blur-md",
-                            useCustomText
-                              ? "border-current/20 bg-current/8"
-                              : snowLike
-                                ? "border-slate-600/25 bg-white/50"
-                                : "border-white/25 bg-white/12",
-                          )}
-                          style={{ padding: iconShellPad }}
-                        >
-                          <LineIcon
-                            className={cn("shrink-0 stroke-[2.1]", iconTone)}
-                            style={{
-                              width: condSize * 1.25,
-                              height: condSize * 1.25,
-                            }}
-                            aria-hidden
-                          />
-                        </div>
-                      ) : null}
-                      {disp.description ? (
-                        <span
-                          className={cn(
-                            "line-clamp-3 min-w-0 break-words font-medium capitalize leading-tight",
-                            textMuted,
-                            !useCustomText && !snowLike && "drop-shadow-sm",
-                          )}
-                          style={{ fontSize: bodySize * 1.02 }}
-                          title={data.description}
-                        >
-                          {data.description || "—"}
-                        </span>
-                      ) : null}
-                    </div>
-                  ) : null}
-                  <div
-                    className="flex min-h-0 flex-col"
-                    style={{ gap: layoutGapSm }}
-                  >
-                    {disp.temp ? (
-                      <div className="flex items-end gap-0.5">
-                        <span
-                          className={cn(
-                            "tabular-nums font-bold tracking-tighter",
-                            tempAccent,
-                            !useCustomText &&
-                              !snowLike &&
-                              "drop-shadow-[0_2px_14px_rgba(0,0,0,0.22)]",
-                          )}
-                          style={{
-                            fontSize:
-                              variant === "split-air"
-                                ? tempSize * 0.9
-                                : tempSize,
-                            lineHeight: 0.92,
-                          }}
-                        >
-                          {Math.round(data.tempC)}
-                        </span>
-                        <span
-                          className={cn(
-                            "pb-[0.1em] font-semibold opacity-90",
-                            textMuted,
-                          )}
-                          style={{ fontSize: tempSize * 0.36 }}
-                        >
-                          °C
-                        </span>
+              {customColumns ? (
+                (() => {
+                  // 블록 단위 좌/우 배치 — 인스펙터 "좌우 2열" 배치 설정
+                  const mainBlock =
+                    disp.icon || disp.description || disp.temp ? (
+                      <div
+                        className="flex min-h-0 min-w-0 flex-col"
+                        style={{ gap: iconToTempGap }}
+                      >
+                        {disp.description || disp.icon ? (
+                          <div
+                            className="flex min-w-0 items-center"
+                            style={{ gap: layoutGapSm }}
+                          >
+                            {disp.icon ? (
+                              <div
+                                className={cn(
+                                  "flex shrink-0 items-center justify-center rounded-xl border backdrop-blur-md",
+                                  useCustomText
+                                    ? "border-current/20 bg-current/8"
+                                    : snowLike
+                                      ? "border-slate-600/25 bg-white/50"
+                                      : "border-white/25 bg-white/12",
+                                )}
+                                style={{ padding: iconShellPad }}
+                              >
+                                <LineIcon
+                                  className={cn(
+                                    "shrink-0 stroke-[2.1]",
+                                    iconTone,
+                                  )}
+                                  style={{
+                                    width: condSize * 1.25,
+                                    height: condSize * 1.25,
+                                  }}
+                                  aria-hidden
+                                />
+                              </div>
+                            ) : null}
+                            {disp.description ? (
+                              <span
+                                className={cn(
+                                  "line-clamp-3 min-w-0 break-words font-medium capitalize leading-tight",
+                                  textMuted,
+                                  !useCustomText &&
+                                    !snowLike &&
+                                    "drop-shadow-sm",
+                                )}
+                                style={{ fontSize: bodySize * 1.02 }}
+                                title={data.description}
+                              >
+                                {data.description || "—"}
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        {disp.temp ? (
+                          <div className="flex items-end gap-0.5">
+                            <span
+                              className={cn(
+                                "tabular-nums font-bold tracking-tighter",
+                                tempAccent,
+                                !useCustomText &&
+                                  !snowLike &&
+                                  "drop-shadow-[0_2px_14px_rgba(0,0,0,0.22)]",
+                              )}
+                              style={{
+                                fontSize:
+                                  variant === "split-air"
+                                    ? tempSize * 0.9
+                                    : tempSize,
+                                lineHeight: 0.92,
+                              }}
+                            >
+                              {Math.round(data.tempC)}
+                            </span>
+                            <span
+                              className={cn(
+                                "pb-[0.1em] font-semibold opacity-90",
+                                textMuted,
+                              )}
+                              style={{ fontSize: tempSize * 0.36 }}
+                            >
+                              °C
+                            </span>
+                          </div>
+                        ) : null}
                       </div>
-                    ) : null}
-                    {variant === "split-air" && hasAir ? (
-                      <div className="min-h-0">
-                        {renderAirBlock(data, { compact: true })}
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-
-                {useWeatherTimeColumns ? (
-                  <div
-                    className={cn(
-                      "flex min-h-0 min-w-0 flex-col items-end justify-start overflow-hidden border-l text-end",
-                      useCustomText
-                        ? "border-current/18"
-                        : snowLike
-                          ? "border-slate-600/30"
-                          : "border-white/22",
-                    )}
-                    style={{
-                      paddingLeft: Math.min(11 * scale, boxW * 0.028),
-                      gap: iconToTempGap,
-                    }}
-                  >
+                    ) : null;
+                  const timeBlock = showTimeCol ? (
                     <div
                       className="flex min-h-0 shrink-0 flex-col"
-                      style={{ gap: Math.max(3 * scale, layoutGapSm * 0.65) }}
+                      style={{
+                        gap: Math.max(3 * scale, layoutGapSm * 0.65),
+                      }}
                     >
                       {disp.clock ? (
                         <div
@@ -1169,54 +1165,310 @@ export function BookWeatherWidgetOverlay({
                         </div>
                       ) : null}
                     </div>
-                    <div
-                      className="flex min-h-0 w-full min-w-0 flex-col"
-                      style={{ gap: layoutGapSm }}
-                    >
-                      <div
-                        className={cn(
-                          "text-[0.72em] font-semibold uppercase tracking-[0.14em] opacity-90",
-                          textMain,
-                        )}
-                        style={{ fontSize: bodySize }}
-                      >
-                        {data.locationLabel}
-                      </div>
-                      {variant === "standard" && hasAir
-                        ? renderAirBlock(data, {})
-                        : null}
-                      {variant === "standard" || variant === "split-air"
-                        ? renderSecondaryWeather(data)
-                        : null}
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    className={cn(
-                      "col-span-full flex min-h-0 flex-col border-t",
-                      useCustomText ? "border-current/20" : "border-white/18",
-                    )}
-                    style={{
-                      gap: layoutGapSm,
-                      paddingTop: Math.min(14 * scale, boxH * 0.036),
-                    }}
-                  >
+                  ) : null;
+                  const locationBlock = (
                     <div
                       className={cn(
-                        "text-[0.72em] font-semibold uppercase tracking-[0.12em]",
+                        "text-[0.72em] font-semibold uppercase tracking-[0.14em] opacity-90",
                         textMain,
                       )}
                       style={{ fontSize: bodySize }}
                     >
                       {data.locationLabel}
                     </div>
-                    {hasAir && variant !== "split-air"
-                      ? renderAirBlock(data, {})
-                      : null}
-                    {renderSecondaryWeather(data)}
+                  );
+                  const airBlock = hasAir
+                    ? renderAirBlock(data, {
+                        compact: variant === "split-air",
+                      })
+                    : null;
+                  const secondaryBlock = renderSecondaryWeather(data);
+                  const nodes = {
+                    main: mainBlock,
+                    time: timeBlock,
+                    location: locationBlock,
+                    air: airBlock,
+                    secondary: secondaryBlock,
+                  } as const;
+                  const order = [
+                    "main",
+                    "time",
+                    "location",
+                    "air",
+                    "secondary",
+                  ] as const;
+                  const left = order.filter((k) => !rightBlocks.includes(k));
+                  const right = order.filter((k) => rightBlocks.includes(k));
+                  const renderColumn = (
+                    keys: readonly (typeof order)[number][],
+                  ) =>
+                    keys.map((k) =>
+                      nodes[k] ? (
+                        <div key={k} className="min-w-0 max-w-full">
+                          {nodes[k]}
+                        </div>
+                      ) : null,
+                    );
+                  return (
+                    <div
+                      className="grid max-h-full min-h-0 w-full min-w-0 grid-cols-[minmax(0,1.12fr)_minmax(0,0.98fr)]"
+                      style={{
+                        columnGap: gridGapX,
+                        rowGap: gridGapY,
+                        alignItems: "start",
+                      }}
+                      data-weather-columns="custom"
+                    >
+                      <div
+                        className="flex min-h-0 min-w-0 flex-col justify-start"
+                        style={{ gap: layoutGapSm }}
+                      >
+                        {renderColumn(left)}
+                      </div>
+                      <div
+                        className={cn(
+                          "flex min-h-0 min-w-0 flex-col items-end justify-start overflow-hidden border-l text-end",
+                          useCustomText
+                            ? "border-current/18"
+                            : snowLike
+                              ? "border-slate-600/30"
+                              : "border-white/22",
+                        )}
+                        style={{
+                          paddingLeft: Math.min(11 * scale, boxW * 0.028),
+                          gap: layoutGapSm,
+                        }}
+                      >
+                        {renderColumn(right)}
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : (
+                <div
+                  className={cn(
+                    "grid max-h-full min-h-0 w-full min-w-0",
+                    useWeatherTimeColumns
+                      ? "grid-cols-[minmax(0,1.12fr)_minmax(0,0.98fr)]"
+                      : "grid-cols-1",
+                  )}
+                  style={{
+                    columnGap: gridGapX,
+                    rowGap: gridGapY,
+                    alignItems: "start",
+                  }}
+                >
+                  <div
+                    className="flex min-h-0 min-w-0 flex-col justify-start"
+                    style={{ gap: iconToTempGap }}
+                  >
+                    {disp.description || disp.icon ? (
+                      <div
+                        className="flex min-w-0 items-center"
+                        style={{ gap: layoutGapSm }}
+                      >
+                        {disp.icon ? (
+                          <div
+                            className={cn(
+                              "flex shrink-0 items-center justify-center rounded-xl border backdrop-blur-md",
+                              useCustomText
+                                ? "border-current/20 bg-current/8"
+                                : snowLike
+                                  ? "border-slate-600/25 bg-white/50"
+                                  : "border-white/25 bg-white/12",
+                            )}
+                            style={{ padding: iconShellPad }}
+                          >
+                            <LineIcon
+                              className={cn("shrink-0 stroke-[2.1]", iconTone)}
+                              style={{
+                                width: condSize * 1.25,
+                                height: condSize * 1.25,
+                              }}
+                              aria-hidden
+                            />
+                          </div>
+                        ) : null}
+                        {disp.description ? (
+                          <span
+                            className={cn(
+                              "line-clamp-3 min-w-0 break-words font-medium capitalize leading-tight",
+                              textMuted,
+                              !useCustomText && !snowLike && "drop-shadow-sm",
+                            )}
+                            style={{ fontSize: bodySize * 1.02 }}
+                            title={data.description}
+                          >
+                            {data.description || "—"}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    <div
+                      className="flex min-h-0 flex-col"
+                      style={{ gap: layoutGapSm }}
+                    >
+                      {disp.temp ? (
+                        <div className="flex items-end gap-0.5">
+                          <span
+                            className={cn(
+                              "tabular-nums font-bold tracking-tighter",
+                              tempAccent,
+                              !useCustomText &&
+                                !snowLike &&
+                                "drop-shadow-[0_2px_14px_rgba(0,0,0,0.22)]",
+                            )}
+                            style={{
+                              fontSize:
+                                variant === "split-air"
+                                  ? tempSize * 0.9
+                                  : tempSize,
+                              lineHeight: 0.92,
+                            }}
+                          >
+                            {Math.round(data.tempC)}
+                          </span>
+                          <span
+                            className={cn(
+                              "pb-[0.1em] font-semibold opacity-90",
+                              textMuted,
+                            )}
+                            style={{ fontSize: tempSize * 0.36 }}
+                          >
+                            °C
+                          </span>
+                        </div>
+                      ) : null}
+                      {variant === "split-air" && hasAir ? (
+                        <div className="min-h-0">
+                          {renderAirBlock(data, { compact: true })}
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
-                )}
-              </div>
+
+                  {useWeatherTimeColumns ? (
+                    <div
+                      className={cn(
+                        "flex min-h-0 min-w-0 flex-col items-end justify-start overflow-hidden border-l text-end",
+                        useCustomText
+                          ? "border-current/18"
+                          : snowLike
+                            ? "border-slate-600/30"
+                            : "border-white/22",
+                      )}
+                      style={{
+                        paddingLeft: Math.min(11 * scale, boxW * 0.028),
+                        gap: iconToTempGap,
+                      }}
+                    >
+                      <div
+                        className="flex min-h-0 shrink-0 flex-col"
+                        style={{ gap: Math.max(3 * scale, layoutGapSm * 0.65) }}
+                      >
+                        {disp.clock ? (
+                          <div
+                            className={cn(
+                              "font-bold tabular-nums tracking-tight",
+                              textMain,
+                              !useCustomText && !snowLike && "drop-shadow-md",
+                            )}
+                            style={{ fontSize: clockSize, lineHeight: 1 }}
+                          >
+                            {timeStr}
+                          </div>
+                        ) : null}
+                        {disp.date ? (
+                          <div
+                            className={cn(
+                              "font-medium leading-snug opacity-90",
+                              textFaint,
+                            )}
+                            style={{ fontSize: bodySize * 0.88 }}
+                          >
+                            {dateStr}
+                          </div>
+                        ) : null}
+                      </div>
+                      <div
+                        className="flex min-h-0 w-full min-w-0 flex-col"
+                        style={{ gap: layoutGapSm }}
+                      >
+                        <div
+                          className={cn(
+                            "text-[0.72em] font-semibold uppercase tracking-[0.14em] opacity-90",
+                            textMain,
+                          )}
+                          style={{ fontSize: bodySize }}
+                        >
+                          {data.locationLabel}
+                        </div>
+                        {variant === "standard" && hasAir
+                          ? renderAirBlock(data, {})
+                          : null}
+                        {variant === "standard" || variant === "split-air"
+                          ? renderSecondaryWeather(data)
+                          : null}
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      className={cn(
+                        "col-span-full flex min-h-0 flex-col border-t",
+                        useCustomText ? "border-current/20" : "border-white/18",
+                      )}
+                      style={{
+                        gap: layoutGapSm,
+                        paddingTop: Math.min(14 * scale, boxH * 0.036),
+                      }}
+                    >
+                      {showTimeInStack ? (
+                        <div
+                          className="flex min-w-0 flex-wrap items-baseline"
+                          style={{ columnGap: layoutGapMd, rowGap: 0 }}
+                        >
+                          {disp.clock ? (
+                            <div
+                              className={cn(
+                                "font-bold tabular-nums tracking-tight",
+                                textMain,
+                                !useCustomText && !snowLike && "drop-shadow-md",
+                              )}
+                              style={{ fontSize: clockSize, lineHeight: 1 }}
+                            >
+                              {timeStr}
+                            </div>
+                          ) : null}
+                          {disp.date ? (
+                            <div
+                              className={cn(
+                                "font-medium leading-snug opacity-90",
+                                textFaint,
+                              )}
+                              style={{ fontSize: bodySize * 0.88 }}
+                            >
+                              {dateStr}
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      <div
+                        className={cn(
+                          "text-[0.72em] font-semibold uppercase tracking-[0.12em]",
+                          textMain,
+                        )}
+                        style={{ fontSize: bodySize }}
+                      >
+                        {data.locationLabel}
+                      </div>
+                      {hasAir && variant !== "split-air"
+                        ? renderAirBlock(data, {})
+                        : null}
+                      {renderSecondaryWeather(data)}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
