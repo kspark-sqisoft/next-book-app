@@ -2,7 +2,13 @@
 
 // 크레타 > 커뮤니티: 모든 사용자의 북·플레이리스트 갤러리. 항목을 고르면 상단 재생 + 댓글 상세로 이동.
 import { useQuery } from "@tanstack/react-query";
-import { BookMarked, ListVideo, MessageSquare, Search } from "lucide-react";
+import {
+  BookMarked,
+  ListVideo,
+  MessageSquare,
+  Search,
+  Share2,
+} from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -18,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { type BookListCoverPreview, fetchBooksPage } from "@/lib/api";
-import { fetchCretaPlaylists } from "@/lib/creta-api";
+import { fetchCretaPlaylists, sharedWithSummary } from "@/lib/creta-api";
 import { fetchCretaCommentCounts } from "@/lib/creta-comments-api";
 import { fetchCretaLikes } from "@/lib/creta-likes-api";
 import { formatDateMediumShort } from "@/lib/format-date";
@@ -35,6 +41,10 @@ type GalleryItem = {
   author: { id: number; name: string; imageUrl: string | null } | null;
   cover: BookListCoverPreview | null;
   updatedAt: string;
+  /** 공유받은 사용자(이름) — 카드 "○○에게 공유됨" 표시용 */
+  sharedWith: { id: number; name: string }[];
+  /** 모든 사용자에게 공유 여부 */
+  sharedToAll: boolean;
 };
 
 export function CommunityPage() {
@@ -61,6 +71,8 @@ export function CommunityPage() {
       author: b.author,
       cover: b.coverPreview,
       updatedAt: b.updatedAt,
+      sharedWith: b.sharedWith ?? [],
+      sharedToAll: b.sharedToAll === true,
     }));
     const playlists: GalleryItem[] = (playlistsQuery.data ?? []).map((p) => ({
       kind: "playlist",
@@ -70,6 +82,8 @@ export function CommunityPage() {
       author: p.owner,
       cover: p.cover,
       updatedAt: p.updatedAt,
+      sharedWith: p.sharedWith,
+      sharedToAll: p.sharedToAll,
     }));
     const q = search.trim().toLowerCase();
     return [...books, ...playlists]
@@ -241,6 +255,24 @@ export function CommunityPage() {
                           )}
                           <span>· {formatDateMediumShort(it.updatedAt)}</span>
                         </p>
+                        {it.sharedToAll ? (
+                          <p className="mt-0.5 flex min-w-0 items-center gap-1 text-[11px] text-primary">
+                            <Share2 className="size-3 shrink-0" aria-hidden />
+                            <span className="truncate">
+                              모든 사용자에게 공유됨
+                            </span>
+                          </p>
+                        ) : it.sharedWith.length > 0 ? (
+                          <p
+                            className="mt-0.5 flex min-w-0 items-center gap-1 text-[11px] text-primary"
+                            title={it.sharedWith.map((u) => u.name).join(", ")}
+                          >
+                            <Share2 className="size-3 shrink-0" aria-hidden />
+                            <span className="truncate">
+                              {sharedWithSummary(it.sharedWith)}에게 공유됨
+                            </span>
+                          </p>
+                        ) : null}
                       </div>
                     </Link>
                   </CardContent>

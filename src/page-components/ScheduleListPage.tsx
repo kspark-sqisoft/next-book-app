@@ -186,7 +186,14 @@ export function ScheduleListPage() {
                       <span className="truncate">
                         작성자 {schedule.owner?.name || "공용"}
                       </span>
-                      {schedule.sharedWith.length > 0 ? (
+                      {schedule.sharedToAll ? (
+                        <span className="inline-flex min-w-0 items-center gap-1 text-primary">
+                          <Share2 className="size-3 shrink-0" aria-hidden />
+                          <span className="truncate">
+                            모든 사용자에게 공유됨
+                          </span>
+                        </span>
+                      ) : schedule.sharedWith.length > 0 ? (
                         <span
                           className="inline-flex min-w-0 items-center gap-1 text-primary"
                           title={schedule.sharedWith

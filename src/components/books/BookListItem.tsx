@@ -74,7 +74,12 @@ export function BookListItem({ book, coverThumbDataUrl, onDelete }: Props) {
                   · {formatDateMediumShort(book.updatedAt)}
                 </AuthorAvatarInline>
               </p>
-              {sharedWith.length > 0 ? (
+              {book.sharedToAll ? (
+                <p className="mt-0.5 flex min-w-0 items-center gap-1 text-[11px] text-primary">
+                  <Share2 className="size-3 shrink-0" aria-hidden />
+                  <span className="truncate">모든 사용자에게 공유됨</span>
+                </p>
+              ) : sharedWith.length > 0 ? (
                 <p
                   className="mt-0.5 flex min-w-0 items-center gap-1 text-[11px] text-primary"
                   title={`작성자 ${book.author.name} · 공유: ${sharedWith.map((u) => u.name).join(", ")}`}

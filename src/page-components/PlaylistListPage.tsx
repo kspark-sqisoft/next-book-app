@@ -170,7 +170,14 @@ export function PlaylistListPage() {
                       <span className="truncate">
                         작성자 {playlist.owner?.name || "공용"}
                       </span>
-                      {playlist.sharedWith.length > 0 ? (
+                      {playlist.sharedToAll ? (
+                        <span className="inline-flex min-w-0 items-center gap-1 text-primary">
+                          <Share2 className="size-3 shrink-0" aria-hidden />
+                          <span className="truncate">
+                            모든 사용자에게 공유됨
+                          </span>
+                        </span>
+                      ) : playlist.sharedWith.length > 0 ? (
                         <span
                           className="inline-flex min-w-0 items-center gap-1 text-primary"
                           title={playlist.sharedWith

@@ -176,6 +176,15 @@ export function CommunityDetailPage() {
                           · 페이지 {book.pages.length} ·{" "}
                           {formatDateMediumShort(book.updatedAt)}
                         </span>
+                        {book.sharedToAll ? (
+                          <span className="text-primary">
+                            · 모든 사용자에게 공유됨
+                          </span>
+                        ) : (book.sharedUserIds?.length ?? 0) > 0 ? (
+                          <span className="text-primary">
+                            · 회원 {book.sharedUserIds?.length}명에게 공유됨
+                          </span>
+                        ) : null}
                       </>
                     ) : playlist ? (
                       <>
@@ -193,7 +202,11 @@ export function CommunityDetailPage() {
                             ? ` · ${playlist.description}`
                             : ""}
                         </span>
-                        {playlist.sharedWith.length > 0 ? (
+                        {playlist.sharedToAll ? (
+                          <span className="text-primary">
+                            · 모든 사용자에게 공유됨
+                          </span>
+                        ) : playlist.sharedWith.length > 0 ? (
                           <span className="text-primary">
                             · {sharedWithSummary(playlist.sharedWith)}에게
                             공유됨
