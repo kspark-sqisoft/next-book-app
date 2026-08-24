@@ -10,6 +10,7 @@ import {
   DEFAULT_BOOK_PRESENTATION_TRANSITION_MS,
   normalizeBookPresentationTransition,
 } from "@/lib/book-presentation-transition";
+import type { BookTextAnimationId } from "@/lib/book-text-animation";
 
 export const BOOK_MEDIA_OBJECT_FIT_VALUES = [
   "cover",
@@ -338,6 +339,13 @@ export type BookCanvasElement =
        * 생략·top = 상단.
        */
       verticalAlign?: "top" | "middle" | "bottom";
+      /**
+       * 텍스트 효과(`book-text-animation.ts` 식별자) — 편집 캔버스·보기·프레젠테이션 모두 재생.
+       * 생략·none = 정적. 썸네일(Konva 스냅샷)은 정적.
+       */
+      textAnimation?: BookTextAnimationId;
+      /** 효과 시간(초, 0.2~120). 1회 효과 = 완료까지, 반복 효과 = 한 사이클. 생략 시 효과별 기본값 */
+      textAnimationDurationSec?: number;
       /** 0~1, 생략 시 1 */
       opacity?: number;
       /** 시계 방향 도(°), 생략 시 0 */

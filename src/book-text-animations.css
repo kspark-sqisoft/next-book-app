@@ -1,0 +1,249 @@
+/* 텍스트 위젯 애니메이션 — 보기(프레젠테이션)·인스펙터 미리보기 전용.
+   변수(--bta-dur / --bta-step / --bta-unit)는 book-text-animation.ts(textAnimationCssVars)가 인라인으로 넣습니다.
+   글자 span: .bta-u(style="--i:N"), 영문 단어 묶음: .bta-w */
+
+.book-ta {
+  --bta-dur: 1s;
+  --bta-step: 0.05s;
+  --bta-unit: 0.4s;
+  --bta-gap: 2em;
+}
+
+/* 영문 단어 묶음 — 글자가 inline-block이어도 단어 중간에서 줄바꿈되지 않도록 */
+.book-ta .bta-w {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+/* ───── 블록(위젯 전체) 1회 효과 ───── */
+
+.book-ta--fadeIn,
+.book-ta--slideUp,
+.book-ta--zoomIn,
+.book-ta--blurIn {
+  animation-duration: var(--bta-dur);
+  animation-fill-mode: both;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform, filter;
+}
+.book-ta--fadeIn {
+  animation-name: bta-fade-in;
+  animation-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
+}
+.book-ta--slideUp {
+  animation-name: bta-slide-up;
+}
+.book-ta--zoomIn {
+  animation-name: bta-zoom-in;
+}
+.book-ta--blurIn {
+  animation-name: bta-blur-in;
+  animation-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+@keyframes bta-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes bta-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(0.8em);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes bta-zoom-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes bta-blur-in {
+  from {
+    opacity: 0;
+    filter: blur(12px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+/* ───── 타이프라이터(글자, 인라인) — 글자는 자기 차례 끝에 나타나고, 그 차례 동안 왼쪽에 커서 ─────
+   주의: steps(1, end)를 쓰면 지연 누적의 부동소수점 오차로 최종 진행도가 0.999…가 되어
+   마지막 키프레임(visible)이 적용되지 않는 글자가 생긴다. visibility는 hidden↔visible 사이 구간이
+   전부 visible로 보간되므로 99.9%까지 hidden, 마지막 구간만 visible인 linear 키프레임을 쓴다. */
+
+.book-ta--typewriter .bta-u {
+  position: relative;
+  visibility: hidden;
+  animation: bta-type-in var(--bta-unit) linear both;
+  animation-delay: calc(var(--i) * var(--bta-step));
+}
+.book-ta--typewriter .bta-u::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.08em;
+  height: 1.05em;
+  border-left: 0.09em solid currentColor;
+  visibility: visible;
+  opacity: 0;
+  animation: bta-caret var(--bta-unit) linear both;
+  animation-delay: calc(var(--i) * var(--bta-step));
+  pointer-events: none;
+}
+@keyframes bta-type-in {
+  from,
+  99.9% {
+    visibility: hidden;
+  }
+  to {
+    visibility: visible;
+  }
+}
+@keyframes bta-caret {
+  0% {
+    opacity: 0;
+  }
+  1% {
+    opacity: 1;
+  }
+  99% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ───── 글자 팝(순차, inline-block + transform) ───── */
+
+.book-ta--charPop .bta-u {
+  display: inline-block;
+  opacity: 0;
+  animation: bta-pop var(--bta-unit) cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: calc(var(--i) * var(--bta-step));
+  will-change: opacity, transform;
+}
+@keyframes bta-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ───── 단어 페이드(순차, 인라인 — filter·opacity만 사용해 줄바꿈 영향 없음) ───── */
+
+.book-ta--wordFade .bta-u {
+  opacity: 0;
+  animation: bta-word-fade var(--bta-unit) ease-out both;
+  animation-delay: calc(var(--i) * var(--bta-step));
+}
+@keyframes bta-word-fade {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+/* ───── 웨이브(글자, 무한 반복 — 음수 지연으로 위상만 어긋나게 해 즉시 시작) ───── */
+
+.book-ta--wave .bta-u {
+  display: inline-block;
+  animation: bta-wave var(--bta-dur) ease-in-out infinite;
+  animation-delay: calc(var(--i) * var(--bta-step) * -1);
+  will-change: transform;
+}
+@keyframes bta-wave {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-0.28em);
+  }
+}
+
+/* ───── 가로 스크롤(마키) — 같은 내용 2벌을 -50% 이동하면 정확히 한 사이클 ───── */
+
+.book-ta--marquee {
+  overflow: hidden;
+  width: 100%;
+}
+.book-ta--marquee .bta-track {
+  display: flex;
+  width: max-content;
+  animation: bta-marquee var(--bta-dur) linear infinite;
+  will-change: transform;
+}
+.book-ta--marquee .bta-copy {
+  flex: none;
+  white-space: nowrap;
+  padding-right: var(--bta-gap);
+}
+@keyframes bta-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* ───── 세로 스크롤(크레딧) — 2벌 세로 배치, 사이 간격은 박스 높이(--bta-gap) ───── */
+
+.book-ta--scrollUp {
+  overflow: hidden;
+  height: 100%;
+}
+.book-ta--scrollUp .bta-track {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  animation: bta-scroll-up var(--bta-dur) linear infinite;
+  will-change: transform;
+}
+.book-ta--scrollUp .bta-copy {
+  flex: none;
+  padding-bottom: var(--bta-gap);
+}
+@keyframes bta-scroll-up {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+
+/* 프레젠테이션 일시정지 — 무대 래퍼에 클래스가 붙으면 모든 텍스트 애니메이션 정지 */
+.book-pres-paused .book-ta,
+.book-pres-paused .book-ta .bta-u,
+.book-pres-paused .book-ta .bta-u::after,
+.book-pres-paused .book-ta .bta-track {
+  animation-play-state: paused !important;
+}

@@ -47,6 +47,21 @@ const BOOK_PAGE_PRESENTATION_TRANSITIONS = new Set([
 const DEFAULT_PRESENTATION_TRANSITION = "none";
 const DEFAULT_PRESENTATION_TRANSITION_MS = 450;
 
+/** 텍스트 위젯 애니메이션 — 프론트 `book-text-animation.ts` BOOK_TEXT_ANIMATION_IDS와 동일 키 유지 */
+const BOOK_TEXT_ANIMATIONS = new Set([
+  "none",
+  "typewriter",
+  "fadeIn",
+  "slideUp",
+  "zoomIn",
+  "blurIn",
+  "charPop",
+  "wordFade",
+  "wave",
+  "marquee",
+  "scrollUp",
+]);
+
 function normalizeBookPagePresentationTransition(raw: unknown): string {
   const s = typeof raw === "string" ? raw.trim() : "";
   if (BOOK_PAGE_PRESENTATION_TRANSITIONS.has(s)) return s;
@@ -79,6 +94,10 @@ export type BookCanvasElementPublic =
       height?: number;
       /** 위젯 박스 안 텍스트 블록 세로 위치(top|middle|bottom) */
       verticalAlign?: "top" | "middle" | "bottom";
+      /** 보기 전용 텍스트 효과 식별자(`BOOK_TEXT_ANIMATIONS`). 생략·none = 정적 */
+      textAnimation?: string;
+      /** 효과 시간(초, 0.2~120). 생략 시 효과별 기본값 */
+      textAnimationDurationSec?: number;
       /** 0~1, 생략 시 1 */
       opacity?: number;
       /** 시계 방향 도(°), 생략 시 0 */
@@ -725,6 +744,31 @@ export class BooksService {
             throw new HttpError(
               400,
               "텍스트 verticalAlign은 top, middle, bottom 중 하나여야 합니다.",
+            );
+          }
+        }
+        if (o.textAnimation != null) {
+          if (
+            typeof o.textAnimation !== "string" ||
+            !BOOK_TEXT_ANIMATIONS.has(o.textAnimation)
+          ) {
+            throw new HttpError(
+              400,
+              "텍스트 애니메이션 식별자가 올바르지 않습니다.",
+            );
+          }
+        }
+        if (o.textAnimationDurationSec != null) {
+          const d = o.textAnimationDurationSec;
+          if (
+            typeof d !== "number" ||
+            !Number.isFinite(d) ||
+            d < 0.2 ||
+            d > 120
+          ) {
+            throw new HttpError(
+              400,
+              "텍스트 애니메이션 시간은 0.2~120초여야 합니다.",
             );
           }
         }

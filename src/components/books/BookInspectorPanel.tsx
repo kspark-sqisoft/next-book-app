@@ -20,6 +20,7 @@ import { createPortal } from "react-dom";
 
 import type { BookMediaPlaylistPlaybackUiSnapshot } from "@/components/books/BookMediaPlaylistWidgetOverlay";
 import { BookNumericIntField } from "@/components/books/BookNumericIntField";
+import { BookTextAnimationPreview } from "@/components/books/BookTextAnimationPreview";
 import { BookTextRichEditor } from "@/components/books/BookTextRichEditor";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -82,6 +83,14 @@ import {
   DEFAULT_WIDGET_PRESENTATION_SEC,
 } from "@/lib/book-presentation";
 import {
+  BOOK_TEXT_ANIMATION_MAX_SEC,
+  BOOK_TEXT_ANIMATION_META,
+  BOOK_TEXT_ANIMATION_MIN_SEC,
+  BOOK_TEXT_ANIMATION_OPTIONS,
+  normalizeBookTextAnimation,
+  resolveBookTextAnimation,
+} from "@/lib/book-text-animation";
+import {
   defaultTextWidgetBoxHeight,
   getTextWidgetDisplayHtml,
 } from "@/lib/book-text-widget";
@@ -134,6 +143,94 @@ type BookInspectorPanelProps = {
   /** 현재 슬라이드의 미리보기 시간 기준 위젯 id */
   pagePresentationTimingElementId?: string | null;
 };
+
+/** 텍스트 위젯 애니메이션 — 효과 선택·시간·인스펙터 내 미리보기(캔버스는 정적) */
+function InspectorTextAnimationSection({
+  selected,
+  onChange,
+}: {
+  selected: Extract<BookCanvasElement, { type: "text" }>;
+  onChange: BookInspectorPanelProps["onChange"];
+}) {
+  const anim = resolveBookTextAnimation(selected);
+  const meta = BOOK_TEXT_ANIMATION_META[anim.id];
+  return (
+    <div className="space-y-2 rounded-md border border-border/70 bg-muted/[0.06] p-2">
+      <div className="space-y-1">
+        <Label htmlFor="insp-text-anim">애니메이션</Label>
+        <p className="text-[11px] leading-snug text-muted-foreground">
+          캔버스·미리보기·프레젠테이션에서 재생됩니다. 캔버스에서 1회 효과를
+          다시 보려면 위젯을 다시 선택하세요.
+        </p>
+        <Select
+          value={anim.id}
+          onValueChange={(v) => {
+            const id = normalizeBookTextAnimation(v);
+            onChange(selected.id, {
+              textAnimation: id === "none" ? undefined : id,
+              ...(id === "none" ? { textAnimationDurationSec: undefined } : {}),
+            });
+          }}
+        >
+          <SelectTrigger id="insp-text-anim" size="sm" className="h-8 w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {BOOK_TEXT_ANIMATION_OPTIONS.map((o) => (
+              <SelectItem key={o.id} value={o.id}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {anim.id !== "none" ? (
+        <>
+          <div className="space-y-1">
+            <Label htmlFor="insp-text-anim-sec" className="text-[11px]">
+              {meta.loop
+                ? `한 바퀴 시간(초, ${BOOK_TEXT_ANIMATION_MIN_SEC}~${BOOK_TEXT_ANIMATION_MAX_SEC})`
+                : `완료까지 시간(초, ${BOOK_TEXT_ANIMATION_MIN_SEC}~${BOOK_TEXT_ANIMATION_MAX_SEC})`}
+            </Label>
+            <Input
+              id="insp-text-anim-sec"
+              type="number"
+              min={BOOK_TEXT_ANIMATION_MIN_SEC}
+              max={BOOK_TEXT_ANIMATION_MAX_SEC}
+              step={0.1}
+              placeholder={`기본 ${meta.defaultDurationSec}`}
+              value={selected.textAnimationDurationSec ?? ""}
+              onChange={(e) => {
+                const n = Number(e.target.value);
+                onChange(selected.id, {
+                  textAnimationDurationSec:
+                    e.target.value !== "" &&
+                    Number.isFinite(n) &&
+                    n >= BOOK_TEXT_ANIMATION_MIN_SEC &&
+                    n <= BOOK_TEXT_ANIMATION_MAX_SEC
+                      ? Math.round(n * 100) / 100
+                      : undefined,
+                });
+              }}
+            />
+          </div>
+          <BookTextAnimationPreview
+            html={getTextWidgetDisplayHtml(selected)}
+            animation={anim.id}
+            durationSec={anim.durationSec}
+            fill={selected.fill}
+            verticalAlign={
+              selected.verticalAlign === "middle" ||
+              selected.verticalAlign === "bottom"
+                ? selected.verticalAlign
+                : "top"
+            }
+          />
+        </>
+      ) : null}
+    </div>
+  );
+}
 
 function NewsCarouselIntervalInput(props: {
   elementId: string;
@@ -1694,6 +1791,10 @@ export function BookInspectorPanel({
                         htmlId="insp-fs"
                         label="글자 크기 (pt)"
                         onCommit={(n) => onChange(selected.id, { fontSize: n })}
+                      />
+                      <InspectorTextAnimationSection
+                        selected={selected}
+                        onChange={onChange}
                       />
                       <div className="space-y-2">
                         <Label htmlFor="insp-fill">기본 글자색</Label>

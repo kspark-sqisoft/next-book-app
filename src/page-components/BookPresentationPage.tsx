@@ -2,6 +2,7 @@
 
 // 북 발표 모드: 슬라이드 자동 진행·전환 CSS·전체화면, UI 는 portal 로 body
 import "@/book-presentation-transitions.css";
+import "@/book-text-animations.css";
 
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -450,6 +451,8 @@ function BookPresentationInner({
             : "max-h-full max-w-full",
           runSlideEnterAnimation &&
             `book-pres-enter book-pres-enter--${incomingTransition}`,
+          /* 일시정지 시 텍스트 위젯 애니메이션(book-text-animations.css)도 함께 정지 */
+          presentationPaused && "book-pres-paused",
         )}
         style={
           runSlideEnterAnimation
