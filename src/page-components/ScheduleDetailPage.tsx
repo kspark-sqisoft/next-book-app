@@ -488,6 +488,8 @@ export function ScheduleDetailPage() {
                     ).map((day) => {
                       const isToday = day === cal.todayDate;
                       const isSelected = day === selectedDay;
+                      // 요일 헤더 라벨과 같은 색 — 일요일 빨강, 토요일 파랑(선택 중엔 흰 글자 유지)
+                      const weekday = (cal.firstWeekday + day - 1) % 7;
                       const hasSlot = schedule.slots.some((s) =>
                         slotAppliesToDate(s, cal.year, cal.month, day),
                       );
@@ -501,9 +503,13 @@ export function ScheduleDetailPage() {
                             "relative mx-auto flex h-9 w-9 flex-col items-center justify-center rounded-md text-xs tabular-nums transition-colors",
                             isSelected
                               ? "bg-primary font-semibold text-primary-foreground"
-                              : isToday
-                                ? "bg-primary/10 font-semibold text-primary"
-                                : "hover:bg-muted",
+                              : cn(
+                                  isToday
+                                    ? "bg-primary/10 font-semibold text-primary"
+                                    : "hover:bg-muted",
+                                  weekday === 0 && "text-rose-500",
+                                  weekday === 6 && "text-sky-500",
+                                ),
                           )}
                         >
                           <span>{day}</span>
