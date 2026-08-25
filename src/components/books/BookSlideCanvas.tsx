@@ -56,6 +56,7 @@ import {
   BookTextWidgetOverlay,
 } from "@/components/books/BookTextWidgetOverlay";
 import { BookTickerWidgetOverlay } from "@/components/books/BookTickerWidgetOverlay";
+import { BookVideoSubtitleCaption } from "@/components/books/BookVideoSubtitleCaption";
 import { BookWeatherWidgetOverlay } from "@/components/books/BookWeatherWidgetOverlay";
 import { BookWebviewWidgetOverlay } from "@/components/books/BookWebviewWidgetOverlay";
 import { BookYoutubeWidgetOverlay } from "@/components/books/BookYoutubeWidgetOverlay";
@@ -95,10 +96,6 @@ import {
   nextTextWidgetHeightGrowOnly,
   textWidgetHitHeight,
 } from "@/lib/book-text-widget";
-import {
-  bookSubtitleLangLabel,
-  simulatedSubtitleLine,
-} from "@/lib/book-video-subtitles";
 import { cn } from "@/lib/utils";
 
 function useBookImage(src: string) {
@@ -793,25 +790,18 @@ function BookSlideVideoOverlay({
         }}
       >
         {el.subtitlesEnabled === true ? (
-          <div
-            data-book-video-subtitle
-            className="pointer-events-none absolute inset-x-0 z-[5] flex flex-col items-center gap-0.5 px-2 text-center transition-[bottom] duration-200"
-            style={{ bottom: barVisible ? 42 : 8 }}
-          >
-            <span className="rounded bg-black/55 px-1.5 py-px text-[9px] font-medium tracking-wide text-emerald-300">
-              AI 자막 · {bookSubtitleLangLabel(el.subtitleLang)}
-            </span>
-            <span
-              className="max-w-full rounded bg-black/65 px-2 py-0.5 leading-snug text-white"
-              style={{
-                fontSize: Math.round(
-                  Math.min(24, Math.max(10, vh * scale * 0.08)),
-                ),
-              }}
-            >
-              {simulatedSubtitleLine(el.subtitleLang, currentTime)}
-            </span>
-          </div>
+          /* 하단 간격: 위젯 높이의 7%(최소 16px) + 컨트롤 바가 보이면 바 높이(36px) */
+          <BookVideoSubtitleCaption
+            lang={el.subtitleLang}
+            currentTimeSec={currentTime}
+            bottomPx={
+              (barVisible ? 36 : 0) +
+              Math.max(16, Math.round(vh * scale * 0.07))
+            }
+            fontSizePx={Math.round(
+              Math.min(24, Math.max(10, vh * scale * 0.08)),
+            )}
+          />
         ) : null}
         <div
           className={cn(

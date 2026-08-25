@@ -1196,6 +1196,76 @@ function ElementOpacitySlider({
   );
 }
 
+/** AI 자막(시뮬레이션) 섹션 — 비디오 위젯·미디어 위젯 공용 */
+function AiSubtitleFields({
+  elementId,
+  subtitlesEnabled,
+  subtitleLang,
+  note,
+  onChange,
+}: {
+  elementId: string;
+  subtitlesEnabled: boolean | undefined;
+  subtitleLang: string | undefined;
+  /** 설명 문구 덮어쓰기(미디어 위젯 등) */
+  note?: string;
+  onChange: (id: string, patch: Partial<BookCanvasElement>) => void;
+}) {
+  return (
+    <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 p-2">
+      <label className="flex cursor-pointer items-start gap-2 text-sm">
+        <Checkbox
+          className="mt-0.5"
+          checked={subtitlesEnabled === true}
+          onCheckedChange={(c) =>
+            onChange(elementId, {
+              subtitlesEnabled: c === true ? true : undefined,
+            })
+          }
+        />
+        <span className="min-w-0">
+          AI 자막(시뮬레이션)
+          <span className="mt-0.5 block text-[10px] leading-snug text-muted-foreground">
+            {note ??
+              "재생 중 음성을 인식해 자막을 만들어 보여줍니다. 지금은 시뮬레이션이며 추후 AI 연동 예정입니다."}
+          </span>
+        </span>
+      </label>
+      {subtitlesEnabled === true ? (
+        <div className="space-y-1">
+          <Label htmlFor="insp-subtitle-lang">자막 언어</Label>
+          <Select
+            value={normalizeBookSubtitleLang(subtitleLang)}
+            onValueChange={(next) =>
+              onChange(elementId, {
+                subtitleLang: next === "auto" ? undefined : next,
+              })
+            }
+          >
+            <SelectTrigger
+              id="insp-subtitle-lang"
+              className="w-full max-w-full"
+              size="sm"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {BOOK_SUBTITLE_LANGS.map((l) => (
+                <SelectItem key={l.value} value={l.value}>
+                  {l.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-[10px] text-muted-foreground">
+            원어가 아닌 언어를 고르면 자동 번역된 자막을 보여줍니다(시뮬레이션).
+          </p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function MediaObjectFitFields({
   elementId,
   value,
@@ -1479,6 +1549,13 @@ function MediaPlaylistInspectorBody({
             <span>진행 바·이전/다음·일시정지 표시</span>
           </label>
         </div>
+        <AiSubtitleFields
+          elementId={el.id}
+          subtitlesEnabled={el.subtitlesEnabled}
+          subtitleLang={el.subtitleLang}
+          note="목록에서 동영상이 재생될 때 음성을 인식해 자막을 보여줍니다. 지금은 시뮬레이션이며 추후 AI 연동 예정입니다."
+          onChange={onChange}
+        />
         <div className="flex flex-wrap gap-2">
           {onRequestAppendPlaylistMediaFromFile ? (
             <Button
@@ -3231,64 +3308,12 @@ export function BookInspectorPanel({
                             </span>
                           </span>
                         </label>
-                        <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 p-2">
-                          <label className="flex cursor-pointer items-start gap-2 text-sm">
-                            <Checkbox
-                              className="mt-0.5"
-                              checked={selected.subtitlesEnabled === true}
-                              onCheckedChange={(c) =>
-                                onChange(selected.id, {
-                                  subtitlesEnabled:
-                                    c === true ? true : undefined,
-                                })
-                              }
-                            />
-                            <span className="min-w-0">
-                              AI 자막(시뮬레이션)
-                              <span className="mt-0.5 block text-[10px] leading-snug text-muted-foreground">
-                                재생 중 음성을 인식해 자막을 만들어 보여줍니다.
-                                지금은 시뮬레이션이며 추후 AI 연동 예정입니다.
-                              </span>
-                            </span>
-                          </label>
-                          {selected.subtitlesEnabled === true ? (
-                            <div className="space-y-1">
-                              <Label htmlFor="insp-subtitle-lang">
-                                자막 언어
-                              </Label>
-                              <Select
-                                value={normalizeBookSubtitleLang(
-                                  selected.subtitleLang,
-                                )}
-                                onValueChange={(next) =>
-                                  onChange(selected.id, {
-                                    subtitleLang:
-                                      next === "auto" ? undefined : next,
-                                  })
-                                }
-                              >
-                                <SelectTrigger
-                                  id="insp-subtitle-lang"
-                                  className="w-full max-w-full"
-                                  size="sm"
-                                >
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {BOOK_SUBTITLE_LANGS.map((l) => (
-                                    <SelectItem key={l.value} value={l.value}>
-                                      {l.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <p className="text-[10px] text-muted-foreground">
-                                원어가 아닌 언어를 고르면 자동 번역된 자막을
-                                보여줍니다(시뮬레이션).
-                              </p>
-                            </div>
-                          ) : null}
-                        </div>
+                        <AiSubtitleFields
+                          elementId={selected.id}
+                          subtitlesEnabled={selected.subtitlesEnabled}
+                          subtitleLang={selected.subtitleLang}
+                          onChange={onChange}
+                        />
                         <ElementOpacitySlider
                           elementId={selected.id}
                           opacity={selected.opacity}

@@ -16,6 +16,7 @@ import {
 } from "react";
 
 import type { BookTextOverlayLiveFrame } from "@/components/books/BookTextWidgetOverlay";
+import { BookVideoSubtitleCaption } from "@/components/books/BookVideoSubtitleCaption";
 import { publicAssetUrl } from "@/lib/api";
 import {
   type BookCanvasElement,
@@ -523,6 +524,21 @@ export function BookMediaPlaylistWidgetOverlay({
                 return base;
               });
             }}
+          />
+        ) : null}
+
+        {el.subtitlesEnabled === true && current?.kind === "video" ? (
+          /* AI 자막(시뮬레이션) — 하단 간격: 위젯 높이의 7%(최소 16px) + 컨트롤 바 높이 */
+          <BookVideoSubtitleCaption
+            lang={el.subtitleLang}
+            currentTimeSec={timeUi.current}
+            bottomPx={
+              (showControls && barVisible ? 36 : 0) +
+              Math.max(16, Math.round(fh * scale * 0.07))
+            }
+            fontSizePx={Math.round(
+              Math.min(24, Math.max(10, fh * scale * 0.08)),
+            )}
           />
         ) : null}
 

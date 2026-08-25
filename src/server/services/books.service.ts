@@ -398,6 +398,10 @@ export type BookCanvasElementPublic =
       >;
       mediaPlaylistLoop?: boolean;
       mediaPlaylistShowControls?: boolean;
+      /** AI 자막(시뮬레이션) — 현재 항목이 동영상일 때 표시 */
+      subtitlesEnabled?: boolean;
+      /** 자막 언어: auto·ko·en·ja·zh */
+      subtitleLang?: string;
       opacity?: number;
       rotation?: number;
       borderRadius?: number;
@@ -1732,6 +1736,21 @@ export class BooksService {
             400,
             "mediaPlaylistShowControls은 true 또는 false여야 합니다.",
           );
+        }
+        if (
+          o.subtitlesEnabled != null &&
+          typeof o.subtitlesEnabled !== "boolean"
+        ) {
+          throw new HttpError(400, "subtitlesEnabled 값이 올바르지 않습니다.");
+        }
+        if (o.subtitleLang != null) {
+          const allowedLang = new Set(["auto", "ko", "en", "ja", "zh"]);
+          if (
+            typeof o.subtitleLang !== "string" ||
+            !allowedLang.has(o.subtitleLang)
+          ) {
+            throw new HttpError(400, "subtitleLang 값이 올바르지 않습니다.");
+          }
         }
       } else if (o.type === "shape") {
         const w = o.width;

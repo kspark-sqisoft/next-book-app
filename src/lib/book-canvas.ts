@@ -676,6 +676,10 @@ export type BookCanvasElement = (
       mediaPlaylistLoop?: boolean;
       /** false면 진행 바·다음 버튼 숨김(기본 표시). */
       mediaPlaylistShowControls?: boolean;
+      /** AI 자막(시뮬레이션) — 현재 항목이 동영상일 때 표시. 추후 실제 STT·번역으로 대체 예정 */
+      subtitlesEnabled?: boolean;
+      /** 자막 언어: auto(원어)·ko·en·ja·zh */
+      subtitleLang?: string;
       opacity?: number;
       rotation?: number;
       borderRadius?: number;
