@@ -13,6 +13,10 @@ import {
   useCretaCoverThumbs,
 } from "@/components/creta/CretaCoverThumb";
 import {
+  CretaViewToggle,
+  useCretaListView,
+} from "@/components/creta/CretaViewToggle";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -59,6 +63,8 @@ export function PlaylistListPage() {
     id: number;
     name: string;
   } | null>(null);
+  /** 보기 형태 — 기존 모양(그리드)이 기본, 디바이스처럼 리스트로 전환 가능 */
+  const [view, changeView] = useCretaListView("creta-playlist-view", "grid");
 
   const { data: playlists, isLoading } = useQuery({
     queryKey: cretaKeys.playlists(),
@@ -120,10 +126,13 @@ export function PlaylistListPage() {
         </Button>
       </div>
 
-      <p className="text-sm font-medium text-muted-foreground">
-        저장된 플레이리스트{" "}
-        <span className="text-foreground">{playlists?.length ?? 0}</span>
-      </p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-medium text-muted-foreground">
+          저장된 플레이리스트{" "}
+          <span className="text-foreground">{playlists?.length ?? 0}</span>
+        </p>
+        <CretaViewToggle view={view} onChange={changeView} />
+      </div>
 
       {isLoading ? (
         <div className="flex justify-center py-16">
@@ -136,6 +145,95 @@ export function PlaylistListPage() {
             보세요.
           </CardContent>
         </Card>
+      ) : view === "list" ? (
+        /* 리스트 보기 — 작은 썸네일 + 핵심 정보 한 줄 요약 */
+        <div className="space-y-2">
+          {(playlists ?? []).map((playlist) => (
+            <Card
+              key={playlist.id}
+              className="py-0 transition-colors hover:border-primary/50"
+            >
+              <CardContent className="flex items-center gap-3 px-3 py-2.5">
+                <Link
+                  href={`/playlists/${playlist.id}`}
+                  className="flex min-w-0 flex-1 items-center gap-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <div className="relative aspect-video w-28 shrink-0 overflow-hidden rounded-md">
+                    <CretaCoverThumb
+                      dataUrl={thumbs[`playlist-${playlist.id}`]}
+                      title={playlist.name}
+                      className="absolute inset-0 size-full rounded-md"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">
+                      {playlist.name}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {playlist.description || "설명 없음"}
+                    </p>
+                    <p className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 text-[11px] text-muted-foreground">
+                      <span className="inline-flex items-center gap-1">
+                        <ListVideo className="size-3" aria-hidden />
+                        {playlist.itemCount}권
+                      </span>
+                      <span className="truncate">
+                        · 작성자 {playlist.owner?.name || "공용"}
+                      </span>
+                      {playlist.sharedToAll ? (
+                        <span className="inline-flex min-w-0 items-center gap-1 text-primary">
+                          <Share2 className="size-3 shrink-0" aria-hidden />
+                          <span className="truncate">
+                            모든 사용자에게 공유됨
+                          </span>
+                        </span>
+                      ) : playlist.sharedWith.length > 0 ? (
+                        <span
+                          className="inline-flex min-w-0 items-center gap-1 text-primary"
+                          title={playlist.sharedWith
+                            .map((u) => u.name)
+                            .join(", ")}
+                        >
+                          <Share2 className="size-3 shrink-0" aria-hidden />
+                          <span className="truncate">
+                            {sharedWithSummary(playlist.sharedWith)}에게 공유됨
+                          </span>
+                        </span>
+                      ) : null}
+                    </p>
+                  </div>
+                </Link>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {playlist.loop ? (
+                    <Badge variant="secondary" className="gap-1">
+                      <Repeat className="size-3" aria-hidden />
+                      순환재생
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline">1회 재생</Badge>
+                  )}
+                  {canManageOwned(user, playlist.owner?.id ?? null) ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`${playlist.name} 삭제`}
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() =>
+                        setDeleteTarget({
+                          id: playlist.id,
+                          name: playlist.name,
+                        })
+                      }
+                    >
+                      <Trash2 className="size-3.5" aria-hidden />
+                    </Button>
+                  ) : null}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {(playlists ?? []).map((playlist) => (

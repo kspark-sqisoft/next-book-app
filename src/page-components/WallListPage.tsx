@@ -8,6 +8,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import {
+  CretaViewToggle,
+  useCretaListView,
+} from "@/components/creta/CretaViewToggle";
 import { WallSyncThumb } from "@/components/creta/WallSyncThumb";
 import {
   AlertDialog,
@@ -52,6 +56,8 @@ export function WallListPage() {
     id: number;
     name: string;
   } | null>(null);
+  /** 보기 형태 — 기존 모양(그리드)이 기본, 디바이스처럼 리스트로 전환 가능 */
+  const [view, changeView] = useCretaListView("creta-wall-view", "grid");
 
   const { data: walls, isLoading } = useQuery({
     queryKey: cretaKeys.walls(),
@@ -93,19 +99,22 @@ export function WallListPage() {
             (플레이어 시뮬레이션)
           </p>
         </div>
-        <Button
-          type="button"
-          onClick={() => {
-            if (!user) {
-              toast.error("로그인이 필요합니다.");
-              return;
-            }
-            setCreateOpen(true);
-          }}
-        >
-          <Plus className="size-4" aria-hidden />
-          비디오월 만들기
-        </Button>
+        <div className="flex items-center gap-2">
+          <CretaViewToggle view={view} onChange={changeView} />
+          <Button
+            type="button"
+            onClick={() => {
+              if (!user) {
+                toast.error("로그인이 필요합니다.");
+                return;
+              }
+              setCreateOpen(true);
+            }}
+          >
+            <Plus className="size-4" aria-hidden />
+            비디오월 만들기
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -119,6 +128,84 @@ export function WallListPage() {
             보세요.
           </CardContent>
         </Card>
+      ) : view === "list" ? (
+        /* 리스트 보기 — 동기 미니 썸네일 + 구성 요약 한 줄 */
+        <div className="space-y-2">
+          {list.map((wall) => {
+            const master = wall.members.find((m) => m.isMaster);
+            return (
+              <Card
+                key={wall.id}
+                className="py-0 transition-colors hover:border-primary/50"
+              >
+                <CardContent className="flex items-center gap-3 px-3 py-2.5">
+                  <Link
+                    href={`/walls/${wall.id}`}
+                    className="flex min-w-0 flex-1 items-center gap-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <div className="w-40 shrink-0">
+                      <WallSyncThumb wall={wall} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="flex min-w-0 items-center gap-2">
+                        <span className="truncate text-sm font-semibold">
+                          {wall.name}
+                        </span>
+                        <Badge variant="secondary" className="shrink-0">
+                          {CRETA_WALL_MODE_LABEL[wall.mode]}
+                        </Badge>
+                      </p>
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                        {wall.mode === "tile"
+                          ? `${wall.rows}×${wall.cols} 격자 · `
+                          : ""}
+                        디바이스 {wall.members.length}대 · 슬라이드{" "}
+                        {wall.slideSec}초 ·{" "}
+                        {wall.mode === "multi"
+                          ? "디바이스별 콘텐츠"
+                          : (wall.bookTitle ?? "콘텐츠 미지정")}
+                      </p>
+                      <p className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 text-[11px] text-muted-foreground">
+                        <span className="truncate">
+                          작성자 {wall.ownerName ?? "알 수 없음"}
+                        </span>
+                        {master ? (
+                          <span className="inline-flex min-w-0 items-center gap-1">
+                            <Crown
+                              className="size-3 shrink-0 text-amber-500"
+                              aria-hidden
+                            />
+                            <span className="truncate">
+                              마스터 {master.deviceName}
+                            </span>
+                          </span>
+                        ) : (
+                          <span>마스터 미지정</span>
+                        )}
+                      </p>
+                    </div>
+                  </Link>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`${wall.name} 삭제`}
+                    className="shrink-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => {
+                      if (!user) {
+                        toast.error("로그인이 필요합니다.");
+                        return;
+                      }
+                      setDeleteTarget({ id: wall.id, name: wall.name });
+                    }}
+                  >
+                    <Trash2 className="size-3.5" aria-hidden />
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       ) : (
         /* 동기 미리보기 썸네일이 잘 보이도록 다른 목록보다 큰 카드(최대 2열, 폭 제한으로 과대 방지) */
         <div className="grid max-w-sm gap-4 lg:max-w-3xl lg:grid-cols-2">

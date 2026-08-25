@@ -3,10 +3,10 @@
 // 디바이스 목록: DB 기반 등록·삭제. 행 썸네일은 현재 재생 소스(북/플레이리스트
 // 첫 북/스케줄 기본 재생)의 커버를 사용한다.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { LayoutGrid, List, Play, Plus, RotateCw, Trash2 } from "lucide-react";
+import { Play, Plus, RotateCw, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -19,6 +19,10 @@ import {
   CretaCoverThumb,
   useCretaCoverThumbs,
 } from "@/components/creta/CretaCoverThumb";
+import {
+  CretaViewToggle,
+  useCretaListView,
+} from "@/components/creta/CretaViewToggle";
 import { DeviceStatusBadge } from "@/components/creta/DeviceStatusBadge";
 import { DeviceTagDeployButton } from "@/components/creta/DeviceTagDeployButton";
 import {
@@ -121,28 +125,8 @@ export function DeviceListPage() {
   const [sortKey, setSortKey] = useState<
     "default" | "name" | "problem" | "online"
   >("default");
-  /** 보기 형태 — localStorage에 기억(서버 렌더와 어긋나지 않게 마운트 후 복원) */
-  const [view, setView] = useState<"list" | "grid">("list");
-  useEffect(() => {
-    // 마운트 후 저장된 보기 형태 복원 — 동기 setState 경고 회피를 위해 microtask로
-    queueMicrotask(() => {
-      try {
-        if (localStorage.getItem("creta-device-view") === "grid") {
-          setView("grid");
-        }
-      } catch {
-        /* 저장소 접근 불가 시 기본 리스트 */
-      }
-    });
-  }, []);
-  const changeView = (next: "list" | "grid") => {
-    setView(next);
-    try {
-      localStorage.setItem("creta-device-view", next);
-    } catch {
-      /* ignore */
-    }
-  };
+  /** 보기 형태 — localStorage에 기억(공용 훅) */
+  const [view, changeView] = useCretaListView("creta-device-view");
 
   const allTags = useMemo(() => {
     const set = new Set<string>();
@@ -291,30 +275,7 @@ export function DeviceListPage() {
             <option value="online">상태: 온라인 우선</option>
           </NativeSelect>
           {/* 보기 전환 — 리스트/그리드 */}
-          <div className="flex items-center rounded-md border border-border p-0.5">
-            <Button
-              type="button"
-              variant={view === "list" ? "secondary" : "ghost"}
-              size="icon-sm"
-              className="size-7"
-              aria-label="리스트 보기"
-              aria-pressed={view === "list"}
-              onClick={() => changeView("list")}
-            >
-              <List className="size-3.5" aria-hidden />
-            </Button>
-            <Button
-              type="button"
-              variant={view === "grid" ? "secondary" : "ghost"}
-              size="icon-sm"
-              className="size-7"
-              aria-label="그리드 보기"
-              aria-pressed={view === "grid"}
-              onClick={() => changeView("grid")}
-            >
-              <LayoutGrid className="size-3.5" aria-hidden />
-            </Button>
-          </div>
+          <CretaViewToggle view={view} onChange={changeView} />
         </div>
         <div className="flex items-center gap-2">
           <DeviceTagDeployButton devices={allList} />

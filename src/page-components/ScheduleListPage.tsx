@@ -10,6 +10,10 @@ import { toast } from "sonner";
 
 import { useCretaCoverThumbs } from "@/components/creta/CretaCoverThumb";
 import {
+  CretaViewToggle,
+  useCretaListView,
+} from "@/components/creta/CretaViewToggle";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -54,6 +58,8 @@ export function ScheduleListPage() {
     id: number;
     name: string;
   } | null>(null);
+  /** 보기 형태 — 기존 모양(그리드)이 기본, 디바이스처럼 리스트로 전환 가능 */
+  const [view, changeView] = useCretaListView("creta-schedule-view", "grid");
 
   const { data: schedules, isLoading } = useQuery({
     queryKey: cretaKeys.schedules(),
@@ -115,10 +121,13 @@ export function ScheduleListPage() {
         </Button>
       </div>
 
-      <p className="text-sm font-medium text-muted-foreground">
-        저장된 스케줄{" "}
-        <span className="text-foreground">{schedules?.length ?? 0}</span>
-      </p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-medium text-muted-foreground">
+          저장된 스케줄{" "}
+          <span className="text-foreground">{schedules?.length ?? 0}</span>
+        </p>
+        <CretaViewToggle view={view} onChange={changeView} />
+      </div>
 
       {isLoading ? (
         <div className="flex justify-center py-16">
@@ -130,6 +139,114 @@ export function ScheduleListPage() {
             아직 스케줄이 없습니다. “새 스케줄”로 편성표를 만들어 보세요.
           </CardContent>
         </Card>
+      ) : view === "list" ? (
+        /* 리스트 보기 — 작은 썸네일 + 편성 요약 한 줄 */
+        <div className="space-y-2">
+          {(schedules ?? []).map((schedule) => {
+            const thumb = thumbs[`schedule-${schedule.id}`];
+            return (
+              <Card
+                key={schedule.id}
+                className="py-0 transition-colors hover:border-primary/50"
+              >
+                <CardContent className="flex items-center gap-3 px-3 py-2.5">
+                  <Link
+                    href={`/schedules/${schedule.id}`}
+                    className="flex min-w-0 flex-1 items-center gap-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <div className="relative aspect-video w-28 shrink-0 overflow-hidden rounded-md bg-muted/40">
+                      {thumb ? (
+                        <SafeImage
+                          src={thumb}
+                          alt=""
+                          className="absolute inset-0 size-full object-cover"
+                          loading="lazy"
+                          placeholderLabel={`${schedule.name} 재생 콘텐츠 썸네일`}
+                        />
+                      ) : (
+                        <div
+                          className="absolute inset-0 flex items-center justify-center text-muted-foreground/30"
+                          aria-hidden
+                        >
+                          <CalendarDays className="size-8" strokeWidth={1.25} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">
+                        {schedule.name}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        <Play className="mr-1 inline size-3" aria-hidden />
+                        {schedule.currentContent?.title ?? "재생 콘텐츠 없음"} ·
+                        기본 {schedule.defaultContent?.title ?? "지정 안 함"}
+                      </p>
+                      <p className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 text-[11px] text-muted-foreground">
+                        <span>
+                          시간대 {schedule.slotCount}
+                          {schedule.autoApply ? " · 자동" : ""}
+                        </span>
+                        <span className="truncate">
+                          · 작성자 {schedule.owner?.name || "공용"}
+                        </span>
+                        {schedule.sharedToAll ? (
+                          <span className="inline-flex min-w-0 items-center gap-1 text-primary">
+                            <Share2 className="size-3 shrink-0" aria-hidden />
+                            <span className="truncate">
+                              모든 사용자에게 공유됨
+                            </span>
+                          </span>
+                        ) : schedule.sharedWith.length > 0 ? (
+                          <span
+                            className="inline-flex min-w-0 items-center gap-1 text-primary"
+                            title={schedule.sharedWith
+                              .map((u) => u.name)
+                              .join(", ")}
+                          >
+                            <Share2 className="size-3 shrink-0" aria-hidden />
+                            <span className="truncate">
+                              {sharedWithSummary(schedule.sharedWith)}에게
+                              공유됨
+                            </span>
+                          </span>
+                        ) : null}
+                      </p>
+                    </div>
+                  </Link>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    {schedule.appliedDeviceNames.length > 0 ? (
+                      <Badge
+                        className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                        title={schedule.appliedDeviceNames.join(", ")}
+                      >
+                        디바이스 {schedule.appliedDeviceNames.length}대
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline">미적용</Badge>
+                    )}
+                    {canManageOwned(user, schedule.owner?.id ?? null) ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`${schedule.name} 삭제`}
+                        className="text-muted-foreground hover:text-destructive"
+                        onClick={() =>
+                          setDeleteTarget({
+                            id: schedule.id,
+                            name: schedule.name,
+                          })
+                        }
+                      >
+                        <Trash2 className="size-3.5" aria-hidden />
+                      </Button>
+                    ) : null}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {(schedules ?? []).map((schedule) => {
