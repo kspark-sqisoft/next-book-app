@@ -626,6 +626,54 @@ export const cretaAlertDevice = pgTable(
   ],
 );
 
+/**
+ * 비디오월(시뮬레이션) — 디바이스 여러 대를 묶어 동기 재생.
+ * mode: tile(같은 북을 행×열로 분할) | mirror(같은 북 동시 재생) | multi(디바이스별 다른 북, 전환 타이밍만 동기).
+ * 동기화는 공통 클록(slideSec 균일 슬라이드 시간) 기반으로 시뮬레이션한다.
+ */
+export const cretaVideoWall = pgTable("creta_video_wall", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 120 }).notNull(),
+  mode: varchar("mode", { length: 12 }).notNull().default("tile"),
+  // tile 모드 격자(행×열)
+  rows: integer("rows").notNull().default(1),
+  cols: integer("cols").notNull().default(2),
+  // tile·mirror 모드 공통 북
+  bookId: integer("bookId").references(() => book.id, { onDelete: "set null" }),
+  // 모든 페이지 균일 표시 시간(초) — 서로 다른 북도 같은 박자로 넘어가게
+  slideSec: integer("slideSec").notNull().default(8),
+  // 만든 사람(작성자 표시용). null = 알 수 없음
+  ownerId: integer("ownerId").references(() => user.id, {
+    onDelete: "set null",
+  }),
+  createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
+});
+
+/** 비디오월 멤버 — position 순서가 타일 배치(행 우선). isMaster는 월당 1대(제어 기준) */
+export const cretaVideoWallMember = pgTable(
+  "creta_video_wall_member",
+  {
+    id: serial("id").primaryKey(),
+    wallId: integer("wallId")
+      .notNull()
+      .references(() => cretaVideoWall.id, { onDelete: "cascade" }),
+    deviceId: integer("deviceId")
+      .notNull()
+      .references(() => cretaDevice.id, { onDelete: "cascade" }),
+    position: integer("position").notNull().default(0),
+    isMaster: boolean("isMaster").notNull().default(false),
+    // multi 모드: 이 디바이스가 재생할 북
+    bookId: integer("bookId").references(() => book.id, {
+      onDelete: "set null",
+    }),
+  },
+  (t) => [
+    unique().on(t.wallId, t.deviceId),
+    index("creta_video_wall_member_wallId_idx").on(t.wallId),
+  ],
+);
+
 /** 디바이스 태그 — 한 디바이스가 여러 태그(층·매장·방향 등)에 속하며, 태그 단위 일괄 배포에 쓴다 */
 export const cretaDeviceTag = pgTable(
   "creta_device_tag",

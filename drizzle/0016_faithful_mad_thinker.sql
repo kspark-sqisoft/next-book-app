@@ -1,0 +1,2 @@
+ALTER TABLE "creta_video_wall" ADD COLUMN "ownerId" integer;--> statement-breakpoint
+ALTER TABLE "creta_video_wall" ADD CONSTRAINT "creta_video_wall_ownerId_user_id_fk" FOREIGN KEY ("ownerId") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;

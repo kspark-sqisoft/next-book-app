@@ -56,6 +56,9 @@ export const cretaKeys = {
   /** 재생 리포트(Proof-of-Play) — 기간(일)별 */
   playReport: (rangeDays: number) =>
     [...cretaKeys.all, "play-report", rangeDays] as const,
+  /** 비디오월(동기 재생 시뮬레이션) */
+  walls: () => [...cretaKeys.all, "walls"] as const,
+  wall: (id: number) => [...cretaKeys.all, "wall", id] as const,
   /** 크레타 > 계정: 내가 만든/공유받은 북·플레이리스트·스케줄 */
   overview: (userId: number) => [...cretaKeys.all, "overview", userId] as const,
   /** 커뮤니티 댓글 */

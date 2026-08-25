@@ -8,6 +8,7 @@ import {
   ChartColumn,
   ChevronsLeft,
   ChevronsRight,
+  Grid2x2,
   LayoutDashboard,
   LayoutGrid,
   ListVideo,
@@ -211,6 +212,7 @@ export function CretaSidebar() {
           ? { text: String(onlineCount), tone: "online" }
           : null,
     },
+    { href: "/walls", label: "비디오월", icon: Grid2x2 },
     { href: "/reports", label: "재생 리포트", icon: ChartColumn },
   ];
   const account: Item[] = [
