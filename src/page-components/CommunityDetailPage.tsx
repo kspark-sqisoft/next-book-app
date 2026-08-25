@@ -3,7 +3,13 @@
 // 커뮤니티 상세: 상단에 슬라이드쇼(유튜브 플레이어처럼 iframe), 아래에 정보 + 2단 댓글.
 // 플레이리스트는 오른쪽 목록에서 북을 골라 재생.
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink, ListVideo, Play } from "lucide-react";
+import {
+  ArrowLeft,
+  ExternalLink,
+  ListVideo,
+  MonitorPlay,
+  Play,
+} from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -223,19 +229,26 @@ export function CommunityDetailPage() {
                     state={likeQuery.data?.[id]}
                     size="md"
                   />
+                  {playingBookId ? (
+                    <Button asChild variant="outline" size="sm">
+                      <Link
+                        href={`/books/${playingBookId}/preview`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <MonitorPlay className="size-4" aria-hidden />
+                        미리보기
+                      </Link>
+                    </Button>
+                  ) : null}
                   <Button asChild variant="outline" size="sm">
                     <Link
                       href={
-                        kind === "book"
-                          ? `/books/${id}/preview`
-                          : `/playlists/${id}`
+                        kind === "book" ? `/books/${id}` : `/playlists/${id}`
                       }
-                      target={kind === "book" ? "_blank" : undefined}
                     >
                       <ExternalLink className="size-4" aria-hidden />
-                      {kind === "book"
-                        ? "전체 화면으로 보기"
-                        : "플레이리스트 상세"}
+                      {kind === "book" ? "북으로 이동" : "플레이리스트로 이동"}
                     </Link>
                   </Button>
                 </div>
