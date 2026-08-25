@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
   type Dispatch,
+  type ReactNode,
   type SetStateAction,
   useCallback,
   useEffect,
@@ -58,7 +59,7 @@ import type {
 } from "@/components/books/BookMediaPlaylistWidgetOverlay";
 import { BookPagePropertiesPanel } from "@/components/books/BookPagePropertiesPanel";
 import { BookPageSidebar } from "@/components/books/BookPageSidebar";
-import { BookShareDialog } from "@/components/books/BookShareDialog";
+import { BookSharePopover } from "@/components/books/BookShareDialog";
 import {
   type BookCanvasSelectDetail,
   type BookDropWidgetKind,
@@ -762,10 +763,10 @@ function BookDetailOwnerView({
     />
   );
 
-  // 공유 다이얼로그 — 공유 목록이 바뀌면 상세 캐시의 sharedUserIds만 갱신(편집 중인 페이지는 건드리지 않음)
-  const shareBookDialog =
-    canManageShare && shareOpen ? (
-      <BookShareDialog
+  // 공유 팝오버 — 공유 버튼 바로 옆에 붙는다. 공유 목록이 바뀌면 상세 캐시의 sharedUserIds만 갱신
+  const renderShareButton = (button: ReactNode) =>
+    canManageShare ? (
+      <BookSharePopover
         open={shareOpen}
         onOpenChange={setShareOpen}
         bookId={bookId}
@@ -786,7 +787,9 @@ function BookDetailOwnerView({
                 : old,
           )
         }
-      />
+      >
+        {button}
+      </BookSharePopover>
     ) : null;
 
   const deleteBookDialog = (
@@ -2400,13 +2403,12 @@ function BookDetailOwnerView({
                   bookId={bookId}
                   currentIndex={activePageIndex}
                 />
-                {canManageShare ? (
+                {renderShareButton(
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
                     className="h-7 px-2.5 text-xs"
-                    onClick={() => setShareOpen(true)}
                   >
                     <Share2 className="mr-1.5 size-3.5" />
                     공유
@@ -2415,8 +2417,8 @@ function BookDetailOwnerView({
                         {serverBook.sharedUserIds.length}
                       </span>
                     ) : null}
-                  </Button>
-                ) : null}
+                  </Button>,
+                )}
                 <Button
                   type="button"
                   size="sm"
@@ -2558,7 +2560,6 @@ function BookDetailOwnerView({
             </aside>
           }
         />
-        {shareBookDialog}
         {deleteBookDialog}
         {widgetDeleteDialog}
         {pageDeleteDialog}
@@ -2596,13 +2597,12 @@ function BookDetailOwnerView({
                 bookId={bookId}
                 currentIndex={activePageIndex}
               />
-              {canManageShare ? (
+              {renderShareButton(
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
                   className="h-7 px-2.5 text-xs"
-                  onClick={() => setShareOpen(true)}
                 >
                   <Share2 className="mr-1.5 size-3.5" />
                   공유
@@ -2611,8 +2611,8 @@ function BookDetailOwnerView({
                       {serverBook.sharedUserIds.length}
                     </span>
                   ) : null}
-                </Button>
-              ) : null}
+                </Button>,
+              )}
               <Button
                 type="button"
                 size="sm"
@@ -3110,7 +3110,6 @@ function BookDetailOwnerView({
           </aside>
         }
       />
-      {shareBookDialog}
       {deleteBookDialog}
       {widgetDeleteDialog}
       {pageDeleteDialog}

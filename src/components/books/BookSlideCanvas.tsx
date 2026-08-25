@@ -95,6 +95,10 @@ import {
   nextTextWidgetHeightGrowOnly,
   textWidgetHitHeight,
 } from "@/lib/book-text-widget";
+import {
+  bookSubtitleLangLabel,
+  simulatedSubtitleLine,
+} from "@/lib/book-video-subtitles";
 import { cn } from "@/lib/utils";
 
 function useBookImage(src: string) {
@@ -788,6 +792,27 @@ function BookSlideVideoOverlay({
           ...(vidOutlineShadow ? { boxShadow: vidOutlineShadow } : {}),
         }}
       >
+        {el.subtitlesEnabled === true ? (
+          <div
+            data-book-video-subtitle
+            className="pointer-events-none absolute inset-x-0 z-[5] flex flex-col items-center gap-0.5 px-2 text-center transition-[bottom] duration-200"
+            style={{ bottom: barVisible ? 42 : 8 }}
+          >
+            <span className="rounded bg-black/55 px-1.5 py-px text-[9px] font-medium tracking-wide text-emerald-300">
+              AI 자막 · {bookSubtitleLangLabel(el.subtitleLang)}
+            </span>
+            <span
+              className="max-w-full rounded bg-black/65 px-2 py-0.5 leading-snug text-white"
+              style={{
+                fontSize: Math.round(
+                  Math.min(24, Math.max(10, vh * scale * 0.08)),
+                ),
+              }}
+            >
+              {simulatedSubtitleLine(el.subtitleLang, currentTime)}
+            </span>
+          </div>
+        ) : null}
         <div
           className={cn(
             "absolute bottom-0 left-0 right-0 z-10 flex h-9 min-h-9 items-center gap-1 border-t border-white/15 bg-black/75 px-1 py-0.5 transition-opacity duration-200",

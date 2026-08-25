@@ -394,6 +394,10 @@ export type BookCanvasElement = (
       objectFit?: BookMediaObjectFit;
       /** 끝까지 재생하면 처음부터 다시 반복 */
       videoLoop?: boolean;
+      /** AI 자막(시뮬레이션) 표시 — 추후 실제 STT·번역으로 대체 예정 */
+      subtitlesEnabled?: boolean;
+      /** 자막 언어: auto(원어)·ko·en·ja·zh */
+      subtitleLang?: string;
       opacity?: number;
       rotation?: number;
       borderRadius?: number;

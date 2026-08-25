@@ -15,7 +15,7 @@ import {
   type CretaSlotDraft,
 } from "@/components/creta/CretaSlotAddDialog";
 import { CretaSourceDialog } from "@/components/creta/CretaSourceDialog";
-import { MemberShareDialog } from "@/components/share/MemberShareDialog";
+import { MemberSharePopover } from "@/components/share/MemberShareDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -420,19 +420,37 @@ export function ScheduleDetailPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {canManage ? (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShareOpen(true)}
+              /* 공유 팝오버 — 공유 버튼 바로 아래에 붙는다 */
+              <MemberSharePopover
+                open={shareOpen}
+                onOpenChange={setShareOpen}
+                align="end"
+                title="스케줄 공유"
+                description={`「${schedule.name}」을(를) 함께 편성할 회원을 고르세요. 공유받은 사용자는 시간대·기본 재생을 바꿀 수 있고, 삭제·공유 관리는 소유자만 할 수 있습니다.`}
+                ownerId={schedule.owner?.id ?? null}
+                sharedUserIds={schedule.sharedUserIds}
+                sharedToAll={schedule.sharedToAll}
+                onToggle={async (userId, shared) => {
+                  applyDetail(
+                    await setCretaScheduleShare(scheduleId, userId, shared),
+                  );
+                }}
+                onToggleShareAll={async (shared) => {
+                  applyDetail(
+                    await setCretaScheduleShareAll(scheduleId, shared),
+                  );
+                }}
               >
-                <Share2 className="size-4" aria-hidden />
-                공유
-                {schedule.sharedUserIds.length > 0 ? (
-                  <span className="ml-1 rounded-full bg-primary/10 px-1.5 text-[10px] font-semibold text-primary">
-                    {schedule.sharedUserIds.length}
-                  </span>
-                ) : null}
-              </Button>
+                <Button type="button" variant="outline">
+                  <Share2 className="size-4" aria-hidden />
+                  공유
+                  {schedule.sharedUserIds.length > 0 ? (
+                    <span className="ml-1 rounded-full bg-primary/10 px-1.5 text-[10px] font-semibold text-primary">
+                      {schedule.sharedUserIds.length}
+                    </span>
+                  ) : null}
+                </Button>
+              </MemberSharePopover>
             ) : null}
             <Button
               type="button"
@@ -829,27 +847,6 @@ export function ScheduleDetailPage() {
                   },
             )
           }
-        />
-      ) : null}
-
-      {/* 공유 */}
-      {canManage && shareOpen ? (
-        <MemberShareDialog
-          open={shareOpen}
-          onOpenChange={setShareOpen}
-          title="스케줄 공유"
-          description={`「${schedule.name}」을(를) 함께 편성할 회원을 고르세요. 공유받은 사용자는 시간대·기본 재생을 바꿀 수 있고, 삭제·공유 관리는 소유자만 할 수 있습니다.`}
-          ownerId={schedule.owner?.id ?? null}
-          sharedUserIds={schedule.sharedUserIds}
-          sharedToAll={schedule.sharedToAll}
-          onToggle={async (userId, shared) => {
-            applyDetail(
-              await setCretaScheduleShare(scheduleId, userId, shared),
-            );
-          }}
-          onToggleShareAll={async (shared) => {
-            applyDetail(await setCretaScheduleShareAll(scheduleId, shared));
-          }}
         />
       ) : null}
 

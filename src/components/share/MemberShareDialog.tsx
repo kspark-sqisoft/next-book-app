@@ -1,10 +1,11 @@
 "use client";
 
-// 회원 공유 다이얼로그(북·플레이리스트·스케줄 공용) — 회원 목록에서 공유 대상을 켜고 끈다.
+// 회원 공유 UI(북·플레이리스트·스케줄 공용) — 회원 목록에서 공유 대상을 켜고 끈다.
 // 이미 공유된 사용자는 체크 표시. 토글 즉시 서버 반영(onToggle).
+// 가운데 뜨는 MemberShareDialog와, 누른 요소 옆에 붙는 MemberSharePopover 두 형태를 제공한다.
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Check, Globe, Search, Users } from "lucide-react";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -18,6 +19,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import {
   type BookShareUser,
@@ -27,13 +33,9 @@ import {
 import { bookKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 
-type Props = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  /** 다이얼로그 제목(예: "북 공유") */
-  title: string;
-  /** 설명 문장 — 대상 이름·권한 안내 */
-  description: string;
+type ShareBodyProps = {
+  /** 열려 있을 때만 회원 목록을 불러온다 */
+  enabled: boolean;
   /** 소유자 id — 목록에서 제외 */
   ownerId: number | null;
   /** 현재 공유된 사용자 id */
@@ -46,17 +48,24 @@ type Props = {
   onToggleShareAll?: (shared: boolean) => Promise<unknown>;
 };
 
-export function MemberShareDialog({
-  open,
-  onOpenChange,
-  title,
-  description,
+type Props = Omit<ShareBodyProps, "enabled"> & {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** 다이얼로그 제목(예: "북 공유") */
+  title: string;
+  /** 설명 문장 — 대상 이름·권한 안내 */
+  description: string;
+};
+
+/** 공유 대상 선택 본문 — 모든 사용자 행 + 검색 + 회원 목록 */
+function MemberShareBody({
+  enabled,
   ownerId,
   sharedUserIds,
   onToggle,
   sharedToAll,
   onToggleShareAll,
-}: Props) {
+}: ShareBodyProps) {
   const [search, setSearch] = useState("");
   const [pendingUserId, setPendingUserId] = useState<number | null>(null);
 
@@ -78,7 +87,7 @@ export function MemberShareDialog({
   const usersQuery = useQuery({
     queryKey: [...bookKeys.all, "share-users"],
     queryFn: fetchBookShareUsers,
-    enabled: open,
+    enabled,
     staleTime: 60_000,
   });
 
@@ -114,6 +123,161 @@ export function MemberShareDialog({
   }, [usersQuery.data, ownerId, search]);
 
   return (
+    <div className="space-y-2">
+      {onToggleShareAll ? (
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={sharedToAll === true}
+          aria-label={
+            sharedToAll ? "모든 사용자 공유 해제" : "모든 사용자 공유"
+          }
+          disabled={shareAllMutation.isPending}
+          onClick={() => shareAllMutation.mutate(!sharedToAll)}
+          className={cn(
+            "flex w-full items-center gap-3 rounded-md border px-2 py-2 text-left transition-colors disabled:cursor-wait",
+            sharedToAll
+              ? "border-primary/40 bg-primary/10 ring-1 ring-primary/40"
+              : "border-border hover:bg-muted",
+          )}
+        >
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Globe className="size-4" aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium">모든 사용자</span>
+            <span className="block text-xs text-muted-foreground">
+              모든 로그인 사용자가 편집할 수 있습니다.
+            </span>
+          </span>
+          <span
+            className={cn(
+              "flex size-6 shrink-0 items-center justify-center rounded-full border",
+              sharedToAll
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border text-transparent",
+            )}
+            aria-hidden
+          >
+            {shareAllMutation.isPending ? (
+              <Spinner className="size-3.5 text-current" />
+            ) : (
+              <Check className="size-3.5" />
+            )}
+          </span>
+        </button>
+      ) : null}
+      <div className="relative">
+        <Search
+          className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden
+        />
+        <Input
+          type="text"
+          inputMode="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="이름·이메일 검색…"
+          className="h-9 pl-9"
+          aria-label="회원 검색"
+        />
+      </div>
+      <p className="text-xs text-muted-foreground">
+        공유 중 {sharedUserIds.length}명
+        {search ? ` · 검색 결과 ${candidates.length}명` : ""}
+      </p>
+      <div className="max-h-72 space-y-1 overflow-y-auto rounded-md border border-border p-1">
+        {usersQuery.isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Spinner className="size-5" />
+          </div>
+        ) : usersQuery.isError ? (
+          <p className="px-3 py-8 text-center text-sm text-destructive">
+            회원 목록을 불러오지 못했습니다.
+          </p>
+        ) : candidates.length === 0 ? (
+          <p className="px-3 py-8 text-center text-sm text-muted-foreground">
+            {search
+              ? "검색 결과가 없습니다."
+              : "공유할 수 있는 회원이 없습니다."}
+          </p>
+        ) : (
+          candidates.map((u) => {
+            const isShared = shared.has(u.id);
+            const busy = pendingUserId === u.id;
+            return (
+              <button
+                key={u.id}
+                type="button"
+                role="checkbox"
+                aria-checked={isShared}
+                aria-label={`${u.name || u.email} ${isShared ? "공유 해제" : "공유"}`}
+                disabled={toggleMutation.isPending}
+                onClick={() =>
+                  toggleMutation.mutate({ userId: u.id, shared: !isShared })
+                }
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left transition-colors disabled:cursor-wait",
+                  isShared
+                    ? "bg-primary/10 ring-1 ring-primary/40"
+                    : "hover:bg-muted",
+                )}
+              >
+                <Avatar className="size-8 shrink-0">
+                  {u.imageUrl ? (
+                    <AvatarImage
+                      src={publicAssetUrl(u.imageUrl) ?? undefined}
+                      alt=""
+                    />
+                  ) : null}
+                  <AvatarFallback className="text-xs">
+                    {(u.name || u.email).trim().charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">
+                    {u.name || "이름 없음"}
+                  </span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {u.email}
+                  </span>
+                </span>
+                <span
+                  className={cn(
+                    "flex size-6 shrink-0 items-center justify-center rounded-full border",
+                    isShared
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border text-transparent",
+                  )}
+                  aria-hidden
+                >
+                  {busy ? (
+                    <Spinner className="size-3.5 text-current" />
+                  ) : (
+                    <Check className="size-3.5" />
+                  )}
+                </span>
+              </button>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function MemberShareDialog({
+  open,
+  onOpenChange,
+  title,
+  description,
+  ownerId,
+  sharedUserIds,
+  onToggle,
+  sharedToAll,
+  onToggleShareAll,
+}: Props) {
+  return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
@@ -123,148 +287,14 @@ export function MemberShareDialog({
           </DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-2">
-          {onToggleShareAll ? (
-            <button
-              type="button"
-              role="checkbox"
-              aria-checked={sharedToAll === true}
-              aria-label={
-                sharedToAll ? "모든 사용자 공유 해제" : "모든 사용자 공유"
-              }
-              disabled={shareAllMutation.isPending}
-              onClick={() => shareAllMutation.mutate(!sharedToAll)}
-              className={cn(
-                "flex w-full items-center gap-3 rounded-md border px-2 py-2 text-left transition-colors disabled:cursor-wait",
-                sharedToAll
-                  ? "border-primary/40 bg-primary/10 ring-1 ring-primary/40"
-                  : "border-border hover:bg-muted",
-              )}
-            >
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <Globe className="size-4" aria-hidden />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-medium">모든 사용자</span>
-                <span className="block text-xs text-muted-foreground">
-                  모든 로그인 사용자가 편집할 수 있습니다.
-                </span>
-              </span>
-              <span
-                className={cn(
-                  "flex size-6 shrink-0 items-center justify-center rounded-full border",
-                  sharedToAll
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border text-transparent",
-                )}
-                aria-hidden
-              >
-                {shareAllMutation.isPending ? (
-                  <Spinner className="size-3.5 text-current" />
-                ) : (
-                  <Check className="size-3.5" />
-                )}
-              </span>
-            </button>
-          ) : null}
-          <div className="relative">
-            <Search
-              className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden
-            />
-            <Input
-              type="text"
-              inputMode="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="이름·이메일 검색…"
-              className="h-9 pl-9"
-              aria-label="회원 검색"
-            />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            공유 중 {sharedUserIds.length}명
-            {search ? ` · 검색 결과 ${candidates.length}명` : ""}
-          </p>
-          <div className="max-h-72 space-y-1 overflow-y-auto rounded-md border border-border p-1">
-            {usersQuery.isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Spinner className="size-5" />
-              </div>
-            ) : usersQuery.isError ? (
-              <p className="px-3 py-8 text-center text-sm text-destructive">
-                회원 목록을 불러오지 못했습니다.
-              </p>
-            ) : candidates.length === 0 ? (
-              <p className="px-3 py-8 text-center text-sm text-muted-foreground">
-                {search
-                  ? "검색 결과가 없습니다."
-                  : "공유할 수 있는 회원이 없습니다."}
-              </p>
-            ) : (
-              candidates.map((u) => {
-                const isShared = shared.has(u.id);
-                const busy = pendingUserId === u.id;
-                return (
-                  <button
-                    key={u.id}
-                    type="button"
-                    role="checkbox"
-                    aria-checked={isShared}
-                    aria-label={`${u.name || u.email} ${isShared ? "공유 해제" : "공유"}`}
-                    disabled={toggleMutation.isPending}
-                    onClick={() =>
-                      toggleMutation.mutate({ userId: u.id, shared: !isShared })
-                    }
-                    className={cn(
-                      "flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left transition-colors disabled:cursor-wait",
-                      isShared
-                        ? "bg-primary/10 ring-1 ring-primary/40"
-                        : "hover:bg-muted",
-                    )}
-                  >
-                    <Avatar className="size-8 shrink-0">
-                      {u.imageUrl ? (
-                        <AvatarImage
-                          src={publicAssetUrl(u.imageUrl) ?? undefined}
-                          alt=""
-                        />
-                      ) : null}
-                      <AvatarFallback className="text-xs">
-                        {(u.name || u.email).trim().charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">
-                        {u.name || "이름 없음"}
-                      </span>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {u.email}
-                      </span>
-                    </span>
-                    <span
-                      className={cn(
-                        "flex size-6 shrink-0 items-center justify-center rounded-full border",
-                        isShared
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border text-transparent",
-                      )}
-                      aria-hidden
-                    >
-                      {busy ? (
-                        <Spinner className="size-3.5 text-current" />
-                      ) : (
-                        <Check className="size-3.5" />
-                      )}
-                    </span>
-                  </button>
-                );
-              })
-            )}
-          </div>
-        </div>
-
+        <MemberShareBody
+          enabled={open}
+          ownerId={ownerId}
+          sharedUserIds={sharedUserIds}
+          onToggle={onToggle}
+          sharedToAll={sharedToAll}
+          onToggleShareAll={onToggleShareAll}
+        />
         <DialogFooter>
           <Button
             type="button"
@@ -276,5 +306,62 @@ export function MemberShareDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * 누른 요소(트리거) 옆에 붙는 공유 팝오버 — 미디어 라이브러리처럼
+ * 항목이 많은 그리드에서 어떤 파일을 공유하는지 시선이 끊기지 않게 한다.
+ */
+export function MemberSharePopover({
+  open,
+  onOpenChange,
+  title,
+  description,
+  ownerId,
+  sharedUserIds,
+  onToggle,
+  sharedToAll,
+  onToggleShareAll,
+  children,
+  align = "start",
+  side = "bottom",
+}: Props & {
+  children: ReactNode;
+  /** 트리거 기준 정렬(기본 start) */
+  align?: "start" | "center" | "end";
+  /** 트리거 기준 표시 방향(기본 bottom) */
+  side?: "top" | "bottom" | "left" | "right";
+}) {
+  return (
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger asChild>{children}</PopoverTrigger>
+      <PopoverContent
+        side={side}
+        align={align}
+        sideOffset={6}
+        collisionPadding={8}
+        className="z-[260] flex w-80 max-w-[calc(100vw-1rem)] flex-col gap-2 p-3"
+        aria-label={title}
+      >
+        <div className="space-y-0.5">
+          <p className="flex items-center gap-2 text-sm font-semibold">
+            <Users className="size-4" aria-hidden />
+            {title}
+          </p>
+          <p className="text-xs leading-snug text-muted-foreground">
+            {description}
+          </p>
+        </div>
+        <MemberShareBody
+          enabled={open}
+          ownerId={ownerId}
+          sharedUserIds={sharedUserIds}
+          onToggle={onToggle}
+          sharedToAll={sharedToAll}
+          onToggleShareAll={onToggleShareAll}
+        />
+      </PopoverContent>
+    </Popover>
   );
 }

@@ -27,18 +27,13 @@ import { toast } from "sonner";
 
 import { BOOK_LIBRARY_DRAG_TYPE } from "@/components/books/BookSlideCanvas";
 import { FloatingPanelResizeHandle } from "@/components/books/FloatingPanelResizeHandle";
-import { MemberShareDialog } from "@/components/share/MemberShareDialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { MemberSharePopover } from "@/components/share/MemberShareDialog";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import {
   addBookMediaLibraryItem,
@@ -365,9 +360,8 @@ function MediaGrid({
   const { user } = useAuth();
   const [pendingDelete, setPendingDelete] =
     useState<BookMediaLibraryItemDto | null>(null);
-  /** 파일별 공유 다이얼로그 — 항목은 최신 목록에서 다시 찾는다(공유 토글 후 갱신 반영) */
+  /** 파일별 공유 팝오버 — 열려 있는 항목 id */
   const [shareItemId, setShareItemId] = useState<number | null>(null);
-  const shareItem = items.find((it) => it.id === shareItemId) ?? null;
   /** 업로드한 사용자·관리자만 파일 공유/삭제 관리 */
   const canManageItem = useCallback(
     (item: BookMediaLibraryItemDto) =>
@@ -592,40 +586,112 @@ function MediaGrid({
               </div>
               {!concatMode && canManageItem(item) ? (
                 <>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    className="absolute -right-1 -top-1 size-6 rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm hover:bg-destructive/15 hover:text-destructive"
-                    aria-label="라이브러리에서 제거"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={() => setPendingDelete(item)}
-                  >
-                    <Trash2 className="size-3" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    className={cn(
-                      "absolute -left-1 -top-1 size-6 rounded-full border border-border bg-background/95 shadow-sm hover:text-primary",
-                      item.sharedToAll || item.sharedUserIds.length > 0
-                        ? "text-primary"
-                        : "text-muted-foreground",
-                    )}
-                    aria-label="파일 공유"
-                    title={
-                      item.sharedToAll
-                        ? "모든 사용자에게 공유 중"
-                        : item.sharedUserIds.length > 0
-                          ? `${item.sharedUserIds.length}명에게 공유 중`
-                          : "파일 공유"
+                  {/* 삭제 확인 팝오버 — 누른 항목 옆에서 바로 확인 */}
+                  <Popover
+                    open={pendingDelete?.id === item.id}
+                    onOpenChange={(open) =>
+                      setPendingDelete(open ? item : null)
                     }
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={() => setShareItemId(item.id)}
                   >
-                    <Share2 className="size-3" />
-                  </Button>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="absolute -right-1 -top-1 size-6 rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm hover:bg-destructive/15 hover:text-destructive"
+                        aria-label="라이브러리에서 제거"
+                        onPointerDown={(e) => e.stopPropagation()}
+                      >
+                        <Trash2 className="size-3" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      side="bottom"
+                      align="start"
+                      sideOffset={6}
+                      collisionPadding={8}
+                      className="z-[260] w-64 gap-1.5 p-3"
+                    >
+                      <p className="text-sm font-semibold">
+                        미디어를 삭제할까요?
+                      </p>
+                      <p className="text-xs leading-snug text-muted-foreground">
+                        라이브러리 목록에서 제거됩니다. 서버에 업로드된 원본
+                        파일과 이미 페이지에 넣은 항목은 그대로 유지됩니다.
+                      </p>
+                      <div className="mt-1 flex justify-end gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2.5 text-xs"
+                          onClick={() => setPendingDelete(null)}
+                        >
+                          취소
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="h-7 bg-destructive px-2.5 text-xs text-white hover:bg-destructive/90"
+                          onClick={() => {
+                            void removeBookMediaLibraryItem(item.id)
+                              .then(() => refresh())
+                              .catch((e: Error) =>
+                                toast.error(
+                                  e.message || "삭제에 실패했습니다.",
+                                ),
+                              );
+                            setPendingDelete(null);
+                          }}
+                        >
+                          삭제
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  {/* 공유 팝오버 — 누른 미디어 항목 옆에 붙는다 */}
+                  <MemberSharePopover
+                    open={shareItemId === item.id}
+                    onOpenChange={(open) =>
+                      setShareItemId(open ? item.id : null)
+                    }
+                    title="미디어 파일 공유"
+                    description="이 파일을 함께 쓸 회원을 고르세요. 공유받은 사용자는 자기 북의 「공유받은 파일」에서 쓸 수 있습니다."
+                    ownerId={item.ownerId}
+                    sharedUserIds={item.sharedUserIds}
+                    sharedToAll={item.sharedToAll}
+                    onToggle={async (userId, shared) => {
+                      await setBookMediaShare(item.id, userId, shared);
+                      refresh();
+                    }}
+                    onToggleShareAll={async (shared) => {
+                      await setBookMediaShareAll(item.id, shared);
+                      refresh();
+                    }}
+                  >
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      className={cn(
+                        "absolute -left-1 -top-1 size-6 rounded-full border border-border bg-background/95 shadow-sm hover:text-primary",
+                        item.sharedToAll || item.sharedUserIds.length > 0
+                          ? "text-primary"
+                          : "text-muted-foreground",
+                      )}
+                      aria-label="파일 공유"
+                      title={
+                        item.sharedToAll
+                          ? "모든 사용자에게 공유 중"
+                          : item.sharedUserIds.length > 0
+                            ? `${item.sharedUserIds.length}명에게 공유 중`
+                            : "파일 공유"
+                      }
+                      onPointerDown={(e) => e.stopPropagation()}
+                    >
+                      <Share2 className="size-3" />
+                    </Button>
+                  </MemberSharePopover>
                 </>
               ) : null}
               <Button
@@ -653,61 +719,6 @@ function MediaGrid({
           item={preview.item}
           anchor={preview.anchor}
           onClose={() => setPreview(null)}
-        />
-      ) : null}
-      <AlertDialog
-        open={pendingDelete != null}
-        onOpenChange={(open) => {
-          if (!open) setPendingDelete(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>미디어를 삭제할까요?</AlertDialogTitle>
-            <AlertDialogDescription>
-              라이브러리 목록에서 제거됩니다. 서버에 업로드된 원본 파일과 이미
-              페이지에 넣은 항목은 그대로 유지됩니다.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>취소</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-white hover:bg-destructive/90"
-              onClick={() => {
-                if (pendingDelete) {
-                  void removeBookMediaLibraryItem(pendingDelete.id)
-                    .then(() => refresh())
-                    .catch((e: Error) =>
-                      toast.error(e.message || "삭제에 실패했습니다."),
-                    );
-                }
-                setPendingDelete(null);
-              }}
-            >
-              삭제
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      {shareItem ? (
-        <MemberShareDialog
-          open
-          onOpenChange={(open) => {
-            if (!open) setShareItemId(null);
-          }}
-          title="미디어 파일 공유"
-          description="이 파일을 함께 쓸 회원을 고르세요. 공유받은 사용자는 자기 북의 미디어 라이브러리 「공유받은 파일」에서 이 파일을 쓸 수 있습니다."
-          ownerId={shareItem.ownerId}
-          sharedUserIds={shareItem.sharedUserIds}
-          sharedToAll={shareItem.sharedToAll}
-          onToggle={async (userId, shared) => {
-            await setBookMediaShare(shareItem.id, userId, shared);
-            refresh();
-          }}
-          onToggleShareAll={async (shared) => {
-            await setBookMediaShareAll(shareItem.id, shared);
-            refresh();
-          }}
         />
       ) : null}
     </>
