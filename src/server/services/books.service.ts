@@ -735,6 +735,26 @@ export class BooksService {
           );
         }
       }
+      // 공통(오버라이드) 위젯 대상 페이지: "all" 또는 0-based 순번 배열
+      if (o.overlayPages !== undefined && o.overlayPages !== "all") {
+        const op = o.overlayPages;
+        if (
+          !Array.isArray(op) ||
+          op.length > 500 ||
+          op.some(
+            (n) =>
+              typeof n !== "number" ||
+              !Number.isInteger(n) ||
+              n < 0 ||
+              n > 9999,
+          )
+        ) {
+          throw new HttpError(
+            400,
+            '요소 overlayPages는 "all" 또는 페이지 순번(0 이상 정수) 배열이어야 합니다.',
+          );
+        }
+      }
       const x = o.x;
       const y = o.y;
       if (

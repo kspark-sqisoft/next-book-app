@@ -31,6 +31,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { type BookDetail, fetchBook } from "@/lib/api";
 import {
+  collectBookOverlayElements,
   DEFAULT_PAGE_BACKGROUND,
   DEFAULT_SLIDE_HEIGHT,
   DEFAULT_SLIDE_WIDTH,
@@ -126,6 +127,21 @@ function BookPresentationInner({
   const maxIdx = Math.max(0, sortedPages.length - 1);
   const safeIdx = Math.min(slideIndex, maxIdx);
   const page = sortedPages[safeIdx];
+
+  /**
+   * 공통(오버라이드) 위젯 — 다른 페이지에 배치된 위젯 중 현재 페이지에 겹쳐 보일 것들.
+   * 숨긴 페이지의 위젯도 대상이 될 수 있게 전체 페이지에서 수집하고,
+   * 슬라이드 전환으로 remount되는 페이지 캔버스와 달리 지속 레이어에 렌더해
+   * 페이지가 바뀌어도 위젯 상태(뉴스 목록·시계 등)가 유지된다.
+   */
+  const allPagesSorted = useMemo(() => {
+    if (!data.pages?.length) return [];
+    return [...data.pages].sort((a, b) => a.sortOrder - b.sortOrder);
+  }, [data]);
+  const overlayElements = useMemo(() => {
+    if (!page) return [];
+    return collectBookOverlayElements(allPagesSorted, page.sortOrder);
+  }, [allPagesSorted, page]);
 
   const reduceMotion = useSyncExternalStore(
     (onStoreChange) => {
@@ -484,6 +500,38 @@ function BookPresentationInner({
       </div>
     ) : null;
 
+  /* 페이지 캔버스(전환 시 remount) 위에 겹치는 지속 레이어 — remount 없이 유지 */
+  const stageWithOverlay =
+    slideStage != null ? (
+      <div className="relative">
+        {slideStage}
+        {overlayElements.length > 0 ? (
+          <div
+            className={cn(
+              "pointer-events-none absolute inset-0 flex items-center justify-center",
+              presentationPaused && "book-pres-paused",
+            )}
+            data-testid="presentation-overlay-layer"
+          >
+            <BookSlideCanvas
+              pageWidth={slideW}
+              pageHeight={slideH}
+              pageBackgroundColor="transparent"
+              scale={displayScale}
+              elements={overlayElements}
+              mode="view"
+              selectedIds={[]}
+              onSelect={() => undefined}
+              onElementChange={() => undefined}
+              viewModeHideMediaChrome={
+                isBrowserFullscreen && hideCursorAfterIdle
+              }
+            />
+          </div>
+        ) : null}
+      </div>
+    ) : null;
+
   const fillStretch =
     presentationFitMode === "fill" &&
     page != null &&
@@ -759,10 +807,10 @@ function BookPresentationInner({
           )}
           onWheel={handleWheel}
         >
-          {slideStage != null ? (
+          {stageWithOverlay != null ? (
             presentationFitMode === "cover" ? (
               <div className="flex h-full w-full min-h-0 min-w-0 items-center justify-center overflow-hidden">
-                {slideStage}
+                {stageWithOverlay}
               </div>
             ) : presentationFitMode === "fill" && fillStretch != null ? (
               <div className="flex h-full w-full min-h-0 min-w-0 items-center justify-center overflow-hidden">
@@ -772,11 +820,11 @@ function BookPresentationInner({
                     transformOrigin: "center center",
                   }}
                 >
-                  {slideStage}
+                  {stageWithOverlay}
                 </div>
               </div>
             ) : (
-              slideStage
+              stageWithOverlay
             )
           ) : null}
         </div>

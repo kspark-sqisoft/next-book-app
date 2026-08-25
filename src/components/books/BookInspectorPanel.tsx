@@ -79,6 +79,7 @@ import {
   resolveBookWeatherRightBlocks,
   resolveMediaPlaylistLoop,
   resolveMediaPlaylistShowControls,
+  slideDisplayLabel,
 } from "@/lib/book-canvas";
 import { BOOK_HEX_COLOR_PRESETS } from "@/lib/book-color-presets";
 import {
@@ -146,6 +147,10 @@ type BookInspectorPanelProps = {
   videoDurationSecByElementId?: Record<string, number>;
   /** 현재 슬라이드의 미리보기 시간 기준 위젯 id */
   pagePresentationTimingElementId?: string | null;
+  /** 공통 위젯 대상 선택용 — 페이지 이름 목록(순서 = 0-based 순번) */
+  pageNames?: string[];
+  /** 선택된 요소가 있는 페이지의 0-based 순번 */
+  activePageIndex?: number;
 };
 
 /** 텍스트 위젯 애니메이션 — 효과 선택·시간·인스펙터 내 미리보기(캔버스는 정적) */
@@ -365,6 +370,95 @@ function InspectorPresentationTimingSection({
         value={el.presentationHoldSec}
         onChange={onChange}
       />
+    </div>
+  );
+}
+
+/**
+ * 공통(오버라이드) 위젯 — 이 위젯을 다른 페이지에도 겹쳐 표시.
+ * 대상은 0-based 페이지 순번으로 저장하며, 페이지 순서를 바꾸면 순번 기준으로 따라간다.
+ */
+function InspectorOverlayPagesSection({
+  el,
+  pageNames,
+  activePageIndex,
+  onChange,
+}: {
+  el: BookCanvasElement;
+  pageNames: string[];
+  activePageIndex: number;
+  onChange: BookInspectorPanelProps["onChange"];
+}) {
+  // 빈 배열도 "페이지 선택" 모드 유지(체크 전 상태) — 정규화(null)와 달리 원본 값으로 판별
+  const raw = el.overlayPages;
+  const mode: "none" | "all" | "pages" =
+    raw === "all" ? "all" : Array.isArray(raw) ? "pages" : "none";
+  const selectedPages = Array.isArray(raw)
+    ? raw.filter((n) => Number.isInteger(n) && n >= 0)
+    : [];
+  const togglePage = (idx: number) => {
+    const next = selectedPages.includes(idx)
+      ? selectedPages.filter((n) => n !== idx)
+      : [...selectedPages, idx].sort((a, b) => a - b);
+    onChange(el.id, { overlayPages: next });
+  };
+  const modeBtn = (value: "none" | "all" | "pages", label: string) => (
+    <Button
+      key={value}
+      type="button"
+      size="sm"
+      variant={mode === value ? "default" : "outline"}
+      className="h-6 flex-1 px-1.5 text-[10px]"
+      onClick={() => {
+        if (value === mode) return;
+        onChange(el.id, {
+          overlayPages:
+            value === "all" ? "all" : value === "pages" ? [] : undefined,
+        });
+      }}
+    >
+      {label}
+    </Button>
+  );
+  return (
+    <div className="space-y-2 rounded-md border border-border/60 bg-muted/[0.08] p-2.5">
+      <p className="text-[10px] font-semibold text-foreground">
+        공통 위젯 — 다른 페이지에도 표시
+      </p>
+      <p className="text-[10px] leading-snug text-muted-foreground">
+        시계·날씨·뉴스처럼 여러 페이지에서 쓰는 위젯을 한 번만 배치하세요.
+        미리보기에선 페이지가 바뀌어도 위젯 내용이 새로고침 없이 유지됩니다.
+      </p>
+      <div className="flex gap-1">
+        {modeBtn("none", "이 페이지만")}
+        {modeBtn("all", "모든 페이지")}
+        {modeBtn("pages", "페이지 선택")}
+      </div>
+      {mode === "pages" ? (
+        <div className="max-h-36 space-y-0.5 overflow-y-auto rounded border border-border/50 p-1">
+          {pageNames.map((name, i) =>
+            i === activePageIndex ? null : (
+              <label
+                key={i}
+                className="flex cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 text-[11px] hover:bg-muted"
+              >
+                <input
+                  type="checkbox"
+                  className="size-3 accent-primary"
+                  checked={selectedPages.includes(i)}
+                  onChange={() => togglePage(i)}
+                />
+                <span className="truncate">{slideDisplayLabel(name, i)}</span>
+              </label>
+            ),
+          )}
+          {selectedPages.length === 0 ? (
+            <p className="px-1 py-0.5 text-[10px] text-muted-foreground">
+              표시할 페이지를 체크하세요. (아직 이 페이지에서만 보임)
+            </p>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1607,6 +1701,8 @@ export function BookInspectorPanel({
   onMediaPlaylistRemoteControl,
   videoDurationSecByElementId,
   pagePresentationTimingElementId,
+  pageNames,
+  activePageIndex,
 }: BookInspectorPanelProps) {
   const Root = embedded ? "div" : "aside";
   const [playlistItemDelete, setPlaylistItemDelete] = useState<{
@@ -3199,6 +3295,16 @@ export function BookInspectorPanel({
                             : undefined
                         }
                       />
+                      {pageNames != null &&
+                      activePageIndex != null &&
+                      pageNames.length > 1 ? (
+                        <InspectorOverlayPagesSection
+                          el={selected}
+                          pageNames={pageNames}
+                          activePageIndex={activePageIndex}
+                          onChange={onChange}
+                        />
+                      ) : null}
                       {selected.type !== "drawing" ? (
                         <Button
                           type="button"

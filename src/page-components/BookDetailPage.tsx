@@ -104,6 +104,7 @@ import {
   BOOK_CANVAS_DRAG_GRID_PX,
   type BookEditorPageState,
   type BookShapeKind,
+  collectBookOverlayElements,
   createBookShapeElement,
   createEmptyEditorPage,
   DEFAULT_BOOK_CALENDAR_HEIGHT,
@@ -421,6 +422,16 @@ function BookDetailOwnerView({
   const maxPageIdx = Math.max(0, localPages.length - 1);
   const activePageIndex = Math.min(pageIndex, maxPageIdx);
   const activePage = localPages[activePageIndex];
+
+  /** 다른 페이지의 공통(오버라이드) 위젯 중 현재 페이지에 겹쳐 보일 것 — 편집 캔버스 고스트 */
+  const editorOverlayGhosts = useMemo(
+    () =>
+      collectBookOverlayElements(
+        localPages.map((p, i) => ({ sortOrder: i, elements: p.elements })),
+        activePageIndex,
+      ),
+    [localPages, activePageIndex],
+  );
 
   const activePageElementIdsKey = useMemo(
     () => activePage?.elements.map((e) => e.id).join("\0") ?? "",
@@ -2842,6 +2853,25 @@ function BookDetailOwnerView({
                   onPasteFromClipboard={pasteWidgetClipboard}
                   widgetClipboardHasContent={widgetClipboardHasContent}
                 />
+                {/* 다른 페이지의 공통 위젯 고스트 — 위치 참고용(반투명·클릭 불가) */}
+                {editorOverlayGhosts.length > 0 ? (
+                  <div
+                    className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center opacity-60"
+                    aria-hidden
+                  >
+                    <BookSlideCanvas
+                      pageWidth={slideWidth}
+                      pageHeight={slideHeight}
+                      pageBackgroundColor="transparent"
+                      scale={displayScale}
+                      elements={editorOverlayGhosts}
+                      mode="view"
+                      selectedIds={[]}
+                      onSelect={() => undefined}
+                      onElementChange={() => undefined}
+                    />
+                  </div>
+                ) : null}
               </div>
             </div>
             {floatingWidgetPaletteOpen ? (
@@ -3025,6 +3055,8 @@ function BookDetailOwnerView({
                   pagePresentationTimingElementId={
                     activePage.presentationTimingElementId
                   }
+                  pageNames={localPages.map((p) => p.name)}
+                  activePageIndex={activePageIndex}
                 />
               ) : (
                 <BookPagePropertiesPanel
@@ -3192,6 +3224,21 @@ function BookDetailGuestBookView({
   );
   const viewPage = sortedPagesView[safeIndex];
 
+  /** 다른 페이지의 공통(오버라이드) 위젯을 현재 페이지에 겹쳐 렌더 — 요소 key(id)가 유지되어 상태도 이어진다 */
+  const viewElements = useMemo(() => {
+    if (!viewPage) return [];
+    const overlays = collectBookOverlayElements(
+      sortedPagesView.map((p) => ({
+        sortOrder: p.sortOrder,
+        elements: p.elements,
+      })),
+      viewPage.sortOrder,
+    );
+    return overlays.length > 0
+      ? [...viewPage.elements, ...overlays]
+      : viewPage.elements;
+  }, [sortedPagesView, viewPage]);
+
   const guestPresentationTimingId = useMemo(
     () =>
       viewPage
@@ -3273,7 +3320,7 @@ function BookDetailGuestBookView({
                   : DEFAULT_PAGE_BACKGROUND
               }
               scale={guestCanvasScale.displayScale}
-              elements={viewPage.elements}
+              elements={viewElements}
               mode="view"
               selectedIds={[]}
               onSelect={() => undefined}

@@ -319,7 +319,7 @@ export type BookShapeKind = (typeof BOOK_SHAPE_KINDS)[number];
 export const DEFAULT_BOOK_SHAPE_WIDTH = 200;
 export const DEFAULT_BOOK_SHAPE_HEIGHT = 120;
 
-export type BookCanvasElement =
+export type BookCanvasElement = (
   | {
       id: string;
       type: "text";
@@ -721,7 +721,53 @@ export type BookCanvasElement =
       visible?: boolean;
       locked?: boolean;
       presentationHoldSec?: number;
-    };
+    }
+) & {
+  /**
+   * 공통(오버라이드) 위젯 — 원본 페이지 외에 함께 표시할 페이지.
+   * "all" = 모든 페이지, 배열 = 0-based 페이지 순번(sortOrder) 목록.
+   * 프레젠테이션에서는 지속 레이어로 렌더되어 페이지가 바뀌어도 상태(뉴스 목록 등)가 유지된다.
+   */
+  overlayPages?: "all" | number[];
+};
+
+/** 공통 위젯 대상 페이지 정규화 — 값이 없거나 잘못되면 null(일반 요소) */
+export function resolveBookElementOverlayPages(el: {
+  overlayPages?: "all" | number[];
+}): "all" | number[] | null {
+  const v = el.overlayPages;
+  if (v === "all") return "all";
+  if (Array.isArray(v)) {
+    const list = [
+      ...new Set(
+        v.filter((n) => typeof n === "number" && Number.isInteger(n) && n >= 0),
+      ),
+    ].sort((a, b) => a - b);
+    return list.length > 0 ? list : null;
+  }
+  return null;
+}
+
+/**
+ * 다른 페이지의 공통 위젯 중 `targetSortOrder` 페이지에 겹쳐 보일 요소들.
+ * 원본 페이지의 요소는 페이지 자체 렌더에 이미 포함되므로 제외한다.
+ */
+export function collectBookOverlayElements(
+  pages: { sortOrder: number; elements: BookCanvasElement[] }[],
+  targetSortOrder: number,
+): BookCanvasElement[] {
+  const out: BookCanvasElement[] = [];
+  for (const p of pages) {
+    if (p.sortOrder === targetSortOrder) continue;
+    for (const el of p.elements) {
+      if (!isBookElementVisible(el)) continue;
+      const scope = resolveBookElementOverlayPages(el);
+      if (!scope) continue;
+      if (scope === "all" || scope.includes(targetSortOrder)) out.push(el);
+    }
+  }
+  return out;
+}
 
 export function createBookShapeElement(
   shapeKind: BookShapeKind,
