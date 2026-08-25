@@ -472,7 +472,10 @@ export async function updateCretaDevicePowerAction(
 export async function updateCretaDeviceSourceAction(
   accessToken: string | null | undefined,
   deviceId: number,
-  body: { type: "none" | "book" | "playlist" | "schedule"; refId?: number },
+  body: {
+    type: "none" | "book" | "playlist" | "schedule" | "ad";
+    refId?: number;
+  },
 ): Promise<CretaDevicePublic> {
   try {
     await requireUserFromToken(accessToken);

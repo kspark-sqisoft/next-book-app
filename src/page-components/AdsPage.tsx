@@ -50,14 +50,18 @@ import {
   addCretaAdCreative,
   createCretaAdCampaign,
   createCretaAdvertiser,
+  CRETA_AD_DAY_TARGET_LABEL,
+  CRETA_AD_PHASE_LABEL,
   type CretaAdCampaign,
   deleteCretaAdCampaign,
   deleteCretaAdCreative,
   deleteCretaAdvertiser,
   fetchCretaAdCampaignReport,
   fetchCretaAdCampaigns,
+  fetchCretaAdSetting,
   fetchCretaAdvertisers,
   updateCretaAdCampaign,
+  updateCretaAdSetting,
 } from "@/lib/creta-ads-api";
 import { cretaKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
@@ -85,6 +89,41 @@ export function AdsPage() {
   const reportQuery = useQuery({
     queryKey: cretaKeys.adReport(30),
     queryFn: () => fetchCretaAdCampaignReport(30),
+  });
+  const settingQuery = useQuery({
+    queryKey: cretaKeys.adSetting(),
+    queryFn: fetchCretaAdSetting,
+  });
+  /** 설정 폼 초안 — 서버 값으로 초기화, 저장 시 반영 */
+  const [settingDraft, setSettingDraft] = useState<{
+    loopEveryN: string;
+    spotSec: string;
+    houseName: string;
+    houseKind: "image" | "video";
+    houseSrc: string;
+  } | null>(null);
+  const settingForm = settingDraft ?? {
+    loopEveryN: String(settingQuery.data?.loopEveryN ?? 0),
+    spotSec: String(settingQuery.data?.spotSec ?? 15),
+    houseName: settingQuery.data?.houseName ?? "",
+    houseKind: settingQuery.data?.houseKind ?? "image",
+    houseSrc: settingQuery.data?.houseSrc ?? "",
+  };
+  const settingSave = useMutation({
+    mutationFn: () =>
+      updateCretaAdSetting({
+        loopEveryN: Number(settingForm.loopEveryN),
+        spotSec: Number(settingForm.spotSec),
+        houseName: settingForm.houseName,
+        houseKind: settingForm.houseKind,
+        houseSrc: settingForm.houseSrc,
+      }),
+    onSuccess: (res) => {
+      queryClient.setQueryData(cretaKeys.adSetting(), res);
+      setSettingDraft(null);
+      toast.success("광고 설정을 저장했습니다.");
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const invalidate = () => {
@@ -126,6 +165,9 @@ export function AdsPage() {
     endDate: todayStr(28),
     weight: "1",
     cpm: "5000",
+    dayTarget: "all" as "all" | "weekday" | "weekend",
+    startTime: "",
+    endTime: "",
   });
   const campCreate = useMutation({
     mutationFn: () =>
@@ -136,6 +178,18 @@ export function AdsPage() {
         endDate: campForm.endDate,
         weight: Number(campForm.weight),
         cpm: Number(campForm.cpm) || 0,
+        dayTarget: campForm.dayTarget,
+        // "HH:MM" → 분. 둘 다 입력했을 때만 시간대 타기팅
+        startMin:
+          campForm.startTime && campForm.endTime
+            ? Number(campForm.startTime.slice(0, 2)) * 60 +
+              Number(campForm.startTime.slice(3, 5))
+            : null,
+        endMin:
+          campForm.startTime && campForm.endTime
+            ? Number(campForm.endTime.slice(0, 2)) * 60 +
+              Number(campForm.endTime.slice(3, 5))
+            : null,
       }),
     onSuccess: () => {
       invalidate();
@@ -299,6 +353,113 @@ export function AdsPage() {
         ))}
       </div>
 
+      {/* 루프 삽입·하우스 광고 설정 */}
+      <Card className="py-4">
+        <CardContent className="space-y-3 px-4">
+          <div className="flex items-center gap-2">
+            <p className="flex-1 text-sm font-semibold">
+              루프 삽입 · 하우스 광고 설정
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              disabled={settingSave.isPending || settingDraft == null}
+              onClick={() => requireLogin() && settingSave.mutate()}
+            >
+              {settingSave.isPending ? "저장 중…" : "설정 저장"}
+            </Button>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="set-loop">전체 화면 루프 삽입</Label>
+              <NativeSelect
+                id="set-loop"
+                value={settingForm.loopEveryN}
+                onChange={(e) =>
+                  setSettingDraft({
+                    ...settingForm,
+                    loopEveryN: e.target.value,
+                  })
+                }
+              >
+                <option value="0">끔</option>
+                {[2, 3, 5, 10].map((n) => (
+                  <option key={n} value={String(n)}>
+                    {n}페이지마다 1스팟
+                  </option>
+                ))}
+              </NativeSelect>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="set-spot">스팟 길이</Label>
+              <NativeSelect
+                id="set-spot"
+                value={settingForm.spotSec}
+                onChange={(e) =>
+                  setSettingDraft({ ...settingForm, spotSec: e.target.value })
+                }
+              >
+                {[5, 10, 15, 20, 30].map((n) => (
+                  <option key={n} value={String(n)}>
+                    {n}초
+                  </option>
+                ))}
+              </NativeSelect>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="set-house-name">하우스 광고 이름</Label>
+              <Input
+                id="set-house-name"
+                value={settingForm.houseName}
+                maxLength={120}
+                placeholder="예: 크레타 자체 홍보"
+                onChange={(e) =>
+                  setSettingDraft({
+                    ...settingForm,
+                    houseName: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="set-house-kind">하우스 소재 종류</Label>
+              <NativeSelect
+                id="set-house-kind"
+                value={settingForm.houseKind}
+                onChange={(e) =>
+                  setSettingDraft({
+                    ...settingForm,
+                    houseKind: e.target.value === "video" ? "video" : "image",
+                  })
+                }
+              >
+                <option value="image">이미지</option>
+                <option value="video">영상</option>
+              </NativeSelect>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="set-house-src">
+              하우스 소재 URL(비우면 기본 카드)
+            </Label>
+            <Input
+              id="set-house-src"
+              className="font-mono text-xs"
+              value={settingForm.houseSrc}
+              placeholder="/uploads/… 또는 https://…"
+              onChange={(e) =>
+                setSettingDraft({ ...settingForm, houseSrc: e.target.value })
+              }
+            />
+          </div>
+          <p className="text-[11px] leading-snug text-muted-foreground">
+            루프 삽입: 프레젠테이션이 N페이지 자동 진행할 때마다 전체 화면 광고
+            1스팟을 끼워 넣습니다. 하우스 광고: 팔리지 않은 구좌(활성 소재
+            없음)를 채우는 자체 소재입니다.
+          </p>
+        </CardContent>
+      </Card>
+
       {/* 광고주 */}
       <div className="space-y-2">
         <p className="text-sm font-medium text-muted-foreground">광고주</p>
@@ -395,15 +556,15 @@ export function AdsPage() {
                             : "bg-zinc-500/15 text-zinc-600 dark:text-zinc-300",
                         )}
                       >
-                        {c.status === "paused"
-                          ? "일시중지"
-                          : c.inFlight
-                            ? "라이브"
-                            : "기간 외"}
+                        {CRETA_AD_PHASE_LABEL[c.phase]}
                       </Badge>
                       <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                        {c.startDate} ~ {c.endDate} · 가중치 {c.weight} · CPM{" "}
-                        {c.cpm.toLocaleString()}원
+                        {c.startDate} ~ {c.endDate} ·{" "}
+                        {CRETA_AD_DAY_TARGET_LABEL[c.dayTarget]}
+                        {c.startMin != null && c.endMin != null
+                          ? ` ${String(Math.floor(c.startMin / 60)).padStart(2, "0")}:${String(c.startMin % 60).padStart(2, "0")}~${String(Math.floor(c.endMin / 60)).padStart(2, "0")}:${String(c.endMin % 60).padStart(2, "0")}`
+                          : ""}{" "}
+                        · 가중치 {c.weight} · CPM {c.cpm.toLocaleString()}원
                       </span>
                       <Button
                         type="button"
@@ -689,6 +850,54 @@ export function AdsPage() {
                 />
               </div>
             </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="camp-day">요일 타기팅</Label>
+                <NativeSelect
+                  id="camp-day"
+                  value={campForm.dayTarget}
+                  onChange={(e) =>
+                    setCampForm({
+                      ...campForm,
+                      dayTarget: e.target.value as
+                        | "all"
+                        | "weekday"
+                        | "weekend",
+                    })
+                  }
+                >
+                  <option value="all">매일</option>
+                  <option value="weekday">평일만</option>
+                  <option value="weekend">주말만</option>
+                </NativeSelect>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="camp-tstart">시간대 시작(선택)</Label>
+                <Input
+                  id="camp-tstart"
+                  type="time"
+                  value={campForm.startTime}
+                  onChange={(e) =>
+                    setCampForm({ ...campForm, startTime: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="camp-tend">시간대 종료(선택)</Label>
+                <Input
+                  id="camp-tend"
+                  type="time"
+                  value={campForm.endTime}
+                  onChange={(e) =>
+                    setCampForm({ ...campForm, endTime: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              시간대를 비워 두면 종일 편성됩니다. 요일·시간대 밖에서는 구좌
+              로테이션에서 제외됩니다.
+            </p>
           </div>
           <DialogFooter>
             <Button

@@ -10,6 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  fetchCretaAdCampaignReport,
+  fetchCretaAdCampaigns,
+  fetchCretaAdHourlyReport,
+  fetchCretaAdSlotReport,
+} from "@/lib/creta-ads-api";
 import { PLAY_SOURCE_LABEL } from "@/lib/creta-api";
 import {
   fetchCretaPlayReport,
@@ -39,6 +45,30 @@ export function PlayReportPage() {
     // 온라인 디바이스의 재생이 계속 쌓이므로 주기적으로 갱신
     refetchInterval: 30_000,
   });
+
+  /* 광고 리포트(2단계) — 캠페인별 노출·정산, 시간대 분포, 구좌별 집계 */
+  const { data: adCampaignRows } = useQuery({
+    queryKey: cretaKeys.adReport(range),
+    queryFn: () => fetchCretaAdCampaignReport(range),
+    refetchInterval: 60_000,
+  });
+  const { data: adCampaigns } = useQuery({
+    queryKey: cretaKeys.adCampaigns(),
+    queryFn: fetchCretaAdCampaigns,
+    staleTime: 60_000,
+  });
+  const { data: adHourly } = useQuery({
+    queryKey: cretaKeys.adHourly(range),
+    queryFn: () => fetchCretaAdHourlyReport(range),
+    refetchInterval: 60_000,
+  });
+  const { data: adSlots } = useQuery({
+    queryKey: cretaKeys.adSlots(range),
+    queryFn: () => fetchCretaAdSlotReport(range),
+    refetchInterval: 60_000,
+  });
+  const cpmByCampaign = new Map((adCampaigns ?? []).map((c) => [c.id, c.cpm]));
+  const maxHourPlays = Math.max(1, ...(adHourly ?? []).map((h) => h.plays));
 
   const stats = report
     ? [
@@ -279,6 +309,158 @@ export function PlayReportPage() {
                           </td>
                           <td className="whitespace-nowrap py-2 pl-2 text-right tabular-nums">
                             {formatPlayDuration(row.durationSec)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* 광고 리포트(Proof-of-Play) — 캠페인·시간대·구좌 */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card>
+              <CardContent className="space-y-3">
+                <p className="text-sm font-semibold">
+                  광고 — 캠페인별 노출·정산
+                </p>
+                {(adCampaignRows ?? []).length === 0 ? (
+                  <p className="py-8 text-center text-sm text-muted-foreground">
+                    기간 내 광고 노출이 없습니다.
+                  </p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                          <th className="py-2 pr-2 font-medium">캠페인</th>
+                          <th className="px-2 py-2 text-right font-medium">
+                            노출수
+                          </th>
+                          <th className="px-2 py-2 text-right font-medium">
+                            노출 시간
+                          </th>
+                          <th className="py-2 pl-2 text-right font-medium">
+                            정산 예상액
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(adCampaignRows ?? []).map((row) => {
+                          const cpm = cpmByCampaign.get(row.campaignId) ?? 0;
+                          return (
+                            <tr
+                              key={row.campaignId}
+                              className="border-b border-border/60 last:border-b-0"
+                            >
+                              <td className="max-w-0 py-2 pr-2">
+                                <span className="block truncate">
+                                  {row.campaignName}
+                                </span>
+                              </td>
+                              <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums">
+                                {row.plays.toLocaleString()}
+                              </td>
+                              <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums">
+                                {formatPlayDuration(row.totalSec)}
+                              </td>
+                              <td className="whitespace-nowrap py-2 pl-2 text-right tabular-nums">
+                                {Math.round(
+                                  (row.plays / 1000) * cpm,
+                                ).toLocaleString()}
+                                원
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="space-y-3">
+                <p className="text-sm font-semibold">광고 — 시간대별 노출</p>
+                {(adHourly ?? []).length === 0 ? (
+                  <p className="py-8 text-center text-sm text-muted-foreground">
+                    기간 내 광고 노출이 없습니다.
+                  </p>
+                ) : (
+                  <div className="space-y-1">
+                    {(adHourly ?? []).map((h) => (
+                      <div
+                        key={h.hour}
+                        className="flex items-center gap-2 text-xs"
+                      >
+                        <span className="w-10 shrink-0 tabular-nums text-muted-foreground">
+                          {String(h.hour).padStart(2, "0")}시
+                        </span>
+                        <div className="h-3 min-w-0 flex-1 overflow-hidden rounded bg-muted/40">
+                          <div
+                            className="h-full rounded bg-amber-500/80"
+                            style={{
+                              width: `${Math.max(2, (100 * h.plays) / maxHourPlays)}%`,
+                            }}
+                          />
+                        </div>
+                        <span className="w-12 shrink-0 text-right tabular-nums">
+                          {h.plays.toLocaleString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+          <Card>
+            <CardContent className="space-y-3">
+              <p className="text-sm font-semibold">광고 — 구좌별 노출</p>
+              {(adSlots ?? []).length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  기간 내 광고 노출이 없습니다.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                        <th className="py-2 pr-2 font-medium">구좌</th>
+                        <th className="px-2 py-2 font-medium">위치(북)</th>
+                        <th className="px-2 py-2 text-right font-medium">
+                          노출수
+                        </th>
+                        <th className="py-2 pl-2 text-right font-medium">
+                          마지막 노출
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(adSlots ?? []).map((row) => (
+                        <tr
+                          key={`${row.slotElementId}-${row.bookId ?? 0}`}
+                          className="border-b border-border/60 last:border-b-0"
+                        >
+                          <td className="max-w-0 py-2 pr-2">
+                            <span className="block truncate font-mono text-xs">
+                              {row.slotElementId === "loop"
+                                ? "루프 삽입(전체 화면)"
+                                : row.slotElementId}
+                            </span>
+                          </td>
+                          <td className="whitespace-nowrap px-2 py-2 text-xs text-muted-foreground">
+                            {row.bookId != null ? `북 #${row.bookId}` : "—"}
+                          </td>
+                          <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums">
+                            {row.plays.toLocaleString()}
+                          </td>
+                          <td className="whitespace-nowrap py-2 pl-2 text-right text-xs tabular-nums text-muted-foreground">
+                            {row.lastPlayedAt
+                              ? formatDateMediumShort(row.lastPlayedAt)
+                              : "—"}
                           </td>
                         </tr>
                       ))}

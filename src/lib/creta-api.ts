@@ -42,7 +42,7 @@ import {
 // ── 타입(서버 Public DTO의 클라이언트 뷰) ─────────────────────────
 
 export type CretaContentRef = {
-  kind: "book" | "playlist" | "schedule";
+  kind: "book" | "playlist" | "schedule" | "ad";
   id: number;
   title: string;
   cover: BookListCoverPreview | null;
@@ -235,12 +235,13 @@ export const CRETA_DEVICE_STATUS_LABEL: Record<CretaDeviceStatus, string> = {
 };
 
 export const PLAY_SOURCE_LABEL: Record<
-  "book" | "playlist" | "schedule" | "none",
+  "book" | "playlist" | "schedule" | "ad" | "none",
   string
 > = {
   book: "북",
   playlist: "플레이리스트",
   schedule: "스케줄",
+  ad: "광고",
   none: "없음",
 };
 
@@ -545,7 +546,10 @@ export async function updateCretaDevicePower(
 
 export async function updateCretaDeviceSource(
   id: number,
-  body: { type: "none" | "book" | "playlist" | "schedule"; refId?: number },
+  body: {
+    type: "none" | "book" | "playlist" | "schedule" | "ad";
+    refId?: number;
+  },
 ): Promise<CretaDevice> {
   return run(() =>
     updateCretaDeviceSourceAction(requireToken(), id, body),

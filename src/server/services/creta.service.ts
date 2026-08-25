@@ -36,9 +36,9 @@ export type CretaCoverPublic = BookListCoverPreviewPublic | null;
 /** 플레이어 최신 버전(시뮬레이션) — 이보다 낮으면 상세에 "업데이트" 버튼 표시 */
 export const CRETA_PLAYER_LATEST = "v1.2.0";
 
-/** 북/플레이리스트/스케줄을 가리키는 공통 참조(썸네일 포함) */
+/** 북/플레이리스트/스케줄/광고 전용을 가리키는 공통 참조(썸네일 포함) */
 export type CretaContentRefPublic = {
-  kind: "book" | "playlist" | "schedule";
+  kind: "book" | "playlist" | "schedule" | "ad";
   id: number;
   title: string;
   cover: CretaCoverPublic;
@@ -1632,7 +1632,14 @@ export class CretaService {
             ? (pRefs.get(r.sourcePlaylistId) ?? null)
             : r.sourceType === "schedule" && r.sourceScheduleId
               ? (sRefs.get(r.sourceScheduleId) ?? null)
-              : null,
+              : r.sourceType === "ad"
+                ? {
+                    kind: "ad" as const,
+                    id: 0,
+                    title: "광고 전용 루프",
+                    cover: null,
+                  }
+                : null,
       tags: tagsByDevice.get(r.id) ?? [],
       volume: r.volume ?? 70,
       brightness: r.brightness ?? 80,
@@ -1775,7 +1782,7 @@ export class CretaService {
   /** 디바이스 재생 소스 지정(북/플레이리스트/스케줄/없음) */
   /** 재생 소스 입력 검증 → cretaDevice update set (디바이스 단건·태그 일괄 배포 공용) */
   private async buildDeviceSourceSet(input: {
-    type: "none" | "book" | "playlist" | "schedule";
+    type: "none" | "book" | "playlist" | "schedule" | "ad";
     refId?: number;
   }): Promise<Partial<typeof cretaDevice.$inferInsert>> {
     const db = this.db();
@@ -1815,6 +1822,9 @@ export class CretaService {
       if (!schedule) throw new HttpError(404, "스케줄을 찾을 수 없습니다.");
       set.sourceType = "schedule";
       set.sourceScheduleId = refId;
+    } else if (input.type === "ad") {
+      // 광고 전용 재생 — 활성 캠페인 소재만 100% 루프(참조 id 불필요)
+      set.sourceType = "ad";
     }
     return set;
   }
@@ -1822,7 +1832,7 @@ export class CretaService {
   async updateDeviceSource(
     id: number,
     input: {
-      type: "none" | "book" | "playlist" | "schedule";
+      type: "none" | "book" | "playlist" | "schedule" | "ad";
       refId?: number;
     },
   ): Promise<CretaDevicePublic> {

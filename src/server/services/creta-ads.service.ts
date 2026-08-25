@@ -8,6 +8,7 @@ import {
   cretaAdCampaign,
   cretaAdCreative,
   cretaAdPlayLog,
+  cretaAdSetting,
   cretaAdvertiser,
   user as userTable,
 } from "@/server/db/schema";
@@ -37,10 +38,26 @@ export type CretaAdCampaignPublic = {
   endDate: string;
   weight: number;
   cpm: number;
+  /** 요일 타기팅: all|weekday|weekend */
+  dayTarget: "all" | "weekday" | "weekend";
+  /** 시간대 타기팅(분). null = 종일 */
+  startMin: number | null;
+  endMin: number | null;
   creatives: CretaAdCreativePublic[];
   /** 오늘 기준 기간 안 여부(참고 표시용) */
   inFlight: boolean;
+  /** 파생 단계: 시작 전 scheduled → live/paused → 기간 지남 ended */
+  phase: "scheduled" | "live" | "paused" | "ended";
   updatedAt: Date;
+};
+
+/** 광고 전역 설정(단일 행) — 루프 삽입·하우스 광고 */
+export type CretaAdSettingPublic = {
+  loopEveryN: number;
+  spotSec: number;
+  houseName: string;
+  houseKind: "image" | "video";
+  houseSrc: string;
 };
 
 export type CretaAdCreativePublic = {
@@ -93,6 +110,53 @@ function normalizeAdSrc(v: unknown): string {
     400,
     "소재 src는 /uploads/ 경로 또는 https URL이어야 합니다.",
   );
+}
+
+function assertDaypart(input: {
+  dayTarget?: string;
+  startMin?: number | null;
+  endMin?: number | null;
+}): {
+  dayTarget?: "all" | "weekday" | "weekend";
+  startMin?: number | null;
+  endMin?: number | null;
+} {
+  const out: {
+    dayTarget?: "all" | "weekday" | "weekend";
+    startMin?: number | null;
+    endMin?: number | null;
+  } = {};
+  if (input.dayTarget != null) {
+    if (!["all", "weekday", "weekend"].includes(input.dayTarget)) {
+      throw new HttpError(
+        400,
+        "요일 타기팅은 all·weekday·weekend 중 하나여야 합니다.",
+      );
+    }
+    out.dayTarget = input.dayTarget as "all" | "weekday" | "weekend";
+  }
+  const validMin = (v: unknown) =>
+    typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= 1440;
+  if (input.startMin !== undefined) {
+    if (input.startMin !== null && !validMin(input.startMin)) {
+      throw new HttpError(400, "시간대 시작(분)이 올바르지 않습니다.");
+    }
+    out.startMin = input.startMin;
+  }
+  if (input.endMin !== undefined) {
+    if (input.endMin !== null && !validMin(input.endMin)) {
+      throw new HttpError(400, "시간대 종료(분)가 올바르지 않습니다.");
+    }
+    out.endMin = input.endMin;
+  }
+  if (
+    out.startMin != null &&
+    out.endMin != null &&
+    out.endMin <= out.startMin
+  ) {
+    throw new HttpError(400, "시간대 종료는 시작 이후여야 합니다.");
+  }
+  return out;
 }
 
 export class CretaAdsService {
@@ -218,7 +282,21 @@ export class CretaAdsService {
       endDate: r.endDate,
       weight: r.weight,
       cpm: r.cpm,
+      dayTarget:
+        r.dayTarget === "weekday" || r.dayTarget === "weekend"
+          ? r.dayTarget
+          : "all",
+      startMin: r.startMin ?? null,
+      endMin: r.endMin ?? null,
       inFlight: r.startDate <= today && today <= r.endDate,
+      phase:
+        today < r.startDate
+          ? ("scheduled" as const)
+          : today > r.endDate
+            ? ("ended" as const)
+            : r.status === "paused"
+              ? ("paused" as const)
+              : ("live" as const),
       updatedAt: r.updatedAt,
       creatives: creatives
         .filter((c) => c.campaignId === r.id)
@@ -247,6 +325,9 @@ export class CretaAdsService {
     endDate: string;
     weight?: number;
     cpm?: number;
+    dayTarget?: string;
+    startMin?: number | null;
+    endMin?: number | null;
   }): Promise<{ id: number }> {
     const db = this.db();
     const adv = await db.query.cretaAdvertiser.findFirst({
@@ -275,9 +356,20 @@ export class CretaAdsService {
     if (!Number.isInteger(cpm) || cpm < 0 || cpm > CPM_MAX) {
       throw new HttpError(400, "CPM 단가가 올바르지 않습니다.");
     }
+    const daypart = assertDaypart(input);
     const [row] = await db
       .insert(cretaAdCampaign)
-      .values({ advertiserId: adv.id, name, startDate, endDate, weight, cpm })
+      .values({
+        advertiserId: adv.id,
+        name,
+        startDate,
+        endDate,
+        weight,
+        cpm,
+        dayTarget: daypart.dayTarget ?? "all",
+        startMin: daypart.startMin ?? null,
+        endMin: daypart.endMin ?? null,
+      })
       .returning({ id: cretaAdCampaign.id });
     if (!row) throw new HttpError(500, "캠페인 생성에 실패했습니다.");
     return row;
@@ -292,6 +384,9 @@ export class CretaAdsService {
       endDate?: string;
       weight?: number;
       cpm?: number;
+      dayTarget?: string;
+      startMin?: number | null;
+      endMin?: number | null;
     },
   ): Promise<void> {
     const set: Partial<typeof cretaAdCampaign.$inferInsert> = {
@@ -330,6 +425,10 @@ export class CretaAdsService {
       }
       set.cpm = cpm;
     }
+    const daypart = assertDaypart(input);
+    if (daypart.dayTarget != null) set.dayTarget = daypart.dayTarget;
+    if (daypart.startMin !== undefined) set.startMin = daypart.startMin;
+    if (daypart.endMin !== undefined) set.endMin = daypart.endMin;
     const updated = await this.db()
       .update(cretaAdCampaign)
       .set(set)
@@ -400,9 +499,20 @@ export class CretaAdsService {
       .select()
       .from(cretaAdCampaign)
       .where(eq(cretaAdCampaign.status, "live"));
-    const inFlight = campaigns.filter(
-      (c) => c.startDate <= today && today <= c.endDate,
-    );
+    const now = new Date();
+    const dow = now.getDay(); // 0=일 … 6=토
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const inFlight = campaigns.filter((c) => {
+      if (!(c.startDate <= today && today <= c.endDate)) return false;
+      // 요일 타기팅
+      if (c.dayTarget === "weekday" && (dow === 0 || dow === 6)) return false;
+      if (c.dayTarget === "weekend" && dow >= 1 && dow <= 5) return false;
+      // 시간대 타기팅(분) — 둘 다 지정된 경우만
+      if (c.startMin != null && c.endMin != null) {
+        if (nowMin < c.startMin || nowMin >= c.endMin) return false;
+      }
+      return true;
+    });
     if (inFlight.length === 0) return [];
     const creatives = await db
       .select()
@@ -462,6 +572,114 @@ export class CretaAdsService {
       slotElementId,
       durationSec: dur,
     });
+  }
+
+  // ── 전역 설정(루프 삽입·하우스 광고) ────────────────────
+
+  /** 단일 행 설정 — 없으면 기본값 행을 만들어 반환 */
+  async getSetting(): Promise<CretaAdSettingPublic> {
+    const db = this.db();
+    let row = await db.query.cretaAdSetting.findFirst();
+    if (!row) {
+      const [created] = await db.insert(cretaAdSetting).values({}).returning();
+      row = created;
+    }
+    return {
+      loopEveryN: row?.loopEveryN ?? 0,
+      spotSec: row?.spotSec ?? 15,
+      houseName: row?.houseName ?? "",
+      houseKind: row?.houseKind === "video" ? "video" : "image",
+      houseSrc: row?.houseSrc ?? "",
+    };
+  }
+
+  async updateSetting(input: {
+    loopEveryN?: number;
+    spotSec?: number;
+    houseName?: string;
+    houseKind?: string;
+    houseSrc?: string;
+  }): Promise<CretaAdSettingPublic> {
+    await this.getSetting(); // 행 보장
+    const set: Partial<typeof cretaAdSetting.$inferInsert> = {
+      updatedAt: new Date(),
+    };
+    if (input.loopEveryN != null) {
+      const n = Number(input.loopEveryN);
+      if (!Number.isInteger(n) || n < 0 || n > 20) {
+        throw new HttpError(400, "루프 삽입 주기는 0(끔)~20페이지여야 합니다.");
+      }
+      set.loopEveryN = n;
+    }
+    if (input.spotSec != null) {
+      const n = Number(input.spotSec);
+      if (!Number.isInteger(n) || n < 5 || n > 120) {
+        throw new HttpError(400, "스팟 길이는 5~120초여야 합니다.");
+      }
+      set.spotSec = n;
+    }
+    if (input.houseName != null) {
+      set.houseName = String(input.houseName).trim().slice(0, 120);
+    }
+    if (input.houseKind != null) {
+      if (input.houseKind !== "image" && input.houseKind !== "video") {
+        throw new HttpError(400, "하우스 소재 kind는 image|video여야 합니다.");
+      }
+      set.houseKind = input.houseKind;
+    }
+    if (input.houseSrc != null) {
+      const raw = String(input.houseSrc).trim();
+      set.houseSrc = raw ? normalizeAdSrc(raw) : "";
+    }
+    const db = this.db();
+    const row = await db.query.cretaAdSetting.findFirst();
+    await db
+      .update(cretaAdSetting)
+      .set(set)
+      .where(eq(cretaAdSetting.id, row!.id));
+    return this.getSetting();
+  }
+
+  /** 시간대(0~23시) 노출 분포 — 최근 days일 */
+  async hourlyReport(days = 30): Promise<{ hour: number; plays: number }[]> {
+    const db = this.db();
+    const d = Math.min(365, Math.max(1, Math.trunc(days)));
+    const since = new Date(Date.now() - d * 24 * 60 * 60 * 1000);
+    const rows = await db
+      .select({
+        hour: sql<number>`extract(hour from ${cretaAdPlayLog.playedAt})::int`,
+        plays: sql<number>`count(*)::int`,
+      })
+      .from(cretaAdPlayLog)
+      .where(and(gte(cretaAdPlayLog.playedAt, since)))
+      .groupBy(sql`extract(hour from ${cretaAdPlayLog.playedAt})`)
+      .orderBy(sql`extract(hour from ${cretaAdPlayLog.playedAt})`);
+    return rows;
+  }
+
+  /** 구좌(슬롯)별 노출 집계 — 최근 days일 */
+  async slotReport(days = 30): Promise<
+    {
+      slotElementId: string;
+      bookId: number | null;
+      plays: number;
+      lastPlayedAt: Date | null;
+    }[]
+  > {
+    const db = this.db();
+    const d = Math.min(365, Math.max(1, Math.trunc(days)));
+    const since = new Date(Date.now() - d * 24 * 60 * 60 * 1000);
+    return db
+      .select({
+        slotElementId: cretaAdPlayLog.slotElementId,
+        bookId: cretaAdPlayLog.bookId,
+        plays: sql<number>`count(*)::int`,
+        lastPlayedAt: sql<Date | null>`max(${cretaAdPlayLog.playedAt})`,
+      })
+      .from(cretaAdPlayLog)
+      .where(and(gte(cretaAdPlayLog.playedAt, since)))
+      .groupBy(cretaAdPlayLog.slotElementId, cretaAdPlayLog.bookId)
+      .orderBy(desc(sql`count(*)`));
   }
 
   /** 캠페인별 노출수 집계(기본 리포트) — 최근 days일 */

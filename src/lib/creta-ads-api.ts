@@ -4,14 +4,18 @@ import {
   createCretaAdCampaignAction,
   createCretaAdvertiserAction,
   cretaAdCampaignReportAction,
+  cretaAdHourlyReportAction,
+  cretaAdSlotReportAction,
   deleteCretaAdCampaignAction,
   deleteCretaAdCreativeAction,
   deleteCretaAdvertiserAction,
+  getCretaAdSettingAction,
   listCretaAdActiveCreativesAction,
   listCretaAdCampaignsAction,
   listCretaAdvertisersAction,
   logCretaAdPlayAction,
   updateCretaAdCampaignAction,
+  updateCretaAdSettingAction,
   updateCretaAdvertiserAction,
 } from "@/actions/creta-ads";
 import { getAccessToken, humanizeServerActionError } from "@/lib/api";
@@ -48,9 +52,37 @@ export type CretaAdCampaign = {
   endDate: string;
   weight: number;
   cpm: number;
+  dayTarget: "all" | "weekday" | "weekend";
+  startMin: number | null;
+  endMin: number | null;
   creatives: CretaAdCreative[];
   inFlight: boolean;
+  phase: "scheduled" | "live" | "paused" | "ended";
   updatedAt: string;
+};
+
+export type CretaAdSetting = {
+  loopEveryN: number;
+  spotSec: number;
+  houseName: string;
+  houseKind: "image" | "video";
+  houseSrc: string;
+};
+
+export const CRETA_AD_PHASE_LABEL: Record<CretaAdCampaign["phase"], string> = {
+  scheduled: "예정",
+  live: "라이브",
+  paused: "일시중지",
+  ended: "종료",
+};
+
+export const CRETA_AD_DAY_TARGET_LABEL: Record<
+  CretaAdCampaign["dayTarget"],
+  string
+> = {
+  all: "매일",
+  weekday: "평일",
+  weekend: "주말",
 };
 
 export type CretaAdActiveCreative = CretaAdCreative & {
@@ -117,6 +149,9 @@ export async function createCretaAdCampaign(input: {
   endDate: string;
   weight?: number;
   cpm?: number;
+  dayTarget?: "all" | "weekday" | "weekend";
+  startMin?: number | null;
+  endMin?: number | null;
 }): Promise<{ id: number }> {
   return run(() => createCretaAdCampaignAction(requireToken(), input));
 }
@@ -130,6 +165,9 @@ export async function updateCretaAdCampaign(
     endDate?: string;
     weight?: number;
     cpm?: number;
+    dayTarget?: "all" | "weekday" | "weekend";
+    startMin?: number | null;
+    endMin?: number | null;
   },
 ): Promise<void> {
   await run(() => updateCretaAdCampaignAction(requireToken(), id, input));
@@ -180,5 +218,47 @@ export async function fetchCretaAdCampaignReport(
 ): Promise<CretaAdCampaignReportRow[]> {
   return run(() => cretaAdCampaignReportAction(days)) as unknown as Promise<
     CretaAdCampaignReportRow[]
+  >;
+}
+
+export async function fetchCretaAdSetting(): Promise<CretaAdSetting> {
+  return run(() =>
+    getCretaAdSettingAction(),
+  ) as unknown as Promise<CretaAdSetting>;
+}
+
+export async function updateCretaAdSetting(input: {
+  loopEveryN?: number;
+  spotSec?: number;
+  houseName?: string;
+  houseKind?: "image" | "video";
+  houseSrc?: string;
+}): Promise<CretaAdSetting> {
+  return run(() =>
+    updateCretaAdSettingAction(requireToken(), input),
+  ) as unknown as Promise<CretaAdSetting>;
+}
+
+export type CretaAdHourlyRow = { hour: number; plays: number };
+export type CretaAdSlotRow = {
+  slotElementId: string;
+  bookId: number | null;
+  plays: number;
+  lastPlayedAt: string | null;
+};
+
+export async function fetchCretaAdHourlyReport(
+  days = 30,
+): Promise<CretaAdHourlyRow[]> {
+  return run(() => cretaAdHourlyReportAction(days)) as unknown as Promise<
+    CretaAdHourlyRow[]
+  >;
+}
+
+export async function fetchCretaAdSlotReport(
+  days = 30,
+): Promise<CretaAdSlotRow[]> {
+  return run(() => cretaAdSlotReportAction(days)) as unknown as Promise<
+    CretaAdSlotRow[]
   >;
 }

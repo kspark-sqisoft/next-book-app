@@ -70,7 +70,7 @@ import { cretaKeys } from "@/lib/query-keys";
 import { useAuth } from "@/stores/auth-store";
 
 /** 재생 소스 탭에서 다루는 타입 */
-type AssignableSource = "book" | "playlist" | "schedule";
+type AssignableSource = "book" | "playlist" | "schedule" | "ad";
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
@@ -119,7 +119,7 @@ export function DeviceDetailPage() {
 
   const sourceMutation = useMutation({
     mutationFn: (input: {
-      type: "none" | "book" | "playlist" | "schedule";
+      type: "none" | "book" | "playlist" | "schedule" | "ad";
       refId?: number;
     }) => updateCretaDeviceSource(deviceId, input),
     onSuccess: (res) => {
@@ -580,6 +580,9 @@ export function DeviceDetailPage() {
                   <TabsTrigger value="schedule" className="flex-1">
                     스케줄
                   </TabsTrigger>
+                  <TabsTrigger value="ad" className="flex-1">
+                    광고
+                  </TabsTrigger>
                 </TabsList>
               </Tabs>
               <p className="text-sm font-semibold">할당된 콘텐츠</p>
@@ -603,14 +606,28 @@ export function DeviceDetailPage() {
                   variant="outline"
                   size="sm"
                   className="shrink-0"
-                  onClick={() => requireLogin() && setChangeOpen(true)}
+                  disabled={sourceMutation.isPending}
+                  onClick={() => {
+                    if (!requireLogin()) return;
+                    // 광고 전용 재생은 참조 선택이 없어 바로 지정
+                    if (activeTab === "ad") {
+                      sourceMutation.mutate({ type: "ad" });
+                      return;
+                    }
+                    setChangeOpen(true);
+                  }}
                 >
-                  변경
+                  {activeTab === "ad"
+                    ? assignedForTab
+                      ? "지정됨"
+                      : "광고 전용 지정"
+                    : "변경"}
                 </Button>
               </div>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                위의 재생 소스 탭으로 타입을 바꾸고, ‘변경’으로 해당 타입의 다른
-                항목을 선택할 수 있습니다.
+                {activeTab === "ad"
+                  ? "광고 전용 재생 — 광고 메뉴의 활성 캠페인 소재만 100% 루프로 재생합니다(엘리베이터 광고 모니터형)."
+                  : "위의 재생 소스 탭으로 타입을 바꾸고, ‘변경’으로 해당 타입의 다른 항목을 선택할 수 있습니다."}
               </p>
             </CardContent>
           </Card>
@@ -721,7 +738,7 @@ export function DeviceDetailPage() {
           onOpenChange={setChangeOpen}
           title={`${PLAY_SOURCE_LABEL[activeTab]} 지정`}
           description="선택한 콘텐츠를 이 디바이스에서 재생합니다."
-          kinds={[activeTab]}
+          kinds={[activeTab === "ad" ? "book" : activeTab]}
           pending={sourceMutation.isPending}
           clearLabel="지정 해제"
           onClear={() => sourceMutation.mutate({ type: "none" })}

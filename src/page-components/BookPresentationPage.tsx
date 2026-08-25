@@ -29,7 +29,7 @@ import { BookSlideCanvas } from "@/components/books/BookSlideCanvas";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { type BookDetail, fetchBook } from "@/lib/api";
+import { type BookDetail, fetchBook, publicAssetUrl } from "@/lib/api";
 import {
   collectBookOverlayElements,
   DEFAULT_PAGE_BACKGROUND,
@@ -47,8 +47,14 @@ import {
   normalizeBookPresentationTransition,
 } from "@/lib/book-presentation-transition";
 import { bookCanvasStageMatClass } from "@/lib/book-workspace-ui";
+import {
+  type CretaAdActiveCreative,
+  fetchCretaAdActiveCreatives,
+  fetchCretaAdSetting,
+  logCretaAdPlay,
+} from "@/lib/creta-ads-api";
 import { goBackOrPush } from "@/lib/navigate-back";
-import { bookKeys } from "@/lib/query-keys";
+import { bookKeys, cretaKeys } from "@/lib/query-keys";
 import {
   BOOK_CANVAS_PRESENTATION_DISPLAY_OPTS,
   type BookCanvasDisplayFitMode,
@@ -288,6 +294,47 @@ function BookPresentationInner({
 
   /** 일시정지 — 슬라이드 진행·자동 넘김을 멈추고, 재개하면 남은 시간부터 이어간다 */
   const [presentationPaused, setPresentationPaused] = useState(false);
+
+  /** 전체 화면 루프 광고(2단계) — 설정된 N페이지 자동 진행마다 광고 1스팟 삽입 */
+  const { data: adSetting } = useQuery({
+    queryKey: cretaKeys.adSetting(),
+    queryFn: fetchCretaAdSetting,
+    staleTime: 60_000,
+  });
+  const { data: adCreatives } = useQuery({
+    queryKey: cretaKeys.adActiveCreatives(),
+    queryFn: fetchCretaAdActiveCreatives,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
+  });
+  const loopEveryN = adSetting?.loopEveryN ?? 0;
+  const adSpotSec = adSetting?.spotSec ?? 15;
+  const [adBreak, setAdBreak] = useState<CretaAdActiveCreative | null>(null);
+  /** 마지막 광고 스팟 이후 자동 진행한 페이지 수 */
+  const pagesSinceAdRef = useRef(0);
+  /** 루프 스팟 로테이션 인덱스 */
+  const adLoopIdxRef = useRef(0);
+
+  /** 광고 스팟 종료 — spotSec 뒤 닫고 다음 페이지로 */
+  useEffect(() => {
+    if (!adBreak) return;
+    void logCretaAdPlay({
+      creativeId: adBreak.id,
+      bookId,
+      slotElementId: "loop",
+      durationSec: adSpotSec,
+    });
+    const t = window.setTimeout(() => {
+      setAdBreak(null);
+      navigateToSlideIndex((i) => {
+        const clamped = Math.min(i, sortedPages.length - 1);
+        if (clamped + 1 < sortedPages.length) return clamped + 1;
+        return loop ? 0 : clamped;
+      });
+    }, adSpotSec * 1000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adBreak]);
   /** 일시정지 시점까지의 누적 경과(초) — 재개 시 이 값에서 이어서 계산 */
   const elapsedBaseRef = useRef(0);
 
@@ -353,6 +400,7 @@ function BookPresentationInner({
 
   useEffect(() => {
     if (presentationPaused) return; // 재개 시 이 effect가 다시 돌며 남은 시간으로 재예약
+    if (adBreak) return; // 광고 스팟 중에는 페이지 진행 정지
     if (sortedPages.length === 0) return;
     const cur = sortedPages[safeIdx];
     if (!cur) return;
@@ -372,6 +420,20 @@ function BookPresentationInner({
       ms - Math.round(elapsedBaseRef.current * 1000),
     );
     const t = window.setTimeout(() => {
+      // 루프 광고 삽입 — N페이지 자동 진행마다 전체 화면 스팟 1개
+      pagesSinceAdRef.current += 1;
+      const rotation = adCreatives ?? [];
+      if (
+        loopEveryN > 0 &&
+        rotation.length > 0 &&
+        pagesSinceAdRef.current >= loopEveryN
+      ) {
+        pagesSinceAdRef.current = 0;
+        const next = rotation[adLoopIdxRef.current % rotation.length];
+        adLoopIdxRef.current += 1;
+        setAdBreak(next);
+        return; // 스팟 종료 effect가 다음 페이지로 진행
+      }
       navigateToSlideIndex((i) => {
         const clamped = Math.min(i, sortedPages.length - 1);
         if (clamped + 1 < sortedPages.length) return clamped + 1;
@@ -380,6 +442,9 @@ function BookPresentationInner({
     }, remaining);
     return () => clearTimeout(t);
   }, [
+    adBreak,
+    adCreatives,
+    loopEveryN,
     loop,
     navigateToSlideIndex,
     safeIdx,
@@ -506,6 +571,40 @@ function BookPresentationInner({
     slideStage != null ? (
       <div className="relative">
         {slideStage}
+        {adBreak ? (
+          /* 전체 화면 루프 광고 스팟 — 페이지 진행을 멈추고 spotSec 동안 표시 */
+          <div
+            className="absolute inset-0 z-[60] overflow-hidden bg-black"
+            data-testid="presentation-ad-spot"
+          >
+            {adBreak.kind === "video" ? (
+              <video
+                key={adBreak.id}
+                className="absolute inset-0 size-full object-contain"
+                src={publicAssetUrl(adBreak.src) ?? adBreak.src}
+                muted
+                playsInline
+                autoPlay
+                loop
+                preload="auto"
+                controls={false}
+              />
+            ) : (
+              <img
+                alt=""
+                src={publicAssetUrl(adBreak.src) ?? adBreak.src}
+                draggable={false}
+                className="absolute inset-0 size-full select-none object-contain"
+              />
+            )}
+            <span className="absolute left-3 top-3 rounded bg-black/60 px-2 py-0.5 text-xs font-semibold tracking-wide text-amber-300">
+              AD
+            </span>
+            <span className="absolute bottom-3 right-3 max-w-[60%] truncate rounded bg-black/55 px-2 py-0.5 text-xs text-white/85">
+              {adBreak.campaignName}
+            </span>
+          </div>
+        ) : null}
         {overlayElements.length > 0 ? (
           <div
             className={cn(

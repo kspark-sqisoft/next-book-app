@@ -24,6 +24,7 @@ import {
 import {
   type CretaAdActiveCreative,
   fetchCretaAdActiveCreatives,
+  fetchCretaAdSetting,
   logCretaAdPlay,
 } from "@/lib/creta-ads-api";
 import { cretaKeys } from "@/lib/query-keys";
@@ -88,6 +89,13 @@ export function BookAdSlotWidgetOverlay({
   });
 
   const rotation = useMemo(() => buildRotation(creatives ?? []), [creatives]);
+
+  /** 전역 설정 — 하우스 광고 소재(빈 구좌 채움) */
+  const { data: adSetting } = useQuery({
+    queryKey: cretaKeys.adSetting(),
+    queryFn: fetchCretaAdSetting,
+    staleTime: 60_000,
+  });
 
   /** 슬롯 길이 공통 클록 — 같은 구좌를 여러 화면이 봐도 같은 소재가 나온다 */
   const [index, setIndex] = useState(0);
@@ -225,6 +233,43 @@ export function BookAdSlotWidgetOverlay({
           >
             {current.campaignName}
           </span>
+        </>
+      ) : fill === "house" && adSetting?.houseSrc ? (
+        /* 빈 구좌 — 관리자가 지정한 하우스 광고 소재 */
+        <>
+          {adSetting.houseKind === "video" ? (
+            <video
+              className="absolute inset-0 size-full object-cover"
+              src={publicAssetUrl(adSetting.houseSrc) ?? adSetting.houseSrc}
+              muted
+              playsInline
+              autoPlay
+              loop
+              preload="auto"
+              controls={false}
+            />
+          ) : (
+            <img
+              alt=""
+              src={publicAssetUrl(adSetting.houseSrc) ?? adSetting.houseSrc}
+              draggable={false}
+              className="absolute inset-0 size-full select-none object-cover"
+            />
+          )}
+          <span
+            className="absolute left-1.5 top-1.5 rounded bg-black/60 px-1.5 py-px font-semibold tracking-wide text-sky-300"
+            style={{ fontSize: labelPx }}
+          >
+            HOUSE
+          </span>
+          {adSetting.houseName ? (
+            <span
+              className="absolute bottom-1.5 right-1.5 max-w-[70%] truncate rounded bg-black/55 px-1.5 py-px text-white/85"
+              style={{ fontSize: labelPx }}
+            >
+              {adSetting.houseName}
+            </span>
+          ) : null}
         </>
       ) : fill === "house" ? (
         /* 빈 구좌 — 하우스 광고 카드 */

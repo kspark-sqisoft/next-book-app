@@ -10,6 +10,7 @@ import {
 import {
   type CretaAdActiveCreative,
   type CretaAdCampaignPublic,
+  type CretaAdSettingPublic,
   CretaAdsService,
   type CretaAdvertiserPublic,
 } from "@/server/services/creta-ads.service";
@@ -90,6 +91,9 @@ export async function createCretaAdCampaignAction(
     endDate: string;
     weight?: number;
     cpm?: number;
+    dayTarget?: string;
+    startMin?: number | null;
+    endMin?: number | null;
   },
 ): Promise<{ id: number }> {
   try {
@@ -110,6 +114,9 @@ export async function updateCretaAdCampaignAction(
     endDate?: string;
     weight?: number;
     cpm?: number;
+    dayTarget?: string;
+    startMin?: number | null;
+    endMin?: number | null;
   },
 ): Promise<void> {
   try {
@@ -189,6 +196,53 @@ export async function cretaAdCampaignReportAction(
 ): Promise<Awaited<ReturnType<CretaAdsService["campaignReport"]>>> {
   try {
     return await new CretaAdsService().campaignReport(days ?? 30);
+  } catch (e) {
+    rethrowActionError(e, TAG);
+  }
+}
+
+/** 광고 전역 설정(루프 삽입·하우스 광고) — 조회 공개 */
+export async function getCretaAdSettingAction(): Promise<CretaAdSettingPublic> {
+  try {
+    return await new CretaAdsService().getSetting();
+  } catch (e) {
+    rethrowActionError(e, TAG);
+  }
+}
+
+export async function updateCretaAdSettingAction(
+  accessToken: string | null | undefined,
+  input: {
+    loopEveryN?: number;
+    spotSec?: number;
+    houseName?: string;
+    houseKind?: string;
+    houseSrc?: string;
+  },
+): Promise<CretaAdSettingPublic> {
+  try {
+    await requireUserFromToken(accessToken);
+    return await new CretaAdsService().updateSetting(input ?? {});
+  } catch (e) {
+    rethrowActionError(e, TAG);
+  }
+}
+
+export async function cretaAdHourlyReportAction(
+  days?: number,
+): Promise<Awaited<ReturnType<CretaAdsService["hourlyReport"]>>> {
+  try {
+    return await new CretaAdsService().hourlyReport(days ?? 30);
+  } catch (e) {
+    rethrowActionError(e, TAG);
+  }
+}
+
+export async function cretaAdSlotReportAction(
+  days?: number,
+): Promise<Awaited<ReturnType<CretaAdsService["slotReport"]>>> {
+  try {
+    return await new CretaAdsService().slotReport(days ?? 30);
   } catch (e) {
     rethrowActionError(e, TAG);
   }

@@ -63,6 +63,9 @@ export const cretaKeys = {
   adCampaigns: () => [...cretaKeys.all, "ad-campaigns"] as const,
   adActiveCreatives: () => [...cretaKeys.all, "ad-active-creatives"] as const,
   adReport: (days: number) => [...cretaKeys.all, "ad-report", days] as const,
+  adSetting: () => [...cretaKeys.all, "ad-setting"] as const,
+  adHourly: (days: number) => [...cretaKeys.all, "ad-hourly", days] as const,
+  adSlots: (days: number) => [...cretaKeys.all, "ad-slots", days] as const,
   /** 크레타 > 계정: 내가 만든/공유받은 북·플레이리스트·스케줄 */
   overview: (userId: number) => [...cretaKeys.all, "overview", userId] as const,
   /** 커뮤니티 댓글 */

@@ -714,6 +714,20 @@ export const cretaPlayLog = pgTable(
   ],
 );
 
+/**
+ * 광고 전역 설정(단일 행) — 전체 화면 루프 삽입 정책과 하우스 광고(빈 구좌 채움).
+ * loopEveryN = 프레젠테이션에서 N페이지 재생마다 전체 화면 광고 1스팟(0 = 끔)
+ */
+export const cretaAdSetting = pgTable("creta_ad_setting", {
+  id: serial("id").primaryKey(),
+  loopEveryN: integer("loopEveryN").notNull().default(0),
+  spotSec: integer("spotSec").notNull().default(15),
+  houseName: varchar("houseName", { length: 120 }).notNull().default(""),
+  houseKind: varchar("houseKind", { length: 8 }).notNull().default("image"),
+  houseSrc: varchar("houseSrc", { length: 512 }).notNull().default(""),
+  updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
+});
+
 /** 광고주 — 광고 캠페인의 주인(청구 대상). ownerId = 크레타에서 등록한 사용자 */
 export const cretaAdvertiser = pgTable("creta_advertiser", {
   id: serial("id").primaryKey(),
@@ -745,6 +759,11 @@ export const cretaAdCampaign = pgTable(
     endDate: varchar("endDate", { length: 10 }).notNull(),
     weight: integer("weight").notNull().default(1),
     cpm: integer("cpm").notNull().default(0),
+    /** 요일 타기팅: all|weekday|weekend */
+    dayTarget: varchar("dayTarget", { length: 8 }).notNull().default("all"),
+    /** 시간대 타기팅(분). null = 종일 */
+    startMin: integer("startMin"),
+    endMin: integer("endMin"),
     createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
   },
