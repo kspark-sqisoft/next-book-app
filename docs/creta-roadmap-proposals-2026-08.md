@@ -17,7 +17,7 @@
 
 ## 1순위 — 사이니지 CMS의 "표준 기능"인데 크레타에 없는 것
 
-### 1. 긴급 알림 오버라이드 (Emergency Alerts)
+### 1. 긴급 알림 오버라이드 (Emergency Alerts) — ✅ 구현됨(2026-08-25)
 
 - **무엇**: 모든(또는 선택한) 디바이스의 현재 재생을 즉시 덮어쓰는 긴급 공지. 해제 시 원래 편성으로 복원.
   업계 표준 프로토콜로 CAP(Common Alerting Protocol)이 있고 Yodeck·ScreenCloud 등 대부분이 제공.

@@ -553,6 +553,43 @@ export const cretaDevice = pgTable("creta_device", {
   updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
 });
 
+/**
+ * 긴급 알림 — 대상 디바이스의 현재 재생을 덮어쓰는 공지.
+ * 한 번에 하나만 활성(active=true)이고, 새 알림 발송 시 기존 활성 알림은 종료된다.
+ * 해제해도 행은 이력으로 남는다(endedAt 기록).
+ */
+export const cretaAlert = pgTable("creta_alert", {
+  id: serial("id").primaryKey(),
+  message: varchar("message", { length: 300 }).notNull(),
+  level: varchar("level", { length: 12 }).notNull().default("긴급"), // 긴급|주의|안내
+  // true면 모든 디바이스 대상(creta_alert_device 무시)
+  allDevices: boolean("allDevices").notNull().default(true),
+  active: boolean("active").notNull().default(true),
+  createdBy: integer("createdBy").references(() => user.id, {
+    onDelete: "set null",
+  }),
+  createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  endedAt: timestamp("endedAt", { mode: "date" }),
+});
+
+/** 긴급 알림 대상 디바이스(allDevices=false일 때만 사용) */
+export const cretaAlertDevice = pgTable(
+  "creta_alert_device",
+  {
+    id: serial("id").primaryKey(),
+    alertId: integer("alertId")
+      .notNull()
+      .references(() => cretaAlert.id, { onDelete: "cascade" }),
+    deviceId: integer("deviceId")
+      .notNull()
+      .references(() => cretaDevice.id, { onDelete: "cascade" }),
+  },
+  (t) => [
+    unique().on(t.alertId, t.deviceId),
+    index("creta_alert_device_alertId_idx").on(t.alertId),
+  ],
+);
+
 /** 플레이리스트 공유 — 공유받은 사용자는 소유자처럼 편집 가능(삭제·공유 관리는 소유자·관리자) */
 export const cretaPlaylistShare = pgTable(
   "creta_playlist_share",

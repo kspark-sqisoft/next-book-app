@@ -18,6 +18,11 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import {
+  CretaAlertBanner,
+  CretaAlertOverlay,
+  useActiveCretaAlert,
+} from "@/components/creta/CretaAlertControls";
+import {
   CretaCoverThumb,
   useCretaCoverThumbs,
 } from "@/components/creta/CretaCoverThumb";
@@ -33,6 +38,7 @@ import { Slider } from "@/components/ui/slider";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cretaAlertCoversDevice } from "@/lib/creta-alerts-api";
 import {
   type CretaDevice,
   type CretaDevicePowerInput,
@@ -79,6 +85,8 @@ export function DeviceDetailPage() {
     queryFn: () => fetchCretaDevice(deviceId),
     enabled: Number.isFinite(deviceId) && deviceId > 0,
   });
+  /** 활성 긴급 알림 — 이 디바이스가 대상이면 재생 표시를 덮는다 */
+  const { data: activeAlert } = useActiveCretaAlert();
 
   const applyDevice = (res: CretaDevice) => {
     queryClient.setQueryData(cretaKeys.device(deviceId), res);
@@ -170,6 +178,8 @@ export function DeviceDetailPage() {
   }
 
   const meta = deviceSimMeta(device);
+  const alertCoversThis =
+    activeAlert != null && cretaAlertCoversDevice(activeAlert, device.id);
   const activeTab: AssignableSource =
     tab ?? (device.source ? device.source.kind : "book");
   const assignedForTab =
@@ -188,6 +198,10 @@ export function DeviceDetailPage() {
         <ArrowLeft className="size-4" aria-hidden />
         디바이스
       </button>
+
+      {activeAlert && alertCoversThis ? (
+        <CretaAlertBanner alert={activeAlert} />
+      ) : null}
 
       <Card>
         <CardContent className="flex flex-wrap items-center justify-between gap-4">
@@ -257,6 +271,9 @@ export function DeviceDetailPage() {
             <CardContent className="space-y-3">
               <p className="text-sm font-semibold">현재 재생 중</p>
               <div className="relative aspect-video overflow-hidden rounded-lg bg-gradient-to-br from-slate-800 to-slate-950 ring-1 ring-border">
+                {activeAlert && alertCoversThis && device.online ? (
+                  <CretaAlertOverlay alert={activeAlert} />
+                ) : null}
                 {device.online && device.source ? (
                   <>
                     {previewThumb ? (

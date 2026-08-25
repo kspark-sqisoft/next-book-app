@@ -10,6 +10,12 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import {
+  CretaAlertBanner,
+  CretaAlertOverlay,
+  CretaAlertSendButton,
+  useActiveCretaAlert,
+} from "@/components/creta/CretaAlertControls";
+import {
   CretaCoverThumb,
   useCretaCoverThumbs,
 } from "@/components/creta/CretaCoverThumb";
@@ -39,6 +45,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Spinner } from "@/components/ui/spinner";
+import { cretaAlertCoversDevice } from "@/lib/creta-alerts-api";
 import {
   createCretaDevice,
   type CretaDevice,
@@ -71,6 +78,8 @@ export function DeviceListPage() {
     queryKey: cretaKeys.devices(),
     queryFn: fetchCretaDevices,
   });
+  /** 활성 긴급 알림 — 대상 디바이스의 재생 표시를 덮는다 */
+  const { data: activeAlert } = useActiveCretaAlert();
 
   const createMutation = useMutation({
     mutationFn: () => createCretaDevice(form),
@@ -137,6 +146,8 @@ export function DeviceListPage() {
         </p>
       </div>
 
+      {activeAlert ? <CretaAlertBanner alert={activeAlert} /> : null}
+
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stats.map((stat) => (
           <Card key={stat.label} className="py-4">
@@ -165,19 +176,28 @@ export function DeviceListPage() {
         <p className="text-sm font-medium text-muted-foreground">
           디바이스 목록
         </p>
-        <Button
-          type="button"
-          onClick={() => {
-            if (!user) {
-              toast.error("로그인이 필요합니다.");
-              return;
-            }
-            setCreateOpen(true);
-          }}
-        >
-          <Plus className="size-4" aria-hidden />
-          디바이스 등록
-        </Button>
+        <div className="flex items-center gap-2">
+          <CretaAlertSendButton
+            devices={list.map((d) => ({
+              id: d.id,
+              name: d.name,
+              location: d.location,
+            }))}
+          />
+          <Button
+            type="button"
+            onClick={() => {
+              if (!user) {
+                toast.error("로그인이 필요합니다.");
+                return;
+              }
+              setCreateOpen(true);
+            }}
+          >
+            <Plus className="size-4" aria-hidden />
+            디바이스 등록
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -203,17 +223,29 @@ export function DeviceListPage() {
                   href={`/devices/${device.id}`}
                   className="flex min-w-0 flex-1 items-center gap-4 outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <CretaCoverThumb
-                    dataUrl={thumbs[`device-${device.id}`]}
-                    title={device.source?.title ?? device.name}
-                    className="h-12 w-20"
-                  />
+                  <div className="relative h-12 w-20 shrink-0 overflow-hidden rounded-md">
+                    <CretaCoverThumb
+                      dataUrl={thumbs[`device-${device.id}`]}
+                      title={device.source?.title ?? device.name}
+                      className="size-full"
+                    />
+                    {activeAlert &&
+                    cretaAlertCoversDevice(activeAlert, device.id) ? (
+                      <CretaAlertOverlay alert={activeAlert} compact />
+                    ) : null}
+                  </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="truncate text-sm font-medium">
                         {device.name}
                       </p>
                       <DeviceStatusBadge device={device} />
+                      {activeAlert &&
+                      cretaAlertCoversDevice(activeAlert, device.id) ? (
+                        <Badge className="shrink-0 border-0 bg-red-600 text-[10px] text-white">
+                          긴급 알림
+                        </Badge>
+                      ) : null}
                     </div>
                     <p className="mt-0.5 truncate text-xs text-muted-foreground">
                       {device.location || "위치 미지정"} · {device.resolution}
