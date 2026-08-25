@@ -89,6 +89,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     location.pathname.startsWith("/schedules") ||
     location.pathname.startsWith("/devices") ||
     location.pathname.startsWith("/walls") ||
+    location.pathname.startsWith("/ads") ||
     location.pathname.startsWith("/reports") ||
     location.pathname.startsWith("/account");
   /** 크레타 서브내비 노출: 북 목록 + 하위 섹션(북 편집 워크스페이스는 제외) */

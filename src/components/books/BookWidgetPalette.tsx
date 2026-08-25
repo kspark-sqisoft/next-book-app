@@ -1,4 +1,5 @@
 import {
+  BadgeDollarSign,
   Blocks,
   CalendarDays,
   ChartColumn,
@@ -67,6 +68,7 @@ const ITEMS: { kind: BookDropWidgetKind; label: string; icon: LucideIcon }[] = [
   { kind: "chart", label: "차트", icon: ChartColumn },
   { kind: "ticker", label: "티커", icon: Megaphone },
   { kind: "youtube", label: "유튜브", icon: SquarePlay },
+  { kind: "adSlot", label: "광고", icon: BadgeDollarSign },
 ];
 
 const STORAGE_KEY = "book-widget-palette";

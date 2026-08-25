@@ -67,6 +67,8 @@ import {
   parseBookChartType,
   parseBookClockBackground,
   parseBookWidgetTextColor,
+  resolveBookAdSlotFill,
+  resolveBookAdSlotSec,
   resolveBookDigitalClockDisplay,
   resolveBookElementBorderRadius,
   resolveBookElementOpacity,
@@ -2799,6 +2801,94 @@ export function BookInspectorPanel({
                           />
                           <span>재생 컨트롤 표시</span>
                         </label>
+                      </div>
+                      <ElementOpacitySlider
+                        elementId={selected.id}
+                        opacity={selected.opacity}
+                        onChange={onChange}
+                      />
+                      <ElementShapeChromeFields
+                        el={selected}
+                        onChange={onChange}
+                      />
+                      <PositionSizeFields el={selected} onChange={onChange} />
+                    </>
+                  ) : selected.type === "adSlot" ? (
+                    <>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        광고 구좌 — 재생(보기) 시 활성 캠페인의 소재가 슬롯 길이
+                        간격으로 순환합니다. 광고주·캠페인·소재는 광고 메뉴에서
+                        관리합니다.
+                      </p>
+                      <div className="space-y-1">
+                        <Label htmlFor="insp-adslot-name">구좌 이름</Label>
+                        <Input
+                          id="insp-adslot-name"
+                          value={selected.adSlotName ?? ""}
+                          maxLength={80}
+                          placeholder="예: 로비 하단 구좌 A"
+                          onChange={(e) =>
+                            onChange(selected.id, {
+                              adSlotName: e.target.value || undefined,
+                            })
+                          }
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                          판매·리포트에서 구좌를 식별하는 이름입니다.
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="insp-adslot-sec">슬롯 길이</Label>
+                        <Select
+                          value={String(resolveBookAdSlotSec(selected))}
+                          onValueChange={(next) =>
+                            onChange(selected.id, { adSlotSec: Number(next) })
+                          }
+                        >
+                          <SelectTrigger
+                            id="insp-adslot-sec"
+                            className="w-full max-w-full"
+                            size="sm"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {[5, 10, 15, 20, 30, 60, 120].map((n) => (
+                              <SelectItem key={n} value={String(n)}>
+                                소재당 {n}초
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="insp-adslot-fill">빈 구좌 정책</Label>
+                        <Select
+                          value={resolveBookAdSlotFill(selected)}
+                          onValueChange={(next) =>
+                            onChange(selected.id, {
+                              adSlotFill: next === "house" ? undefined : next,
+                            })
+                          }
+                        >
+                          <SelectTrigger
+                            id="insp-adslot-fill"
+                            className="w-full max-w-full"
+                            size="sm"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="house">
+                              하우스 광고 표시
+                            </SelectItem>
+                            <SelectItem value="hide">숨김</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-[11px] text-muted-foreground">
+                          활성 소재가 없을 때 구좌 자리를 어떻게 채울지
+                          정합니다.
+                        </p>
                       </div>
                       <ElementOpacitySlider
                         elementId={selected.id}

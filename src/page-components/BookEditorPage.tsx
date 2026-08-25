@@ -56,6 +56,8 @@ import {
   type BookShapeKind,
   createBookShapeElement,
   createEmptyEditorPage,
+  DEFAULT_BOOK_AD_SLOT_HEIGHT,
+  DEFAULT_BOOK_AD_SLOT_WIDTH,
   DEFAULT_BOOK_CALENDAR_HEIGHT,
   DEFAULT_BOOK_CALENDAR_WIDTH,
   DEFAULT_BOOK_CHART_DATA,
@@ -965,6 +967,26 @@ export function BookEditorPage() {
     [activePageIndex, updatePages],
   );
 
+  const addAdSlotAt = useCallback(
+    (x: number, y: number) => {
+      const id = crypto.randomUUID();
+      const el: BookCanvasElement = {
+        id,
+        type: "adSlot",
+        x,
+        y,
+        width: DEFAULT_BOOK_AD_SLOT_WIDTH,
+        height: DEFAULT_BOOK_AD_SLOT_HEIGHT,
+      };
+      updatePages((draft) => {
+        const p = draft[activePageIndex];
+        if (p) p.elements.push(el);
+      });
+      setSelectedIds([id]);
+    },
+    [activePageIndex, updatePages],
+  );
+
   const onDropWidget = useCallback(
     (point: { x: number; y: number }, kind: BookDropWidgetKind) => {
       if (kind === "text") {
@@ -1007,6 +1029,10 @@ export function BookEditorPage() {
         addYoutubeAt(point.x, point.y);
         return;
       }
+      if (kind === "adSlot") {
+        addAdSlotAt(point.x, point.y);
+        return;
+      }
       if (kind === "news") {
         addNewsAt(point.x, point.y);
         return;
@@ -1032,6 +1058,7 @@ export function BookEditorPage() {
       addWeatherAt,
       addWebviewAt,
       addYoutubeAt,
+      addAdSlotAt,
     ],
   );
 
@@ -1123,6 +1150,14 @@ export function BookEditorPage() {
         addYoutubeAt(p.x, p.y);
         return;
       }
+      if (kind === "adSlot") {
+        const p = center(
+          DEFAULT_BOOK_AD_SLOT_WIDTH,
+          DEFAULT_BOOK_AD_SLOT_HEIGHT,
+        );
+        addAdSlotAt(p.x, p.y);
+        return;
+      }
       toast.error(
         "저장한 뒤 열린 북 화면에서 이미지·동영상·PDF 위젯을 넣을 수 있습니다.",
       );
@@ -1140,6 +1175,7 @@ export function BookEditorPage() {
       addWeatherAt,
       addWebviewAt,
       addYoutubeAt,
+      addAdSlotAt,
       slideHeight,
       slideWidth,
     ],
@@ -1437,6 +1473,7 @@ export function BookEditorPage() {
     if (el.type === "chart") return "차트 위젯";
     if (el.type === "ticker") return "티커 위젯";
     if (el.type === "youtube") return "유튜브 위젯";
+    if (el.type === "adSlot") return "광고 위젯";
     if (el.type === "drawing") return "그리기";
     return "위젯";
   }, [widgetDeleteIds, currentPage]);

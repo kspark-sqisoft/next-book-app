@@ -65,6 +65,7 @@ function bookElementTimingLabel(
     image: "이미지",
     video: "동영상",
     mediaPlaylist: "미디어 위젯",
+    adSlot: "광고 위젯",
     weather: "날씨",
     digitalClock: "디지털 시계",
     webview: "웹뷰",

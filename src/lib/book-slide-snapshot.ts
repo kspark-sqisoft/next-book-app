@@ -1242,6 +1242,52 @@ export async function captureBookSlideToDataURL(
             opacity: elOp,
           }),
         );
+      } else if (el.type === "adSlot") {
+        // 광고 구좌 자리표시자 — 어두운 카드 + AD 라벨
+        const aw = sx(el.width);
+        const ah = sx(el.height);
+        const ap = bookElementPivotKonva({
+          x: sx(el.x),
+          y: sx(el.y),
+          width: aw,
+          height: ah,
+          rotation: el.rotation,
+        });
+        const aOw = resolveBookElementOutlineWidth(el);
+        const aOc = resolveBookElementOutlineColor(el);
+        layer.add(
+          new Konva.Rect({
+            x: ap.cx,
+            y: ap.cy,
+            offsetX: ap.offsetX,
+            offsetY: ap.offsetY,
+            width: aw,
+            height: ah,
+            rotation: ap.rotation,
+            fill: "#1c1917",
+            stroke: aOw > 0 ? aOc : "rgba(251,191,36,0.55)",
+            strokeWidth: aOw > 0 ? Math.max(0.5, sx(aOw)) : 0.5,
+            cornerRadius: Math.max(0, sx(resolveBookElementBorderRadius(el))),
+            opacity: elOp,
+          }),
+        );
+        layer.add(
+          new Konva.Text({
+            x: ap.cx,
+            y: ap.cy,
+            offsetX: ap.offsetX,
+            offsetY: ap.offsetY,
+            width: aw,
+            height: ah,
+            rotation: ap.rotation,
+            text: `AD · ${el.adSlotName?.trim() || "광고 구좌"}`,
+            fontSize: Math.max(6, 9 * scale),
+            fill: "#fbbf24",
+            align: "center",
+            verticalAlign: "middle",
+            opacity: elOp,
+          }),
+        );
       } else if (el.type === "webview") {
         // 썸네일은 실제 페이지를 그릴 수 없어 URL 호스트만 표시하는 자리표시자
         const ww = sx(el.width);

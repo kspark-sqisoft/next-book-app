@@ -2,6 +2,7 @@
 
 // 위젯 종류 아이콘 — 위젯 메뉴(팔레트)와 같은 아이콘을 캔버스 배지 등에서 재사용
 import {
+  BadgeDollarSign,
   CalendarDays,
   ChartColumn,
   Clock,
@@ -41,6 +42,7 @@ const ICON: Record<BookCanvasElement["type"], LucideIcon> = {
   youtube: SquarePlay,
   drawing: Pencil,
   shape: Shapes,
+  adSlot: BadgeDollarSign,
 };
 
 export const BOOK_ELEMENT_TYPE_LABEL: Record<
@@ -63,6 +65,7 @@ export const BOOK_ELEMENT_TYPE_LABEL: Record<
   youtube: "유튜브",
   drawing: "그리기",
   shape: "도형",
+  adSlot: "광고",
 };
 
 export function BookElementTypeIcon({

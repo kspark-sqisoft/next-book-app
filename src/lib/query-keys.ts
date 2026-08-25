@@ -59,6 +59,10 @@ export const cretaKeys = {
   /** 비디오월(동기 재생 시뮬레이션) */
   walls: () => [...cretaKeys.all, "walls"] as const,
   wall: (id: number) => [...cretaKeys.all, "wall", id] as const,
+  adAdvertisers: () => [...cretaKeys.all, "ad-advertisers"] as const,
+  adCampaigns: () => [...cretaKeys.all, "ad-campaigns"] as const,
+  adActiveCreatives: () => [...cretaKeys.all, "ad-active-creatives"] as const,
+  adReport: (days: number) => [...cretaKeys.all, "ad-report", days] as const,
   /** 크레타 > 계정: 내가 만든/공유받은 북·플레이리스트·스케줄 */
   overview: (userId: number) => [...cretaKeys.all, "overview", userId] as const,
   /** 커뮤니티 댓글 */

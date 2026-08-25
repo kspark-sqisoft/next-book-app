@@ -4,6 +4,7 @@
 // 아이콘만 보이게 축소 가능(localStorage에 유지).
 import { useQuery } from "@tanstack/react-query";
 import {
+  BadgeDollarSign,
   CalendarDays,
   ChartColumn,
   ChevronsLeft,
@@ -213,6 +214,7 @@ export function CretaSidebar() {
           : null,
     },
     { href: "/walls", label: "비디오월", icon: Grid2x2 },
+    { href: "/ads", label: "광고", icon: BadgeDollarSign },
     { href: "/reports", label: "재생 리포트", icon: ChartColumn },
   ];
   const account: Item[] = [

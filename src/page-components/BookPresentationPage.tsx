@@ -490,6 +490,7 @@ function BookPresentationInner({
           }
           scale={displayScale}
           elements={page.elements}
+          adPlayLogBookId={bookId}
           mode="view"
           selectedIds={[]}
           onSelect={() => undefined}
@@ -527,6 +528,7 @@ function BookPresentationInner({
               }
               scale={displayScale}
               elements={overlayElements}
+              adPlayLogBookId={bookId}
               mode="view"
               selectedIds={[]}
               onSelect={() => undefined}

@@ -18,6 +18,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  BadgeDollarSign,
   CalendarDays,
   ChartColumn,
   ChevronDown,
@@ -103,6 +104,8 @@ function bookElementLayerLabel(el: BookCanvasElement): string {
       return "뉴스";
     case "mediaPlaylist":
       return "미디어";
+    case "adSlot":
+      return el.adSlotName?.trim() || "광고 구좌";
     case "drawing":
       return "그리기";
     case "shape":
@@ -182,6 +185,8 @@ function LayerTypeIcon({ el }: { el: BookCanvasElement }) {
       return <SquarePlay className={cls} aria-hidden />;
     case "mediaPlaylist":
       return <ListVideo className={cls} aria-hidden />;
+    case "adSlot":
+      return <BadgeDollarSign className={cls} aria-hidden />;
     case "drawing":
       return <Pencil className={cls} aria-hidden />;
     case "shape":

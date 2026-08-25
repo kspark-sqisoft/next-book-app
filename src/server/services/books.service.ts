@@ -416,6 +416,24 @@ export type BookCanvasElementPublic =
     }
   | {
       id: string;
+      type: "adSlot";
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      adSlotName?: string;
+      adSlotSec?: number;
+      adSlotFill?: string;
+      opacity?: number;
+      rotation?: number;
+      borderRadius?: number;
+      outlineWidth?: number;
+      outlineColor?: string;
+      visible?: boolean;
+      locked?: boolean;
+    }
+  | {
+      id: string;
       type: "drawing";
       x: number;
       y: number;
@@ -826,6 +844,7 @@ export class BooksService {
         o.type !== "youtube" &&
         o.type !== "news" &&
         o.type !== "mediaPlaylist" &&
+        o.type !== "adSlot" &&
         o.type !== "drawing" &&
         o.type !== "shape"
       ) {
@@ -849,6 +868,29 @@ export class BooksService {
           !allowedReadability.has(o.readability)
         ) {
           throw new HttpError(400, "readability 값이 올바르지 않습니다.");
+        }
+      }
+      if (o.type === "adSlot") {
+        if (o.adSlotName != null) {
+          if (typeof o.adSlotName !== "string" || o.adSlotName.length > 80) {
+            throw new HttpError(400, "구좌 이름이 올바르지 않습니다.");
+          }
+        }
+        if (o.adSlotSec != null) {
+          const n = o.adSlotSec;
+          if (
+            typeof n !== "number" ||
+            !Number.isInteger(n) ||
+            n < 5 ||
+            n > 120
+          ) {
+            throw new HttpError(400, "구좌 슬롯 길이는 5~120초여야 합니다.");
+          }
+        }
+        if (o.adSlotFill != null) {
+          if (o.adSlotFill !== "house" && o.adSlotFill !== "hide") {
+            throw new HttpError(400, "adSlotFill 값이 올바르지 않습니다.");
+          }
         }
       }
       if (o.presentationHoldSec != null) {
@@ -1899,6 +1941,20 @@ export class BooksService {
           !Number.isFinite(sw)
         ) {
           throw new HttpError(400, "그리기 strokeWidth가 올바르지 않습니다.");
+        }
+      } else if (o.type === "adSlot") {
+        // 광고 구좌 — 크기만 검사(구좌 필드는 위 공통 검증에서 처리)
+        const w = o.width;
+        const h = o.height;
+        if (
+          typeof w !== "number" ||
+          typeof h !== "number" ||
+          w < 10 ||
+          h < 10 ||
+          w > 4000 ||
+          h > 4000
+        ) {
+          throw new HttpError(400, "광고 위젯 크기가 올바르지 않습니다.");
         }
       } else {
         const w = o.width;

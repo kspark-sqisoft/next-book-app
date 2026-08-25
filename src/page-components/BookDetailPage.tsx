@@ -109,6 +109,8 @@ import {
   collectBookOverlayElements,
   createBookShapeElement,
   createEmptyEditorPage,
+  DEFAULT_BOOK_AD_SLOT_HEIGHT,
+  DEFAULT_BOOK_AD_SLOT_WIDTH,
   DEFAULT_BOOK_CALENDAR_HEIGHT,
   DEFAULT_BOOK_CALENDAR_WIDTH,
   DEFAULT_BOOK_CHART_DATA,
@@ -1319,6 +1321,26 @@ function BookDetailOwnerView({
     [activePageIndex, updatePages],
   );
 
+  const addAdSlotAt = useCallback(
+    (x: number, y: number) => {
+      const id = crypto.randomUUID();
+      const el: BookCanvasElement = {
+        id,
+        type: "adSlot",
+        x,
+        y,
+        width: DEFAULT_BOOK_AD_SLOT_WIDTH,
+        height: DEFAULT_BOOK_AD_SLOT_HEIGHT,
+      };
+      updatePages((draft) => {
+        const p = draft[activePageIndex];
+        if (p) p.elements.push(el);
+      });
+      setSelectedIds([id]);
+    },
+    [activePageIndex, updatePages],
+  );
+
   const addDigitalClockAt = useCallback(
     (x: number, y: number) => {
       const id = crypto.randomUUID();
@@ -1694,6 +1716,10 @@ function BookDetailOwnerView({
         addYoutubeAt(point.x, point.y);
         return;
       }
+      if (kind === "adSlot") {
+        addAdSlotAt(point.x, point.y);
+        return;
+      }
       if (kind === "pdfImport") {
         if (!pdfImportBusy) {
           pdfImportPlacementRef.current = point;
@@ -1727,6 +1753,7 @@ function BookDetailOwnerView({
       addWeatherAt,
       addWebviewAt,
       addYoutubeAt,
+      addAdSlotAt,
       pdfImportBusy,
     ],
   );
@@ -1854,6 +1881,14 @@ function BookDetailOwnerView({
         addYoutubeAt(p.x, p.y);
         return;
       }
+      if (kind === "adSlot") {
+        const p = center(
+          DEFAULT_BOOK_AD_SLOT_WIDTH,
+          DEFAULT_BOOK_AD_SLOT_HEIGHT,
+        );
+        addAdSlotAt(p.x, p.y);
+        return;
+      }
       if (kind === "pdfImport") {
         if (!pdfImportBusy) {
           pdfImportPlacementRef.current = null;
@@ -1883,6 +1918,7 @@ function BookDetailOwnerView({
       addWeatherAt,
       addWebviewAt,
       addYoutubeAt,
+      addAdSlotAt,
       pdfImportBusy,
       slideHeight,
       slideWidth,
@@ -2245,6 +2281,7 @@ function BookDetailOwnerView({
     if (el.type === "chart") return "차트 위젯";
     if (el.type === "ticker") return "티커 위젯";
     if (el.type === "youtube") return "유튜브 위젯";
+    if (el.type === "adSlot") return "광고 위젯";
     if (el.type === "drawing") return "그리기";
     return "위젯";
   }, [widgetDeleteIds, activePage]);

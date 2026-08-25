@@ -714,6 +714,87 @@ export const cretaPlayLog = pgTable(
   ],
 );
 
+/** 광고주 — 광고 캠페인의 주인(청구 대상). ownerId = 크레타에서 등록한 사용자 */
+export const cretaAdvertiser = pgTable("creta_advertiser", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 120 }).notNull(),
+  /** 담당자·연락처 메모(선택) */
+  contact: varchar("contact", { length: 200 }).notNull().default(""),
+  ownerId: integer("ownerId").references(() => user.id, {
+    onDelete: "set null",
+  }),
+  createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
+});
+
+/**
+ * 광고 캠페인(flight) — 기간 안에서 활성(live)일 때 광고 위젯(구좌) 로테이션에 들어간다.
+ * weight = 가중치(1~10, 로테이션 투입 횟수), cpm = 1천 노출당 단가(원, 정산 시뮬레이션용)
+ */
+export const cretaAdCampaign = pgTable(
+  "creta_ad_campaign",
+  {
+    id: serial("id").primaryKey(),
+    advertiserId: integer("advertiserId")
+      .notNull()
+      .references(() => cretaAdvertiser.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 120 }).notNull(),
+    /** live|paused — 기간 안이어도 paused면 편성 제외 */
+    status: varchar("status", { length: 12 }).notNull().default("live"),
+    startDate: varchar("startDate", { length: 10 }).notNull(), // YYYY-MM-DD
+    endDate: varchar("endDate", { length: 10 }).notNull(),
+    weight: integer("weight").notNull().default(1),
+    cpm: integer("cpm").notNull().default(0),
+    createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [index("creta_ad_campaign_advertiserId_idx").on(t.advertiserId)],
+);
+
+/** 광고 소재 — 캠페인에 속한 이미지/영상. src는 업로드 경로 또는 외부 https URL */
+export const cretaAdCreative = pgTable(
+  "creta_ad_creative",
+  {
+    id: serial("id").primaryKey(),
+    campaignId: integer("campaignId")
+      .notNull()
+      .references(() => cretaAdCampaign.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 120 }).notNull(),
+    kind: varchar("kind", { length: 8 }).notNull(), // image|video
+    src: varchar("src", { length: 512 }).notNull(),
+    createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [index("creta_ad_creative_campaignId_idx").on(t.campaignId)],
+);
+
+/**
+ * 광고 재생 로그(Proof-of-Play) — 보기 모드에서 광고 위젯이 소재를 표시할 때 기록.
+ * 소재·캠페인이 삭제돼도 리포트가 남도록 이름을 비정규화해 저장한다.
+ */
+export const cretaAdPlayLog = pgTable(
+  "creta_ad_play_log",
+  {
+    id: serial("id").primaryKey(),
+    campaignId: integer("campaignId").notNull(),
+    campaignName: varchar("campaignName", { length: 120 }).notNull(),
+    creativeId: integer("creativeId").notNull(),
+    creativeName: varchar("creativeName", { length: 120 }).notNull(),
+    /** 광고 위젯이 속한 북(구좌 위치 파악용, 삭제돼도 로그 유지) */
+    bookId: integer("bookId"),
+    /** 광고 위젯(구좌) 요소 id */
+    slotElementId: varchar("slotElementId", { length: 80 }).notNull(),
+    playedAt: timestamp("playedAt", { mode: "date" }).notNull().defaultNow(),
+    durationSec: integer("durationSec").notNull(),
+  },
+  (t) => [
+    index("creta_ad_play_log_campaignId_playedAt_idx").on(
+      t.campaignId,
+      t.playedAt,
+    ),
+    index("creta_ad_play_log_playedAt_idx").on(t.playedAt),
+  ],
+);
+
 /** 플레이리스트 공유 — 공유받은 사용자는 소유자처럼 편집 가능(삭제·공유 관리는 소유자·관리자) */
 export const cretaPlaylistShare = pgTable(
   "creta_playlist_share",

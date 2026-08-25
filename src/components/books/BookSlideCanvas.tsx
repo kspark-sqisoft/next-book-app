@@ -37,6 +37,7 @@ import {
   Transformer,
 } from "react-konva";
 
+import { BookAdSlotWidgetOverlay } from "@/components/books/BookAdSlotWidgetOverlay";
 import { BookCalendarWidgetOverlay } from "@/components/books/BookCalendarWidgetOverlay";
 import { BookChartWidgetOverlay } from "@/components/books/BookChartWidgetOverlay";
 import { BookDigitalClockWidgetOverlay } from "@/components/books/BookDigitalClockWidgetOverlay";
@@ -237,6 +238,7 @@ export type BookDropWidgetKind =
   | "youtube"
   | "news"
   | "mediaPlaylist"
+  | "adSlot"
   /** 요소 타입이 아니라 "PDF 가져오기" 동작 — 드롭 지점에서 파일 선택을 연다 */
   | "pdfImport";
 
@@ -251,6 +253,8 @@ type BookSlideCanvasProps = {
   /** 가독성 자동 대비 계산에 쓸 배경색(생략 시 pageBackgroundColor). 프레젠테이션의
       공통 위젯 지속 레이어처럼 배경을 transparent로 칠하는 경우 현재 페이지 배경을 넘긴다 */
   readabilityBackgroundColor?: string;
+  /** 광고 위젯 재생 로그에 남길 북 id(보기 모드에서만 사용) */
+  adPlayLogBookId?: number | null;
   /** 논리 좌표(페이지 크기) 기준 표시 배율 */
   scale: number;
   elements: BookCanvasElement[];
@@ -900,6 +904,7 @@ export function BookSlideCanvas({
   pageHeight,
   pageBackgroundColor,
   readabilityBackgroundColor,
+  adPlayLogBookId,
   scale,
   elements,
   mode,
@@ -1004,6 +1009,7 @@ export function BookSlideCanvas({
       "youtube",
       "news",
       "mediaPlaylist",
+      "adSlot",
     ]);
     return visibleElements.every((e) => overlayOnly.has(e.type));
   }, [visibleElements]);
@@ -1517,6 +1523,7 @@ export function BookSlideCanvas({
       raw === "youtube" ||
       raw === "news" ||
       raw === "mediaPlaylist" ||
+      raw === "adSlot" ||
       raw === "pdfImport"
     )
       return raw;
@@ -1739,7 +1746,8 @@ export function BookSlideCanvas({
                 el.type === "qr" ||
                 el.type === "chart" ||
                 el.type === "ticker" ||
-                el.type === "youtube"
+                el.type === "youtube" ||
+                el.type === "adSlot"
               ) {
                 return (
                   <BookDigitalClockHitShape
@@ -1918,7 +1926,8 @@ export function BookSlideCanvas({
                   | "ticker"
                   | "youtube"
                   | "news"
-                  | "mediaPlaylist";
+                  | "mediaPlaylist"
+                  | "adSlot";
               }
             > =>
               e.type === "text" ||
@@ -1932,7 +1941,8 @@ export function BookSlideCanvas({
               e.type === "ticker" ||
               e.type === "youtube" ||
               e.type === "news" ||
-              e.type === "mediaPlaylist",
+              e.type === "mediaPlaylist" ||
+              e.type === "adSlot",
           )
           .map((el) => {
             if (el.type === "text") {
@@ -2122,6 +2132,19 @@ export function BookSlideCanvas({
                   mode={mode}
                   isSelected={selectedIdSet.has(el.id)}
                   liveFrame={frameLive}
+                />
+              );
+            }
+            if (el.type === "adSlot") {
+              return (
+                <BookAdSlotWidgetOverlay
+                  key={el.id}
+                  el={el}
+                  scale={scale}
+                  mode={mode}
+                  isSelected={selectedIdSet.has(el.id)}
+                  liveFrame={frameLive}
+                  bookId={adPlayLogBookId ?? null}
                 />
               );
             }
@@ -3244,7 +3267,8 @@ function BookDigitalClockHitShape({
         | "qr"
         | "chart"
         | "ticker"
-        | "youtube";
+        | "youtube"
+        | "adSlot";
     }
   >;
   locked: boolean;

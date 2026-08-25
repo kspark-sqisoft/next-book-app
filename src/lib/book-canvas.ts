@@ -696,6 +696,29 @@ export type BookCanvasElement = (
     }
   | {
       id: string;
+      /** 광고 구좌 — 재생 시 활성 캠페인 소재(이미지/영상)를 순환 표시 */
+      type: "adSlot";
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      /** 구좌 이름(판매·리포트 식별용) */
+      adSlotName?: string;
+      /** 소재 1개 표시 시간(초) 5~120, 생략 시 15 */
+      adSlotSec?: number;
+      /** 빈 구좌 정책 — house: 하우스 광고 카드, hide: 숨김 */
+      adSlotFill?: string;
+      opacity?: number;
+      rotation?: number;
+      borderRadius?: number;
+      outlineWidth?: number;
+      outlineColor?: string;
+      visible?: boolean;
+      locked?: boolean;
+      presentationHoldSec?: number;
+    }
+  | {
+      id: string;
       type: "drawing";
       /** 바운딩 박스 중심(다른 위젯과 동일 피벗) */
       x: number;
@@ -1216,7 +1239,8 @@ export function resolveBookElementBorderRadius(el: BookCanvasElement): number {
     el.type === "qr" ||
     el.type === "chart" ||
     el.type === "ticker" ||
-    el.type === "youtube"
+    el.type === "youtube" ||
+    el.type === "adSlot"
   ) {
     return BOOK_WIDGET_DEFAULT_ROUNDED_RADIUS;
   }
@@ -1484,6 +1508,27 @@ export function parseBookWebviewUrl(raw: unknown): string | undefined {
   return s;
 }
 
+/** 광고 위젯(구좌) 기본 프레임 — 16:9 */
+export const DEFAULT_BOOK_AD_SLOT_WIDTH = 480;
+export const DEFAULT_BOOK_AD_SLOT_HEIGHT = 270;
+export const DEFAULT_BOOK_AD_SLOT_SEC = 15;
+
+export function resolveBookAdSlotSec(
+  el: Extract<BookCanvasElement, { type: "adSlot" }>,
+): number {
+  const n = el.adSlotSec;
+  if (typeof n === "number" && Number.isInteger(n) && n >= 5 && n <= 120) {
+    return n;
+  }
+  return DEFAULT_BOOK_AD_SLOT_SEC;
+}
+
+export function resolveBookAdSlotFill(
+  el: Extract<BookCanvasElement, { type: "adSlot" }>,
+): "house" | "hide" {
+  return el.adSlotFill === "hide" ? "hide" : "house";
+}
+
 export const DEFAULT_BOOK_DIGITAL_CLOCK_WIDTH = 280;
 export const DEFAULT_BOOK_DIGITAL_CLOCK_HEIGHT = 96;
 export const DEFAULT_PAGE_BACKGROUND = "#ffffff";
@@ -1675,6 +1720,15 @@ function normalizeBookElementsForSave(
         el.height,
         DEFAULT_BOOK_YOUTUBE_WIDTH,
         DEFAULT_BOOK_YOUTUBE_HEIGHT,
+      );
+      return finalizeElementForApi({ ...el, ...xy, ...wh });
+    }
+    if (el.type === "adSlot") {
+      const wh = finiteWH(
+        el.width,
+        el.height,
+        DEFAULT_BOOK_AD_SLOT_WIDTH,
+        DEFAULT_BOOK_AD_SLOT_HEIGHT,
       );
       return finalizeElementForApi({ ...el, ...xy, ...wh });
     }
