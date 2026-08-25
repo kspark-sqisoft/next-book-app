@@ -4,9 +4,12 @@
 // 구좌(광고 위젯)는 북 편집기에서 배치하고, 여기의 활성 캠페인 소재가 그 구좌에서 순환 재생된다.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  ArrowLeft,
+  ArrowRight,
   BadgeDollarSign,
   Building2,
   Film,
+  History,
   Image as ImageIcon,
   Pause,
   Play,
@@ -46,23 +49,32 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
+import { publicAssetUrl } from "@/lib/api";
+import { isAdminUser } from "@/lib/authz";
 import {
   addCretaAdCreative,
   createCretaAdCampaign,
   createCretaAdvertiser,
+  CRETA_AD_AUDIT_KIND_LABEL,
+  CRETA_AD_CREATIVE_STATUS_LABEL,
   CRETA_AD_DAY_TARGET_LABEL,
   CRETA_AD_PHASE_LABEL,
   type CretaAdCampaign,
   deleteCretaAdCampaign,
   deleteCretaAdCreative,
   deleteCretaAdvertiser,
+  fetchCretaAdAudit,
   fetchCretaAdCampaignReport,
   fetchCretaAdCampaigns,
   fetchCretaAdSetting,
+  fetchCretaAdSlotInventory,
   fetchCretaAdvertisers,
+  moveCretaAdCreative,
+  reviewCretaAdCreative,
   updateCretaAdCampaign,
   updateCretaAdSetting,
 } from "@/lib/creta-ads-api";
+import { formatDateMediumShort } from "@/lib/format-date";
 import { cretaKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/stores/auth-store";
@@ -132,7 +144,42 @@ export function AdsPage() {
     void queryClient.invalidateQueries({
       queryKey: cretaKeys.adActiveCreatives(),
     });
+    void queryClient.invalidateQueries({ queryKey: cretaKeys.adAudit() });
   };
+
+  const admin = isAdminUser(user);
+  /** 변경 이력 팝오버 */
+  const [auditOpen, setAuditOpen] = useState(false);
+  const auditQuery = useQuery({
+    queryKey: cretaKeys.adAudit(),
+    queryFn: fetchCretaAdAudit,
+    enabled: auditOpen,
+    refetchInterval: auditOpen ? 10_000 : false,
+  });
+  const inventoryQuery = useQuery({
+    queryKey: cretaKeys.adInventory(),
+    queryFn: fetchCretaAdSlotInventory,
+    staleTime: 60_000,
+  });
+  const reviewMutation = useMutation({
+    mutationFn: (input: { id: number; decision: "approved" | "rejected" }) =>
+      reviewCretaAdCreative(input.id, input.decision),
+    onSuccess: (_r, input) => {
+      invalidate();
+      toast.success(
+        input.decision === "approved"
+          ? "소재를 승인했습니다 — 편성에 투입됩니다."
+          : "소재를 반려했습니다.",
+      );
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const moveMutation = useMutation({
+    mutationFn: (input: { id: number; direction: -1 | 1 }) =>
+      moveCretaAdCreative(input.id, input.direction),
+    onSuccess: () => invalidate(),
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const requireLogin = (): boolean => {
     if (!user) {
@@ -168,6 +215,7 @@ export function AdsPage() {
     dayTarget: "all" as "all" | "weekday" | "weekend",
     startTime: "",
     endTime: "",
+    maxPerHour: "0",
   });
   const campCreate = useMutation({
     mutationFn: () =>
@@ -190,6 +238,7 @@ export function AdsPage() {
             ? Number(campForm.endTime.slice(0, 2)) * 60 +
               Number(campForm.endTime.slice(3, 5))
             : null,
+        maxPerHour: Number(campForm.maxPerHour) || null,
       }),
     onSuccess: () => {
       invalidate();
@@ -287,6 +336,10 @@ export function AdsPage() {
   const liveCount = campaigns.filter(
     (c) => c.status === "live" && c.inFlight,
   ).length;
+  /** SOV(점유율) 근사 — 라이브 캠페인 가중치 합 대비 비율 */
+  const liveWeightTotal = campaigns
+    .filter((c) => c.phase === "live")
+    .reduce((a, c) => a + c.weight, 0);
   const totalPlays = report.reduce((a, r) => a + r.plays, 0);
   const totalBilling = report.reduce((a, r) => {
     const cpm = campaigns.find((c) => c.id === r.campaignId)?.cpm ?? 0;
@@ -304,6 +357,64 @@ export function AdsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* 변경 이력 — 버튼 바로 아래 팝오버(감사 로그) */}
+          <Popover open={auditOpen} onOpenChange={setAuditOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant={auditOpen ? "secondary" : "ghost"}
+                className="text-muted-foreground hover:text-foreground"
+                aria-pressed={auditOpen}
+              >
+                <History className="size-4" aria-hidden />
+                변경 이력
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="bottom"
+              align="end"
+              sideOffset={6}
+              collisionPadding={8}
+              className="z-[240] flex max-h-[70vh] w-96 max-w-[calc(100vw-1rem)] flex-col gap-2 p-3"
+              aria-label="광고 변경 이력"
+            >
+              <p className="text-sm font-semibold">광고 변경 이력</p>
+              <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto rounded-md border border-border/60 p-1">
+                {(auditQuery.data ?? []).length === 0 ? (
+                  <p className="px-2 py-6 text-center text-xs text-muted-foreground">
+                    아직 기록된 이력이 없습니다.
+                  </p>
+                ) : (
+                  (auditQuery.data ?? []).map((row) => (
+                    <div
+                      key={row.id}
+                      className="flex items-start gap-2 rounded px-1.5 py-1.5 text-xs hover:bg-muted/50"
+                    >
+                      <Badge
+                        variant="secondary"
+                        className="mt-0.5 shrink-0 text-[10px]"
+                      >
+                        {CRETA_AD_AUDIT_KIND_LABEL[row.entityKind]}
+                      </Badge>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-medium">
+                          {row.entityName}
+                        </span>
+                        <span className="block text-muted-foreground">
+                          {row.detail || row.action}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-right text-[10px] text-muted-foreground">
+                        {row.actorName}
+                        <br />
+                        {formatDateMediumShort(row.createdAt)}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
           <Button
             type="button"
             variant="outline"
@@ -564,7 +675,14 @@ export function AdsPage() {
                         {c.startMin != null && c.endMin != null
                           ? ` ${String(Math.floor(c.startMin / 60)).padStart(2, "0")}:${String(c.startMin % 60).padStart(2, "0")}~${String(Math.floor(c.endMin / 60)).padStart(2, "0")}:${String(c.endMin % 60).padStart(2, "0")}`
                           : ""}{" "}
-                        · 가중치 {c.weight} · CPM {c.cpm.toLocaleString()}원
+                        · 가중치 {c.weight}
+                        {c.phase === "live" && liveWeightTotal > 0
+                          ? ` (점유율 ${Math.round((100 * c.weight) / liveWeightTotal)}%)`
+                          : ""}
+                        {c.maxPerHour != null
+                          ? ` · 시간당 ≤${c.maxPerHour}회`
+                          : ""}{" "}
+                        · CPM {c.cpm.toLocaleString()}원
                       </span>
                       <Button
                         type="button"
@@ -613,37 +731,152 @@ export function AdsPage() {
                             <PopoverTrigger asChild>
                               <button
                                 type="button"
-                                className="flex items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2 py-1 text-xs transition-colors hover:border-destructive/50"
-                                title="누르면 삭제 확인"
-                              >
-                                {cr.kind === "image" ? (
-                                  <ImageIcon
-                                    className="size-3.5 text-muted-foreground"
-                                    aria-hidden
-                                  />
-                                ) : (
-                                  <Film
-                                    className="size-3.5 text-muted-foreground"
-                                    aria-hidden
-                                  />
+                                className={cn(
+                                  "flex items-center gap-2 rounded-md border p-1 pr-2 text-xs transition-colors",
+                                  cr.status === "pending"
+                                    ? "border-amber-500/50 bg-amber-500/10"
+                                    : cr.status === "rejected"
+                                      ? "border-red-500/40 bg-red-500/10 opacity-70"
+                                      : "border-border bg-muted/30 hover:border-primary/40",
                                 )}
-                                <span className="max-w-40 truncate">
+                                title="누르면 순서·심의·삭제 메뉴"
+                              >
+                                {/* 소재 썸네일 — 영상은 첫 프레임(metadata) 미리보기 */}
+                                <span className="relative h-9 w-16 shrink-0 overflow-hidden rounded bg-black/60">
+                                  {cr.kind === "image" ? (
+                                    <img
+                                      alt=""
+                                      src={publicAssetUrl(cr.src) ?? cr.src}
+                                      draggable={false}
+                                      className="size-full object-cover"
+                                    />
+                                  ) : (
+                                    <video
+                                      className="size-full object-cover"
+                                      src={publicAssetUrl(cr.src) ?? cr.src}
+                                      muted
+                                      playsInline
+                                      preload="metadata"
+                                    />
+                                  )}
+                                  <span className="absolute bottom-0 right-0 rounded-tl bg-black/70 px-0.5 text-[8px] text-white/90">
+                                    {cr.kind === "image" ? (
+                                      <ImageIcon
+                                        className="size-2.5"
+                                        aria-hidden
+                                      />
+                                    ) : (
+                                      <Film className="size-2.5" aria-hidden />
+                                    )}
+                                  </span>
+                                </span>
+                                <span className="max-w-36 truncate">
                                   {cr.name}
                                 </span>
+                                {cr.status !== "approved" ? (
+                                  <span
+                                    className={cn(
+                                      "rounded px-1 text-[10px] font-semibold",
+                                      cr.status === "pending"
+                                        ? "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+                                        : "bg-red-500/20 text-red-600 dark:text-red-400",
+                                    )}
+                                  >
+                                    {CRETA_AD_CREATIVE_STATUS_LABEL[cr.status]}
+                                  </span>
+                                ) : null}
                               </button>
                             </PopoverTrigger>
                             <PopoverContent
                               side="bottom"
                               align="start"
                               sideOffset={6}
-                              className="w-56 gap-1.5 p-3"
+                              className="w-64 gap-1.5 p-3"
                             >
-                              <p className="text-sm font-semibold">
-                                소재를 삭제할까요?
-                              </p>
-                              <p className="truncate text-xs text-muted-foreground">
+                              <p className="truncate text-sm font-semibold">
                                 {cr.name}
                               </p>
+                              <p className="text-xs text-muted-foreground">
+                                심의 상태:{" "}
+                                {CRETA_AD_CREATIVE_STATUS_LABEL[cr.status]}
+                                {cr.status === "pending" && !admin
+                                  ? " — 관리자 승인 후 편성에 투입됩니다."
+                                  : ""}
+                              </p>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 flex-1 px-2 text-xs"
+                                  disabled={moveMutation.isPending}
+                                  onClick={() =>
+                                    requireLogin() &&
+                                    moveMutation.mutate({
+                                      id: cr.id,
+                                      direction: -1,
+                                    })
+                                  }
+                                >
+                                  <ArrowLeft className="size-3.5" aria-hidden />
+                                  앞으로
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 flex-1 px-2 text-xs"
+                                  disabled={moveMutation.isPending}
+                                  onClick={() =>
+                                    requireLogin() &&
+                                    moveMutation.mutate({
+                                      id: cr.id,
+                                      direction: 1,
+                                    })
+                                  }
+                                >
+                                  뒤로
+                                  <ArrowRight
+                                    className="size-3.5"
+                                    aria-hidden
+                                  />
+                                </Button>
+                              </div>
+                              {admin && cr.status !== "approved" ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className="h-7 bg-emerald-600 px-2.5 text-xs text-white hover:bg-emerald-700"
+                                  disabled={reviewMutation.isPending}
+                                  onClick={() => {
+                                    reviewMutation.mutate({
+                                      id: cr.id,
+                                      decision: "approved",
+                                    });
+                                    setCreativeDeleteId(null);
+                                  }}
+                                >
+                                  승인 — 편성 투입
+                                </Button>
+                              ) : null}
+                              {admin && cr.status !== "rejected" ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-2.5 text-xs"
+                                  disabled={reviewMutation.isPending}
+                                  onClick={() => {
+                                    reviewMutation.mutate({
+                                      id: cr.id,
+                                      decision: "rejected",
+                                    });
+                                    setCreativeDeleteId(null);
+                                  }}
+                                >
+                                  반려
+                                </Button>
+                              ) : null}
                               <div className="mt-1 flex justify-end gap-2">
                                 <Button
                                   type="button"
@@ -652,7 +885,7 @@ export function AdsPage() {
                                   className="h-7 px-2.5 text-xs"
                                   onClick={() => setCreativeDeleteId(null)}
                                 >
-                                  취소
+                                  닫기
                                 </Button>
                                 <Button
                                   type="button"
@@ -702,6 +935,76 @@ export function AdsPage() {
             })}
           </div>
         )}
+      </div>
+
+      {/* 구좌 인벤토리(판매 가능량) */}
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-muted-foreground">
+          구좌 인벤토리
+        </p>
+        <Card className="py-0">
+          <CardContent className="px-4 py-3">
+            {(inventoryQuery.data ?? []).length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                광고 위젯(구좌)이 배치된 북이 없습니다. 스튜디오에서 북에 광고
+                위젯을 추가해 보세요.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                      <th className="py-2 pr-2 font-medium">구좌</th>
+                      <th className="px-2 py-2 font-medium">북</th>
+                      <th className="px-2 py-2 text-right font-medium">
+                        슬롯 길이
+                      </th>
+                      <th className="px-2 py-2 text-right font-medium">
+                        연결 디바이스
+                      </th>
+                      <th className="py-2 pl-2 text-right font-medium">
+                        시간당 노출 능력
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(inventoryQuery.data ?? []).map((row) => (
+                      <tr
+                        key={`${row.bookId}-${row.slotElementId}`}
+                        className="border-b border-border/60 last:border-b-0"
+                      >
+                        <td className="max-w-0 py-2 pr-2">
+                          <span className="block truncate font-medium">
+                            {row.slotName}
+                          </span>
+                        </td>
+                        <td className="max-w-0 px-2 py-2">
+                          <span className="block truncate text-muted-foreground">
+                            {row.bookTitle}
+                          </span>
+                        </td>
+                        <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums">
+                          {row.slotSec}초
+                        </td>
+                        <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums">
+                          {row.deviceCount}대
+                        </td>
+                        <td className="whitespace-nowrap py-2 pl-2 text-right tabular-nums">
+                          {row.hourlyCapacity.toLocaleString()}회/시간
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              시간당 노출 능력 = 3600초 ÷ 슬롯 길이 × 연결 디바이스 수(직접 소스
+              지정 기준, 최소 1). 플레이리스트·스케줄 경유 재생은 계산에서
+              제외한 근사치입니다.
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* 광고주 등록 */}
@@ -894,9 +1197,26 @@ export function AdsPage() {
                 />
               </div>
             </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="camp-cap">시간당 재생 상한</Label>
+              <NativeSelect
+                id="camp-cap"
+                value={campForm.maxPerHour}
+                onChange={(e) =>
+                  setCampForm({ ...campForm, maxPerHour: e.target.value })
+                }
+              >
+                <option value="0">무제한</option>
+                {[10, 30, 60, 120, 240].map((n) => (
+                  <option key={n} value={String(n)}>
+                    시간당 최대 {n}회
+                  </option>
+                ))}
+              </NativeSelect>
+            </div>
             <p className="text-[11px] text-muted-foreground">
-              시간대를 비워 두면 종일 편성됩니다. 요일·시간대 밖에서는 구좌
-              로테이션에서 제외됩니다.
+              시간대를 비워 두면 종일 편성됩니다. 요일·시간대 밖이거나 시간당
+              상한을 채운 캠페인은 구좌 로테이션에서 제외됩니다.
             </p>
           </div>
           <DialogFooter>

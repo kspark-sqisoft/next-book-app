@@ -5,15 +5,19 @@ import {
   createCretaAdvertiserAction,
   cretaAdCampaignReportAction,
   cretaAdHourlyReportAction,
+  cretaAdSlotInventoryAction,
   cretaAdSlotReportAction,
   deleteCretaAdCampaignAction,
   deleteCretaAdCreativeAction,
   deleteCretaAdvertiserAction,
   getCretaAdSettingAction,
   listCretaAdActiveCreativesAction,
+  listCretaAdAuditAction,
   listCretaAdCampaignsAction,
   listCretaAdvertisersAction,
   logCretaAdPlayAction,
+  moveCretaAdCreativeAction,
+  reviewCretaAdCreativeAction,
   updateCretaAdCampaignAction,
   updateCretaAdSettingAction,
   updateCretaAdvertiserAction,
@@ -40,6 +44,16 @@ export type CretaAdCreative = {
   name: string;
   kind: "image" | "video";
   src: string;
+  status: "pending" | "approved" | "rejected";
+};
+
+export const CRETA_AD_CREATIVE_STATUS_LABEL: Record<
+  CretaAdCreative["status"],
+  string
+> = {
+  pending: "심의 중",
+  approved: "승인",
+  rejected: "반려",
 };
 
 export type CretaAdCampaign = {
@@ -55,6 +69,7 @@ export type CretaAdCampaign = {
   dayTarget: "all" | "weekday" | "weekend";
   startMin: number | null;
   endMin: number | null;
+  maxPerHour: number | null;
   creatives: CretaAdCreative[];
   inFlight: boolean;
   phase: "scheduled" | "live" | "paused" | "ended";
@@ -152,6 +167,7 @@ export async function createCretaAdCampaign(input: {
   dayTarget?: "all" | "weekday" | "weekend";
   startMin?: number | null;
   endMin?: number | null;
+  maxPerHour?: number | null;
 }): Promise<{ id: number }> {
   return run(() => createCretaAdCampaignAction(requireToken(), input));
 }
@@ -168,6 +184,7 @@ export async function updateCretaAdCampaign(
     dayTarget?: "all" | "weekday" | "weekend";
     startMin?: number | null;
     endMin?: number | null;
+    maxPerHour?: number | null;
   },
 ): Promise<void> {
   await run(() => updateCretaAdCampaignAction(requireToken(), id, input));
@@ -261,4 +278,64 @@ export async function fetchCretaAdSlotReport(
   return run(() => cretaAdSlotReportAction(days)) as unknown as Promise<
     CretaAdSlotRow[]
   >;
+}
+
+export type CretaAdAuditRow = {
+  id: number;
+  entityKind: "advertiser" | "campaign" | "creative" | "setting";
+  entityName: string;
+  action: string;
+  detail: string;
+  actorName: string;
+  createdAt: string;
+};
+
+export const CRETA_AD_AUDIT_KIND_LABEL: Record<
+  CretaAdAuditRow["entityKind"],
+  string
+> = {
+  advertiser: "광고주",
+  campaign: "캠페인",
+  creative: "소재",
+  setting: "설정",
+};
+
+export type CretaAdSlotInventoryRow = {
+  bookId: number;
+  bookTitle: string;
+  slotElementId: string;
+  slotName: string;
+  slotSec: number;
+  deviceCount: number;
+  hourlyCapacity: number;
+};
+
+/** 소재 심의(관리자) — 승인/반려 */
+export async function reviewCretaAdCreative(
+  id: number,
+  decision: "approved" | "rejected",
+): Promise<void> {
+  await run(() => reviewCretaAdCreativeAction(requireToken(), id, decision));
+}
+
+export async function fetchCretaAdAudit(): Promise<CretaAdAuditRow[]> {
+  return run(() => listCretaAdAuditAction()) as unknown as Promise<
+    CretaAdAuditRow[]
+  >;
+}
+
+export async function fetchCretaAdSlotInventory(): Promise<
+  CretaAdSlotInventoryRow[]
+> {
+  return run(() => cretaAdSlotInventoryAction()) as unknown as Promise<
+    CretaAdSlotInventoryRow[]
+  >;
+}
+
+/** 소재 순서 이동 — 앞(-1)/뒤(1) */
+export async function moveCretaAdCreative(
+  id: number,
+  direction: -1 | 1,
+): Promise<void> {
+  await run(() => moveCretaAdCreativeAction(requireToken(), id, direction));
 }

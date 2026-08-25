@@ -1,0 +1,1 @@
+ALTER TABLE "creta_ad_creative" ADD COLUMN "position" integer DEFAULT 0 NOT NULL;

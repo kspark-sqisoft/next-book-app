@@ -764,6 +764,8 @@ export const cretaAdCampaign = pgTable(
     /** 시간대 타기팅(분). null = 종일 */
     startMin: integer("startMin"),
     endMin: integer("endMin"),
+    /** 시간당 재생 상한(구좌·루프 합산). null = 무제한 */
+    maxPerHour: integer("maxPerHour"),
     createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
   },
@@ -781,6 +783,10 @@ export const cretaAdCreative = pgTable(
     name: varchar("name", { length: 120 }).notNull(),
     kind: varchar("kind", { length: 8 }).notNull(), // image|video
     src: varchar("src", { length: 512 }).notNull(),
+    /** 심의: pending(검토 중) → approved(편성 투입) | rejected(반려). 기존 소재 호환 기본 approved */
+    status: varchar("status", { length: 12 }).notNull().default("approved"),
+    /** 캠페인 안 표시·로테이션 순서(작을수록 먼저) */
+    position: integer("position").notNull().default(0),
     createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
   },
   (t) => [index("creta_ad_creative_campaignId_idx").on(t.campaignId)],
@@ -812,6 +818,23 @@ export const cretaAdPlayLog = pgTable(
     ),
     index("creta_ad_play_log_playedAt_idx").on(t.playedAt),
   ],
+);
+
+/** 광고 변경 이력(감사 로그) — 엔티티가 삭제돼도 남도록 이름 비정규화 저장 */
+export const cretaAdAuditLog = pgTable(
+  "creta_ad_audit_log",
+  {
+    id: serial("id").primaryKey(),
+    /** advertiser|campaign|creative|setting */
+    entityKind: varchar("entityKind", { length: 12 }).notNull(),
+    entityName: varchar("entityName", { length: 120 }).notNull(),
+    /** create|update|delete|approve|reject */
+    action: varchar("action", { length: 16 }).notNull(),
+    detail: varchar("detail", { length: 300 }).notNull().default(""),
+    actorName: varchar("actorName", { length: 80 }).notNull(),
+    createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [index("creta_ad_audit_log_createdAt_idx").on(t.createdAt)],
 );
 
 /** 플레이리스트 공유 — 공유받은 사용자는 소유자처럼 편집 가능(삭제·공유 관리는 소유자·관리자) */

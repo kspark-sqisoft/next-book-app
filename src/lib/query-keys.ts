@@ -66,6 +66,8 @@ export const cretaKeys = {
   adSetting: () => [...cretaKeys.all, "ad-setting"] as const,
   adHourly: (days: number) => [...cretaKeys.all, "ad-hourly", days] as const,
   adSlots: (days: number) => [...cretaKeys.all, "ad-slots", days] as const,
+  adAudit: () => [...cretaKeys.all, "ad-audit"] as const,
+  adInventory: () => [...cretaKeys.all, "ad-inventory"] as const,
   /** 크레타 > 계정: 내가 만든/공유받은 북·플레이리스트·스케줄 */
   overview: (userId: number) => [...cretaKeys.all, "overview", userId] as const,
   /** 커뮤니티 댓글 */
