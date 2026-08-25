@@ -176,111 +176,27 @@ export function BookAdSlotWidgetOverlay({
       }}
     >
       {mode === "edit" ? (
-        /* 편집 — 구좌 플레이스홀더(방송 슬롯 스타일: 해치 패턴 + 점선 프레임 + 코너 마크) */
-        (() => {
-          const inset = Math.max(6, Math.round(fh * scale * 0.04));
-          const tick = Math.max(10, Math.round(fh * scale * 0.07));
-          const nameFs = Math.min(34, Math.max(13, fh * scale * 0.085));
-          const metaFs = Math.min(13, Math.max(9, fh * scale * 0.042));
-          const tagFs = Math.min(11, Math.max(8, fh * scale * 0.034));
-          const cornerCls = "absolute border-amber-400/80";
-          return (
-            <div className="relative flex size-full flex-col items-center justify-center overflow-hidden bg-zinc-950 px-4 text-center">
-              {/* 대각 해치 — "아직 비어 있는 슬롯" 질감 */}
-              <div
-                className="absolute inset-0"
-                style={{
-                  backgroundImage:
-                    "repeating-linear-gradient(-45deg, rgba(251,191,36,0.07) 0 1px, transparent 1px 12px)",
-                }}
-              />
-              <div
-                className="absolute inset-0"
-                style={{
-                  background:
-                    "radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.6) 100%)",
-                }}
-              />
-              {/* 점선 프레임 + 코너 마크 */}
-              <div
-                className="absolute rounded-sm border border-dashed border-amber-400/30"
-                style={{ inset }}
-              />
-              <span
-                className={`${cornerCls} border-l-2 border-t-2`}
-                style={{ left: inset, top: inset, width: tick, height: tick }}
-                aria-hidden
-              />
-              <span
-                className={`${cornerCls} border-r-2 border-t-2`}
-                style={{ right: inset, top: inset, width: tick, height: tick }}
-                aria-hidden
-              />
-              <span
-                className={`${cornerCls} border-b-2 border-l-2`}
-                style={{
-                  left: inset,
-                  bottom: inset,
-                  width: tick,
-                  height: tick,
-                }}
-                aria-hidden
-              />
-              <span
-                className={`${cornerCls} border-b-2 border-r-2`}
-                style={{
-                  right: inset,
-                  bottom: inset,
-                  width: tick,
-                  height: tick,
-                }}
-                aria-hidden
-              />
-              {/* 슬롯 태그 */}
-              <span
-                className="absolute rounded-full bg-amber-400/15 font-mono font-semibold uppercase tracking-[0.18em] text-amber-300 ring-1 ring-amber-400/40"
-                style={{
-                  left: inset + tick * 0.6,
-                  top: inset + tick * 0.6,
-                  fontSize: tagFs,
-                  padding: `${tagFs * 0.28}px ${tagFs * 0.9}px`,
-                }}
-              >
-                Ad Slot
-              </span>
-              {/* 중앙 — 구좌 이름 + 메타 */}
-              <p
-                className="relative max-w-full truncate font-semibold tracking-tight text-zinc-50"
-                style={{ fontSize: nameFs }}
-              >
-                {el.adSlotName?.trim() || "광고 구좌"}
-              </p>
-              <span
-                className="relative my-[0.45em] h-px w-[3.2em] bg-amber-400/50"
-                style={{ fontSize: nameFs }}
-                aria-hidden
-              />
-              <p
-                className="relative font-mono text-zinc-400"
-                style={{ fontSize: metaFs, letterSpacing: "0.06em" }}
-              >
-                {slotSec}s · 활성 소재 {rotation.length} · 순환 재생
-              </p>
-              {/* 워터마크 */}
-              <span
-                className="absolute font-mono uppercase tracking-[0.22em] text-amber-400/35"
-                style={{
-                  right: inset + tick * 0.6,
-                  bottom: inset + tick * 0.55,
-                  fontSize: tagFs,
-                }}
-                aria-hidden
-              >
-                Creta Ads
-              </span>
-            </div>
-          );
-        })()
+        /* 편집 — 구좌 플레이스홀더(미니멀: 밝은 바탕 + 파란 글자) */
+        <div className="relative flex size-full flex-col items-center justify-center gap-[0.35em] overflow-hidden border border-slate-300 bg-slate-100 px-4 text-center dark:border-slate-600 dark:bg-slate-800">
+          <span
+            className="absolute left-2 top-2 font-mono font-semibold uppercase tracking-[0.14em] text-blue-600 dark:text-blue-400"
+            style={{ fontSize: Math.min(12, Math.max(8, fh * scale * 0.038)) }}
+          >
+            AD
+          </span>
+          <p
+            className="max-w-full truncate font-semibold text-blue-600 dark:text-blue-400"
+            style={{ fontSize: Math.min(30, Math.max(13, fh * scale * 0.085)) }}
+          >
+            {el.adSlotName?.trim() || "광고 구좌"}
+          </p>
+          <p
+            className="text-slate-500 dark:text-slate-400"
+            style={{ fontSize: Math.min(13, Math.max(9, fh * scale * 0.045)) }}
+          >
+            {slotSec}초 · 활성 소재 {rotation.length}개 · 재생 시 순환
+          </p>
+        </div>
       ) : current ? (
         <>
           {current.kind === "image" ? (

@@ -1244,7 +1244,7 @@ export async function captureBookSlideToDataURL(
           }),
         );
       } else if (el.type === "adSlot") {
-        // 광고 구좌 자리표시자 — 그라데이션 카드 + 큰 AD 마크 + 구좌 이름
+        // 광고 구좌 자리표시자 — 밝은 카드 + 파란 구좌 이름(미니멀)
         const aw = sx(el.width);
         const ah = sx(el.height);
         const ap = bookElementPivotKonva({
@@ -1265,17 +1265,8 @@ export async function captureBookSlideToDataURL(
             width: aw,
             height: ah,
             rotation: ap.rotation,
-            fillLinearGradientStartPoint: { x: 0, y: 0 },
-            fillLinearGradientEndPoint: { x: aw, y: ah },
-            fillLinearGradientColorStops: [
-              0,
-              "#292524",
-              0.55,
-              "#1c1917",
-              1,
-              "#78350f",
-            ],
-            stroke: aOw > 0 ? aOc : "rgba(251,191,36,0.5)",
+            fill: "#f1f5f9",
+            stroke: aOw > 0 ? aOc : "#cbd5e1",
             strokeWidth: aOw > 0 ? Math.max(0.5, sx(aOw)) : 0.5,
             cornerRadius: Math.max(0, sx(resolveBookElementBorderRadius(el))),
             opacity: elOp,
@@ -1286,17 +1277,19 @@ export async function captureBookSlideToDataURL(
             x: ap.cx,
             y: ap.cy,
             offsetX: ap.offsetX,
-            offsetY: ap.offsetY - ah * 0.07,
+            offsetY: ap.offsetY - ah * 0.06,
             width: aw,
-            height: ah * 0.62,
+            height: ah * 0.58,
             rotation: ap.rotation,
-            text: "AD",
-            fontSize: Math.max(12, ah * 0.3),
+            text: el.adSlotName?.trim() || "광고 구좌",
+            fontSize: Math.max(9, ah * 0.14),
             fontStyle: "bold",
-            fill: "#fbbf24",
+            fill: "#2563eb",
             align: "center",
             verticalAlign: "bottom",
             opacity: elOp,
+            ellipsis: true,
+            wrap: "none",
           }),
         );
         layer.add(
@@ -1304,18 +1297,16 @@ export async function captureBookSlideToDataURL(
             x: ap.cx,
             y: ap.cy,
             offsetX: ap.offsetX,
-            offsetY: ap.offsetY - ah * 0.66,
+            offsetY: ap.offsetY - ah * 0.62,
             width: aw,
             height: ah * 0.3,
             rotation: ap.rotation,
-            text: el.adSlotName?.trim() || "광고 구좌",
-            fontSize: Math.max(7, ah * 0.09),
-            fill: "rgba(255,255,255,0.85)",
+            text: "AD",
+            fontSize: Math.max(6, ah * 0.07),
+            fill: "#64748b",
             align: "center",
             verticalAlign: "top",
             opacity: elOp,
-            ellipsis: true,
-            wrap: "none",
           }),
         );
       } else if (el.type === "webview") {
