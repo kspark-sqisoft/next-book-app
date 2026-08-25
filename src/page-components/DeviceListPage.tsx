@@ -3,10 +3,10 @@
 // 디바이스 목록: DB 기반 등록·삭제. 행 썸네일은 현재 재생 소스(북/플레이리스트
 // 첫 북/스케줄 기본 재생)의 커버를 사용한다.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Play, Plus, RotateCw, Trash2 } from "lucide-react";
+import { LayoutGrid, List, Play, Plus, RotateCw, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -56,6 +56,7 @@ import {
   PLAY_SOURCE_LABEL,
 } from "@/lib/creta-api";
 import { cretaKeys } from "@/lib/query-keys";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/stores/auth-store";
 
 export function DeviceListPage() {
@@ -112,17 +113,64 @@ export function DeviceListPage() {
 
   /** 태그 필터("" = 전체) — 목록 위 셀렉트에서 선택 */
   const [tagFilter, setTagFilter] = useState("");
+  /** 상태 필터("" = 전체) — 위 요약 카드를 눌러 전환 */
+  const [statusFilter, setStatusFilter] = useState<
+    "" | "online" | "error" | "offline"
+  >("");
+  /** 정렬 — 상태(문제 우선/온라인 우선)로도 정렬 가능 */
+  const [sortKey, setSortKey] = useState<
+    "default" | "name" | "problem" | "online"
+  >("default");
+  /** 보기 형태 — localStorage에 기억(서버 렌더와 어긋나지 않게 마운트 후 복원) */
+  const [view, setView] = useState<"list" | "grid">("list");
+  useEffect(() => {
+    // 마운트 후 저장된 보기 형태 복원 — 동기 setState 경고 회피를 위해 microtask로
+    queueMicrotask(() => {
+      try {
+        if (localStorage.getItem("creta-device-view") === "grid") {
+          setView("grid");
+        }
+      } catch {
+        /* 저장소 접근 불가 시 기본 리스트 */
+      }
+    });
+  }, []);
+  const changeView = (next: "list" | "grid") => {
+    setView(next);
+    try {
+      localStorage.setItem("creta-device-view", next);
+    } catch {
+      /* ignore */
+    }
+  };
+
   const allTags = useMemo(() => {
     const set = new Set<string>();
     for (const d of devices ?? []) for (const t of d.tags) set.add(t);
     return [...set].sort((a, b) => a.localeCompare(b, "ko"));
   }, [devices]);
   const allList: CretaDevice[] = useMemo(() => devices ?? [], [devices]);
-  const list: CretaDevice[] = useMemo(
-    () =>
-      tagFilter ? allList.filter((d) => d.tags.includes(tagFilter)) : allList,
-    [allList, tagFilter],
-  );
+  const list: CretaDevice[] = useMemo(() => {
+    let next = tagFilter
+      ? allList.filter((d) => d.tags.includes(tagFilter))
+      : allList;
+    if (statusFilter) {
+      next = next.filter((d) => cretaDeviceStatus(d) === statusFilter);
+    }
+    if (sortKey !== "default") {
+      // 문제 우선: 비정상 → 오프라인 → 온라인(운영자가 문제 단말부터 보게)
+      const problemRank = { error: 0, offline: 1, online: 2 } as const;
+      const onlineRank = { online: 0, error: 1, offline: 2 } as const;
+      next = [...next].sort((a, b) => {
+        if (sortKey === "name") return a.name.localeCompare(b.name, "ko");
+        const sa = cretaDeviceStatus(a);
+        const sb = cretaDeviceStatus(b);
+        const rank = sortKey === "problem" ? problemRank : onlineRank;
+        return rank[sa] - rank[sb] || a.name.localeCompare(b.name, "ko");
+      });
+    }
+    return next;
+  }, [allList, tagFilter, statusFilter, sortKey]);
   const onlineCount = allList.filter(
     (d) => cretaDeviceStatus(d) === "online",
   ).length;
@@ -132,13 +180,17 @@ export function DeviceListPage() {
   const offlineCount = allList.filter(
     (d) => cretaDeviceStatus(d) === "offline",
   ).length;
-  const stats: { label: string; value: number; dot: "ok" | "error" | null }[] =
-    [
-      { label: "전체 디바이스", value: allList.length, dot: null },
-      { label: "온라인", value: onlineCount, dot: "ok" },
-      { label: "비정상", value: errorCount, dot: "error" },
-      { label: "오프라인", value: offlineCount, dot: null },
-    ];
+  const stats: {
+    label: string;
+    value: number;
+    dot: "ok" | "error" | null;
+    filter: "" | "online" | "error" | "offline";
+  }[] = [
+    { label: "전체 디바이스", value: allList.length, dot: null, filter: "" },
+    { label: "온라인", value: onlineCount, dot: "ok", filter: "online" },
+    { label: "비정상", value: errorCount, dot: "error", filter: "error" },
+    { label: "오프라인", value: offlineCount, dot: null, filter: "offline" },
+  ];
 
   const thumbEntries = useMemo(
     () =>
@@ -161,28 +213,46 @@ export function DeviceListPage() {
 
       {activeAlert ? <CretaAlertBanner alert={activeAlert} /> : null}
 
+      {/* 요약 카드 = 상태 필터 — 누르면 아래 목록이 해당 상태만 보인다 */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <Card key={stat.label} className="py-4">
-            <CardContent className="px-4">
-              <p className="text-xs text-muted-foreground">{stat.label}</p>
-              <p className="mt-1 flex items-center gap-1.5 text-2xl font-bold tabular-nums">
-                {stat.value}
-                {stat.dot === "ok" ? (
-                  <span
-                    className="size-2 rounded-full bg-emerald-500"
-                    aria-hidden
-                  />
-                ) : stat.dot === "error" ? (
-                  <span
-                    className="size-2 rounded-full bg-red-500"
-                    aria-hidden
-                  />
-                ) : null}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
+        {stats.map((stat) => {
+          const active = statusFilter === stat.filter;
+          return (
+            <button
+              key={stat.label}
+              type="button"
+              aria-pressed={active}
+              onClick={() => setStatusFilter(stat.filter)}
+              className="text-left outline-none"
+            >
+              <Card
+                className={cn(
+                  "py-4 transition-colors hover:border-primary/40",
+                  active &&
+                    "border-primary/60 bg-primary/5 ring-1 ring-primary/40",
+                )}
+              >
+                <CardContent className="px-4">
+                  <p className="text-xs text-muted-foreground">{stat.label}</p>
+                  <p className="mt-1 flex items-center gap-1.5 text-2xl font-bold tabular-nums">
+                    {stat.value}
+                    {stat.dot === "ok" ? (
+                      <span
+                        className="size-2 rounded-full bg-emerald-500"
+                        aria-hidden
+                      />
+                    ) : stat.dot === "error" ? (
+                      <span
+                        className="size-2 animate-pulse rounded-full bg-red-500"
+                        aria-hidden
+                      />
+                    ) : null}
+                  </p>
+                </CardContent>
+              </Card>
+            </button>
+          );
+        })}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -205,6 +275,46 @@ export function DeviceListPage() {
               ))}
             </NativeSelect>
           ) : null}
+          <NativeSelect
+            value={sortKey}
+            onChange={(e) =>
+              setSortKey(
+                e.target.value as "default" | "name" | "problem" | "online",
+              )
+            }
+            aria-label="정렬"
+            className="h-8 w-auto text-xs"
+          >
+            <option value="default">등록순</option>
+            <option value="name">이름순</option>
+            <option value="problem">상태: 문제 우선</option>
+            <option value="online">상태: 온라인 우선</option>
+          </NativeSelect>
+          {/* 보기 전환 — 리스트/그리드 */}
+          <div className="flex items-center rounded-md border border-border p-0.5">
+            <Button
+              type="button"
+              variant={view === "list" ? "secondary" : "ghost"}
+              size="icon-sm"
+              className="size-7"
+              aria-label="리스트 보기"
+              aria-pressed={view === "list"}
+              onClick={() => changeView("list")}
+            >
+              <List className="size-3.5" aria-hidden />
+            </Button>
+            <Button
+              type="button"
+              variant={view === "grid" ? "secondary" : "ghost"}
+              size="icon-sm"
+              className="size-7"
+              aria-label="그리드 보기"
+              aria-pressed={view === "grid"}
+              onClick={() => changeView("grid")}
+            >
+              <LayoutGrid className="size-3.5" aria-hidden />
+            </Button>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <DeviceTagDeployButton devices={allList} />
@@ -238,10 +348,75 @@ export function DeviceListPage() {
       ) : list.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            등록된 디바이스가 없습니다. “디바이스 등록”으로 사이니지를 추가해
-            보세요.
+            {statusFilter || tagFilter
+              ? "조건에 맞는 디바이스가 없습니다. 위 카드나 필터를 눌러 조건을 바꿔 보세요."
+              : "등록된 디바이스가 없습니다. “디바이스 등록”으로 사이니지를 추가해 보세요."}
           </CardContent>
         </Card>
+      ) : view === "grid" ? (
+        /* 그리드 보기 — 정보는 줄이고 상태(온라인/비정상/오프라인)가 한눈에 보이게 */
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-4">
+          {list.map((device) => {
+            const st = cretaDeviceStatus(device);
+            return (
+              <Card
+                key={device.id}
+                className={cn(
+                  "overflow-hidden py-0 transition-colors",
+                  st === "online" && "border-emerald-500/45",
+                  st === "error" && "border-red-500/70 ring-1 ring-red-500/35",
+                  st === "offline" && "border-zinc-500/45 opacity-80",
+                )}
+              >
+                <Link
+                  href={`/devices/${device.id}`}
+                  className="block outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <div className="relative aspect-video w-full overflow-hidden bg-muted/40">
+                    <CretaCoverThumb
+                      dataUrl={thumbs[`device-${device.id}`]}
+                      title={device.source?.title ?? device.name}
+                      className="size-full"
+                    />
+                    {activeAlert &&
+                    cretaAlertCoversDevice(activeAlert, device.id) ? (
+                      <CretaAlertOverlay alert={activeAlert} compact />
+                    ) : null}
+                    <span
+                      className={cn(
+                        "absolute left-2 top-2 flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white shadow",
+                        st === "online" && "bg-emerald-600/95",
+                        st === "error" && "bg-red-600/95",
+                        st === "offline" && "bg-zinc-600/95",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "size-1.5 rounded-full bg-white",
+                          st === "error" && "animate-pulse",
+                        )}
+                        aria-hidden
+                      />
+                      {st === "online"
+                        ? "온라인"
+                        : st === "error"
+                          ? "비정상"
+                          : "오프라인"}
+                    </span>
+                  </div>
+                  <div className="space-y-0.5 px-3 py-2.5">
+                    <p className="truncate text-sm font-medium">
+                      {device.name}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {device.location || "위치 미지정"}
+                    </p>
+                  </div>
+                </Link>
+              </Card>
+            );
+          })}
+        </div>
       ) : (
         <Card className="py-0">
           <CardContent className="divide-y divide-border px-0">

@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { startTransition, useEffect, useRef, useState } from "react";
 
 import { ChatDock } from "@/components/chat/ChatDock";
+import { DeviceAlertBell } from "@/components/creta/DeviceAlertBell";
 import { CretaSidebar } from "@/components/layout/CretaSidebar";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { NavLink } from "@/components/NavLink";
@@ -256,6 +257,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </NavLink>
             </nav>
             <div className="flex min-w-0 items-center gap-1 sm:gap-2">
+              {/* 크레타 영역 — 실시간 이상 단말 알림 벨(우상단, 웹 알림 관례) */}
+              {cretaMenuActive ? <DeviceAlertBell /> : null}
               <ThemeToggle />
               {user ? (
                 <>
