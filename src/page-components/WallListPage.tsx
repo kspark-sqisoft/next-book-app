@@ -121,7 +121,7 @@ export function WallListPage() {
         </Card>
       ) : (
         /* 동기 미리보기 썸네일이 잘 보이도록 다른 목록보다 큰 카드(최대 2열, 폭 제한으로 과대 방지) */
-        <div className="grid max-w-xl gap-4 lg:max-w-5xl lg:grid-cols-2">
+        <div className="grid max-w-sm gap-4 lg:max-w-3xl lg:grid-cols-2">
           {list.map((wall) => {
             const master = wall.members.find((m) => m.isMaster);
             return (
