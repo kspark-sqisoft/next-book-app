@@ -62,12 +62,15 @@ export function CretaCoverThumb({
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-slate-700 to-slate-950 text-[11px] font-semibold text-slate-400 ring-1 ring-border",
+        "flex shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-slate-700 to-slate-950 px-2 text-center ring-1 ring-border",
         className,
       )}
       aria-hidden
     >
-      {title.trim().charAt(0) || "북"}
+      {/* 커버가 없으면 제목 전체를 보여준다(예: "광고 전용 루프") */}
+      <span className="line-clamp-2 text-[11px] font-semibold leading-snug text-slate-300">
+        {title.trim() || "북"}
+      </span>
     </div>
   );
 }

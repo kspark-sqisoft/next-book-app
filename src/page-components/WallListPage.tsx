@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { WallSyncThumb } from "@/components/creta/WallSyncThumb";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -119,7 +120,8 @@ export function WallListPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        /* 동기 미리보기 썸네일이 잘 보이도록 다른 목록보다 큰 카드(최대 2열) */
+        <div className="grid gap-4 lg:grid-cols-2">
           {list.map((wall) => {
             const master = wall.members.find((m) => m.isMaster);
             return (
@@ -132,6 +134,8 @@ export function WallListPage() {
                     href={`/walls/${wall.id}`}
                     className="block space-y-2 outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
+                    {/* 상세의 동기 재생 미리보기와 같은 박자로 도는 미니 썸네일 */}
+                    <WallSyncThumb wall={wall} />
                     <div className="flex items-center gap-2">
                       <Grid2x2
                         className="size-5 shrink-0 text-primary"
