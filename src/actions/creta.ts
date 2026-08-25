@@ -485,6 +485,38 @@ export async function updateCretaDeviceSourceAction(
   }
 }
 
+/** 원격 제어(시뮬레이션): 볼륨·밝기 */
+export async function updateCretaDeviceControlsAction(
+  accessToken: string | null | undefined,
+  deviceId: number,
+  body: { volume?: number; brightness?: number },
+): Promise<CretaDevicePublic> {
+  try {
+    await requireUserFromToken(accessToken);
+    return await new CretaService().updateDeviceControls(
+      assertPositiveIntId(deviceId),
+      body,
+    );
+  } catch (e) {
+    rethrowActionError(e, TAG);
+  }
+}
+
+/** 원격 제어(시뮬레이션): 플레이어 최신 버전 업데이트 */
+export async function upgradeCretaDevicePlayerAction(
+  accessToken: string | null | undefined,
+  deviceId: number,
+): Promise<CretaDevicePublic> {
+  try {
+    await requireUserFromToken(accessToken);
+    return await new CretaService().upgradeDevicePlayer(
+      assertPositiveIntId(deviceId),
+    );
+  } catch (e) {
+    rethrowActionError(e, TAG);
+  }
+}
+
 /** 디바이스 태그 설정(전체 교체) */
 export async function updateCretaDeviceTagsAction(
   accessToken: string | null | undefined,

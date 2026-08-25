@@ -23,6 +23,7 @@ import {
   setCretaPlaylistShareAllAction,
   setCretaScheduleShareAction,
   setCretaScheduleShareAllAction,
+  updateCretaDeviceControlsAction,
   updateCretaDeviceHealthAction,
   updateCretaDeviceOnlineAction,
   updateCretaDevicePowerAction,
@@ -30,6 +31,7 @@ import {
   updateCretaDeviceTagsAction,
   updateCretaScheduleAction,
   updateCretaScheduleSlotAction,
+  upgradeCretaDevicePlayerAction,
 } from "@/actions/creta";
 import {
   type BookListCoverPreview,
@@ -190,6 +192,10 @@ export type CretaDevice = {
   source: CretaContentRef | null;
   /** 태그(정렬됨) — 태그 단위 일괄 배포·필터에 사용 */
   tags: string[];
+  /** 원격 제어(시뮬레이션): 볼륨·밝기(0~100), 플레이어 버전 */
+  volume: number;
+  brightness: number;
+  playerVersion: string;
   /** 전원 예약 "HH:MM"(매일). null = 예약 없음 */
   powerOnTime: string | null;
   powerOffTime: string | null;
@@ -266,7 +272,7 @@ export function deviceSimMeta(device: CretaDevice): {
   const abnormal = device.health === "error";
   return {
     ip: `192.168.0.${(id % 230) + 20}`,
-    player: "Creta Player v1.1.0",
+    player: `Creta Player ${device.playerVersion}`,
     uptime: device.online ? `${(id % 14) + 1}일 ${id % 24}시간` : "—",
     lastSync: device.online ? "방금" : "연결 끊김",
     cpuPct: abnormal ? 91 + (id % 7) : 18 + ((id * 13) % 45),
@@ -543,6 +549,28 @@ export async function updateCretaDeviceSource(
 ): Promise<CretaDevice> {
   return run(() =>
     updateCretaDeviceSourceAction(requireToken(), id, body),
+  ) as unknown as CretaDevice;
+}
+
+/** 플레이어 최신 버전(시뮬레이션) — 서버 상수와 동일하게 유지 */
+export const CRETA_PLAYER_LATEST = "v1.2.0";
+
+/** 원격 제어(시뮬레이션): 볼륨·밝기 저장 */
+export async function updateCretaDeviceControls(
+  id: number,
+  body: { volume?: number; brightness?: number },
+): Promise<CretaDevice> {
+  return run(() =>
+    updateCretaDeviceControlsAction(requireToken(), id, body),
+  ) as unknown as CretaDevice;
+}
+
+/** 원격 제어(시뮬레이션): 플레이어 최신 버전 업데이트 */
+export async function upgradeCretaDevicePlayer(
+  id: number,
+): Promise<CretaDevice> {
+  return run(() =>
+    upgradeCretaDevicePlayerAction(requireToken(), id),
   ) as unknown as CretaDevice;
 }
 

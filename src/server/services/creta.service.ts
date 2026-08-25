@@ -33,6 +33,9 @@ import { CretaLikesService } from "@/server/services/creta-likes.service";
 
 export type CretaCoverPublic = BookListCoverPreviewPublic | null;
 
+/** 플레이어 최신 버전(시뮬레이션) — 이보다 낮으면 상세에 "업데이트" 버튼 표시 */
+export const CRETA_PLAYER_LATEST = "v1.2.0";
+
 /** 북/플레이리스트/스케줄을 가리키는 공통 참조(썸네일 포함) */
 export type CretaContentRefPublic = {
   kind: "book" | "playlist" | "schedule";
@@ -191,6 +194,10 @@ export type CretaDevicePublic = {
   source: CretaContentRefPublic | null;
   /** 태그(정렬됨) — 태그 단위 일괄 배포·필터에 사용 */
   tags: string[];
+  /** 원격 제어(시뮬레이션): 볼륨·밝기(0~100), 플레이어 버전 */
+  volume: number;
+  brightness: number;
+  playerVersion: string;
   /** 전원 예약 "HH:MM"(매일). null = 예약 없음 */
   powerOnTime: string | null;
   powerOffTime: string | null;
@@ -1627,6 +1634,9 @@ export class CretaService {
               ? (sRefs.get(r.sourceScheduleId) ?? null)
               : null,
       tags: tagsByDevice.get(r.id) ?? [],
+      volume: r.volume ?? 70,
+      brightness: r.brightness ?? 80,
+      playerVersion: r.playerVersion || "v1.1.0",
       powerOnTime: r.powerOnTime ?? null,
       powerOffTime: r.powerOffTime ?? null,
       powerExcludeDays: parseExcludeDays(r.powerExcludeDays),
@@ -1823,6 +1833,47 @@ export class CretaService {
     if (!row) throw new HttpError(404, "디바이스를 찾을 수 없습니다.");
     const set = await this.buildDeviceSourceSet(input);
     await db.update(cretaDevice).set(set).where(eq(cretaDevice.id, id));
+    return this.getDevice(id);
+  }
+
+  /** 원격 제어(시뮬레이션): 볼륨·밝기 설정(0~100) */
+  async updateDeviceControls(
+    id: number,
+    input: { volume?: number; brightness?: number },
+  ): Promise<CretaDevicePublic> {
+    const set: Partial<typeof cretaDevice.$inferInsert> = {
+      updatedAt: new Date(),
+    };
+    for (const key of ["volume", "brightness"] as const) {
+      const v = input[key];
+      if (v == null) continue;
+      if (typeof v !== "number" || !Number.isInteger(v) || v < 0 || v > 100) {
+        throw new HttpError(
+          400,
+          `${key === "volume" ? "볼륨" : "밝기"}은 0~100 사이 정수여야 합니다.`,
+        );
+      }
+      set[key] = v;
+    }
+    const updated = await this.db()
+      .update(cretaDevice)
+      .set(set)
+      .where(eq(cretaDevice.id, id))
+      .returning({ id: cretaDevice.id });
+    if (updated.length === 0)
+      throw new HttpError(404, "디바이스를 찾을 수 없습니다.");
+    return this.getDevice(id);
+  }
+
+  /** 원격 제어(시뮬레이션): 플레이어를 최신 버전으로 업데이트 */
+  async upgradeDevicePlayer(id: number): Promise<CretaDevicePublic> {
+    const updated = await this.db()
+      .update(cretaDevice)
+      .set({ playerVersion: CRETA_PLAYER_LATEST, updatedAt: new Date() })
+      .where(eq(cretaDevice.id, id))
+      .returning({ id: cretaDevice.id });
+    if (updated.length === 0)
+      throw new HttpError(404, "디바이스를 찾을 수 없습니다.");
     return this.getDevice(id);
   }
 

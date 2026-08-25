@@ -17,6 +17,10 @@ import { saveBookMainAndPoster } from "@/server/books/save-book-media";
 import { HttpError } from "@/server/http/http-error";
 import { BookAiService } from "@/server/services/book-ai.service";
 import {
+  type BookAuditLogPublic,
+  BookAuditService,
+} from "@/server/services/book-audit.service";
+import {
   type BookShareUserPublic,
   BooksService,
 } from "@/server/services/books.service";
@@ -30,6 +34,8 @@ export async function listBooksAction(params?: {
   skip?: number;
   take?: number;
   search?: string;
+  /** true면 게시(published)된 북만 — 커뮤니티 갤러리용 */
+  publishedOnly?: boolean;
 }): Promise<BooksPageResponse> {
   try {
     // Math.max(0, NaN)은 NaN — OFFSET NaN으로 SQL 오류가 나지 않게 유한값 강제
@@ -43,11 +49,9 @@ export async function listBooksAction(params?: {
       ? Math.min(50, Math.max(1, Math.floor(takeRaw)))
       : 12;
     const books = new BooksService();
-    return (await books.findPage(
-      skip,
-      take,
-      search,
-    )) as unknown as BooksPageResponse;
+    return (await books.findPage(skip, take, search, {
+      publishedOnly: params?.publishedOnly === true,
+    })) as unknown as BooksPageResponse;
   } catch (e) {
     rethrowActionError(e, "books-actions");
   }
@@ -143,6 +147,52 @@ export async function setBookShareAllAction(
       { id: user.sub, role: user.role },
       Boolean(shared),
     )) as unknown as BookDetail;
+  } catch (e) {
+    rethrowActionError(e, "books-actions");
+  }
+}
+
+/** 승인 워크플로 상태 전환(권한 검증은 서비스에서) */
+export async function setBookStatusAction(
+  accessToken: string | null | undefined,
+  bookId: number,
+  status: "draft" | "review" | "published",
+): Promise<BookDetail> {
+  try {
+    const user = await requireUserFromToken(accessToken);
+    const id = assertPositiveIntId(bookId);
+    return (await new BooksService().setStatus(
+      id,
+      { id: user.sub, role: user.role },
+      status,
+    )) as unknown as BookDetail;
+  } catch (e) {
+    rethrowActionError(e, "books-actions");
+  }
+}
+
+/** 한 북의 감사 로그(로그인 필요) */
+export async function listBookAuditAction(
+  accessToken: string | null | undefined,
+  bookId: number,
+): Promise<BookAuditLogPublic[]> {
+  try {
+    await requireUserFromToken(accessToken);
+    return await new BookAuditService().listForBook(
+      assertPositiveIntId(bookId),
+    );
+  } catch (e) {
+    rethrowActionError(e, "books-actions");
+  }
+}
+
+/** 전체 최근 활동(대시보드, 로그인 필요) */
+export async function listRecentBookAuditAction(
+  accessToken: string | null | undefined,
+): Promise<BookAuditLogPublic[]> {
+  try {
+    await requireUserFromToken(accessToken);
+    return await new BookAuditService().listRecent(20);
   } catch (e) {
     rethrowActionError(e, "books-actions");
   }

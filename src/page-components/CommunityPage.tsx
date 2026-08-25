@@ -55,7 +55,8 @@ export function CommunityPage() {
 
   const booksQuery = useQuery({
     queryKey: [...bookKeys.lists(), "community"],
-    queryFn: () => fetchBooksPage({ take: 60 }),
+    // 승인 워크플로: 커뮤니티 갤러리에는 게시(published)된 북만
+    queryFn: () => fetchBooksPage({ take: 60, publishedOnly: true }),
   });
   const playlistsQuery = useQuery({
     queryKey: cretaKeys.playlists(),

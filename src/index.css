@@ -167,6 +167,13 @@
   html.dark {
     color-scheme: dark;
   }
+  /* 네이티브 <select> 드롭다운 — 브라우저가 색을 상속해 다크 테마에서
+     옵션 글자·배경이 겹쳐 안 보이는 문제 방지(라이트·다크 모두 토큰 색으로 고정) */
+  select option,
+  select optgroup {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
 }
 
 /* 글 상세 본문(저장된 HTML) — 단락·제목·인용·코드 구분 강화 */

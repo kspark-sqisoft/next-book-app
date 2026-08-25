@@ -20,6 +20,7 @@ import { DeviceStatusBadge } from "@/components/creta/DeviceStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
+import { BOOK_AUDIT_ACTION_LABEL, fetchRecentBookAudit } from "@/lib/api";
 import {
   type CretaDevice,
   cretaDeviceStatus,
@@ -30,7 +31,9 @@ import {
   fetchCretaPlayReport,
   formatPlayDuration,
 } from "@/lib/creta-reports-api";
-import { cretaKeys } from "@/lib/query-keys";
+import { formatDateMediumShort } from "@/lib/format-date";
+import { bookKeys, cretaKeys } from "@/lib/query-keys";
+import { useAuth } from "@/stores/auth-store";
 
 /** 지금 재생 중 콘텐츠 요약 — 같은 소스를 재생 중인 온라인 디바이스 묶음 */
 function groupPlaying(devices: CretaDevice[]) {
@@ -55,10 +58,18 @@ function groupPlaying(devices: CretaDevice[]) {
 }
 
 export function DashboardPage() {
+  const { user } = useAuth();
   const { data: devices, isLoading } = useQuery({
     queryKey: cretaKeys.devices(),
     queryFn: fetchCretaDevices,
     refetchInterval: 10_000,
+  });
+  /** 최근 활동(북 감사 로그) — 로그인 시에만 조회 */
+  const { data: recentAudit } = useQuery({
+    queryKey: [...bookKeys.all, "audit-recent"],
+    queryFn: fetchRecentBookAudit,
+    enabled: user != null,
+    refetchInterval: 30_000,
   });
   const { data: activeAlert } = useActiveCretaAlert();
   const { data: todayReport } = useQuery({
@@ -273,6 +284,56 @@ export function DashboardPage() {
               )}
             </CardContent>
           </Card>
+
+          {user != null ? (
+            <Card>
+              <CardContent className="space-y-3">
+                <p className="flex items-center gap-1.5 text-sm font-semibold">
+                  <Activity
+                    className="size-4 text-muted-foreground"
+                    aria-hidden
+                  />
+                  최근 활동
+                  <span className="font-normal text-muted-foreground">
+                    (북 변경 이력)
+                  </span>
+                </p>
+                {(recentAudit?.length ?? 0) === 0 ? (
+                  <p className="py-8 text-center text-sm text-muted-foreground">
+                    아직 기록된 활동이 없습니다.
+                  </p>
+                ) : (
+                  <div className="divide-y divide-border/60">
+                    {recentAudit!.map((row) => (
+                      <div
+                        key={row.id}
+                        className="flex items-start gap-2 py-2 text-sm"
+                      >
+                        <Badge
+                          variant="secondary"
+                          className="mt-0.5 shrink-0 text-[10px]"
+                        >
+                          {BOOK_AUDIT_ACTION_LABEL[row.action]}
+                        </Badge>
+                        <div className="min-w-0 flex-1">
+                          <p className="break-words">
+                            <span className="font-medium">
+                              「{row.bookTitle}」
+                            </span>{" "}
+                            {row.detail}
+                          </p>
+                          <p className="mt-0.5 text-[11px] text-muted-foreground">
+                            {row.actorName} ·{" "}
+                            {formatDateMediumShort(row.createdAt)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : null}
         </>
       )}
     </div>

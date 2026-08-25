@@ -69,6 +69,7 @@ import {
 } from "@/components/books/BookSlideCanvas";
 import { BookSlideDrawingPanel } from "@/components/books/BookSlideDrawingPanel";
 import { BookSlideTemplatesPanel } from "@/components/books/BookSlideTemplatesPanel";
+import { BookStatusControls } from "@/components/books/BookStatusControls";
 import { BookWidgetPalette } from "@/components/books/BookWidgetPalette";
 import { BookWorkspaceShell } from "@/components/books/BookWorkspaceShell";
 import { FormErrorAlert } from "@/components/forms/FormErrorAlert";
@@ -748,6 +749,18 @@ function BookDetailOwnerView({
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  /** 승인 워크플로 배지·버튼 — 상태가 바뀌면 상세 캐시의 status만 갱신 */
+  const bookStatusControls = (
+    <BookStatusControls
+      book={serverBook}
+      onChanged={(b) =>
+        queryClient.setQueryData<BookDetail>(bookKeys.detail(bookId), (old) =>
+          old ? { ...old, status: b.status } : old,
+        )
+      }
+    />
+  );
 
   // 공유 다이얼로그 — 공유 목록이 바뀌면 상세 캐시의 sharedUserIds만 갱신(편집 중인 페이지는 건드리지 않음)
   const shareBookDialog =
@@ -2377,6 +2390,7 @@ function BookDetailOwnerView({
                 onChangeSlideHeight={setSlideHeight}
               />
               {authorTitleInfo}
+              {bookStatusControls}
             </div>
           }
           actions={
@@ -2572,6 +2586,7 @@ function BookDetailOwnerView({
               onChangeSlideHeight={setSlideHeight}
             />
             {authorTitleInfo}
+            {bookStatusControls}
           </div>
         }
         actions={

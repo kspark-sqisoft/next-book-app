@@ -23,6 +23,7 @@ import {
 } from "@/server/env";
 import { HttpError } from "@/server/http/http-error";
 import { sanitizePostContentHtml } from "@/server/posts/post-content-sanitize";
+import { BookAuditService } from "@/server/services/book-audit.service";
 import { CretaCommentsService } from "@/server/services/creta-comments.service";
 import { CretaLikesService } from "@/server/services/creta-likes.service";
 import { tryUnlink } from "@/server/uploads/write-file";
@@ -496,6 +497,8 @@ export type BookListItemPublic = {
   sharedWith: { id: number; name: string }[];
   /** true면 모든 로그인 사용자가 편집 가능 */
   sharedToAll: boolean;
+  /** 승인 워크플로 상태 */
+  status: BookStatus;
 };
 
 export type BookPublic = {
@@ -514,7 +517,16 @@ export type BookPublic = {
   sharedUserIds: number[];
   /** true면 모든 로그인 사용자가 편집 가능 */
   sharedToAll: boolean;
+  /** 승인 워크플로 상태 */
+  status: BookStatus;
 };
+
+/** 승인 워크플로: draft(작성 중) → review(검토 중) → published(게시됨) */
+export type BookStatus = "draft" | "review" | "published";
+
+export function normalizeBookStatus(v: unknown): BookStatus {
+  return v === "draft" || v === "review" ? v : "published";
+}
 
 /** 공유 대상으로 고를 수 있는 회원(공개 정보만) */
 export type BookShareUserPublic = {
@@ -1991,6 +2003,7 @@ export class BooksService {
     skip: number,
     take: number,
     search?: string,
+    opts?: { publishedOnly?: boolean },
   ): Promise<{ items: BookListItemPublic[]; total: number }> {
     const db = this.db();
     const term = search?.trim().slice(0, 120);
@@ -1998,9 +2011,12 @@ export class BooksService {
     const pattern = term
       ? `%${term.replace(/!/g, "!!").replace(/%/g, "!%").replace(/_/g, "!_")}%`
       : null;
-    const whereClause = pattern
-      ? sql`${bookTable.title} LIKE ${pattern} ESCAPE '!'`
-      : undefined;
+    const conditions = [
+      ...(pattern ? [sql`${bookTable.title} LIKE ${pattern} ESCAPE '!'`] : []),
+      // 커뮤니티 갤러리 등 — 게시된 북만
+      ...(opts?.publishedOnly ? [eq(bookTable.status, "published")] : []),
+    ];
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     const totalResult = await db
       .select({ n: count() })
@@ -2094,6 +2110,7 @@ export class BooksService {
         coverPreview,
         sharedWith: sharedMap.get(b.id) ?? [],
         sharedToAll: b.sharedToAll === true,
+        status: normalizeBookStatus(b.status),
       };
     });
 
@@ -2139,7 +2156,80 @@ export class BooksService {
       })),
       sharedUserIds: await this.sharedUserIds(id),
       sharedToAll: book.sharedToAll === true,
+      status: normalizeBookStatus(book.status),
     };
+  }
+
+  /**
+   * 승인 워크플로 상태 전환.
+   * draft→review(편집 권한자) / review→published(관리자) /
+   * review→draft(작성자·관리자: 반려·검토 취소) / published→draft(작성자·관리자: 게시 철회)
+   */
+  async setStatus(
+    bookId: number,
+    actor: AuthActor,
+    next: BookStatus,
+  ): Promise<BookPublic> {
+    const db = this.db();
+    const book = await db.query.book.findFirst({
+      where: eq(bookTable.id, bookId),
+      with: { author: true },
+    });
+    if (!book) throw new HttpError(404, "북을 찾을 수 없습니다.");
+    const current = normalizeBookStatus(book.status);
+    if (current === next) return this.findOne(bookId);
+
+    const isOwnerOrAdmin = canMutateOwnedResource(actor, book.author.id);
+    let detail: string;
+    if (current === "draft" && next === "review") {
+      if (
+        !(await this.canEditBook(
+          actor,
+          bookId,
+          book.author.id,
+          book.sharedToAll,
+        ))
+      ) {
+        throw new HttpError(403, "검토 요청 권한이 없습니다.");
+      }
+      detail = "검토 요청";
+    } else if (current === "review" && next === "published") {
+      if (actor.role !== "admin") {
+        throw new HttpError(403, "승인·게시는 관리자만 할 수 있습니다.");
+      }
+      detail = "승인·게시";
+    } else if (current === "review" && next === "draft") {
+      if (!isOwnerOrAdmin) {
+        throw new HttpError(
+          403,
+          "반려·검토 취소는 작성자·관리자만 할 수 있습니다.",
+        );
+      }
+      detail =
+        actor.role === "admin" && actor.id !== book.author.id
+          ? "반려"
+          : "검토 취소";
+    } else if (current === "published" && next === "draft") {
+      if (!isOwnerOrAdmin) {
+        throw new HttpError(403, "게시 철회는 작성자·관리자만 할 수 있습니다.");
+      }
+      detail = "게시 철회";
+    } else {
+      throw new HttpError(400, "허용되지 않는 상태 전환입니다.");
+    }
+
+    await db
+      .update(bookTable)
+      .set({ status: next, updatedAt: new Date() })
+      .where(eq(bookTable.id, bookId));
+    await new BookAuditService().log({
+      bookId,
+      bookTitle: book.title,
+      action: "status",
+      detail,
+      actorId: actor.id,
+    });
+    return this.findOne(bookId);
   }
 
   // ── 공유 ─────────────────────────────────────────────────────────
@@ -2219,7 +2309,7 @@ export class BooksService {
     }
     const target = await db.query.user.findFirst({
       where: eq(userTable.id, userId),
-      columns: { id: true },
+      columns: { id: true, name: true },
     });
     if (!target) throw new HttpError(404, "사용자를 찾을 수 없습니다.");
 
@@ -2233,6 +2323,15 @@ export class BooksService {
         .delete(bookShare)
         .where(and(eq(bookShare.bookId, bookId), eq(bookShare.userId, userId)));
     }
+    await new BookAuditService().log({
+      bookId,
+      bookTitle: book.title,
+      action: "share",
+      detail: shared
+        ? `「${target.name}」에게 공유`
+        : `「${target.name}」 공유 해제`,
+      actorId: actor.id,
+    });
     return this.findOne(bookId);
   }
 
@@ -2255,6 +2354,13 @@ export class BooksService {
       .update(bookTable)
       .set({ sharedToAll: shared })
       .where(eq(bookTable.id, bookId));
+    await new BookAuditService().log({
+      bookId,
+      bookTitle: book.title,
+      action: "share",
+      detail: shared ? "모든 사용자 공유 켬" : "모든 사용자 공유 끔",
+      actorId: actor.id,
+    });
     return this.findOne(bookId);
   }
 
@@ -2304,6 +2410,13 @@ export class BooksService {
       return row;
     });
 
+    await new BookAuditService().log({
+      bookId: newBook.id,
+      bookTitle: title,
+      action: "create",
+      detail: `북 생성 — 페이지 ${normalized.length}개`,
+      actorId: userId,
+    });
     return this.findOne(newBook.id);
   }
 
@@ -2381,6 +2494,13 @@ export class BooksService {
       }
     });
 
+    await new BookAuditService().log({
+      bookId,
+      bookTitle: set.title ?? book.title,
+      action: "update",
+      detail: normalized ? `저장 — 페이지 ${normalized.length}개` : "속성 변경",
+      actorId: actor.id,
+    });
     return this.findOne(bookId);
   }
 
@@ -2450,6 +2570,14 @@ export class BooksService {
       const relative = rel.slice("/uploads/".length);
       await tryUnlink(join(UPLOAD_ROOT, relative));
     }
+
+    await new BookAuditService().log({
+      bookId,
+      bookTitle: book.title,
+      action: "delete",
+      detail: "북 삭제",
+      actorId: actor.id,
+    });
   }
 
   async assertBookOwner(bookId: number, actor: AuthActor) {

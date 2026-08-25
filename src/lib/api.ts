@@ -14,11 +14,14 @@ import {
   deleteBookAction,
   fetchBookAiChatAction,
   getBookAction,
+  listBookAuditAction,
   listBooksAction,
   listBookShareUsersAction,
+  listRecentBookAuditAction,
   requestBookLayoutAiAction,
   setBookShareAction,
   setBookShareAllAction,
+  setBookStatusAction,
   updateBookAction,
   uploadBookMediaAction,
 } from "@/actions/books";
@@ -797,6 +800,17 @@ export type BookListItem = {
   sharedWith?: { id: number; name: string }[];
   /** true면 모든 로그인 사용자가 편집 가능 */
   sharedToAll?: boolean;
+  /** 승인 워크플로 상태(생략 = published) */
+  status?: BookStatus;
+};
+
+/** 승인 워크플로: draft(작성 중) → review(검토 중) → published(게시됨) */
+export type BookStatus = "draft" | "review" | "published";
+
+export const BOOK_STATUS_LABEL: Record<BookStatus, string> = {
+  draft: "작성 중",
+  review: "검토 중",
+  published: "게시됨",
 };
 
 export type BookDetail = {
@@ -815,6 +829,8 @@ export type BookDetail = {
   sharedUserIds?: number[];
   /** true면 모든 로그인 사용자가 편집 가능 */
   sharedToAll?: boolean;
+  /** 승인 워크플로 상태(생략 = published) */
+  status?: BookStatus;
 };
 
 /** 북 공유 대상으로 고를 수 있는 회원 */
@@ -846,6 +862,8 @@ export async function fetchBooksPage(params?: {
   skip?: number;
   take?: number;
   search?: string;
+  /** true면 게시된 북만(커뮤니티 갤러리) */
+  publishedOnly?: boolean;
 }): Promise<BooksPageResponse> {
   const search = params?.search?.trim();
   return runAction(() =>
@@ -853,6 +871,7 @@ export async function fetchBooksPage(params?: {
       skip: params?.skip ?? 0,
       take: params?.take ?? BOOK_PAGE_DEFAULT,
       ...(search ? { search } : {}),
+      ...(params?.publishedOnly ? { publishedOnly: true } : {}),
     }),
   );
 }
@@ -1058,6 +1077,55 @@ export async function setBookShare(
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
   return runAction(() => setBookShareAction(token, bookId, userId, shared));
+}
+
+/** 승인 워크플로 상태 전환 — 갱신된 북 반환 */
+export async function setBookStatus(
+  bookId: number,
+  status: BookStatus,
+): Promise<BookDetail> {
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  return runAction(() => setBookStatusAction(token, bookId, status));
+}
+
+// --- 북 감사 로그(누가 언제 무엇을) ---
+
+export type BookAuditLog = {
+  id: number;
+  bookId: number;
+  bookTitle: string;
+  action: "create" | "update" | "delete" | "share" | "status";
+  detail: string;
+  actorId: number | null;
+  actorName: string;
+  createdAt: string;
+};
+
+export const BOOK_AUDIT_ACTION_LABEL: Record<BookAuditLog["action"], string> = {
+  create: "생성",
+  update: "저장",
+  delete: "삭제",
+  share: "공유",
+  status: "상태",
+};
+
+/** 한 북의 이력(로그인 필요, 최신순) */
+export async function fetchBookAudit(bookId: number): Promise<BookAuditLog[]> {
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  return runAction(() =>
+    listBookAuditAction(token, bookId),
+  ) as unknown as Promise<BookAuditLog[]>;
+}
+
+/** 전체 최근 활동(대시보드, 로그인 필요) */
+export async function fetchRecentBookAudit(): Promise<BookAuditLog[]> {
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  return runAction(() =>
+    listRecentBookAuditAction(token),
+  ) as unknown as Promise<BookAuditLog[]>;
 }
 
 /** 북 모든 사용자 공유 켜기/끄기 — 작성자·관리자만 */

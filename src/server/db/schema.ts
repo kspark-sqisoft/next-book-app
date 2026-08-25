@@ -193,6 +193,12 @@ export const book = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     // true면 모든 로그인 사용자가 공유받은 것처럼 편집 가능
     sharedToAll: boolean("sharedToAll").notNull().default(false),
+    /**
+     * 승인 워크플로: draft(작성 중) → review(검토 중) → published(게시됨).
+     * 기존 데이터 호환을 위해 기본은 published — 워크플로는 "게시 철회"로 옵트인.
+     * 커뮤니티 갤러리에는 published만 노출된다.
+     */
+    status: varchar("status", { length: 12 }).notNull().default("published"),
     createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
   },
@@ -322,6 +328,30 @@ export const postLikeRelations = relations(postLike, ({ one }) => ({
   user: one(user, { fields: [postLike.userId], references: [user.id] }),
   post: one(post, { fields: [postLike.postId], references: [post.id] }),
 }));
+
+/**
+ * 북 감사 로그 — 누가 언제 무엇을 했는지(생성·저장·공유·상태 변경·삭제).
+ * 북·사용자가 삭제돼도 이력이 남도록 FK 없이 제목·이름을 비정규화해 저장한다.
+ */
+export const bookAuditLog = pgTable(
+  "book_audit_log",
+  {
+    id: serial("id").primaryKey(),
+    bookId: integer("bookId").notNull(),
+    bookTitle: varchar("bookTitle", { length: 200 }).notNull(),
+    /** create|update|delete|share|status */
+    action: varchar("action", { length: 16 }).notNull(),
+    /** 사람이 읽는 상세(예: "검토 요청", "「홍길동」에게 공유") */
+    detail: varchar("detail", { length: 300 }).notNull(),
+    actorId: integer("actorId"),
+    actorName: varchar("actorName", { length: 80 }).notNull(),
+    createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("book_audit_log_bookId_createdAt_idx").on(t.bookId, t.createdAt),
+    index("book_audit_log_createdAt_idx").on(t.createdAt),
+  ],
+);
 
 /** 북 공유 — 공유받은 사용자는 작성자처럼 편집(저장·업로드)할 수 있다. 삭제는 작성자·관리자만 */
 export const bookShare = pgTable(
@@ -549,6 +579,12 @@ export const cretaDevice = pgTable("creta_device", {
   powerExcludeDates: text("powerExcludeDates"),
   // 단말 상태(시뮬레이션): ok | error — online과 별개로 "비정상 단말" 표시
   health: varchar("health", { length: 12 }).notNull().default("ok"),
+  // 원격 제어(시뮬레이션): 볼륨·밝기(0~100)·플레이어 버전
+  volume: integer("volume").notNull().default(70),
+  brightness: integer("brightness").notNull().default(80),
+  playerVersion: varchar("playerVersion", { length: 20 })
+    .notNull()
+    .default("v1.1.0"),
   createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
   updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
 });

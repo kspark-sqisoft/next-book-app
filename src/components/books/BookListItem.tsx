@@ -65,8 +65,17 @@ export function BookListItem({ book, coverThumbDataUrl, onDelete }: Props) {
               </span>
             </div>
             <div className="min-w-0">
-              <p className="font-heading truncate text-sm font-semibold transition-colors group-hover/card:text-primary">
-                {book.title}
+              <p className="font-heading flex items-center gap-1.5 truncate text-sm font-semibold transition-colors group-hover/card:text-primary">
+                <span className="truncate">{book.title}</span>
+                {book.status === "draft" ? (
+                  <span className="shrink-0 rounded-full bg-zinc-500/15 px-1.5 py-0.5 text-[10px] font-medium text-zinc-600 dark:text-zinc-300">
+                    작성 중
+                  </span>
+                ) : book.status === "review" ? (
+                  <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                    검토 중
+                  </span>
+                ) : null}
               </p>
               <p className="mt-1 flex min-h-5 flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
                 <AuthorAvatarInline author={book.author} size="xs">
