@@ -2165,7 +2165,11 @@ export function BookSlideCanvas({
                 <span
                   key={`type-badge-${e.id}`}
                   className="pointer-events-none absolute z-[8] flex items-center gap-0.5"
-                  style={{ left: px - 7, top: py - 7 }}
+                  /* 전체 화면 위젯도 배지가 잘리지 않게 슬라이드 안쪽으로 클램프 */
+                  style={{
+                    left: Math.max(2, px - 7),
+                    top: Math.max(2, py - 7),
+                  }}
                 >
                   <span
                     data-book-type-badge={e.type}
