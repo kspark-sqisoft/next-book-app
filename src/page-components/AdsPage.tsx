@@ -1056,19 +1056,20 @@ export function AdsPage() {
               </p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                {/* 구좌·북 이름이 가장 중요한 정보 — 두 열에 폭을 몰아주고 숫자 열은 최소 폭 */}
+                <table className="w-full table-fixed text-sm">
                   <thead>
                     <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                      <th className="py-2 pr-2 font-medium">구좌</th>
-                      <th className="px-2 py-2 font-medium">북</th>
-                      <th className="px-2 py-2 text-right font-medium">
-                        슬롯 길이
+                      <th className="w-[34%] py-2 pr-2 font-medium">구좌</th>
+                      <th className="w-[30%] px-2 py-2 font-medium">북</th>
+                      <th className="w-[10%] px-2 py-2 text-right font-medium">
+                        슬롯
                       </th>
-                      <th className="px-2 py-2 text-right font-medium">
-                        연결 디바이스
+                      <th className="w-[11%] px-2 py-2 text-right font-medium">
+                        디바이스
                       </th>
-                      <th className="py-2 pl-2 text-right font-medium">
-                        시간당 노출 능력
+                      <th className="w-[15%] py-2 pl-2 text-right font-medium">
+                        노출 능력
                       </th>
                     </tr>
                   </thead>
@@ -1078,13 +1079,19 @@ export function AdsPage() {
                         key={`${row.bookId}-${row.slotElementId}`}
                         className="border-b border-border/60 last:border-b-0"
                       >
-                        <td className="max-w-0 py-2 pr-2">
-                          <span className="block truncate font-medium">
+                        <td className="py-2 pr-2">
+                          <span
+                            className="block truncate font-medium"
+                            title={row.slotName}
+                          >
                             {row.slotName}
                           </span>
                         </td>
-                        <td className="max-w-0 px-2 py-2">
-                          <span className="block truncate text-muted-foreground">
+                        <td className="px-2 py-2">
+                          <span
+                            className="block truncate text-muted-foreground"
+                            title={row.bookTitle}
+                          >
                             {row.bookTitle}
                           </span>
                         </td>
