@@ -31,7 +31,8 @@ export type BookSlideSnapshotPage = {
 };
 
 /** 사이드바 필름스트립(넓은 썸)에 맞춘 캡처 너비 */
-const THUMB_MAX_WIDTH = 140;
+// 목록 카드가 300~420px 폭으로 표시되므로 140이면 확대 열화가 심하다 — 320으로 상향
+const THUMB_MAX_WIDTH = 320;
 
 function loadImageFromDataUrl(
   dataUrl: string,
@@ -1243,7 +1244,7 @@ export async function captureBookSlideToDataURL(
           }),
         );
       } else if (el.type === "adSlot") {
-        // 광고 구좌 자리표시자 — 어두운 카드 + AD 라벨
+        // 광고 구좌 자리표시자 — 그라데이션 카드 + 큰 AD 마크 + 구좌 이름
         const aw = sx(el.width);
         const ah = sx(el.height);
         const ap = bookElementPivotKonva({
@@ -1264,8 +1265,17 @@ export async function captureBookSlideToDataURL(
             width: aw,
             height: ah,
             rotation: ap.rotation,
-            fill: "#1c1917",
-            stroke: aOw > 0 ? aOc : "rgba(251,191,36,0.55)",
+            fillLinearGradientStartPoint: { x: 0, y: 0 },
+            fillLinearGradientEndPoint: { x: aw, y: ah },
+            fillLinearGradientColorStops: [
+              0,
+              "#292524",
+              0.55,
+              "#1c1917",
+              1,
+              "#78350f",
+            ],
+            stroke: aOw > 0 ? aOc : "rgba(251,191,36,0.5)",
             strokeWidth: aOw > 0 ? Math.max(0.5, sx(aOw)) : 0.5,
             cornerRadius: Math.max(0, sx(resolveBookElementBorderRadius(el))),
             opacity: elOp,
@@ -1276,16 +1286,36 @@ export async function captureBookSlideToDataURL(
             x: ap.cx,
             y: ap.cy,
             offsetX: ap.offsetX,
-            offsetY: ap.offsetY,
+            offsetY: ap.offsetY - ah * 0.07,
             width: aw,
-            height: ah,
+            height: ah * 0.62,
             rotation: ap.rotation,
-            text: `AD · ${el.adSlotName?.trim() || "광고 구좌"}`,
-            fontSize: Math.max(6, 9 * scale),
+            text: "AD",
+            fontSize: Math.max(12, ah * 0.3),
+            fontStyle: "bold",
             fill: "#fbbf24",
             align: "center",
-            verticalAlign: "middle",
+            verticalAlign: "bottom",
             opacity: elOp,
+          }),
+        );
+        layer.add(
+          new Konva.Text({
+            x: ap.cx,
+            y: ap.cy,
+            offsetX: ap.offsetX,
+            offsetY: ap.offsetY - ah * 0.66,
+            width: aw,
+            height: ah * 0.3,
+            rotation: ap.rotation,
+            text: el.adSlotName?.trim() || "광고 구좌",
+            fontSize: Math.max(7, ah * 0.09),
+            fill: "rgba(255,255,255,0.85)",
+            align: "center",
+            verticalAlign: "top",
+            opacity: elOp,
+            ellipsis: true,
+            wrap: "none",
           }),
         );
       } else if (el.type === "webview") {
