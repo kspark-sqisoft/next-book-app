@@ -1396,7 +1396,7 @@ export async function captureBookSlideToDataURL(
           }),
         );
       } else if (el.type === "adSlot") {
-        // 광고 구좌 자리표시자 — 밝은 카드 + 파란 구좌 이름(미니멀)
+        // 광고 구좌 자리표시자 — 파란 카드 + 원형 광고 아이콘($) + 흰 구좌 이름
         const aw = sx(el.width);
         const ah = sx(el.height);
         const ap = bookElementPivotKonva({
@@ -1408,59 +1408,69 @@ export async function captureBookSlideToDataURL(
         });
         const aOw = resolveBookElementOutlineWidth(el);
         const aOc = resolveBookElementOutlineColor(el);
-        layer.add(
+        const ag = new Konva.Group({
+          x: ap.cx,
+          y: ap.cy,
+          offsetX: ap.offsetX,
+          offsetY: ap.offsetY,
+          rotation: ap.rotation,
+          opacity: elOp,
+        });
+        ag.add(
           new Konva.Rect({
-            x: ap.cx,
-            y: ap.cy,
-            offsetX: ap.offsetX,
-            offsetY: ap.offsetY,
+            x: 0,
+            y: 0,
             width: aw,
             height: ah,
-            rotation: ap.rotation,
             fill: "#2563eb",
             stroke: aOw > 0 ? aOc : "#1d4ed8",
             strokeWidth: aOw > 0 ? Math.max(0.5, sx(aOw)) : 0.5,
             cornerRadius: Math.max(0, sx(resolveBookElementBorderRadius(el))),
-            opacity: elOp,
           }),
         );
-        layer.add(
+        // 광고 아이콘 — 흰 원 테두리 + $ (이름 위, 겹치지 않게 세로 배치)
+        const iconR = Math.max(4, Math.min(aw, ah) * 0.11);
+        const iconCy = ah * 0.36;
+        ag.add(
+          new Konva.Circle({
+            x: aw / 2,
+            y: iconCy,
+            radius: iconR,
+            stroke: "#ffffff",
+            strokeWidth: Math.max(0.8, iconR * 0.14),
+          }),
+        );
+        ag.add(
           new Konva.Text({
-            x: ap.cx,
-            y: ap.cy,
-            offsetX: ap.offsetX,
-            offsetY: ap.offsetY - ah * 0.06,
-            width: aw,
-            height: ah * 0.58,
-            rotation: ap.rotation,
-            text: el.adSlotName?.trim() || "광고 구좌",
-            fontSize: Math.max(9, ah * 0.14),
+            x: aw / 2 - iconR,
+            y: iconCy - iconR,
+            width: iconR * 2,
+            height: iconR * 2,
+            text: "$",
+            fontSize: iconR * 1.3,
             fontStyle: "bold",
             fill: "#ffffff",
             align: "center",
-            verticalAlign: "bottom",
-            opacity: elOp,
+            verticalAlign: "middle",
+          }),
+        );
+        ag.add(
+          new Konva.Text({
+            x: 0,
+            y: iconCy + iconR * 1.4,
+            width: aw,
+            height: Math.max(8, ah - (iconCy + iconR * 1.4)),
+            text: el.adSlotName?.trim() || "광고 구좌",
+            fontSize: Math.max(8, Math.min(ah * 0.13, aw * 0.055)),
+            fontStyle: "bold",
+            fill: "#ffffff",
+            align: "center",
+            verticalAlign: "top",
             ellipsis: true,
             wrap: "none",
           }),
         );
-        layer.add(
-          new Konva.Text({
-            x: ap.cx,
-            y: ap.cy,
-            offsetX: ap.offsetX,
-            offsetY: ap.offsetY - ah * 0.62,
-            width: aw,
-            height: ah * 0.3,
-            rotation: ap.rotation,
-            text: "AD",
-            fontSize: Math.max(6, ah * 0.07),
-            fill: "rgba(255,255,255,0.75)",
-            align: "center",
-            verticalAlign: "top",
-            opacity: elOp,
-          }),
-        );
+        layer.add(ag);
       } else if (el.type === "webview") {
         // 썸네일은 실제 페이지를 그릴 수 없어 URL 호스트만 표시하는 자리표시자
         const ww = sx(el.width);

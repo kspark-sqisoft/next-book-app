@@ -199,12 +199,6 @@ export function BookAdSlotWidgetOverlay({
           >
             {slotSec}초 · 활성 소재 {rotation.length}개 · 재생 시 순환
           </p>
-          <span
-            className="absolute left-2 top-2 font-mono font-semibold uppercase tracking-[0.14em] text-white/80"
-            style={{ fontSize: Math.min(12, Math.max(8, fh * scale * 0.038)) }}
-          >
-            AD
-          </span>
         </div>
       ) : current ? (
         <>
