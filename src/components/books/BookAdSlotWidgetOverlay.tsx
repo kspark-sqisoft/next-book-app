@@ -4,6 +4,7 @@
 // 보기 모드는 활성 캠페인 소재(이미지/영상)를 슬롯 길이 공통 클록으로 순환 재생.
 // 소재가 바뀔 때마다 재생 로그(Proof-of-Play)를 기록한다(시뮬레이션).
 import { useQuery } from "@tanstack/react-query";
+import { BadgeDollarSign } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { BookTextOverlayLiveFrame } from "@/components/books/BookTextWidgetOverlay";
@@ -176,26 +177,34 @@ export function BookAdSlotWidgetOverlay({
       }}
     >
       {mode === "edit" ? (
-        /* 편집 — 구좌 플레이스홀더(미니멀: 밝은 바탕 + 파란 글자) */
-        <div className="relative flex size-full flex-col items-center justify-center gap-[0.35em] overflow-hidden border border-slate-300 bg-slate-100 px-4 text-center dark:border-slate-600 dark:bg-slate-800">
-          <span
-            className="absolute left-2 top-2 font-mono font-semibold uppercase tracking-[0.14em] text-blue-600 dark:text-blue-400"
-            style={{ fontSize: Math.min(12, Math.max(8, fh * scale * 0.038)) }}
-          >
-            AD
-          </span>
+        /* 편집 — 구좌 플레이스홀더(파란 배경 + 흰 글자 + 광고 아이콘) */
+        <div className="relative flex size-full flex-col items-center justify-center gap-[0.3em] overflow-hidden bg-blue-600 px-4 text-center">
+          <BadgeDollarSign
+            className="text-white/90"
+            style={{
+              width: Math.min(56, Math.max(18, fh * scale * 0.16)),
+              height: Math.min(56, Math.max(18, fh * scale * 0.16)),
+            }}
+            aria-hidden
+          />
           <p
-            className="max-w-full truncate font-semibold text-blue-600 dark:text-blue-400"
+            className="max-w-full truncate font-semibold text-white"
             style={{ fontSize: Math.min(30, Math.max(13, fh * scale * 0.085)) }}
           >
             {el.adSlotName?.trim() || "광고 구좌"}
           </p>
           <p
-            className="text-slate-500 dark:text-slate-400"
+            className="text-blue-100/90"
             style={{ fontSize: Math.min(13, Math.max(9, fh * scale * 0.045)) }}
           >
             {slotSec}초 · 활성 소재 {rotation.length}개 · 재생 시 순환
           </p>
+          <span
+            className="absolute left-2 top-2 font-mono font-semibold uppercase tracking-[0.14em] text-white/80"
+            style={{ fontSize: Math.min(12, Math.max(8, fh * scale * 0.038)) }}
+          >
+            AD
+          </span>
         </div>
       ) : current ? (
         <>

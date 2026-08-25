@@ -540,6 +540,103 @@ function appendBookShapeElementToSnapshotLayer(
   layer.add(g);
 }
 
+/** 리치 HTML → 썸네일용 라인/런(색·굵기·기울임·크기·정렬 근사 추출) */
+type RichThumbRun = {
+  text: string;
+  color: string | null;
+  bold: boolean;
+  italic: boolean;
+  sizePx: number | null;
+  sizeEm: number;
+};
+
+type RichThumbLine = {
+  runs: RichThumbRun[];
+  align: "left" | "center" | "right";
+};
+
+function extractRichThumbLines(html: string): RichThumbLine[] {
+  try {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const blocks = doc.body.querySelectorAll("p, h1, h2, h3, li, div");
+    const nodes: Element[] =
+      blocks.length > 0 ? Array.from(blocks) : [doc.body];
+    const lines: RichThumbLine[] = [];
+    for (const b of nodes) {
+      if (b.querySelector("p, h1, h2, h3, li, div")) continue;
+      const elx = b as HTMLElement;
+      const tag = elx.tagName.toLowerCase();
+      const alignRaw = elx.style?.textAlign || "";
+      const align: RichThumbLine["align"] =
+        alignRaw === "center" || alignRaw === "right" ? alignRaw : "left";
+      const blockEm =
+        tag === "h1" ? 1.3 : tag === "h2" ? 1.15 : tag === "h3" ? 1.05 : 1;
+      const blockBold = tag === "h1" || tag === "h2" || tag === "h3";
+      const runs: RichThumbRun[] = [];
+      const walk = (
+        node: Node,
+        ctx: {
+          color: string | null;
+          bold: boolean;
+          italic: boolean;
+          sizePx: number | null;
+          sizeEm: number;
+        },
+      ) => {
+        if (node.nodeType === Node.TEXT_NODE) {
+          const text = (node.textContent || "").replace(/\s+/g, " ");
+          if (text) runs.push({ ...ctx, text });
+          return;
+        }
+        if (!(node instanceof HTMLElement)) return;
+        const next = { ...ctx };
+        const t = node.tagName.toLowerCase();
+        if (t === "b" || t === "strong") next.bold = true;
+        if (t === "i" || t === "em") next.italic = true;
+        if (node.style) {
+          if (node.style.color) next.color = node.style.color;
+          const fw = node.style.fontWeight;
+          if (fw && (fw === "bold" || Number(fw) >= 600)) next.bold = true;
+          const fs = node.style.fontSize || "";
+          const px = /([\d.]+)px/.exec(fs);
+          const em = /([\d.]+)em/.exec(fs);
+          if (px) {
+            next.sizePx = Number(px[1]);
+          } else if (em) {
+            next.sizeEm = ctx.sizeEm * Number(em[1]);
+            next.sizePx = null;
+          }
+        }
+        for (const child of Array.from(node.childNodes)) walk(child, next);
+      };
+      walk(elx, {
+        color: null,
+        bold: blockBold,
+        italic: false,
+        sizePx: null,
+        sizeEm: blockEm,
+      });
+      // 앞뒤 공백 정리 후 내용 있는 라인만
+      while (runs.length > 0 && !runs[0].text.trim()) runs.shift();
+      while (runs.length > 0 && !runs[runs.length - 1].text.trim()) runs.pop();
+      if (runs.length === 0) continue;
+      if (tag === "li")
+        runs.unshift({
+          text: "\u2022 ",
+          color: null,
+          bold: false,
+          italic: false,
+          sizePx: null,
+          sizeEm: blockEm,
+        });
+      lines.push({ runs, align });
+    }
+    return lines;
+  } catch {
+    return [];
+  }
+}
+
 /**
  * 슬라이드 한 장을 작은 PNG 데이터 URL로 렌더합니다(페이지 썸네일용).
  * 텍스트는 `Konva.Text` + 평문(리치 HTML은 `richHtmlToPlainText`)만 사용합니다.
@@ -616,21 +713,76 @@ export async function captureBookSlideToDataURL(
             canvasRoundRectPath(ctx as never, 0, 0, tw, th, tBr);
           },
         });
-        tg.add(
-          new Konva.Text({
-            x: 0,
-            y: 0,
-            width: tw,
-            height: th,
-            text: plain,
-            fontSize: Math.max(4, el.fontSize * scale),
-            fontFamily: "Geist Variable, ui-sans-serif, system-ui, sans-serif",
-            fill: el.fill?.trim() ? el.fill : "#111827",
-            lineHeight: 1.35,
-            wrap: "word",
-            ellipsis: true,
-          }),
-        );
+        const richLines = extractRichThumbLines(getTextWidgetDisplayHtml(el));
+        const baseFill = el.fill?.trim() ? el.fill : "#111827";
+        const thumbFont =
+          "Geist Variable, ui-sans-serif, system-ui, sans-serif";
+        if (richLines.length > 0) {
+          // 라인 안 런(부분 서식)들을 가로로 이어 붙이고, 정렬·크기를 살린다
+          let cursorY = 0;
+          for (const line of richLines) {
+            if (cursorY >= th) break;
+            const nodes: { node: Konva.Text; w: number; h: number }[] = [];
+            let totalW = 0;
+            let maxH = 0;
+            for (const run of line.runs) {
+              const fs = Math.max(
+                4,
+                (run.sizePx ?? el.fontSize * run.sizeEm) * scale,
+              );
+              const fontStyle =
+                run.bold && run.italic
+                  ? "italic bold"
+                  : run.bold
+                    ? "bold"
+                    : run.italic
+                      ? "italic"
+                      : "normal";
+              const node = new Konva.Text({
+                text: run.text,
+                fontSize: fs,
+                fontStyle,
+                fontFamily: thumbFont,
+                fill: run.color || baseFill,
+                lineHeight: 1.35,
+              });
+              const w = node.width();
+              const h = node.height();
+              nodes.push({ node, w, h });
+              totalW += w;
+              maxH = Math.max(maxH, h);
+            }
+            let x =
+              line.align === "center"
+                ? Math.max(0, (tw - totalW) / 2)
+                : line.align === "right"
+                  ? Math.max(0, tw - totalW)
+                  : 0;
+            for (const it of nodes) {
+              if (x > tw) break;
+              it.node.position({ x, y: cursorY + (maxH - it.h) });
+              tg.add(it.node);
+              x += it.w;
+            }
+            cursorY += maxH;
+          }
+        } else {
+          tg.add(
+            new Konva.Text({
+              x: 0,
+              y: 0,
+              width: tw,
+              height: th,
+              text: plain,
+              fontSize: Math.max(4, el.fontSize * scale),
+              fontFamily: thumbFont,
+              fill: baseFill,
+              lineHeight: 1.35,
+              wrap: "word",
+              ellipsis: true,
+            }),
+          );
+        }
         if (tOw > 0) {
           tg.add(
             new Konva.Rect({
@@ -1265,8 +1417,8 @@ export async function captureBookSlideToDataURL(
             width: aw,
             height: ah,
             rotation: ap.rotation,
-            fill: "#f1f5f9",
-            stroke: aOw > 0 ? aOc : "#cbd5e1",
+            fill: "#2563eb",
+            stroke: aOw > 0 ? aOc : "#1d4ed8",
             strokeWidth: aOw > 0 ? Math.max(0.5, sx(aOw)) : 0.5,
             cornerRadius: Math.max(0, sx(resolveBookElementBorderRadius(el))),
             opacity: elOp,
@@ -1284,7 +1436,7 @@ export async function captureBookSlideToDataURL(
             text: el.adSlotName?.trim() || "광고 구좌",
             fontSize: Math.max(9, ah * 0.14),
             fontStyle: "bold",
-            fill: "#2563eb",
+            fill: "#ffffff",
             align: "center",
             verticalAlign: "bottom",
             opacity: elOp,
@@ -1303,7 +1455,7 @@ export async function captureBookSlideToDataURL(
             rotation: ap.rotation,
             text: "AD",
             fontSize: Math.max(6, ah * 0.07),
-            fill: "#64748b",
+            fill: "rgba(255,255,255,0.75)",
             align: "center",
             verticalAlign: "top",
             opacity: elOp,
