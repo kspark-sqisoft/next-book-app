@@ -40,6 +40,10 @@ import {
 import { BookCalendarWidgetOverlay } from "@/components/books/BookCalendarWidgetOverlay";
 import { BookChartWidgetOverlay } from "@/components/books/BookChartWidgetOverlay";
 import { BookDigitalClockWidgetOverlay } from "@/components/books/BookDigitalClockWidgetOverlay";
+import {
+  BOOK_ELEMENT_TYPE_LABEL,
+  BookElementTypeIcon,
+} from "@/components/books/BookElementTypeIcon";
 import { BookMapWidgetOverlay } from "@/components/books/BookMapWidgetOverlay";
 import {
   type BookMediaPlaylistPlaybackUiSnapshot,
@@ -2132,45 +2136,56 @@ export function BookSlideCanvas({
               />
             );
           })}
-        {/* 공통(오버라이드) 위젯 표시 — 편집 화면에서 위젯 왼쪽 위 핀 배지 */}
+        {/* 위젯 왼쪽 위 배지 — 종류 아이콘(위젯 메뉴와 동일) + 공통 위젯이면 핀 */}
         {mode === "edit"
-          ? visibleElements
-              .filter((e) => resolveBookElementOverlayPages(e) != null)
-              .map((e) => {
-                const pw = e.type === "text" ? (e.width ?? 720) : e.width;
-                const ph =
-                  e.type === "text" ? textWidgetHitHeight(e) : e.height;
-                const live = overlayLiveFrame(e.id, dragLive, transformLive, {
-                  w: pw,
-                  h: ph,
-                  rotation: resolveBookElementRotation(e.rotation),
-                });
-                const pinPivot = bookElementPivotKonva({
-                  x: e.x,
-                  y: e.y,
-                  width: pw,
-                  height: ph,
-                  rotation: e.rotation,
-                });
-                const pinOrigin = bookElementOverlayTopLeftFromPivot(
-                  pinPivot,
-                  pw,
-                  ph,
-                );
-                const px = (live?.x ?? pinOrigin.x) * scale;
-                const py = (live?.y ?? pinOrigin.y) * scale;
-                return (
+          ? visibleElements.map((e) => {
+              const isCommon = resolveBookElementOverlayPages(e) != null;
+              const pw = e.type === "text" ? (e.width ?? 720) : e.width;
+              const ph = e.type === "text" ? textWidgetHitHeight(e) : e.height;
+              const live = overlayLiveFrame(e.id, dragLive, transformLive, {
+                w: pw,
+                h: ph,
+                rotation: resolveBookElementRotation(e.rotation),
+              });
+              const badgePivot = bookElementPivotKonva({
+                x: e.x,
+                y: e.y,
+                width: pw,
+                height: ph,
+                rotation: e.rotation,
+              });
+              const badgeOrigin = bookElementOverlayTopLeftFromPivot(
+                badgePivot,
+                pw,
+                ph,
+              );
+              const px = (live?.x ?? badgeOrigin.x) * scale;
+              const py = (live?.y ?? badgeOrigin.y) * scale;
+              return (
+                <span
+                  key={`type-badge-${e.id}`}
+                  className="pointer-events-none absolute z-[8] flex items-center gap-0.5"
+                  style={{ left: px - 7, top: py - 7 }}
+                >
                   <span
-                    key={`common-pin-${e.id}`}
-                    data-book-common-pin
-                    title="공통 위젯 — 여러 페이지에 표시됩니다"
-                    className="pointer-events-none absolute z-[8] flex size-4 items-center justify-center rounded-full bg-sky-600 text-white shadow ring-1 ring-white/70"
-                    style={{ left: px - 7, top: py - 7 }}
+                    data-book-type-badge={e.type}
+                    title={BOOK_ELEMENT_TYPE_LABEL[e.type]}
+                    className="flex size-4 items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm"
                   >
-                    <Pin className="size-2.5" aria-hidden />
+                    <BookElementTypeIcon type={e.type} className="size-2.5" />
                   </span>
-                );
-              })
+                  {isCommon ? (
+                    <span
+                      data-book-common-pin
+                      title="공통 위젯 — 여러 페이지에 표시됩니다"
+                      className="flex size-4 items-center justify-center rounded-full bg-sky-600 text-white shadow ring-1 ring-white/70"
+                    >
+                      <Pin className="size-2.5" aria-hidden />
+                    </span>
+                  ) : null}
+                </span>
+              );
+            })
           : null}
         {mode === "edit" && inlineTextEdit
           ? (() => {
