@@ -11,6 +11,7 @@ import {
   Film,
   History,
   Image as ImageIcon,
+  MonitorSmartphone,
   Pause,
   Play,
   Plus,
@@ -67,8 +68,8 @@ import {
   fetchCretaAdAudit,
   fetchCretaAdCampaignReport,
   fetchCretaAdCampaigns,
+  fetchCretaAdScreenInventory,
   fetchCretaAdSetting,
-  fetchCretaAdSlotInventory,
   fetchCretaAdvertisers,
   moveCretaAdCreative,
   reviewCretaAdCreative,
@@ -160,9 +161,22 @@ export function AdsPage() {
   });
   const inventoryQuery = useQuery({
     queryKey: cretaKeys.adInventory(),
-    queryFn: fetchCretaAdSlotInventory,
+    queryFn: fetchCretaAdScreenInventory,
     staleTime: 60_000,
   });
+  /** 광고 자리가 하나라도 있는 화면만 판매 가능 재고로 본다 */
+  const sellableScreens = useMemo(
+    () => (inventoryQuery.data ?? []).filter((r) => r.channels.length > 0),
+    [inventoryQuery.data],
+  );
+  /** 캠페인 대상 태그 선택지 — 실제로 광고가 나갈 수 있는 화면의 태그만 */
+  const targetTagOptions = useMemo(
+    () =>
+      [...new Set((inventoryQuery.data ?? []).flatMap((r) => r.tags))].sort(
+        (a, b) => a.localeCompare(b, "ko"),
+      ),
+    [inventoryQuery.data],
+  );
   const reviewMutation = useMutation({
     mutationFn: (input: { id: number; decision: "approved" | "rejected" }) =>
       reviewCretaAdCreative(input.id, input.decision),
@@ -244,6 +258,8 @@ export function AdsPage() {
     startTime: "",
     endTime: "",
     maxPerHour: "0",
+    /** 대상 화면(디바이스 태그). 비우면 전체 화면 대상 */
+    targetTags: [] as string[],
   });
   const campCreate = useMutation({
     mutationFn: () =>
@@ -267,12 +283,28 @@ export function AdsPage() {
               Number(campForm.endTime.slice(3, 5))
             : null,
         maxPerHour: Number(campForm.maxPerHour) || null,
+        targetTags: campForm.targetTags,
       }),
     onSuccess: () => {
       invalidate();
       setCampOpen(false);
-      setCampForm((f) => ({ ...f, name: "" }));
+      setCampForm((f) => ({ ...f, name: "", targetTags: [] }));
       toast.success("캠페인을 만들었습니다.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // ── 대상 화면 편집(카드 팝오버) ──
+  const [targetEditFor, setTargetEditFor] = useState<CretaAdCampaign | null>(
+    null,
+  );
+  const targetSave = useMutation({
+    mutationFn: (input: { id: number; targetTags: string[] }) =>
+      updateCretaAdCampaign(input.id, { targetTags: input.targetTags }),
+    onSuccess: () => {
+      invalidate();
+      setTargetEditFor(null);
+      toast.success("대상 화면을 바꿨습니다.");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -787,8 +819,77 @@ export function AdsPage() {
                         {c.maxPerHour != null
                           ? ` · 시간당 ≤${c.maxPerHour}회`
                           : ""}{" "}
-                        · CPM {c.cpm.toLocaleString()}원
+                        · CPM {c.cpm.toLocaleString()}원 · 대상{" "}
+                        {c.targetTags.length === 0
+                          ? "전체 화면"
+                          : c.targetTags.join(" · ")}
                       </span>
+                      <Popover
+                        open={targetEditFor?.id === c.id}
+                        onOpenChange={(open) =>
+                          setTargetEditFor(open ? c : null)
+                        }
+                      >
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon-sm"
+                            aria-label={`${c.name} 대상 화면 바꾸기`}
+                            title="대상 화면 바꾸기"
+                            onClick={(e) => {
+                              if (!requireLogin()) e.preventDefault();
+                            }}
+                          >
+                            <MonitorSmartphone
+                              className="size-3.5"
+                              aria-hidden
+                            />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-72 space-y-2">
+                          <p className="text-xs font-medium">대상 화면</p>
+                          {targetTagOptions.length === 0 ? (
+                            <p className="text-xs text-muted-foreground">
+                              디바이스에 태그가 없습니다 — 전체 화면에 나갑니다.
+                            </p>
+                          ) : (
+                            <div className="flex flex-wrap gap-1.5">
+                              {targetTagOptions.map((tag) => {
+                                const on = c.targetTags.includes(tag);
+                                return (
+                                  <Button
+                                    key={tag}
+                                    type="button"
+                                    size="sm"
+                                    variant={on ? "default" : "outline"}
+                                    className="h-7 px-2.5 text-xs"
+                                    aria-pressed={on}
+                                    disabled={targetSave.isPending}
+                                    onClick={() =>
+                                      targetSave.mutate({
+                                        id: c.id,
+                                        targetTags: on
+                                          ? c.targetTags.filter(
+                                              (t) => t !== tag,
+                                            )
+                                          : [...c.targetTags, tag],
+                                      })
+                                    }
+                                  >
+                                    {tag}
+                                  </Button>
+                                );
+                              })}
+                            </div>
+                          )}
+                          <p className="text-[11px] text-muted-foreground">
+                            {c.targetTags.length === 0
+                              ? "고르지 않으면 전체 화면에 나갑니다."
+                              : "선택한 태그가 붙은 화면에만 나갑니다."}
+                          </p>
+                        </PopoverContent>
+                      </Popover>
                       <Button
                         type="button"
                         variant="outline"
@@ -1042,64 +1143,76 @@ export function AdsPage() {
         )}
       </div>
 
-      {/* 구좌 인벤토리(판매 가능량) */}
+      {/* 화면 인벤토리(판매 가능량) — 재고는 "화면 × 시간"으로 센다 */}
       <div className="space-y-2">
         <p className="text-sm font-medium text-muted-foreground">
-          구좌 인벤토리
+          화면 인벤토리
         </p>
         <Card className="py-0">
           <CardContent className="px-4 py-3">
-            {(inventoryQuery.data ?? []).length === 0 ? (
+            {sellableScreens.length === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">
-                광고 위젯(구좌)이 배치된 북이 없습니다. 스튜디오에서 북에 광고
-                위젯을 추가해 보세요.
+                광고를 내보낼 화면이 없습니다. 디바이스에 광고 위젯이 있는 북을
+                지정하거나, 재생 소스를 「광고」(전용 루프)로 바꿔 보세요.
               </p>
             ) : (
               <div className="overflow-x-auto">
-                {/* 구좌·북 이름이 가장 중요한 정보 — 두 열에 폭을 몰아주고 숫자 열은 최소 폭 */}
+                {/* 화면 이름·태그가 가장 중요한 정보 — 두 열에 폭을 몰아준다 */}
                 <table className="w-full table-fixed text-sm">
                   <thead>
                     <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                      <th className="w-[34%] py-2 pr-2 font-medium">구좌</th>
-                      <th className="w-[30%] px-2 py-2 font-medium">북</th>
-                      <th className="w-[10%] px-2 py-2 text-right font-medium">
-                        슬롯
+                      <th className="w-[26%] py-2 pr-2 font-medium">화면</th>
+                      <th className="w-[22%] px-2 py-2 font-medium">태그</th>
+                      <th className="w-[26%] px-2 py-2 font-medium">
+                        광고 자리
                       </th>
-                      <th className="w-[11%] px-2 py-2 text-right font-medium">
-                        디바이스
+                      <th className="w-[12%] px-2 py-2 text-right font-medium">
+                        캠페인
                       </th>
-                      <th className="w-[15%] py-2 pl-2 text-right font-medium">
+                      <th className="w-[14%] py-2 pl-2 text-right font-medium">
                         노출 능력
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {(inventoryQuery.data ?? []).map((row) => (
+                    {sellableScreens.map((row) => (
                       <tr
-                        key={`${row.bookId}-${row.slotElementId}`}
+                        key={row.deviceId}
                         className="border-b border-border/60 last:border-b-0"
                       >
                         <td className="py-2 pr-2">
                           <span
                             className="block truncate font-medium"
-                            title={row.slotName}
+                            title={`${row.deviceName} · ${row.location}`}
                           >
-                            {row.slotName}
+                            {row.deviceName}
+                          </span>
+                          <span className="block truncate text-[11px] text-muted-foreground">
+                            {row.online ? row.location : "오프라인"}
                           </span>
                         </td>
                         <td className="px-2 py-2">
                           <span
                             className="block truncate text-muted-foreground"
-                            title={row.bookTitle}
+                            title={row.tags.join(" · ")}
                           >
-                            {row.bookTitle}
+                            {row.tags.length > 0 ? row.tags.join(" · ") : "—"}
+                          </span>
+                        </td>
+                        <td className="px-2 py-2">
+                          <span
+                            className="block truncate text-muted-foreground"
+                            title={row.channels
+                              .map((c) => `${c.label} ${c.spotSec}초`)
+                              .join(" · ")}
+                          >
+                            {row.channels
+                              .map((c) => `${c.label} ${c.spotSec}초`)
+                              .join(" · ")}
                           </span>
                         </td>
                         <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums">
-                          {row.slotSec}초
-                        </td>
-                        <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums">
-                          {row.deviceCount}대
+                          {row.liveCampaigns}개
                         </td>
                         <td className="whitespace-nowrap py-2 pl-2 text-right tabular-nums">
                           {row.hourlyCapacity.toLocaleString()}회/시간
@@ -1111,9 +1224,10 @@ export function AdsPage() {
               </div>
             )}
             <p className="mt-2 text-[11px] text-muted-foreground">
-              시간당 노출 능력 = 3600초 ÷ 슬롯 길이 × 연결 디바이스 수(직접 소스
-              지정 기준, 최소 1). 플레이리스트·스케줄 경유 재생은 계산에서
-              제외한 근사치입니다.
+              시간당 노출 능력 = 화면이 가진 광고 자리마다 3600초 ÷ 표시 시간을
+              더한 값. 「캠페인」은 그 화면을 대상으로 하는 라이브 캠페인
+              수(대상 미지정 = 전체 화면 캠페인 포함)입니다.
+              플레이리스트·스케줄을 거쳐 재생되는 북의 구좌도 포함합니다.
             </p>
           </CardContent>
         </Card>
@@ -1326,9 +1440,52 @@ export function AdsPage() {
                 ))}
               </NativeSelect>
             </div>
+            <div className="space-y-1.5">
+              <Label>대상 화면</Label>
+              {targetTagOptions.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  디바이스에 태그가 없습니다 — 전체 화면에 나갑니다. 디바이스
+                  화면에서 태그를 붙이면 여기서 골라 좁힐 수 있습니다.
+                </p>
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-1.5">
+                    {targetTagOptions.map((tag) => {
+                      const on = campForm.targetTags.includes(tag);
+                      return (
+                        <Button
+                          key={tag}
+                          type="button"
+                          size="sm"
+                          variant={on ? "default" : "outline"}
+                          className="h-7 px-2.5 text-xs"
+                          aria-pressed={on}
+                          onClick={() =>
+                            setCampForm((f) => ({
+                              ...f,
+                              targetTags: on
+                                ? f.targetTags.filter((t) => t !== tag)
+                                : [...f.targetTags, tag],
+                            }))
+                          }
+                        >
+                          {tag}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    {campForm.targetTags.length === 0
+                      ? "고르지 않으면 전체 화면에 나갑니다."
+                      : `선택한 태그가 붙은 화면에만 나갑니다 — ${campForm.targetTags.join(" · ")}`}
+                  </p>
+                </>
+              )}
+            </div>
             <p className="text-[11px] text-muted-foreground">
               시간대를 비워 두면 종일 편성됩니다. 요일·시간대 밖이거나 시간당
-              상한을 채운 캠페인은 구좌 로테이션에서 제외됩니다.
+              상한을 채웠거나, 대상 화면이 아닌 캠페인은 로테이션에서
+              제외됩니다.
             </p>
           </div>
           <DialogFooter>

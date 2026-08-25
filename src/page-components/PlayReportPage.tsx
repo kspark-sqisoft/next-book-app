@@ -13,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   fetchCretaAdCampaignReport,
   fetchCretaAdCampaigns,
+  fetchCretaAdDeviceReport,
   fetchCretaAdHourlyReport,
   fetchCretaAdSlotReport,
 } from "@/lib/creta-ads-api";
@@ -24,6 +25,7 @@ import {
 } from "@/lib/creta-reports-api";
 import { formatDateMediumShort } from "@/lib/format-date";
 import { cretaKeys } from "@/lib/query-keys";
+import { cn } from "@/lib/utils";
 
 const RANGE_LABEL: Record<PlayReportRange, string> = {
   1: "오늘(24시간)",
@@ -32,7 +34,10 @@ const RANGE_LABEL: Record<PlayReportRange, string> = {
 };
 
 function kindLabel(kind: string): string {
-  return kind === "book" || kind === "playlist" || kind === "schedule"
+  return kind === "book" ||
+    kind === "playlist" ||
+    kind === "schedule" ||
+    kind === "ad"
     ? PLAY_SOURCE_LABEL[kind]
     : kind;
 }
@@ -65,6 +70,11 @@ export function PlayReportPage() {
   const { data: adSlots } = useQuery({
     queryKey: cretaKeys.adSlots(range),
     queryFn: () => fetchCretaAdSlotReport(range),
+    refetchInterval: 60_000,
+  });
+  const { data: adDevices } = useQuery({
+    queryKey: cretaKeys.adDevices(range),
+    queryFn: () => fetchCretaAdDeviceReport(range),
     refetchInterval: 60_000,
   });
   const cpmByCampaign = new Map((adCampaigns ?? []).map((c) => [c.id, c.cpm]));
@@ -416,6 +426,59 @@ export function PlayReportPage() {
               </CardContent>
             </Card>
           </div>
+          <Card>
+            <CardContent className="space-y-3">
+              <p className="text-sm font-semibold">광고 — 화면별 노출</p>
+              {(adDevices ?? []).length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  기간 내 광고 노출이 없습니다.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                        <th className="py-2 pr-2 font-medium">화면</th>
+                        <th className="px-2 py-2 text-right font-medium">
+                          노출수
+                        </th>
+                        <th className="py-2 pl-2 text-right font-medium">
+                          노출 시간
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(adDevices ?? []).map((row) => (
+                        <tr
+                          key={row.deviceId ?? "none"}
+                          className="border-b border-border/60 last:border-b-0"
+                        >
+                          <td className="max-w-0 py-2 pr-2">
+                            <span
+                              className={cn(
+                                "block truncate",
+                                row.deviceId == null &&
+                                  "italic text-muted-foreground",
+                              )}
+                              title={row.deviceName}
+                            >
+                              {row.deviceName}
+                            </span>
+                          </td>
+                          <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums">
+                            {row.plays.toLocaleString()}
+                          </td>
+                          <td className="whitespace-nowrap py-2 pl-2 text-right tabular-nums text-muted-foreground">
+                            {formatPlayDuration(row.seconds)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
           <Card>
             <CardContent className="space-y-3">
               <p className="text-sm font-semibold">광고 — 구좌별 노출</p>

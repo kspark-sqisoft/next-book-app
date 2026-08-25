@@ -808,6 +808,9 @@ export const cretaAdPlayLog = pgTable(
     bookId: integer("bookId"),
     /** 광고 위젯(구좌) 요소 id */
     slotElementId: varchar("slotElementId", { length: 80 }).notNull(),
+    /** 노출된 화면 — 디바이스 문맥이 있을 때만(북 편집기 미리보기 등은 null) */
+    deviceId: integer("deviceId"),
+    deviceName: varchar("deviceName", { length: 120 }),
     playedAt: timestamp("playedAt", { mode: "date" }).notNull().defaultNow(),
     durationSec: integer("durationSec").notNull(),
   },
@@ -817,6 +820,26 @@ export const cretaAdPlayLog = pgTable(
       t.playedAt,
     ),
     index("creta_ad_play_log_playedAt_idx").on(t.playedAt),
+    index("creta_ad_play_log_deviceId_playedAt_idx").on(t.deviceId, t.playedAt),
+  ],
+);
+
+/**
+ * 캠페인 대상 화면(디바이스 태그) — 이 캠페인을 어느 화면에 내보낼지.
+ * 행이 하나도 없으면 "전체 화면 대상"(타기팅 도입 이전 캠페인 호환).
+ */
+export const cretaAdCampaignTarget = pgTable(
+  "creta_ad_campaign_target",
+  {
+    id: serial("id").primaryKey(),
+    campaignId: integer("campaignId")
+      .notNull()
+      .references(() => cretaAdCampaign.id, { onDelete: "cascade" }),
+    tag: varchar("tag", { length: 40 }).notNull(),
+  },
+  (t) => [
+    unique().on(t.campaignId, t.tag),
+    index("creta_ad_campaign_target_campaignId_idx").on(t.campaignId),
   ],
 );
 

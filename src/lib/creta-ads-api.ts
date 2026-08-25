@@ -4,8 +4,9 @@ import {
   createCretaAdCampaignAction,
   createCretaAdvertiserAction,
   cretaAdCampaignReportAction,
+  cretaAdDeviceReportAction,
   cretaAdHourlyReportAction,
-  cretaAdSlotInventoryAction,
+  cretaAdScreenInventoryAction,
   cretaAdSlotReportAction,
   deleteCretaAdCampaignAction,
   deleteCretaAdCreativeAction,
@@ -71,6 +72,8 @@ export type CretaAdCampaign = {
   startMin: number | null;
   endMin: number | null;
   maxPerHour: number | null;
+  /** 대상 화면(디바이스 태그). 빈 배열 = 전체 화면 대상 */
+  targetTags: string[];
   creatives: CretaAdCreative[];
   inFlight: boolean;
   phase: "scheduled" | "live" | "paused" | "ended";
@@ -169,6 +172,8 @@ export async function createCretaAdCampaign(input: {
   startMin?: number | null;
   endMin?: number | null;
   maxPerHour?: number | null;
+  /** 대상 화면(디바이스 태그). 비우면 전체 화면 대상 */
+  targetTags?: string[];
 }): Promise<{ id: number }> {
   return run(() => createCretaAdCampaignAction(requireToken(), input));
 }
@@ -186,6 +191,8 @@ export async function updateCretaAdCampaign(
     startMin?: number | null;
     endMin?: number | null;
     maxPerHour?: number | null;
+    /** 전달하면 통째로 교체. 생략하면 기존 대상 유지 */
+    targetTags?: string[];
   },
 ): Promise<void> {
   await run(() => updateCretaAdCampaignAction(requireToken(), id, input));
@@ -208,13 +215,16 @@ export async function deleteCretaAdCreative(id: number): Promise<void> {
   await run(() => deleteCretaAdCreativeAction(requireToken(), id));
 }
 
-/** 광고 위젯 재생용 — 활성 캠페인 소재(가중치 포함) */
-export async function fetchCretaAdActiveCreatives(): Promise<
-  CretaAdActiveCreative[]
-> {
-  return run(() => listCretaAdActiveCreativesAction()) as unknown as Promise<
-    CretaAdActiveCreative[]
-  >;
+/**
+ * 광고 위젯 재생용 — 활성 캠페인 소재(가중치 포함).
+ * `deviceId`를 주면 그 화면 대상 캠페인만(없으면 편성 후보 전체).
+ */
+export async function fetchCretaAdActiveCreatives(
+  deviceId?: number | null,
+): Promise<CretaAdActiveCreative[]> {
+  return run(() =>
+    listCretaAdActiveCreativesAction(deviceId),
+  ) as unknown as Promise<CretaAdActiveCreative[]>;
 }
 
 /** 재생 기록 — 실패해도 화면 재생을 막지 않는다(fire-and-forget용) */
@@ -223,6 +233,8 @@ export async function logCretaAdPlay(input: {
   bookId?: number | null;
   slotElementId: string;
   durationSec: number;
+  /** 노출된 화면 — 디바이스 문맥이 있을 때만 */
+  deviceId?: number | null;
 }): Promise<void> {
   try {
     await logCretaAdPlayAction(input);
@@ -301,14 +313,28 @@ export const CRETA_AD_AUDIT_KIND_LABEL: Record<
   setting: "설정",
 };
 
-export type CretaAdSlotInventoryRow = {
-  bookId: number;
-  bookTitle: string;
-  slotElementId: string;
-  slotName: string;
-  slotSec: number;
-  deviceCount: number;
+export type CretaAdScreenChannelRow = {
+  kind: "slot" | "adloop";
+  label: string;
+  spotSec: number;
+};
+
+export type CretaAdScreenInventoryRow = {
+  deviceId: number;
+  deviceName: string;
+  location: string;
+  online: boolean;
+  tags: string[];
+  channels: CretaAdScreenChannelRow[];
   hourlyCapacity: number;
+  liveCampaigns: number;
+};
+
+export type CretaAdDeviceReportRow = {
+  deviceId: number | null;
+  deviceName: string;
+  plays: number;
+  seconds: number;
 };
 
 /** 소재 심의(관리자) — 승인/반려 */
@@ -325,11 +351,19 @@ export async function fetchCretaAdAudit(): Promise<CretaAdAuditRow[]> {
   >;
 }
 
-export async function fetchCretaAdSlotInventory(): Promise<
-  CretaAdSlotInventoryRow[]
+export async function fetchCretaAdScreenInventory(): Promise<
+  CretaAdScreenInventoryRow[]
 > {
-  return run(() => cretaAdSlotInventoryAction()) as unknown as Promise<
-    CretaAdSlotInventoryRow[]
+  return run(() => cretaAdScreenInventoryAction()) as unknown as Promise<
+    CretaAdScreenInventoryRow[]
+  >;
+}
+
+export async function fetchCretaAdDeviceReport(
+  days = 30,
+): Promise<CretaAdDeviceReportRow[]> {
+  return run(() => cretaAdDeviceReportAction(days)) as unknown as Promise<
+    CretaAdDeviceReportRow[]
   >;
 }
 

@@ -978,6 +978,7 @@ export const CAMPAIGNS = [
     startMin: null,
     endMin: null,
     maxPerHour: null,
+    targetTags: [],
   },
   {
     key: "skylineWinter",
@@ -992,6 +993,7 @@ export const CAMPAIGNS = [
     startMin: hm(6),
     endMin: hm(11),
     maxPerHour: 6,
+    targetTags: ["로비", "1F"],
   },
   {
     key: "terraFw",
@@ -1006,6 +1008,7 @@ export const CAMPAIGNS = [
     startMin: null,
     endMin: null,
     maxPerHour: null,
+    targetTags: ["피트니스", "루프탑"],
   },
   {
     key: "lagoonSummer",
@@ -1020,6 +1023,7 @@ export const CAMPAIGNS = [
     startMin: null,
     endMin: null,
     maxPerHour: null,
+    targetTags: ["루프탑"],
   },
   {
     key: "greenbirdMorning",
@@ -1034,6 +1038,7 @@ export const CAMPAIGNS = [
     startMin: hm(7),
     endMin: hm(11),
     maxPerHour: 10,
+    targetTags: ["카페"],
   },
   {
     key: "icelandAurora",
@@ -1048,6 +1053,7 @@ export const CAMPAIGNS = [
     startMin: null,
     endMin: null,
     maxPerHour: null,
+    targetTags: [],
   },
   {
     key: "skylineWeekend",
@@ -1062,6 +1068,7 @@ export const CAMPAIGNS = [
     startMin: hm(12),
     endMin: hm(20),
     maxPerHour: null,
+    targetTags: ["로비", "연회장"],
   },
 ];
 

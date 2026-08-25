@@ -5,15 +5,19 @@ import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 
 import { getDb } from "@/server/db";
 import {
-  book as bookTable,
   bookPage,
   cretaAdAuditLog,
   cretaAdCampaign,
+  cretaAdCampaignTarget,
   cretaAdCreative,
   cretaAdPlayLog,
   cretaAdSetting,
   cretaAdvertiser,
   cretaDevice,
+  cretaDeviceTag,
+  cretaPlaylistItem,
+  cretaSchedule,
+  cretaScheduleSlot,
   user as userTable,
 } from "@/server/db/schema";
 import { HttpError } from "@/server/http/http-error";
@@ -49,6 +53,8 @@ export type CretaAdCampaignPublic = {
   endMin: number | null;
   /** 시간당 재생 상한. null = 무제한 */
   maxPerHour: number | null;
+  /** 대상 화면(디바이스 태그). 빈 배열 = 전체 화면 대상 */
+  targetTags: string[];
   creatives: CretaAdCreativePublic[];
   /** 오늘 기준 기간 안 여부(참고 표시용) */
   inFlight: boolean;
@@ -87,17 +93,30 @@ export type CretaAdAuditPublic = {
   createdAt: Date;
 };
 
-/** 구좌 인벤토리(판매 가능량) — 광고 위젯이 걸린 북·디바이스·시간당 노출 능력 */
-export type CretaAdSlotInventory = {
-  bookId: number;
-  bookTitle: string;
-  slotElementId: string;
-  slotName: string;
-  slotSec: number;
-  /** 이 북을 소스로 재생 중인 디바이스 수(직접 지정 기준) */
-  deviceCount: number;
-  /** 시간당 노출 능력 = 3600/slotSec × max(1, 디바이스 수) */
+/** 화면이 가진 광고 자리 하나 — 구좌 위젯 또는 광고 전용 루프 */
+export type CretaAdScreenChannel = {
+  kind: "slot" | "adloop";
+  /** 구좌 이름 또는 "광고 전용 루프" */
+  label: string;
+  /** 소재 1개 표시 시간(초) */
+  spotSec: number;
+};
+
+/**
+ * 화면 인벤토리(판매 가능량) — 재고는 "화면 × 시간"으로 센다.
+ * 구좌(위젯)는 그 화면 안의 규격으로 표시한다.
+ */
+export type CretaAdScreenInventory = {
+  deviceId: number;
+  deviceName: string;
+  location: string;
+  online: boolean;
+  tags: string[];
+  channels: CretaAdScreenChannel[];
+  /** 시간당 노출 능력 = Σ(3600 / 자리별 표시 시간) */
   hourlyCapacity: number;
+  /** 이 화면에 나갈 수 있는 라이브 캠페인 수(대상 미지정 캠페인 포함) */
+  liveCampaigns: number;
 };
 
 /** 감사 로그 행위자(JWT에서 전달) */
@@ -206,6 +225,41 @@ function assertMaxPerHour(v: unknown): number | null {
     );
   }
   return n;
+}
+
+const TARGET_TAG_MAX = 40;
+const TARGET_TAGS_MAX = 20;
+
+/** 대상 화면 태그 정리 — 공백 제거·중복 제거. 빈 배열 = 전체 화면 대상 */
+function assertTargetTags(v: unknown): string[] {
+  if (v == null) return [];
+  if (!Array.isArray(v)) {
+    throw new HttpError(400, "대상 태그 목록이 올바르지 않습니다.");
+  }
+  const out: string[] = [];
+  for (const raw of v) {
+    const tag = String(raw ?? "").trim();
+    if (!tag) continue;
+    if (tag.length > TARGET_TAG_MAX) {
+      throw new HttpError(
+        400,
+        `태그는 ${TARGET_TAG_MAX}자 이하여야 합니다: ${tag.slice(0, 20)}…`,
+      );
+    }
+    if (!out.includes(tag)) out.push(tag);
+  }
+  if (out.length > TARGET_TAGS_MAX) {
+    throw new HttpError(
+      400,
+      `대상 태그는 ${TARGET_TAGS_MAX}개까지 지정할 수 있습니다.`,
+    );
+  }
+  return out;
+}
+
+/** 대상 표시용 — 감사 로그·요약에 쓰는 짧은 문구 */
+function targetLabel(tags: string[]): string {
+  return tags.length === 0 ? "전체 화면" : tags.join(" · ");
 }
 
 export class CretaAdsService {
@@ -374,6 +428,13 @@ export class CretaAdsService {
           .where(inArray(cretaAdCreative.campaignId, campaignIds))
           .orderBy(cretaAdCreative.position, cretaAdCreative.id)
       : [];
+    const targets = campaignIds.length
+      ? await db
+          .select()
+          .from(cretaAdCampaignTarget)
+          .where(inArray(cretaAdCampaignTarget.campaignId, campaignIds))
+          .orderBy(cretaAdCampaignTarget.tag)
+      : [];
     const today = todayStr();
     return rows.map((r) => ({
       id: r.id,
@@ -402,6 +463,9 @@ export class CretaAdsService {
               : ("live" as const),
       updatedAt: r.updatedAt,
       maxPerHour: r.maxPerHour ?? null,
+      targetTags: targets
+        .filter((t) => t.campaignId === r.id)
+        .map((t) => t.tag),
       creatives: creatives
         .filter((c) => c.campaignId === r.id)
         .map((c) => ({
@@ -440,6 +504,7 @@ export class CretaAdsService {
       startMin?: number | null;
       endMin?: number | null;
       maxPerHour?: number | null;
+      targetTags?: string[];
     },
     actor: CretaAdActor,
   ): Promise<{ id: number }> {
@@ -472,6 +537,7 @@ export class CretaAdsService {
     }
     const daypart = assertDaypart(input);
     const maxPerHour = assertMaxPerHour(input.maxPerHour);
+    const targetTags = assertTargetTags(input.targetTags);
     const [row] = await db
       .insert(cretaAdCampaign)
       .values({
@@ -488,12 +554,17 @@ export class CretaAdsService {
       })
       .returning({ id: cretaAdCampaign.id });
     if (!row) throw new HttpError(500, "캠페인 생성에 실패했습니다.");
+    if (targetTags.length > 0) {
+      await db
+        .insert(cretaAdCampaignTarget)
+        .values(targetTags.map((tag) => ({ campaignId: row.id, tag })));
+    }
     await this.audit(
       actor,
       "campaign",
       name,
       "create",
-      `기간 ${startDate}~${endDate} · 가중치 ${weight}`,
+      `기간 ${startDate}~${endDate} · 가중치 ${weight} · 대상 ${targetLabel(targetTags)}`,
     );
     return row;
   }
@@ -511,6 +582,7 @@ export class CretaAdsService {
       startMin?: number | null;
       endMin?: number | null;
       maxPerHour?: number | null;
+      targetTags?: string[];
     },
     actor: CretaAdActor,
   ): Promise<void> {
@@ -557,6 +629,11 @@ export class CretaAdsService {
     if (input.maxPerHour !== undefined) {
       set.maxPerHour = assertMaxPerHour(input.maxPerHour) ?? null;
     }
+    // 대상 태그는 전달됐을 때만 통째로 교체(부분 수정 API에서 미전달 = 유지)
+    const targetTags =
+      input.targetTags === undefined
+        ? null
+        : assertTargetTags(input.targetTags);
     const updated = await this.db()
       .update(cretaAdCampaign)
       .set(set)
@@ -565,16 +642,29 @@ export class CretaAdsService {
     if (updated.length === 0) {
       throw new HttpError(404, "캠페인을 찾을 수 없습니다.");
     }
+    if (targetTags != null) {
+      const db = this.db();
+      await db
+        .delete(cretaAdCampaignTarget)
+        .where(eq(cretaAdCampaignTarget.campaignId, id));
+      if (targetTags.length > 0) {
+        await db
+          .insert(cretaAdCampaignTarget)
+          .values(targetTags.map((tag) => ({ campaignId: id, tag })));
+      }
+    }
     await this.audit(
       actor,
       "campaign",
       updated[0].name,
       "update",
-      input.status != null
-        ? input.status === "paused"
-          ? "일시중지"
-          : "라이브 전환"
-        : "캠페인 설정 변경",
+      targetTags != null
+        ? `대상 ${targetLabel(targetTags)}`
+        : input.status != null
+          ? input.status === "paused"
+            ? "일시중지"
+            : "라이브 전환"
+          : "캠페인 설정 변경",
     );
   }
 
@@ -730,8 +820,60 @@ export class CretaAdsService {
 
   // ── 편성(활성 소재)·재생 로그 ────────────────────────────
 
-  /** 지금 편성 대상인 소재 — live 상태 + 오늘이 기간 안인 캠페인의 소재 전부 */
-  async listActiveCreatives(): Promise<CretaAdActiveCreative[]> {
+  /**
+   * 화면(디바이스) 타기팅 — 대상 태그가 없는 캠페인은 전체 화면 대상이라 항상 통과.
+   * 디바이스 문맥이 없으면 필터하지 않는다(편성 후보 전체 미리보기).
+   */
+  private async filterByScreen<T extends { id: number }>(
+    campaigns: T[],
+    deviceId: number | null,
+  ): Promise<T[]> {
+    if (deviceId == null || !Number.isInteger(deviceId) || deviceId <= 0) {
+      return campaigns;
+    }
+    if (campaigns.length === 0) return campaigns; // inArray 빈 배열 방지
+    const db = this.db();
+    const targets = await db
+      .select()
+      .from(cretaAdCampaignTarget)
+      .where(
+        inArray(
+          cretaAdCampaignTarget.campaignId,
+          campaigns.map((c) => c.id),
+        ),
+      );
+    if (targets.length === 0) return campaigns; // 전부 전체 화면 대상
+    const deviceTags = new Set(
+      (
+        await db
+          .select({ tag: cretaDeviceTag.tag })
+          .from(cretaDeviceTag)
+          .where(eq(cretaDeviceTag.deviceId, deviceId))
+      ).map((r) => r.tag),
+    );
+    const tagsByCampaign = new Map<number, string[]>();
+    for (const t of targets) {
+      tagsByCampaign.set(t.campaignId, [
+        ...(tagsByCampaign.get(t.campaignId) ?? []),
+        t.tag,
+      ]);
+    }
+    return campaigns.filter((c) => {
+      const wanted = tagsByCampaign.get(c.id);
+      if (!wanted || wanted.length === 0) return true; // 대상 미지정 = 전체
+      return wanted.some((tag) => deviceTags.has(tag));
+    });
+  }
+
+  /**
+   * 지금 편성 대상인 소재 — live 상태 + 오늘이 기간 안인 캠페인의 소재.
+   *
+   * `deviceId`를 주면 그 화면의 태그와 겹치는 캠페인(+ 대상 미지정 = 전체 화면 캠페인)만
+   * 남긴다. 주지 않으면(북 편집기·일반 북 보기) 화면에 매이지 않은 "편성 후보 전체"를 준다.
+   */
+  async listActiveCreatives(ctx?: {
+    deviceId?: number | null;
+  }): Promise<CretaAdActiveCreative[]> {
     const db = this.db();
     const today = todayStr();
     const campaigns = await db
@@ -776,10 +918,12 @@ export class CretaAdsService {
         .groupBy(cretaAdPlayLog.campaignId);
       hourlyPlays = new Map(rows.map((r) => [r.campaignId, r.plays]));
     }
-    const eligible = inFlight.filter(
+    const underCap = inFlight.filter(
       (c) =>
         c.maxPerHour == null || (hourlyPlays.get(c.id) ?? 0) < c.maxPerHour,
     );
+    if (underCap.length === 0) return [];
+    const eligible = await this.filterByScreen(underCap, ctx?.deviceId ?? null);
     if (eligible.length === 0) return [];
     const creatives = await db
       .select()
@@ -817,6 +961,8 @@ export class CretaAdsService {
     bookId?: number | null;
     slotElementId: string;
     durationSec: number;
+    /** 노출된 화면. 디바이스 문맥이 있을 때만(없으면 null로 남는다) */
+    deviceId?: number | null;
   }): Promise<void> {
     const db = this.db();
     const creative = await db.query.cretaAdCreative.findFirst({
@@ -835,6 +981,14 @@ export class CretaAdsService {
         ? durationSec
         : 15;
     const bookId = Number(input.bookId);
+    const deviceId = Number(input.deviceId);
+    const device =
+      Number.isInteger(deviceId) && deviceId > 0
+        ? await db.query.cretaDevice.findFirst({
+            where: eq(cretaDevice.id, deviceId),
+            columns: { id: true, name: true },
+          })
+        : null;
     await db.insert(cretaAdPlayLog).values({
       campaignId: creative.campaignId,
       campaignName: campaign?.name ?? `#${creative.campaignId}`,
@@ -842,8 +996,41 @@ export class CretaAdsService {
       creativeName: creative.name,
       bookId: Number.isInteger(bookId) && bookId > 0 ? bookId : null,
       slotElementId,
+      deviceId: device?.id ?? null,
+      deviceName: device?.name ?? null,
       durationSec: dur,
     });
+  }
+
+  /** 디바이스별 노출 — 최근 days일. 화면 문맥 없이 기록된 로그는 "화면 미지정"으로 묶는다 */
+  async deviceReport(days = 30): Promise<
+    {
+      deviceId: number | null;
+      deviceName: string;
+      plays: number;
+      seconds: number;
+    }[]
+  > {
+    const db = this.db();
+    const d = Math.min(365, Math.max(1, Math.trunc(days)));
+    const since = new Date(Date.now() - d * 24 * 60 * 60 * 1000);
+    const rows = await db
+      .select({
+        deviceId: cretaAdPlayLog.deviceId,
+        deviceName: cretaAdPlayLog.deviceName,
+        plays: sql<number>`count(*)::int`,
+        seconds: sql<number>`coalesce(sum(${cretaAdPlayLog.durationSec}), 0)::int`,
+      })
+      .from(cretaAdPlayLog)
+      .where(gte(cretaAdPlayLog.playedAt, since))
+      .groupBy(cretaAdPlayLog.deviceId, cretaAdPlayLog.deviceName)
+      .orderBy(desc(sql`count(*)`));
+    return rows.map((r) => ({
+      deviceId: r.deviceId ?? null,
+      deviceName: r.deviceName ?? "화면 미지정(미리보기)",
+      plays: r.plays,
+      seconds: r.seconds,
+    }));
   }
 
   // ── 전역 설정(루프 삽입·하우스 광고) ────────────────────
@@ -926,21 +1113,16 @@ export class CretaAdsService {
    * 구좌 인벤토리(판매 가능량) — 모든 북 페이지에서 광고 위젯을 찾아
    * 슬롯 길이·연결 디바이스 수·시간당 노출 능력을 계산한다.
    */
-  async slotInventory(): Promise<CretaAdSlotInventory[]> {
-    const db = this.db();
-    const pages = await db
-      .select({
-        bookId: bookPage.bookId,
-        elementsJson: bookPage.elementsJson,
-      })
-      .from(bookPage);
-    type SlotHit = {
-      bookId: number;
-      slotElementId: string;
-      slotName: string;
-      slotSec: number;
-    };
-    const hits: SlotHit[] = [];
+  /** 북 안의 광고 위젯(구좌)을 훑어 북 id → 구좌 목록으로 만든다 */
+  private async slotsByBook(
+    bookIds: number[],
+  ): Promise<Map<number, { name: string; sec: number }[]>> {
+    const out = new Map<number, { name: string; sec: number }[]>();
+    if (bookIds.length === 0) return out;
+    const pages = await this.db()
+      .select({ bookId: bookPage.bookId, elementsJson: bookPage.elementsJson })
+      .from(bookPage)
+      .where(inArray(bookPage.bookId, bookIds));
     for (const pg of pages) {
       let els: unknown;
       try {
@@ -960,44 +1142,173 @@ export class CretaAdsService {
           o.adSlotSec <= 120
             ? o.adSlotSec
             : 15;
-        hits.push({
-          bookId: pg.bookId,
-          slotElementId: o.id,
-          slotName:
-            typeof o.adSlotName === "string" && o.adSlotName.trim()
-              ? o.adSlotName.trim().slice(0, 80)
-              : "이름 없는 구좌",
-          slotSec: sec,
-        });
+        const name =
+          typeof o.adSlotName === "string" && o.adSlotName.trim()
+            ? o.adSlotName.trim().slice(0, 80)
+            : "이름 없는 구좌";
+        out.set(pg.bookId, [...(out.get(pg.bookId) ?? []), { name, sec }]);
       }
     }
-    if (hits.length === 0) return [];
-    const bookIds = [...new Set(hits.map((h) => h.bookId))];
-    const books = await db
-      .select({ id: bookTable.id, title: bookTable.title })
-      .from(bookTable)
-      .where(inArray(bookTable.id, bookIds));
-    const titleMap = new Map(books.map((b) => [b.id, b.title]));
-    // 이 북을 직접 소스로 재생 중인 디바이스 수(플레이리스트·스케줄 경유는 제외 — 단순 계산)
-    const devices = await db
-      .select({ sourceBookId: cretaDevice.sourceBookId })
-      .from(cretaDevice)
-      .where(eq(cretaDevice.sourceType, "book"));
-    const deviceCount = new Map<number, number>();
-    for (const d of devices) {
-      if (d.sourceBookId == null) continue;
-      deviceCount.set(
-        d.sourceBookId,
-        (deviceCount.get(d.sourceBookId) ?? 0) + 1,
-      );
+    return out;
+  }
+
+  /**
+   * 화면 인벤토리 — 디바이스마다 어떤 광고 자리를 갖고 시간당 몇 번 노출할 수 있는지.
+   * 북 직접 지정뿐 아니라 플레이리스트·스케줄을 거쳐 재생되는 북의 구좌도 포함한다
+   * (3단계 구좌 인벤토리가 빠뜨렸던 부분).
+   */
+  async screenInventory(): Promise<CretaAdScreenInventory[]> {
+    const db = this.db();
+    const [devices, tagRows, setting] = await Promise.all([
+      db.select().from(cretaDevice).orderBy(cretaDevice.id),
+      db.select().from(cretaDeviceTag),
+      this.getSetting(),
+    ]);
+    if (devices.length === 0) return [];
+
+    const tagsByDevice = new Map<number, string[]>();
+    for (const t of tagRows) {
+      tagsByDevice.set(t.deviceId, [
+        ...(tagsByDevice.get(t.deviceId) ?? []),
+        t.tag,
+      ]);
     }
-    return hits.map((h) => {
-      const devs = deviceCount.get(h.bookId) ?? 0;
+
+    // 디바이스가 재생할 수 있는 북 모으기 — 플레이리스트·스케줄 경유 포함
+    const playlistIds = new Set<number>();
+    const scheduleIds = new Set<number>();
+    for (const d of devices) {
+      if (d.sourceType === "playlist" && d.sourcePlaylistId != null) {
+        playlistIds.add(d.sourcePlaylistId);
+      } else if (d.sourceType === "schedule" && d.sourceScheduleId != null) {
+        scheduleIds.add(d.sourceScheduleId);
+      }
+    }
+    const schedules = scheduleIds.size
+      ? await db
+          .select()
+          .from(cretaSchedule)
+          .where(inArray(cretaSchedule.id, [...scheduleIds]))
+      : [];
+    const scheduleSlots = scheduleIds.size
+      ? await db
+          .select()
+          .from(cretaScheduleSlot)
+          .where(inArray(cretaScheduleSlot.scheduleId, [...scheduleIds]))
+      : [];
+    // 스케줄이 참조하는 플레이리스트도 북 해석 대상에 넣는다
+    for (const sc of schedules) {
+      if (sc.defaultPlaylistId != null) playlistIds.add(sc.defaultPlaylistId);
+    }
+    for (const sl of scheduleSlots) {
+      if (sl.playlistId != null) playlistIds.add(sl.playlistId);
+    }
+    const playlistItems = playlistIds.size
+      ? await db
+          .select()
+          .from(cretaPlaylistItem)
+          .where(inArray(cretaPlaylistItem.playlistId, [...playlistIds]))
+      : [];
+    const booksByPlaylist = new Map<number, number[]>();
+    for (const it of playlistItems) {
+      booksByPlaylist.set(it.playlistId, [
+        ...(booksByPlaylist.get(it.playlistId) ?? []),
+        it.bookId,
+      ]);
+    }
+
+    const booksForDevice = (d: (typeof devices)[number]): number[] => {
+      if (d.sourceType === "book") {
+        return d.sourceBookId != null ? [d.sourceBookId] : [];
+      }
+      if (d.sourceType === "playlist") {
+        return d.sourcePlaylistId != null
+          ? (booksByPlaylist.get(d.sourcePlaylistId) ?? [])
+          : [];
+      }
+      if (d.sourceType === "schedule" && d.sourceScheduleId != null) {
+        const sid = d.sourceScheduleId;
+        const sc = schedules.find((x) => x.id === sid);
+        const ids: number[] = [];
+        if (sc?.defaultBookId != null) ids.push(sc.defaultBookId);
+        if (sc?.defaultPlaylistId != null) {
+          ids.push(...(booksByPlaylist.get(sc.defaultPlaylistId) ?? []));
+        }
+        for (const sl of scheduleSlots) {
+          if (sl.scheduleId !== sid) continue;
+          if (sl.bookId != null) ids.push(sl.bookId);
+          if (sl.playlistId != null) {
+            ids.push(...(booksByPlaylist.get(sl.playlistId) ?? []));
+          }
+        }
+        return [...new Set(ids)];
+      }
+      return []; // none · ad — 북 없음
+    };
+
+    const allBookIds = [...new Set(devices.flatMap((d) => booksForDevice(d)))];
+    const slotMap = await this.slotsByBook(allBookIds);
+
+    // 화면별로 나갈 수 있는 라이브 캠페인 수
+    const today = todayStr();
+    const liveCampaigns = (
+      await db
+        .select()
+        .from(cretaAdCampaign)
+        .where(eq(cretaAdCampaign.status, "live"))
+    ).filter((c) => c.startDate <= today && today <= c.endDate);
+    const targets = liveCampaigns.length
+      ? await db
+          .select()
+          .from(cretaAdCampaignTarget)
+          .where(
+            inArray(
+              cretaAdCampaignTarget.campaignId,
+              liveCampaigns.map((c) => c.id),
+            ),
+          )
+      : [];
+    const targetTags = new Map<number, string[]>();
+    for (const t of targets) {
+      targetTags.set(t.campaignId, [
+        ...(targetTags.get(t.campaignId) ?? []),
+        t.tag,
+      ]);
+    }
+
+    return devices.map((d) => {
+      const tags = tagsByDevice.get(d.id) ?? [];
+      const channels: CretaAdScreenChannel[] = [];
+      if (d.sourceType === "ad") {
+        channels.push({
+          kind: "adloop",
+          label: "광고 전용 루프",
+          spotSec: setting.spotSec,
+        });
+      }
+      for (const bid of booksForDevice(d)) {
+        for (const slot of slotMap.get(bid) ?? []) {
+          channels.push({ kind: "slot", label: slot.name, spotSec: slot.sec });
+        }
+      }
+      const hourlyCapacity = channels.reduce(
+        (sum, c) => sum + Math.floor(3600 / Math.max(1, c.spotSec)),
+        0,
+      );
+      const reachable = liveCampaigns.filter((c) => {
+        const wanted = targetTags.get(c.id);
+        if (!wanted || wanted.length === 0) return true; // 전체 화면 대상
+        return wanted.some((tag) => tags.includes(tag));
+      }).length;
       return {
-        ...h,
-        bookTitle: titleMap.get(h.bookId) ?? `북 #${h.bookId}`,
-        deviceCount: devs,
-        hourlyCapacity: Math.floor((3600 / h.slotSec) * Math.max(1, devs)),
+        deviceId: d.id,
+        deviceName: d.name,
+        location: d.location,
+        online: d.online,
+        tags,
+        channels,
+        hourlyCapacity,
+        liveCampaigns: channels.length > 0 ? reachable : 0,
       };
     });
   }

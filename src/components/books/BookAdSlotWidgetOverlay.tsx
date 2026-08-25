@@ -22,7 +22,10 @@ import {
   resolveBookElementRotation,
 } from "@/lib/book-canvas";
 import {
-  type CretaAdActiveCreative,
+  buildCretaAdRotation,
+  cretaAdRotationIndex,
+} from "@/lib/creta-ad-rotation";
+import {
   fetchCretaAdActiveCreatives,
   fetchCretaAdSetting,
   logCretaAdPlay,
@@ -38,36 +41,12 @@ type Props = {
   liveFrame?: BookTextOverlayLiveFrame | null;
   /** 재생 로그에 남길 북 id(편집·미리보기에서 전달, 없으면 null) */
   bookId?: number | null;
+  /**
+   * 이 화면이 흉내내는 디바이스 id — 프레젠테이션 `?device=` 에서 온다.
+   * 있으면 그 화면을 대상으로 하는 캠페인만 순환하고, 노출 로그에도 화면이 남는다.
+   */
+  adDeviceId?: number | null;
 };
-
-/**
- * 가중 로테이션 순서 — 캠페인별 큐에서 라운드로빈으로 하나씩 뽑아
- * 같은 캠페인 소재가 연속되지 않게 섞는다(가중치 = 큐 투입 횟수).
- */
-function buildRotation(
-  creatives: CretaAdActiveCreative[],
-): CretaAdActiveCreative[] {
-  const byCampaign = new Map<number, CretaAdActiveCreative[]>();
-  for (const c of creatives) {
-    const list = byCampaign.get(c.campaignId) ?? [];
-    for (let i = 0; i < Math.max(1, c.weight); i++) list.push(c);
-    byCampaign.set(c.campaignId, list);
-  }
-  const queues = [...byCampaign.values()];
-  const out: CretaAdActiveCreative[] = [];
-  let remaining = queues.reduce((a, q) => a + q.length, 0);
-  let qi = 0;
-  while (remaining > 0) {
-    const q = queues[qi % queues.length];
-    const item = q.shift();
-    if (item) {
-      out.push(item);
-      remaining--;
-    }
-    qi++;
-  }
-  return out;
-}
 
 export function BookAdSlotWidgetOverlay({
   el,
@@ -76,19 +55,23 @@ export function BookAdSlotWidgetOverlay({
   isSelected,
   liveFrame,
   bookId,
+  adDeviceId,
 }: Props) {
   const slotSec = resolveBookAdSlotSec(el);
   const fill = resolveBookAdSlotFill(el);
 
   const { data: creatives } = useQuery({
-    queryKey: cretaKeys.adActiveCreatives(),
-    queryFn: fetchCretaAdActiveCreatives,
+    queryKey: cretaKeys.adActiveCreatives(adDeviceId),
+    queryFn: () => fetchCretaAdActiveCreatives(adDeviceId),
     // 편집 모드에선 개수 표시용으로만 쓰므로 갱신을 느리게
     staleTime: 30_000,
     refetchInterval: mode === "view" ? 60_000 : false,
   });
 
-  const rotation = useMemo(() => buildRotation(creatives ?? []), [creatives]);
+  const rotation = useMemo(
+    () => buildCretaAdRotation(creatives ?? []),
+    [creatives],
+  );
 
   /** 전역 설정 — 하우스 광고 소재(빈 구좌 채움) */
   const { data: adSetting } = useQuery({
@@ -101,8 +84,7 @@ export function BookAdSlotWidgetOverlay({
   const [index, setIndex] = useState(0);
   useEffect(() => {
     if (mode !== "view" || rotation.length === 0) return;
-    const compute = () =>
-      Math.floor(Date.now() / (slotSec * 1000)) % rotation.length;
+    const compute = () => cretaAdRotationIndex(rotation.length, slotSec);
     queueMicrotask(() => setIndex(compute()));
     const t = window.setInterval(() => setIndex(compute()), 1000);
     return () => window.clearInterval(t);
@@ -123,8 +105,9 @@ export function BookAdSlotWidgetOverlay({
       bookId: bookId ?? null,
       slotElementId: el.id,
       durationSec: slotSec,
+      deviceId: adDeviceId ?? null,
     });
-  }, [mode, current, index, el.id, bookId, slotSec]);
+  }, [mode, current, index, el.id, bookId, slotSec, adDeviceId]);
 
   const w = el.width;
   const h = el.height;

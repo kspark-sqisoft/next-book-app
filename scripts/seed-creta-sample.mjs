@@ -380,7 +380,7 @@ async function insertAlerts(sql, deviceIds, ownerId) {
   }
 }
 
-async function insertAds(sql, media, ownerId, adSlots) {
+async function insertAds(sql, media, ownerId, adSlots, deviceRows) {
   const house = media.get(AD_SETTING.houseMedia);
   await sql`DELETE FROM creta_ad_setting`;
   await sql`
@@ -406,6 +406,11 @@ async function insertAds(sql, media, ownerId, adSlots) {
               ${c.endDate}, ${c.weight}, ${c.cpm}, ${c.dayTarget},
               ${c.startMin}, ${c.endMin}, ${c.maxPerHour})
       RETURNING id`;
+    if ((c.targetTags ?? []).length > 0) {
+      await sql`
+        INSERT INTO creta_ad_campaign_target ("campaignId", tag)
+        VALUES ${sql(c.targetTags.map((tag) => [row.id, tag]))}`;
+    }
     campaigns.set(c.key, { id: row.id, ...c });
   }
 
@@ -428,11 +433,14 @@ async function insertAds(sql, media, ownerId, adSlots) {
               '박기순', ${daysAgo(log.daysAgo)})`;
   }
 
-  return insertAdPlayLogs(sql, creatives, adSlots);
+  return insertAdPlayLogs(sql, creatives, adSlots, deviceRows);
 }
 
-/** 승인된 소재 × 라이브 캠페인만 구좌에서 순환 — 그 노출을 30일치 기록 */
-async function insertAdPlayLogs(sql, creatives, adSlots) {
+/**
+ * 승인된 소재 × 라이브 캠페인만 구좌에서 순환 — 그 노출을 30일치 기록.
+ * 캠페인 대상 태그를 지켜서 화면을 배분한다(대상 미지정 = 전체 화면).
+ */
+async function insertAdPlayLogs(sql, creatives, adSlots, deviceRows) {
   const live = creatives.filter(
     (c) => c.status === "approved" && c.campaign.status === "live",
   );
@@ -441,12 +449,19 @@ async function insertAdPlayLogs(sql, creatives, adSlots) {
   const rows = [];
   const rand = mulberry32(20260825);
   for (const [ci, creative] of live.entries()) {
+    // 이 캠페인이 나갈 수 있는 화면 — 대상 태그가 없으면 전부
+    const wanted = creative.campaign.targetTags ?? [];
+    const screens = deviceRows.filter(
+      (d) => wanted.length === 0 || wanted.some((t) => d.tags.includes(t)),
+    );
+    if (screens.length === 0) continue;
     // 가중치가 높은 캠페인일수록 자주 노출된다
     const perDay = 6 + creative.campaign.weight * 2;
     for (let day = AD_LOG_DAYS; day >= 1; day -= 1) {
       const base = daysAgo(day);
       for (let n = 0; n < perDay; n += 1) {
         const slot = adSlots[(ci + n) % adSlots.length];
+        const screen = screens[(ci + n) % screens.length];
         const at = new Date(base);
         at.setHours(
           8 + Math.floor(rand() * 14),
@@ -461,6 +476,8 @@ async function insertAdPlayLogs(sql, creatives, adSlots) {
           creativeName: creative.name,
           bookId: slot.bookId,
           slotElementId: slot.elementId,
+          deviceId: screen.id,
+          deviceName: screen.name,
           playedAt: at,
           durationSec: AD_SETTING.spotSec,
         });
@@ -631,7 +648,13 @@ async function main() {
           elementId: s.id,
         })),
       );
-      const adLogs = await insertAds(tx, media, owner.id, adSlots);
+      // 광고 노출 로그를 화면에 배분할 때 쓸 디바이스 정보(id·이름·태그)
+      const deviceRows = DEVICES.map((d) => ({
+        id: deviceIds.get(d.key),
+        name: d.name,
+        tags: d.tags ?? [],
+      }));
+      const adLogs = await insertAds(tx, media, owner.id, adSlots, deviceRows);
       const playLogs = await insertPlayLogs(tx, {
         books,
         bookIds,

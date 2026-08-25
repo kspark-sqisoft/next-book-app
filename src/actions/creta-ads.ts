@@ -15,8 +15,8 @@ import {
   type CretaAdActor,
   type CretaAdAuditPublic,
   type CretaAdCampaignPublic,
+  type CretaAdScreenInventory,
   type CretaAdSettingPublic,
-  type CretaAdSlotInventory,
   CretaAdsService,
   type CretaAdvertiserPublic,
 } from "@/server/services/creta-ads.service";
@@ -112,6 +112,7 @@ export async function createCretaAdCampaignAction(
     startMin?: number | null;
     endMin?: number | null;
     maxPerHour?: number | null;
+    targetTags?: string[];
   },
 ): Promise<{ id: number }> {
   try {
@@ -139,6 +140,7 @@ export async function updateCretaAdCampaignAction(
     startMin?: number | null;
     endMin?: number | null;
     maxPerHour?: number | null;
+    targetTags?: string[];
   },
 ): Promise<void> {
   try {
@@ -198,12 +200,15 @@ export async function deleteCretaAdCreativeAction(
   }
 }
 
-/** 광고 위젯 재생용 — 지금 편성 대상인 소재 목록(가중치 포함) */
-export async function listCretaAdActiveCreativesAction(): Promise<
-  CretaAdActiveCreative[]
-> {
+/**
+ * 광고 위젯 재생용 — 지금 편성 대상인 소재 목록(가중치 포함).
+ * `deviceId`를 주면 그 화면을 대상으로 하는 캠페인만 남긴다(없으면 편성 후보 전체).
+ */
+export async function listCretaAdActiveCreativesAction(
+  deviceId?: number | null,
+): Promise<CretaAdActiveCreative[]> {
   try {
-    return await new CretaAdsService().listActiveCreatives();
+    return await new CretaAdsService().listActiveCreatives({ deviceId });
   } catch (e) {
     rethrowActionError(e, TAG);
   }
@@ -215,6 +220,7 @@ export async function logCretaAdPlayAction(input: {
   bookId?: number | null;
   slotElementId: string;
   durationSec: number;
+  deviceId?: number | null;
 }): Promise<void> {
   try {
     await new CretaAdsService().logPlay(input ?? ({} as never));
@@ -310,12 +316,23 @@ export async function listCretaAdAuditAction(): Promise<CretaAdAuditPublic[]> {
   }
 }
 
-/** 구좌 인벤토리(판매 가능량) */
-export async function cretaAdSlotInventoryAction(): Promise<
-  CretaAdSlotInventory[]
+/** 화면 인벤토리(판매 가능량) — 디바이스 × 시간당 노출 능력 */
+export async function cretaAdScreenInventoryAction(): Promise<
+  CretaAdScreenInventory[]
 > {
   try {
-    return await new CretaAdsService().slotInventory();
+    return await new CretaAdsService().screenInventory();
+  } catch (e) {
+    rethrowActionError(e, TAG);
+  }
+}
+
+/** 디바이스별 광고 노출 리포트 */
+export async function cretaAdDeviceReportAction(
+  days?: number,
+): Promise<Awaited<ReturnType<CretaAdsService["deviceReport"]>>> {
+  try {
+    return await new CretaAdsService().deviceReport(days ?? 30);
   } catch (e) {
     rethrowActionError(e, TAG);
   }

@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -51,8 +51,14 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { publicAssetUrl } from "@/lib/api";
 import {
+  buildCretaAdRotation,
+  cretaAdRotationIndex,
+} from "@/lib/creta-ad-rotation";
+import {
   fetchCretaAdActiveCreatives,
-  fetchCretaAdSlotInventory,
+  fetchCretaAdScreenInventory,
+  fetchCretaAdSetting,
+  logCretaAdPlay,
 } from "@/lib/creta-ads-api";
 import { cretaAlertCoversDevice } from "@/lib/creta-alerts-api";
 import {
@@ -115,22 +121,63 @@ export function DeviceDetailPage() {
   });
   /** 활성 긴급 알림 — 이 디바이스가 대상이면 재생 표시를 덮는다 */
   const { data: activeAlert } = useActiveCretaAlert();
-  /** 광고 전용 재생용 — 지금 편성 중인 소재(미리보기·소재 수 표시) */
+  /** 광고 전용 재생용 — 이 화면을 대상으로 하는 소재만(화면 타기팅 반영) */
   const { data: adCreatives } = useQuery({
-    queryKey: cretaKeys.adActiveCreatives(),
-    queryFn: fetchCretaAdActiveCreatives,
+    queryKey: cretaKeys.adActiveCreatives(deviceId),
+    queryFn: () => fetchCretaAdActiveCreatives(deviceId),
+    staleTime: 60_000,
+    enabled: Number.isFinite(deviceId) && deviceId > 0,
+  });
+  const { data: adSetting } = useQuery({
+    queryKey: cretaKeys.adSetting(),
+    queryFn: fetchCretaAdSetting,
     staleTime: 60_000,
   });
-  /** 할당된 북에 광고 구좌가 있는지 — "북 + 광고 혼합" 안내용 */
+  /** 이 화면의 광고 자리(구좌·전용 루프) — "북 + 광고 혼합" 안내용 */
   const { data: adInventory } = useQuery({
     queryKey: cretaKeys.adInventory(),
-    queryFn: fetchCretaAdSlotInventory,
+    queryFn: fetchCretaAdScreenInventory,
     staleTime: 60_000,
   });
   const assignedBookSlotCount =
-    device?.source?.kind === "book"
-      ? (adInventory ?? []).filter((r) => r.bookId === device.source!.id).length
-      : 0;
+    (adInventory ?? [])
+      .find((r) => r.deviceId === deviceId)
+      ?.channels.filter((c) => c.kind === "slot").length ?? 0;
+
+  // ── 광고 전용 루프 — 구좌 위젯과 같은 공통 클록으로 순환하고 노출을 기록한다 ──
+  const adSpotSec = adSetting?.spotSec ?? 15;
+  const adRotation = useMemo(
+    () => buildCretaAdRotation(adCreatives ?? []),
+    [adCreatives],
+  );
+  const adLoopActive = device?.online === true && device?.source?.kind === "ad";
+  const [adIndex, setAdIndex] = useState(0);
+  useEffect(() => {
+    if (!adLoopActive || adRotation.length === 0) return;
+    const compute = () => cretaAdRotationIndex(adRotation.length, adSpotSec);
+    queueMicrotask(() => setAdIndex(compute()));
+    const t = window.setInterval(() => setAdIndex(compute()), 1000);
+    return () => window.clearInterval(t);
+  }, [adLoopActive, adRotation.length, adSpotSec]);
+  const currentAd =
+    adRotation.length > 0
+      ? adRotation[Math.min(adIndex, adRotation.length - 1)]
+      : null;
+  /** 소재가 바뀔 때 1회 기록 — 같은 epoch 중복 방지(구좌 위젯과 동일 규칙) */
+  const adLoggedKeyRef = useRef("");
+  useEffect(() => {
+    if (!adLoopActive || !currentAd) return;
+    const key = `${currentAd.id}:${adIndex}`;
+    if (adLoggedKeyRef.current === key) return;
+    adLoggedKeyRef.current = key;
+    void logCretaAdPlay({
+      creativeId: currentAd.id,
+      bookId: null,
+      slotElementId: "adloop",
+      durationSec: adSpotSec,
+      deviceId,
+    });
+  }, [adLoopActive, currentAd, adIndex, adSpotSec, deviceId]);
 
   const applyDevice = (res: CretaDevice) => {
     queryClient.setQueryData(cretaKeys.device(deviceId), res);
@@ -368,16 +415,14 @@ export function DeviceDetailPage() {
                   <CretaAlertOverlay alert={activeAlert} />
                 ) : null}
                 {device.online && device.source?.kind === "ad" ? (
-                  /* 광고 전용 루프 — 첫 활성 소재 미리보기 + AD 라벨 */
+                  /* 광고 전용 루프 — 공통 클록으로 순환 중인 소재 + AD 라벨 */
                   <>
-                    {(adCreatives ?? []).length > 0 ? (
-                      (adCreatives ?? [])[0].kind === "video" ? (
+                    {currentAd ? (
+                      currentAd.kind === "video" ? (
                         <video
+                          key={currentAd.id}
                           className="absolute inset-0 size-full object-cover"
-                          src={
-                            publicAssetUrl((adCreatives ?? [])[0].src) ??
-                            (adCreatives ?? [])[0].src
-                          }
+                          src={publicAssetUrl(currentAd.src) ?? currentAd.src}
                           muted
                           playsInline
                           autoPlay
@@ -387,10 +432,7 @@ export function DeviceDetailPage() {
                       ) : (
                         <img
                           alt=""
-                          src={
-                            publicAssetUrl((adCreatives ?? [])[0].src) ??
-                            (adCreatives ?? [])[0].src
-                          }
+                          src={publicAssetUrl(currentAd.src) ?? currentAd.src}
                           className="absolute inset-0 size-full object-cover"
                         />
                       )
@@ -428,7 +470,7 @@ export function DeviceDetailPage() {
                       /* 라이브 미리보기 — 북 프레젠테이션을 embed로 실제 재생 */
                       <iframe
                         key={device.source.previewBookId}
-                        src={`/books/${device.source.previewBookId}/preview?embed=1`}
+                        src={`/books/${device.source.previewBookId}/preview?embed=1&device=${device.id}`}
                         title={`${device.source.title} 라이브 미리보기`}
                         className="pointer-events-none absolute inset-0 size-full border-0"
                       />

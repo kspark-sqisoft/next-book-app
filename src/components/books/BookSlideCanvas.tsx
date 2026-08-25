@@ -255,6 +255,8 @@ type BookSlideCanvasProps = {
   readabilityBackgroundColor?: string;
   /** 광고 위젯 재생 로그에 남길 북 id(보기 모드에서만 사용) */
   adPlayLogBookId?: number | null;
+  /** 이 화면이 흉내내는 디바이스 id — 광고 편성·노출 로그의 화면 문맥 */
+  adDeviceId?: number | null;
   /** 논리 좌표(페이지 크기) 기준 표시 배율 */
   scale: number;
   elements: BookCanvasElement[];
@@ -905,6 +907,7 @@ export function BookSlideCanvas({
   pageBackgroundColor,
   readabilityBackgroundColor,
   adPlayLogBookId,
+  adDeviceId,
   scale,
   elements,
   mode,
@@ -2145,6 +2148,7 @@ export function BookSlideCanvas({
                   isSelected={selectedIdSet.has(el.id)}
                   liveFrame={frameLive}
                   bookId={adPlayLogBookId ?? null}
+                  adDeviceId={adDeviceId ?? null}
                 />
               );
             }

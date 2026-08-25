@@ -208,7 +208,8 @@ export function DashboardPage() {
                           >
                             {p.kind === "book" ||
                             p.kind === "playlist" ||
-                            p.kind === "schedule"
+                            p.kind === "schedule" ||
+                            p.kind === "ad"
                               ? PLAY_SOURCE_LABEL[p.kind]
                               : p.kind}
                           </Badge>
@@ -266,7 +267,8 @@ export function DashboardPage() {
                         >
                           {row.kind === "book" ||
                           row.kind === "playlist" ||
-                          row.kind === "schedule"
+                          row.kind === "schedule" ||
+                          row.kind === "ad"
                             ? PLAY_SOURCE_LABEL[row.kind]
                             : row.kind}
                         </Badge>

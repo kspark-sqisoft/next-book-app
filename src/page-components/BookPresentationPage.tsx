@@ -85,6 +85,7 @@ function BookPresentationInner({
   data,
   startSortOrder,
   embed = false,
+  deviceId = null,
 }: {
   bookId: number;
   data: BookDetail;
@@ -92,6 +93,11 @@ function BookPresentationInner({
   startSortOrder?: number;
   /** `?embed=1` — 커뮤니티 등 iframe 안: 상단 컨트롤 바 숨김 */
   embed?: boolean;
+  /**
+   * `?device=N` — 이 재생이 어느 화면을 흉내내는지. 디바이스 상세의 미리보기 iframe이 넘긴다.
+   * 광고 편성(화면 타기팅)과 노출 로그의 화면 문맥으로 쓰인다.
+   */
+  deviceId?: number | null;
 }) {
   const router = useRouter();
   /** 전체 화면 API 대상(헤더 제외, 슬라이드 영역만) */
@@ -302,8 +308,8 @@ function BookPresentationInner({
     staleTime: 60_000,
   });
   const { data: adCreatives } = useQuery({
-    queryKey: cretaKeys.adActiveCreatives(),
-    queryFn: fetchCretaAdActiveCreatives,
+    queryKey: cretaKeys.adActiveCreatives(deviceId),
+    queryFn: () => fetchCretaAdActiveCreatives(deviceId),
     staleTime: 60_000,
     refetchInterval: 120_000,
   });
@@ -323,6 +329,7 @@ function BookPresentationInner({
       bookId,
       slotElementId: "loop",
       durationSec: adSpotSec,
+      deviceId,
     });
     const t = window.setTimeout(() => {
       setAdBreak(null);
@@ -556,6 +563,7 @@ function BookPresentationInner({
           scale={displayScale}
           elements={page.elements}
           adPlayLogBookId={bookId}
+          adDeviceId={deviceId}
           mode="view"
           selectedIds={[]}
           onSelect={() => undefined}
@@ -628,6 +636,7 @@ function BookPresentationInner({
               scale={displayScale}
               elements={overlayElements}
               adPlayLogBookId={bookId}
+              adDeviceId={deviceId}
               mode="view"
               selectedIds={[]}
               onSelect={() => undefined}
@@ -995,8 +1004,21 @@ export function BookPresentationPage() {
       data={data}
       startSortOrder={readPreviewStartParam()}
       embed={readPreviewEmbedParam()}
+      deviceId={readPreviewDeviceParam()}
     />
   );
+}
+
+/**
+ * `?device=N` — 이 미리보기가 어느 디바이스를 흉내내는지(디바이스 상세 iframe).
+ * 광고 화면 타기팅·노출 로그의 화면 문맥. 없으면 화면에 매이지 않은 재생.
+ */
+function readPreviewDeviceParam(): number | null {
+  if (typeof window === "undefined") return null;
+  const raw = new URLSearchParams(window.location.search).get("device");
+  if (raw == null) return null;
+  const n = Number(raw);
+  return Number.isInteger(n) && n > 0 ? n : null;
 }
 
 /** `?embed=1` — iframe 임베드(커뮤니티 미리보기): 상단 컨트롤 숨김 */

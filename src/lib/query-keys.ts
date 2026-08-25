@@ -61,11 +61,13 @@ export const cretaKeys = {
   wall: (id: number) => [...cretaKeys.all, "wall", id] as const,
   adAdvertisers: () => [...cretaKeys.all, "ad-advertisers"] as const,
   adCampaigns: () => [...cretaKeys.all, "ad-campaigns"] as const,
-  adActiveCreatives: () => [...cretaKeys.all, "ad-active-creatives"] as const,
+  adActiveCreatives: (deviceId?: number | null) =>
+    [...cretaKeys.all, "ad-active-creatives", deviceId ?? null] as const,
   adReport: (days: number) => [...cretaKeys.all, "ad-report", days] as const,
   adSetting: () => [...cretaKeys.all, "ad-setting"] as const,
   adHourly: (days: number) => [...cretaKeys.all, "ad-hourly", days] as const,
   adSlots: (days: number) => [...cretaKeys.all, "ad-slots", days] as const,
+  adDevices: (days: number) => [...cretaKeys.all, "ad-devices", days] as const,
   adAudit: () => [...cretaKeys.all, "ad-audit"] as const,
   adInventory: () => [...cretaKeys.all, "ad-inventory"] as const,
   /** 크레타 > 계정: 내가 만든/공유받은 북·플레이리스트·스케줄 */

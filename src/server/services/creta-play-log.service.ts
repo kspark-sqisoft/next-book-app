@@ -21,6 +21,8 @@ export type PlayReportRange = (typeof PLAY_REPORT_RANGES)[number];
 
 /** 페이지당 기본 재생 초(북 콘텐츠 길이 추정) */
 const SEC_PER_PAGE = 8;
+/** 광고 전용 루프의 집계 블록(초) — 소재 스팟이 이어지는 구간을 한 덩어리로 본다 */
+const AD_LOOP_BLOCK_SEC = 300;
 /** 백필 상한 — 마지막 로그가 오래됐어도 최근 48시간만 채운다 */
 const BACKFILL_WINDOW_MS = 48 * 3600 * 1000;
 /** 디바이스당 1회 백필 최대 행 수(무한 루프 방지) */
@@ -82,8 +84,9 @@ function mulberry32(seed: number): () => number {
 }
 
 type SimContent = {
-  kind: "book" | "playlist" | "schedule";
-  contentId: number;
+  kind: "book" | "playlist" | "schedule" | "ad";
+  /** 광고 전용 루프는 참조 콘텐츠가 없어 null */
+  contentId: number | null;
   title: string;
   /** 반복 1회 길이(초) */
   durationSec: number;
@@ -287,6 +290,14 @@ export class CretaPlayLogService {
           contentId: d.sourceScheduleId,
           title: name,
           durationSec: 600,
+        });
+      } else if (d.sourceType === "ad") {
+        // 광고 전용 루프 — 참조 콘텐츠가 없다. 소재가 계속 도는 하나의 편성으로 집계한다.
+        map.set(d.id, {
+          kind: "ad",
+          contentId: null,
+          title: "광고 전용 루프",
+          durationSec: AD_LOOP_BLOCK_SEC,
         });
       }
     }
