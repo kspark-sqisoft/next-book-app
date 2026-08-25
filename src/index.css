@@ -174,6 +174,12 @@
     background-color: var(--background);
     color: var(--foreground);
   }
+  /* 북 위젯 가독성 "자동 대비" — 오버레이 레이어가 페이지 배경 밝기로 계산한
+     --book-readability-color 를 위젯 안 모든 글자에 강제 적용(인라인 색·기본 흰색 덮어씀) */
+  [data-book-readability="auto"],
+  [data-book-readability="auto"] * {
+    color: var(--book-readability-color, inherit) !important;
+  }
 }
 
 /* 글 상세 본문(저장된 HTML) — 단락·제목·인용·코드 구분 강화 */

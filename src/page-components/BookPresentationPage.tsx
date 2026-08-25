@@ -517,6 +517,14 @@ function BookPresentationInner({
               pageWidth={slideW}
               pageHeight={slideH}
               pageBackgroundColor="transparent"
+              /* 가독성 자동 대비 — 지속 레이어는 배경을 칠하지 않으므로 현재 페이지 배경으로 계산 */
+              readabilityBackgroundColor={
+                page != null &&
+                typeof page.backgroundColor === "string" &&
+                page.backgroundColor.trim()
+                  ? page.backgroundColor.trim()
+                  : DEFAULT_PAGE_BACKGROUND
+              }
               scale={displayScale}
               elements={overlayElements}
               mode="view"

@@ -6,6 +6,7 @@ import {
   FolderOpen,
   Library,
   Pause,
+  Pin,
   Play,
   Scissors,
   Square,
@@ -78,12 +79,14 @@ import {
   type ElementZOrderOp,
   isBookElementLocked,
   isBookElementVisible,
+  isLightBackgroundColor,
   KONVA_BOOK_WIDGET_HIT_RECT_NAME,
   konvaBookTopLeftFromCommitNode,
   resolveBookElementBorderRadius,
   resolveBookElementOpacity,
   resolveBookElementOutlineColor,
   resolveBookElementOutlineWidth,
+  resolveBookElementOverlayPages,
   resolveBookElementRotation,
   resolveMediaPlaylistShowControls,
   snapKonvaBookNodePositionToGrid,
@@ -96,6 +99,7 @@ import {
   nextTextWidgetHeightGrowOnly,
   textWidgetHitHeight,
 } from "@/lib/book-text-widget";
+import { subtitleFontPx } from "@/lib/book-video-subtitles";
 import { cn } from "@/lib/utils";
 
 function useBookImage(src: string) {
@@ -240,6 +244,9 @@ type BookSlideCanvasProps = {
   pageHeight: number;
   /** 슬라이드 배경(CSS 색) */
   pageBackgroundColor: string;
+  /** 가독성 자동 대비 계산에 쓸 배경색(생략 시 pageBackgroundColor). 프레젠테이션의
+      공통 위젯 지속 레이어처럼 배경을 transparent로 칠하는 경우 현재 페이지 배경을 넘긴다 */
+  readabilityBackgroundColor?: string;
   /** 논리 좌표(페이지 크기) 기준 표시 배율 */
   scale: number;
   elements: BookCanvasElement[];
@@ -798,9 +805,7 @@ function BookSlideVideoOverlay({
               (barVisible ? 36 : 0) +
               Math.max(16, Math.round(vh * scale * 0.07))
             }
-            fontSizePx={Math.round(
-              Math.min(24, Math.max(10, vh * scale * 0.08)),
-            )}
+            fontSizePx={subtitleFontPx(el.subtitleSize, vh * scale)}
           />
         ) : null}
         <div
@@ -890,6 +895,7 @@ export function BookSlideCanvas({
   pageWidth,
   pageHeight,
   pageBackgroundColor,
+  readabilityBackgroundColor,
   scale,
   elements,
   mode,
@@ -1880,6 +1886,14 @@ export function BookSlideCanvas({
             ? "z-0"
             : "z-[5]",
         )}
+        style={{
+          // 가독성 "자동 대비" — 페이지 배경 밝기로 글자색 결정(위젯이 var로 사용)
+          ["--book-readability-color" as string]: isLightBackgroundColor(
+            readabilityBackgroundColor ?? pageBackgroundColor,
+          )
+            ? "#111111"
+            : "#f8fafc",
+        }}
       >
         {visibleElements
           .filter(
@@ -2118,6 +2132,46 @@ export function BookSlideCanvas({
               />
             );
           })}
+        {/* 공통(오버라이드) 위젯 표시 — 편집 화면에서 위젯 왼쪽 위 핀 배지 */}
+        {mode === "edit"
+          ? visibleElements
+              .filter((e) => resolveBookElementOverlayPages(e) != null)
+              .map((e) => {
+                const pw = e.type === "text" ? (e.width ?? 720) : e.width;
+                const ph =
+                  e.type === "text" ? textWidgetHitHeight(e) : e.height;
+                const live = overlayLiveFrame(e.id, dragLive, transformLive, {
+                  w: pw,
+                  h: ph,
+                  rotation: resolveBookElementRotation(e.rotation),
+                });
+                const pinPivot = bookElementPivotKonva({
+                  x: e.x,
+                  y: e.y,
+                  width: pw,
+                  height: ph,
+                  rotation: e.rotation,
+                });
+                const pinOrigin = bookElementOverlayTopLeftFromPivot(
+                  pinPivot,
+                  pw,
+                  ph,
+                );
+                const px = (live?.x ?? pinOrigin.x) * scale;
+                const py = (live?.y ?? pinOrigin.y) * scale;
+                return (
+                  <span
+                    key={`common-pin-${e.id}`}
+                    data-book-common-pin
+                    title="공통 위젯 — 여러 페이지에 표시됩니다"
+                    className="pointer-events-none absolute z-[8] flex size-4 items-center justify-center rounded-full bg-sky-600 text-white shadow ring-1 ring-white/70"
+                    style={{ left: px - 7, top: py - 7 }}
+                  >
+                    <Pin className="size-2.5" aria-hidden />
+                  </span>
+                );
+              })
+          : null}
         {mode === "edit" && inlineTextEdit
           ? (() => {
               const tel = elements.find(

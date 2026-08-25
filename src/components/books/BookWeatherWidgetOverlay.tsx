@@ -27,6 +27,7 @@ import {
   type BookCanvasElement,
   bookElementOverlayTopLeftFromPivot,
   bookElementPivotKonva,
+  bookReadabilityContainerStyle,
   type BookWeatherDisplayResolved,
   bookWidgetBackdropChromeStyle,
   parseBookWeatherBackground,
@@ -35,6 +36,7 @@ import {
   resolveBookElementOpacity,
   resolveBookElementOutlineColor,
   resolveBookElementOutlineWidth,
+  resolveBookElementReadability,
   resolveBookElementRotation,
   resolveBookWeatherDisplay,
   resolveBookWeatherLayout,
@@ -701,8 +703,10 @@ export function BookWeatherWidgetOverlay({
         !customBg && mode === "edit" && ringAccent,
         isSelected && mode === "edit" && "ring-2 ring-primary ring-offset-0",
       )}
+      data-book-readability={resolveBookElementReadability(el) ?? undefined}
       style={{
         left: fx * scale,
+        ...bookReadabilityContainerStyle(resolveBookElementReadability(el)),
         top: fy * scale,
         width: fw * scale,
         height: fh * scale,

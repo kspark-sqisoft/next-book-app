@@ -5,6 +5,7 @@ import {
   type BookCanvasElement,
   bookElementOverlayTopLeftFromPivot,
   bookElementPivotKonva,
+  bookReadabilityContainerStyle,
   bookWidgetBackdropChromeStyle,
   parseBookClockBackground,
   parseBookWidgetTextColor,
@@ -13,6 +14,7 @@ import {
   resolveBookElementOpacity,
   resolveBookElementOutlineColor,
   resolveBookElementOutlineWidth,
+  resolveBookElementReadability,
   resolveBookElementRotation,
 } from "@/lib/book-canvas";
 import { cn } from "@/lib/utils";
@@ -119,8 +121,10 @@ export function BookDigitalClockWidgetOverlay({
           "bg-linear-to-br from-slate-900 via-slate-800 to-slate-950",
         isSelected && mode === "edit" && "ring-2 ring-primary ring-offset-0",
       )}
+      data-book-readability={resolveBookElementReadability(el) ?? undefined}
       style={{
         left: fx * scale,
+        ...bookReadabilityContainerStyle(resolveBookElementReadability(el)),
         top: fy * scale,
         width: fw * scale,
         height: fh * scale,

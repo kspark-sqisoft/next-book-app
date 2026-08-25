@@ -5,10 +5,12 @@ import {
   type BookCanvasElement,
   bookElementOverlayTopLeftFromPivot,
   bookElementPivotKonva,
+  bookReadabilityContainerStyle,
   resolveBookElementBorderRadius,
   resolveBookElementOpacity,
   resolveBookElementOutlineColor,
   resolveBookElementOutlineWidth,
+  resolveBookElementReadability,
   resolveBookElementRotation,
 } from "@/lib/book-canvas";
 import { cn } from "@/lib/utils";
@@ -99,8 +101,10 @@ export function BookCalendarWidgetOverlay({
         "pointer-events-none absolute overflow-hidden bg-white",
         isSelected && mode === "edit" && "ring-2 ring-primary ring-offset-0",
       )}
+      data-book-readability={resolveBookElementReadability(el) ?? undefined}
       style={{
         left: fx * scale,
+        ...bookReadabilityContainerStyle(resolveBookElementReadability(el)),
         top: fy * scale,
         width: fw * scale,
         height: fh * scale,

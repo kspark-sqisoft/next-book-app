@@ -5,10 +5,12 @@ import {
   type BookCanvasElement,
   bookElementOverlayTopLeftFromPivot,
   bookElementPivotKonva,
+  bookReadabilityContainerStyle,
   resolveBookElementBorderRadius,
   resolveBookElementOpacity,
   resolveBookElementOutlineColor,
   resolveBookElementOutlineWidth,
+  resolveBookElementReadability,
   resolveBookElementRotation,
 } from "@/lib/book-canvas";
 import { resolveBookTextAnimation } from "@/lib/book-text-animation";
@@ -166,6 +168,7 @@ export function BookTextWidgetOverlay({
         "pointer-events-none absolute overflow-hidden",
         isSelected && mode === "edit" && "ring-2 ring-primary ring-offset-0",
       )}
+      data-book-readability={resolveBookElementReadability(el) ?? undefined}
       style={{
         left: fx * scale,
         top: fy * scale,
@@ -179,6 +182,7 @@ export function BookTextWidgetOverlay({
         transformOrigin: "center center",
         borderRadius: Math.max(0, tBr * scale),
         boxShadow: outlineShadow,
+        ...bookReadabilityContainerStyle(resolveBookElementReadability(el)),
       }}
     >
       {animation && isScrollingAnimation ? (

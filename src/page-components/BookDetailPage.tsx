@@ -2878,6 +2878,10 @@ function BookDetailOwnerView({
                       pageWidth={slideWidth}
                       pageHeight={slideHeight}
                       pageBackgroundColor="transparent"
+                      readabilityBackgroundColor={
+                        activePage.backgroundColor?.trim() ||
+                        DEFAULT_PAGE_BACKGROUND
+                      }
                       scale={displayScale}
                       elements={editorOverlayGhosts}
                       mode="view"

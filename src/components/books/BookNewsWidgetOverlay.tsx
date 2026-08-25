@@ -10,6 +10,7 @@ import {
   bookElementOverlayTopLeftFromPivot,
   bookElementPivotKonva,
   type BookNewsDisplayMode,
+  bookReadabilityContainerStyle,
   bookWidgetBackdropChromeStyle,
   parseBookWeatherBackground,
   parseBookWidgetTextColor,
@@ -17,6 +18,7 @@ import {
   resolveBookElementOpacity,
   resolveBookElementOutlineColor,
   resolveBookElementOutlineWidth,
+  resolveBookElementReadability,
   resolveBookElementRotation,
 } from "@/lib/book-canvas";
 import {
@@ -393,8 +395,10 @@ export function BookNewsWidgetOverlay({
           "ring-1 ring-white/15 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]",
         isSelected && mode === "edit" && "ring-2 ring-primary ring-offset-0",
       )}
+      data-book-readability={resolveBookElementReadability(el) ?? undefined}
       style={{
         left: fx * scale,
+        ...bookReadabilityContainerStyle(resolveBookElementReadability(el)),
         top: fy * scale,
         width: fw * scale,
         height: fh * scale,

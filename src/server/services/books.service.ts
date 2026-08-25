@@ -164,6 +164,8 @@ export type BookCanvasElementPublic =
       subtitlesEnabled?: boolean;
       /** 자막 언어: auto·ko·en·ja·zh */
       subtitleLang?: string;
+      /** 자막 크기: sm·md·lg */
+      subtitleSize?: string;
       opacity?: number;
       rotation?: number;
       borderRadius?: number;
@@ -402,6 +404,8 @@ export type BookCanvasElementPublic =
       subtitlesEnabled?: boolean;
       /** 자막 언어: auto·ko·en·ja·zh */
       subtitleLang?: string;
+      /** 자막 크기: sm·md·lg */
+      subtitleSize?: string;
       opacity?: number;
       rotation?: number;
       borderRadius?: number;
@@ -832,6 +836,20 @@ export class BooksService {
       }
       if (o.locked !== undefined && typeof o.locked !== "boolean") {
         throw new HttpError(400, "요소 locked은 true 또는 false여야 합니다.");
+      }
+      if (o.readability != null) {
+        const allowedReadability = new Set([
+          "auto",
+          "outline",
+          "shadow",
+          "plate",
+        ]);
+        if (
+          typeof o.readability !== "string" ||
+          !allowedReadability.has(o.readability)
+        ) {
+          throw new HttpError(400, "readability 값이 올바르지 않습니다.");
+        }
       }
       if (o.presentationHoldSec != null) {
         const ph = o.presentationHoldSec;
@@ -1752,6 +1770,15 @@ export class BooksService {
             throw new HttpError(400, "subtitleLang 값이 올바르지 않습니다.");
           }
         }
+        if (o.subtitleSize != null) {
+          const allowedSize = new Set(["sm", "md", "lg"]);
+          if (
+            typeof o.subtitleSize !== "string" ||
+            !allowedSize.has(o.subtitleSize)
+          ) {
+            throw new HttpError(400, "subtitleSize 값이 올바르지 않습니다.");
+          }
+        }
       } else if (o.type === "shape") {
         const w = o.width;
         const h = o.height;
@@ -1921,6 +1948,15 @@ export class BooksService {
               !allowedLang.has(o.subtitleLang)
             ) {
               throw new HttpError(400, "subtitleLang 값이 올바르지 않습니다.");
+            }
+          }
+          if (o.subtitleSize != null) {
+            const allowedSize = new Set(["sm", "md", "lg"]);
+            if (
+              typeof o.subtitleSize !== "string" ||
+              !allowedSize.has(o.subtitleSize)
+            ) {
+              throw new HttpError(400, "subtitleSize 값이 올바르지 않습니다.");
             }
           }
         }

@@ -41,6 +41,7 @@ import {
   BOOK_CHART_DATA_MAX,
   BOOK_MEDIA_OBJECT_FIT_VALUES,
   BOOK_NEWS_CATEGORIES,
+  BOOK_READABILITY_MODES,
   BOOK_SHAPE_KINDS,
   BOOK_WEATHER_BLOCK_OPTIONS,
   BOOK_WEATHER_LAYOUT_OPTIONS,
@@ -71,6 +72,7 @@ import {
   resolveBookElementOpacity,
   resolveBookElementOutlineColor,
   resolveBookElementOutlineWidth,
+  resolveBookElementReadability,
   resolveBookElementRotation,
   resolveBookMapZoomPct,
   resolveBookMediaObjectFit,
@@ -101,7 +103,9 @@ import {
 } from "@/lib/book-text-widget";
 import {
   BOOK_SUBTITLE_LANGS,
+  BOOK_SUBTITLE_SIZES,
   normalizeBookSubtitleLang,
+  normalizeBookSubtitleSize,
 } from "@/lib/book-video-subtitles";
 import {
   bookDockedPanelHeaderIconClass,
@@ -1196,17 +1200,61 @@ function ElementOpacitySlider({
   );
 }
 
+/** 가독성 옵션 — 글자 위젯 공용: 페이지 배경이 밝든 어둡든 글자가 보이게 */
+function ReadabilityFields({
+  el,
+  onChange,
+}: {
+  el: BookCanvasElement;
+  onChange: (id: string, patch: Partial<BookCanvasElement>) => void;
+}) {
+  const mode = resolveBookElementReadability(el);
+  return (
+    <div className="space-y-1">
+      <Label htmlFor="insp-readability">가독성(배경 대비)</Label>
+      <Select
+        value={mode ?? "none"}
+        onValueChange={(next) =>
+          onChange(el.id, { readability: next === "none" ? undefined : next })
+        }
+      >
+        <SelectTrigger
+          id="insp-readability"
+          className="w-full max-w-full"
+          size="sm"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">없음(원래 스타일)</SelectItem>
+          {BOOK_READABILITY_MODES.map((m) => (
+            <SelectItem key={m.value} value={m.value}>
+              {m.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <p className="text-[10px] text-muted-foreground">
+        흰/검은 페이지를 오가는 공통 위젯도 글자가 안 보이지 않게 처리합니다.
+        자동 대비는 페이지 배경색 기준으로 글자색을 흑↔백 전환합니다.
+      </p>
+    </div>
+  );
+}
+
 /** AI 자막(시뮬레이션) 섹션 — 비디오 위젯·미디어 위젯 공용 */
 function AiSubtitleFields({
   elementId,
   subtitlesEnabled,
   subtitleLang,
+  subtitleSize,
   note,
   onChange,
 }: {
   elementId: string;
   subtitlesEnabled: boolean | undefined;
   subtitleLang: string | undefined;
+  subtitleSize: string | undefined;
   /** 설명 문구 덮어쓰기(미디어 위젯 등) */
   note?: string;
   onChange: (id: string, patch: Partial<BookCanvasElement>) => void;
@@ -1260,6 +1308,30 @@ function AiSubtitleFields({
           <p className="text-[10px] text-muted-foreground">
             원어가 아닌 언어를 고르면 자동 번역된 자막을 보여줍니다(시뮬레이션).
           </p>
+          <Label htmlFor="insp-subtitle-size">자막 크기</Label>
+          <Select
+            value={normalizeBookSubtitleSize(subtitleSize)}
+            onValueChange={(next) =>
+              onChange(elementId, {
+                subtitleSize: next === "sm" ? undefined : next,
+              })
+            }
+          >
+            <SelectTrigger
+              id="insp-subtitle-size"
+              className="w-full max-w-full"
+              size="sm"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {BOOK_SUBTITLE_SIZES.map((s) => (
+                <SelectItem key={s.value} value={s.value}>
+                  {s.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       ) : null}
     </div>
@@ -1553,6 +1625,7 @@ function MediaPlaylistInspectorBody({
           elementId={el.id}
           subtitlesEnabled={el.subtitlesEnabled}
           subtitleLang={el.subtitleLang}
+          subtitleSize={el.subtitleSize}
           note="목록에서 동영상이 재생될 때 음성을 인식해 자막을 보여줍니다. 지금은 시뮬레이션이며 추후 AI 연동 예정입니다."
           onChange={onChange}
         />
@@ -2062,6 +2135,7 @@ export function BookInspectorPanel({
                         el={selected}
                         onChange={onChange}
                       />
+                      <ReadabilityFields el={selected} onChange={onChange} />
                       <PositionSizeFields el={selected} onChange={onChange} />
                     </>
                   ) : selected.type === "weather" ? (
@@ -2257,6 +2331,7 @@ export function BookInspectorPanel({
                         el={selected}
                         onChange={onChange}
                       />
+                      <ReadabilityFields el={selected} onChange={onChange} />
                       <PositionSizeFields el={selected} onChange={onChange} />
                     </>
                   ) : selected.type === "news" ? (
@@ -2539,6 +2614,7 @@ export function BookInspectorPanel({
                         el={selected}
                         onChange={onChange}
                       />
+                      <ReadabilityFields el={selected} onChange={onChange} />
                       <PositionSizeFields el={selected} onChange={onChange} />
                     </>
                   ) : selected.type === "ticker" ? (
@@ -2655,6 +2731,7 @@ export function BookInspectorPanel({
                         el={selected}
                         onChange={onChange}
                       />
+                      <ReadabilityFields el={selected} onChange={onChange} />
                       <PositionSizeFields el={selected} onChange={onChange} />
                     </>
                   ) : selected.type === "youtube" ? (
@@ -2835,6 +2912,7 @@ export function BookInspectorPanel({
                         el={selected}
                         onChange={onChange}
                       />
+                      <ReadabilityFields el={selected} onChange={onChange} />
                       <PositionSizeFields el={selected} onChange={onChange} />
                     </>
                   ) : selected.type === "map" ? (
@@ -2917,6 +2995,7 @@ export function BookInspectorPanel({
                         el={selected}
                         onChange={onChange}
                       />
+                      <ReadabilityFields el={selected} onChange={onChange} />
                       <PositionSizeFields el={selected} onChange={onChange} />
                     </>
                   ) : selected.type === "qr" ? (
@@ -3312,6 +3391,7 @@ export function BookInspectorPanel({
                           elementId={selected.id}
                           subtitlesEnabled={selected.subtitlesEnabled}
                           subtitleLang={selected.subtitleLang}
+                          subtitleSize={selected.subtitleSize}
                           onChange={onChange}
                         />
                         <ElementOpacitySlider

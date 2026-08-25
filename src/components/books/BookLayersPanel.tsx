@@ -38,6 +38,7 @@ import {
   Megaphone,
   Newspaper,
   Pencil,
+  Pin,
   QrCode,
   Shapes,
   SquarePlay,
@@ -56,6 +57,7 @@ import {
   type ElementZOrderOp,
   isBookElementLocked,
   isBookElementVisible,
+  resolveBookElementOverlayPages,
 } from "@/lib/book-canvas";
 import { displayLayerPresentationSec } from "@/lib/book-presentation";
 import {
@@ -379,6 +381,12 @@ function LayerRowActions({
       {readOnly ? (
         <div className="flex min-w-0 flex-1 basis-0 items-center gap-2 px-1 py-1 text-xs">
           <LayerTypeIcon el={el} />
+          {resolveBookElementOverlayPages(el) != null ? (
+            <Pin
+              className="size-3 shrink-0 text-sky-500"
+              aria-label="공통 위젯(여러 페이지 표시)"
+            />
+          ) : null}
           <span className="min-w-0 flex-1 truncate font-medium text-foreground">
             {label}
           </span>
@@ -390,6 +398,13 @@ function LayerRowActions({
           onClick={(e) => onSelect(el.id, e.shiftKey)}
         >
           <LayerTypeIcon el={el} />
+          {resolveBookElementOverlayPages(el) != null ? (
+            /* 공통 위젯 — 여러 페이지에 표시 */
+            <Pin
+              className="size-3 shrink-0 text-sky-500"
+              aria-label="공통 위젯(여러 페이지 표시)"
+            />
+          ) : null}
           <span
             className={cn(
               "min-w-0 flex-1 truncate font-medium text-foreground",

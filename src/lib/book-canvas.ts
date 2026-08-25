@@ -3,6 +3,7 @@
  */
 
 import type Konva from "konva";
+import type { CSSProperties } from "react";
 
 import {
   type BookPresentationTransitionId,
@@ -398,6 +399,8 @@ export type BookCanvasElement = (
       subtitlesEnabled?: boolean;
       /** 자막 언어: auto(원어)·ko·en·ja·zh */
       subtitleLang?: string;
+      /** 자막 크기: sm(작게, 기본)·md(보통)·lg(크게) */
+      subtitleSize?: string;
       opacity?: number;
       rotation?: number;
       borderRadius?: number;
@@ -680,6 +683,8 @@ export type BookCanvasElement = (
       subtitlesEnabled?: boolean;
       /** 자막 언어: auto(원어)·ko·en·ja·zh */
       subtitleLang?: string;
+      /** 자막 크기: sm(작게, 기본)·md(보통)·lg(크게) */
+      subtitleSize?: string;
       opacity?: number;
       rotation?: number;
       borderRadius?: number;
@@ -737,7 +742,90 @@ export type BookCanvasElement = (
    * 프레젠테이션에서는 지속 레이어로 렌더되어 페이지가 바뀌어도 상태(뉴스 목록 등)가 유지된다.
    */
   overlayPages?: "all" | number[];
+  /**
+   * 가독성 처리(글자 위젯용) — 페이지 배경이 밝든 어둡든 글자가 보이게.
+   * auto: 페이지 배경 밝기에 따라 글자색 자동(흑↔백) · outline: 외곽선 ·
+   * shadow: 그림자 · plate: 반투명 배경판. 없으면 원래 스타일 그대로.
+   */
+  readability?: string;
 };
+
+/** 가독성 모드 */
+export const BOOK_READABILITY_MODES = [
+  { value: "auto", label: "자동 대비(배경 밝기에 따라 흑↔백)" },
+  { value: "outline", label: "외곽선" },
+  { value: "shadow", label: "그림자" },
+  { value: "plate", label: "반투명 배경판" },
+] as const;
+
+export type BookReadabilityMode =
+  (typeof BOOK_READABILITY_MODES)[number]["value"];
+
+export function resolveBookElementReadability(el: {
+  readability?: string;
+}): BookReadabilityMode | null {
+  const v = el.readability;
+  return BOOK_READABILITY_MODES.some((m) => m.value === v)
+    ? (v as BookReadabilityMode)
+    : null;
+}
+
+/**
+ * 배경색 밝기 판정(자동 대비용) — hex(#rgb/#rrggbb)·rgb()/rgba()만 해석,
+ * 그 외(그라디언트 등)는 흰색으로 간주해 어두운 글자를 쓴다.
+ */
+export function isLightBackgroundColor(bg: string | undefined | null): boolean {
+  const s = (bg ?? "").trim().toLowerCase();
+  if (!s || s === "transparent") return true;
+  let r = 255;
+  let g = 255;
+  let b = 255;
+  const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/.exec(s);
+  const rgb = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/.exec(s);
+  if (hex) {
+    const h = hex[1];
+    if (h.length === 3) {
+      r = parseInt(h[0] + h[0], 16);
+      g = parseInt(h[1] + h[1], 16);
+      b = parseInt(h[2] + h[2], 16);
+    } else {
+      r = parseInt(h.slice(0, 2), 16);
+      g = parseInt(h.slice(2, 4), 16);
+      b = parseInt(h.slice(4, 6), 16);
+    }
+  } else if (rgb) {
+    r = Number(rgb[1]);
+    g = Number(rgb[2]);
+    b = Number(rgb[3]);
+  }
+  // 상대 휘도 근사(sRGB 가중 평균)
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 >= 0.55;
+}
+
+/**
+ * 가독성 모드별 컨테이너 스타일(DOM 위젯 공용).
+ * auto는 CSS 변수 `--book-readability-color`(오버레이 레이어에서 페이지 배경으로 계산)를
+ * 쓰며, index.css의 `[data-book-readability="auto"]` 규칙이 글자색을 덮어쓴다.
+ */
+export function bookReadabilityContainerStyle(
+  mode: BookReadabilityMode | null,
+): CSSProperties {
+  if (mode === "outline") {
+    return {
+      textShadow:
+        "0 0 1px rgba(0,0,0,0.9), 1px 1px 0 rgba(0,0,0,0.85), -1px 1px 0 rgba(0,0,0,0.85), 1px -1px 0 rgba(0,0,0,0.85), -1px -1px 0 rgba(0,0,0,0.85)",
+    };
+  }
+  if (mode === "shadow") {
+    return {
+      textShadow: "0 1px 3px rgba(0,0,0,0.85), 0 0 8px rgba(0,0,0,0.45)",
+    };
+  }
+  if (mode === "plate") {
+    return { backgroundColor: "rgba(0,0,0,0.55)" };
+  }
+  return {};
+}
 
 /** 공통 위젯 대상 페이지 정규화 — 값이 없거나 잘못되면 null(일반 요소) */
 export function resolveBookElementOverlayPages(el: {

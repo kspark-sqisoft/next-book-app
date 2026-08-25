@@ -23,6 +23,34 @@ export function bookSubtitleLangLabel(v: unknown): string {
   );
 }
 
+/** 자막 크기 옵션 — sm이 기본(기존 크기) */
+export const BOOK_SUBTITLE_SIZES = [
+  { value: "sm", label: "작게" },
+  { value: "md", label: "보통" },
+  { value: "lg", label: "크게" },
+] as const;
+
+export type BookSubtitleSize = (typeof BOOK_SUBTITLE_SIZES)[number]["value"];
+
+export function normalizeBookSubtitleSize(v: unknown): BookSubtitleSize {
+  return BOOK_SUBTITLE_SIZES.some((s) => s.value === v)
+    ? (v as BookSubtitleSize)
+    : "sm";
+}
+
+/** 크기 옵션 → 위젯 표시 높이(px) 기준 자막 글자 크기(px) */
+export function subtitleFontPx(size: unknown, widgetHeightPx: number): number {
+  const h = Number.isFinite(widgetHeightPx) ? Math.max(0, widgetHeightPx) : 0;
+  switch (normalizeBookSubtitleSize(size)) {
+    case "lg":
+      return Math.round(Math.min(46, Math.max(15, h * 0.15)));
+    case "md":
+      return Math.round(Math.min(34, Math.max(12, h * 0.115)));
+    default:
+      return Math.round(Math.min(24, Math.max(10, h * 0.08)));
+  }
+}
+
 /** 한 줄이 화면에 머무는 시간(초) */
 const LINE_SEC = 4;
 

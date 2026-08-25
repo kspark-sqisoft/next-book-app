@@ -33,6 +33,7 @@ import {
   resolveMediaPlaylistLoop,
   resolveMediaPlaylistShowControls,
 } from "@/lib/book-canvas";
+import { subtitleFontPx } from "@/lib/book-video-subtitles";
 import { cn } from "@/lib/utils";
 
 export type BookMediaPlaylistPlaybackUiSnapshot = {
@@ -536,9 +537,7 @@ export function BookMediaPlaylistWidgetOverlay({
               (showControls && barVisible ? 36 : 0) +
               Math.max(16, Math.round(fh * scale * 0.07))
             }
-            fontSizePx={Math.round(
-              Math.min(24, Math.max(10, fh * scale * 0.08)),
-            )}
+            fontSizePx={subtitleFontPx(el.subtitleSize, fh * scale)}
           />
         ) : null}
 
