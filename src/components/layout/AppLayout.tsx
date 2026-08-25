@@ -87,6 +87,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     location.pathname.startsWith("/playlists") ||
     location.pathname.startsWith("/schedules") ||
     location.pathname.startsWith("/devices") ||
+    location.pathname.startsWith("/walls") ||
     location.pathname.startsWith("/reports") ||
     location.pathname.startsWith("/account");
   /** 크레타 서브내비 노출: 북 목록 + 하위 섹션(북 편집 워크스페이스는 제외) */
@@ -195,13 +196,22 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         "w-full min-h-0 flex-1",
         fullViewportShell
           ? "flex max-w-none flex-col overflow-hidden p-0"
-          : cn(
-              "overflow-y-auto overscroll-contain mx-auto px-4 py-8",
-              wideMain ? "max-w-6xl" : "max-w-3xl",
-            ),
+          : "overflow-y-auto overscroll-contain",
       )}
     >
-      {children}
+      {fullViewportShell ? (
+        children
+      ) : (
+        /* 스크롤바는 브라우저 오른쪽 끝(main 가장자리)에 두고, 콘텐츠 컬럼만 가운데 정렬 */
+        <div
+          className={cn(
+            "mx-auto w-full px-4 py-8",
+            wideMain ? "max-w-6xl" : "max-w-3xl",
+          )}
+        >
+          {children}
+        </div>
+      )}
     </main>
   );
 

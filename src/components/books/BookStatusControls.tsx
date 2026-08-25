@@ -4,20 +4,17 @@
 // 전이 규칙: 작성 중→검토 요청(편집 권한자), 검토 중→승인·게시(관리자)/반려·취소(작성자·관리자),
 // 게시됨→게시 철회(작성자·관리자). 서버에서 같은 규칙으로 재검증한다.
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { CheckCircle2, History, Undo2 } from "lucide-react";
+import { CheckCircle2, History, Undo2, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import {
   BOOK_AUDIT_ACTION_LABEL,
@@ -75,6 +72,8 @@ export function BookStatusControls({
     queryKey: [...bookKeys.detail(book.id), "audit"],
     queryFn: () => fetchBookAudit(book.id),
     enabled: historyOpen,
+    // 패널을 열어 둔 채 저장해도 새 이력이 곧 나타나게
+    refetchInterval: historyOpen ? 5_000 : false,
   });
 
   const pending = statusMutation.isPending;
@@ -149,36 +148,64 @@ export function BookStatusControls({
           게시 철회
         </Button>
       ) : null}
-      <Button
-        type="button"
-        size="sm"
-        variant="ghost"
-        className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
-        title="변경 이력(감사 로그)"
-        onClick={() => {
-          if (!user) {
+      <Popover
+        open={historyOpen}
+        onOpenChange={(open) => {
+          if (open && !user) {
             toast.error("로그인이 필요합니다.");
             return;
           }
-          setHistoryOpen(true);
+          setHistoryOpen(open);
         }}
       >
-        <History className="size-3.5" aria-hidden />
-        이력
-      </Button>
-
-      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <History className="size-4 text-muted-foreground" aria-hidden />
-              변경 이력
-            </DialogTitle>
-            <DialogDescription>
-              「{book.title}」에 누가 언제 무엇을 했는지 최신순으로 보여줍니다.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="max-h-80 space-y-0.5 overflow-y-auto rounded-md border border-border p-1.5">
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            size="sm"
+            variant={historyOpen ? "secondary" : "ghost"}
+            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+            title="문서 변경 히스토리(저장·상태·공유 이력)"
+            aria-pressed={historyOpen}
+          >
+            <History className="size-3.5" aria-hidden />
+            히스토리
+          </Button>
+        </PopoverTrigger>
+        {/* 히스토리 버튼 바로 아래에 붙는 패널 — 화면 밖으로 나가면 Radix가 위치 보정 */}
+        <PopoverContent
+          side="bottom"
+          align="end"
+          sideOffset={6}
+          collisionPadding={8}
+          role="region"
+          aria-label="문서 변경 히스토리"
+          className="z-[240] flex max-h-[70vh] w-80 max-w-[calc(100vw-1.5rem)] flex-col gap-0 overflow-hidden rounded-xl border border-border bg-card/95 p-0 shadow-xl ring-1 ring-border/40 backdrop-blur-md"
+        >
+          <div className="flex items-center gap-2 border-b border-border/60 px-3 py-2">
+            <History
+              className="size-4 shrink-0 text-muted-foreground"
+              aria-hidden
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold leading-tight">
+                문서 히스토리
+              </p>
+              <p className="truncate text-[11px] text-muted-foreground">
+                「{book.title}」 변경 이력(최신순)
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="size-7 shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label="히스토리 닫기"
+              onClick={() => setHistoryOpen(false)}
+            >
+              <X className="size-4" aria-hidden />
+            </Button>
+          </div>
+          <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto p-1.5">
             {auditQuery.isLoading ? (
               <div className="flex justify-center py-8">
                 <Spinner className="size-5" />
@@ -209,17 +236,8 @@ export function BookStatusControls({
               ))
             )}
           </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setHistoryOpen(false)}
-            >
-              닫기
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }

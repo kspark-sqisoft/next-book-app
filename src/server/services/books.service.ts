@@ -160,6 +160,10 @@ export type BookCanvasElementPublic =
       posterSrc: string | null;
       objectFit?: "cover" | "contain" | "fill" | "none" | "scale-down";
       videoLoop?: boolean;
+      /** AI 자막(시뮬레이션) 표시 여부 */
+      subtitlesEnabled?: boolean;
+      /** 자막 언어: auto·ko·en·ja·zh */
+      subtitleLang?: string;
       opacity?: number;
       rotation?: number;
       borderRadius?: number;
@@ -523,6 +527,98 @@ export type BookPublic = {
 
 /** 승인 워크플로: draft(작성 중) → review(검토 중) → published(게시됨) */
 export type BookStatus = "draft" | "review" | "published";
+
+/** 감사 로그 요약용 위젯 타입 라벨 */
+const ELEMENT_TYPE_LABEL: Record<string, string> = {
+  text: "텍스트",
+  image: "이미지",
+  video: "동영상",
+  weather: "날씨",
+  digitalClock: "시계",
+  webview: "웹뷰",
+  map: "지도",
+  calendar: "달력",
+  qr: "QR",
+  chart: "차트",
+  ticker: "티커",
+  youtube: "유튜브",
+  news: "뉴스",
+  mediaPlaylist: "미디어 목록",
+  drawing: "드로잉",
+  shape: "도형",
+};
+
+/**
+ * 저장 전/후 페이지를 비교해 사람이 읽는 변경 요약을 만든다.
+ * 예: "날씨 위젯 추가, 텍스트 위젯 2개 삭제, 페이지 1개 추가"
+ */
+function summarizeBookSaveDiff(
+  oldElementsJson: string[],
+  newPages: { elements?: unknown[] }[],
+  titleChanged: boolean,
+): string {
+  const typeOf = (el: unknown): string =>
+    el &&
+    typeof el === "object" &&
+    typeof (el as { type?: unknown }).type === "string"
+      ? ((el as { type: string }).type ?? "")
+      : "";
+  const idOf = (el: unknown): string =>
+    el &&
+    typeof el === "object" &&
+    typeof (el as { id?: unknown }).id === "string"
+      ? (el as { id: string }).id
+      : "";
+
+  const oldById = new Map<string, string>();
+  for (const raw of oldElementsJson) {
+    try {
+      const arr = JSON.parse(raw || "[]") as unknown[];
+      if (!Array.isArray(arr)) continue;
+      for (const el of arr) {
+        const id = idOf(el);
+        if (id) oldById.set(id, typeOf(el));
+      }
+    } catch {
+      /* 손상된 JSON은 비교에서 제외 */
+    }
+  }
+  const newById = new Map<string, string>();
+  for (const p of newPages) {
+    for (const el of p.elements ?? []) {
+      const id = idOf(el);
+      if (id) newById.set(id, typeOf(el));
+    }
+  }
+
+  const countByType = (
+    source: Map<string, string>,
+    other: Map<string, string>,
+  ) => {
+    const counts = new Map<string, number>();
+    for (const [id, type] of source) {
+      if (other.has(id)) continue;
+      counts.set(type, (counts.get(type) ?? 0) + 1);
+    }
+    return counts;
+  };
+  const describe = (counts: Map<string, number>, verb: string): string[] =>
+    [...counts.entries()].map(([type, n]) => {
+      const label = ELEMENT_TYPE_LABEL[type] ?? type;
+      return n === 1 ? `${label} 위젯 ${verb}` : `${label} 위젯 ${n}개 ${verb}`;
+    });
+
+  const parts: string[] = [
+    ...describe(countByType(newById, oldById), "추가"),
+    ...describe(countByType(oldById, newById), "삭제"),
+  ];
+  const pageDiff = newPages.length - oldElementsJson.length;
+  if (pageDiff > 0) parts.push(`페이지 ${pageDiff}개 추가`);
+  if (pageDiff < 0) parts.push(`페이지 ${-pageDiff}개 삭제`);
+  if (titleChanged) parts.push("제목 변경");
+  if (parts.length === 0) return "위젯 배치·속성 수정";
+  return parts.join(", ").slice(0, 300);
+}
 
 export function normalizeBookStatus(v: unknown): BookStatus {
   return v === "draft" || v === "review" ? v : "published";
@@ -1790,6 +1886,24 @@ export class BooksService {
           if (o.videoLoop != null && typeof o.videoLoop !== "boolean") {
             throw new HttpError(400, "videoLoop 값이 올바르지 않습니다.");
           }
+          if (
+            o.subtitlesEnabled != null &&
+            typeof o.subtitlesEnabled !== "boolean"
+          ) {
+            throw new HttpError(
+              400,
+              "subtitlesEnabled 값이 올바르지 않습니다.",
+            );
+          }
+          if (o.subtitleLang != null) {
+            const allowedLang = new Set(["auto", "ko", "en", "ja", "zh"]);
+            if (
+              typeof o.subtitleLang !== "string" ||
+              !allowedLang.has(o.subtitleLang)
+            ) {
+              throw new HttpError(400, "subtitleLang 값이 올바르지 않습니다.");
+            }
+          }
         }
         if (o.objectFit != null) {
           const allowed = new Set([
@@ -2466,6 +2580,15 @@ export class BooksService {
     const normalized =
       body.pages != null ? this.normalizePagesInput(body.pages) : null;
 
+    // 감사 로그 요약용 — 교체 전 페이지 요소를 미리 읽어 diff를 만든다
+    const oldPages = normalized
+      ? await db
+          .select({ elementsJson: bookPage.elementsJson })
+          .from(bookPage)
+          .where(eq(bookPage.bookId, bookId))
+          .orderBy(asc(bookPage.sortOrder))
+      : null;
+
     // 2) 전체 교체(삭제+재삽입)를 한 트랜잭션으로 — 중간 실패 시 롤백
     await db.transaction(async (tx) => {
       if (Object.keys(set).length > 0) {
@@ -2498,7 +2621,14 @@ export class BooksService {
       bookId,
       bookTitle: set.title ?? book.title,
       action: "update",
-      detail: normalized ? `저장 — 페이지 ${normalized.length}개` : "속성 변경",
+      detail:
+        normalized && oldPages
+          ? summarizeBookSaveDiff(
+              oldPages.map((p) => p.elementsJson),
+              normalized,
+              set.title != null && set.title !== book.title,
+            )
+          : "속성 변경",
       actorId: actor.id,
     });
     return this.findOne(bookId);

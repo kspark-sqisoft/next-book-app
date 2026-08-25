@@ -10,6 +10,7 @@ import {
   Play,
   Power,
   RotateCw,
+  ScreenShare,
   Square,
 } from "lucide-react";
 import Link from "next/link";
@@ -28,6 +29,7 @@ import {
 } from "@/components/creta/CretaCoverThumb";
 import { CretaSourceDialog } from "@/components/creta/CretaSourceDialog";
 import { DevicePowerScheduleCard } from "@/components/creta/DevicePowerScheduleCard";
+import { DeviceRemoteScreenDialog } from "@/components/creta/DeviceRemoteScreenDialog";
 import { DeviceResourceGauges } from "@/components/creta/DeviceResourceGauges";
 import { DeviceSampleLogCard } from "@/components/creta/DeviceSampleLogCard";
 import { DeviceStatusBadge } from "@/components/creta/DeviceStatusBadge";
@@ -94,6 +96,8 @@ export function DeviceDetailPage() {
   const [rebooting, setRebooting] = useState(false);
   /** 스크린샷 다이얼로그 — 현재 소스 커버를 "방금 찍은 화면"으로 보여준다 */
   const [screenshotAt, setScreenshotAt] = useState<Date | null>(null);
+  /** 원격 화면(시뮬레이션) — 가상 기기 화면을 원격 프로그램처럼 표시 */
+  const [remoteOpen, setRemoteOpen] = useState(false);
 
   const {
     data: device,
@@ -432,6 +436,15 @@ export function DeviceDetailPage() {
                   <Camera className="size-4" aria-hidden />
                   스크린샷
                 </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-primary/40 text-primary hover:bg-primary/10 hover:text-primary"
+                  onClick={() => setRemoteOpen(true)}
+                >
+                  <ScreenShare className="size-4" aria-hidden />
+                  원격 화면
+                </Button>
               </div>
               <div className="flex items-center gap-3">
                 <span className="w-8 shrink-0 text-sm text-muted-foreground">
@@ -617,6 +630,18 @@ export function DeviceDetailPage() {
       </div>
 
       <DeviceSampleLogCard device={device} />
+
+      {/* 원격 화면(시뮬레이션) — 가상 PC/모바일 기기 화면 */}
+      {remoteOpen ? (
+        <DeviceRemoteScreenDialog
+          device={device}
+          activeAlert={activeAlert ?? null}
+          alertCovers={alertCoversThis}
+          previewThumb={previewThumb}
+          open={remoteOpen}
+          onOpenChange={setRemoteOpen}
+        />
+      ) : null}
 
       {/* 스크린샷(시뮬레이션) — 현재 소스 커버를 "방금 찍은 화면"으로 표시 */}
       <Dialog
