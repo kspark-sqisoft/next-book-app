@@ -1,5 +1,8 @@
+"use client";
+
 import { AlertTriangle, CheckCircle2, OctagonAlert } from "lucide-react";
 
+import { useAnimatedNumber } from "@/hooks/use-animated-number";
 import { cn } from "@/lib/utils";
 
 type GaugeLevel = "good" | "warning" | "critical";
@@ -44,16 +47,21 @@ export function DeviceResourceGauge({
   label,
   pct,
   detail,
+  delayMs,
 }: {
   label: string;
   pct: number;
   /** 예: "3.2 / 8 GB" */
   detail?: string;
+  /** 게이지 여러 개를 살짝 시차를 두고 채울 때 */
+  delayMs?: number;
 }) {
   const clamped = Math.max(0, Math.min(100, Math.round(pct)));
+  // 링과 숫자를 한 값으로 함께 움직여 서로 어긋나지 않게 한다
+  const animated = useAnimatedNumber(clamped, { delayMs });
   const level = gaugeLevel(clamped);
   const meta = LEVEL_META[level];
-  const dash = (clamped / 100) * CIRC;
+  const dash = (animated / 100) * CIRC;
   return (
     <figure
       className="flex flex-col items-center gap-1.5"
@@ -84,15 +92,12 @@ export function DeviceResourceGauge({
             strokeLinecap="round"
             strokeDasharray={`${dash} ${CIRC - dash}`}
             transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
-            className={cn(
-              "transition-[stroke-dasharray] duration-500",
-              meta.stroke,
-            )}
+            className={meta.stroke}
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-xl font-bold tabular-nums leading-none">
-            {clamped}
+            {Math.round(animated)}
             <span className="text-xs font-medium text-muted-foreground">%</span>
           </span>
         </div>
@@ -146,11 +151,13 @@ export function DeviceResourceGauges({
           label="RAM"
           pct={ramPct}
           detail={`${((ramPct / 100) * 8).toFixed(1)} / 8 GB`}
+          delayMs={90}
         />
         <DeviceResourceGauge
           label="SSD"
           pct={ssdPct}
           detail={`${Math.round((ssdPct / 100) * 256)} / 256 GB`}
+          delayMs={180}
         />
       </div>
       <p className="text-[11px] leading-relaxed text-muted-foreground">

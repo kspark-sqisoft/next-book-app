@@ -15,20 +15,14 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { BookSlideCanvas } from "@/components/books/BookSlideCanvas";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { type BookDetail, fetchBook, publicAssetUrl } from "@/lib/api";
 import {
   collectBookOverlayElements,
@@ -155,15 +149,7 @@ function BookPresentationInner({
     return collectBookOverlayElements(allPagesSorted, page.sortOrder);
   }, [allPagesSorted, page]);
 
-  const reduceMotion = useSyncExternalStore(
-    (onStoreChange) => {
-      const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-      mq.addEventListener("change", onStoreChange);
-      return () => mq.removeEventListener("change", onStoreChange);
-    },
-    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-    () => false,
-  );
+  const reduceMotion = useReducedMotion();
 
   const navigateToSlideIndex = useCallback((updater: (i: number) => number) => {
     setSlideIndex((current) => {
