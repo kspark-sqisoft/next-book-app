@@ -53,6 +53,7 @@ import { SITE_APP_MAIN_SCROLL_ID } from "@/lib/app-layout-scroll";
 import { appLog } from "@/lib/app-log";
 import { canEditAsOwnerOrAdmin } from "@/lib/authz";
 import { DEFAULT_SLIDE_HEIGHT, DEFAULT_SLIDE_WIDTH } from "@/lib/book-canvas";
+import { CARD_GRID_COLUMNS } from "@/lib/card-hover";
 import { bookKeys } from "@/lib/query-keys";
 import { useBookPageThumbnails } from "@/lib/use-book-page-thumbnails";
 import { useAuth } from "@/stores/auth-store";
@@ -530,7 +531,7 @@ export function BookListPage() {
         </p>
       ) : null}
 
-      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className={CARD_GRID_COLUMNS}>
         {items.map((b) => (
           <BookListItem
             key={b.id}

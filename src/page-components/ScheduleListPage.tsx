@@ -40,6 +40,11 @@ import { SafeImage } from "@/components/ui/safe-image";
 import { Spinner } from "@/components/ui/spinner";
 import { canManageOwned } from "@/lib/authz";
 import {
+  CARD_GRID_COLUMNS,
+  GRID_CARD_HOVER,
+  LIST_ROW_HOVER,
+} from "@/lib/card-hover";
+import {
   createCretaSchedule,
   deleteCretaSchedule,
   fetchCretaSchedules,
@@ -145,10 +150,7 @@ export function ScheduleListPage() {
           {(schedules ?? []).map((schedule) => {
             const thumb = thumbs[`schedule-${schedule.id}`];
             return (
-              <Card
-                key={schedule.id}
-                className="py-0 transition-colors hover:border-primary/50"
-              >
+              <Card key={schedule.id} className={`py-0 ${LIST_ROW_HOVER}`}>
                 <CardContent className="flex items-center gap-3 px-3 py-2.5">
                   <Link
                     href={`/schedules/${schedule.id}`}
@@ -248,13 +250,13 @@ export function ScheduleListPage() {
           })}
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className={CARD_GRID_COLUMNS}>
           {(schedules ?? []).map((schedule) => {
             const thumb = thumbs[`schedule-${schedule.id}`];
             return (
               <Card
                 key={schedule.id}
-                className="group/card relative h-full gap-3 py-4 transition-colors hover:border-primary/50"
+                className={`group/card h-full gap-3 py-4 ${GRID_CARD_HOVER}`}
               >
                 {/* 카드 전체 클릭 → 상세 (삭제 버튼만 위 레이어) */}
                 <Link

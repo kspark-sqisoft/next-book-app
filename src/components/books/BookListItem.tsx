@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SafeImage } from "@/components/ui/safe-image";
 import type { BookListItem as BookListItemType } from "@/lib/api";
+import { GRID_CARD_HOVER } from "@/lib/card-hover";
 import { formatDateMediumShort } from "@/lib/format-date";
 
 type Props = {
@@ -34,7 +35,7 @@ export function BookListItem({ book, coverThumbDataUrl, onDelete }: Props) {
 
   return (
     <li>
-      <Card className="group/card relative h-full gap-3 py-4 transition-colors hover:border-primary/50">
+      <Card className={`group/card h-full gap-3 py-4 ${GRID_CARD_HOVER}`}>
         <CardContent className="space-y-3 px-4">
           <Link
             href={`/books/${book.id}`}

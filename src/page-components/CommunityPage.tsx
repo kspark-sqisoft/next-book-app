@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { type BookListCoverPreview, fetchBooksPage } from "@/lib/api";
+import { CARD_GRID_COLUMNS, GRID_CARD_HOVER } from "@/lib/card-hover";
 import { fetchCretaPlaylists, sharedWithSummary } from "@/lib/creta-api";
 import { fetchCretaCommentCounts } from "@/lib/creta-comments-api";
 import { fetchCretaLikes } from "@/lib/creta-likes-api";
@@ -189,7 +190,7 @@ export function CommunityPage() {
           </CardContent>
         </Card>
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className={CARD_GRID_COLUMNS}>
           {items.map((it) => {
             const count =
               it.kind === "book"
@@ -201,7 +202,7 @@ export function CommunityPage() {
                 : playlistLikes.data?.[it.id];
             return (
               <li key={`${it.kind}-${it.id}`}>
-                <Card className="group h-full gap-3 py-4 transition-colors hover:border-primary/50">
+                <Card className={`group h-full gap-3 py-4 ${GRID_CARD_HOVER}`}>
                   <CardContent className="space-y-3 px-4">
                     <Link
                       href={`/community/${it.kind}/${it.id}`}

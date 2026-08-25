@@ -43,6 +43,11 @@ import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { canManageOwned } from "@/lib/authz";
 import {
+  CARD_GRID_COLUMNS,
+  GRID_CARD_HOVER,
+  LIST_ROW_HOVER,
+} from "@/lib/card-hover";
+import {
   createCretaPlaylist,
   deleteCretaPlaylist,
   fetchCretaPlaylists,
@@ -149,10 +154,7 @@ export function PlaylistListPage() {
         /* 리스트 보기 — 작은 썸네일 + 핵심 정보 한 줄 요약 */
         <div className="space-y-2">
           {(playlists ?? []).map((playlist) => (
-            <Card
-              key={playlist.id}
-              className="py-0 transition-colors hover:border-primary/50"
-            >
+            <Card key={playlist.id} className={`py-0 ${LIST_ROW_HOVER}`}>
               <CardContent className="flex items-center gap-3 px-3 py-2.5">
                 <Link
                   href={`/playlists/${playlist.id}`}
@@ -235,11 +237,11 @@ export function PlaylistListPage() {
           ))}
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className={CARD_GRID_COLUMNS}>
           {(playlists ?? []).map((playlist) => (
             <Card
               key={playlist.id}
-              className="group relative h-full gap-3 py-4 transition-colors hover:border-primary/50"
+              className={`group h-full gap-3 py-4 ${GRID_CARD_HOVER}`}
             >
               <CardContent className="space-y-3 px-4">
                 <Link

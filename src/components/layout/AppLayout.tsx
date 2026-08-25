@@ -100,6 +100,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     location.pathname === "/books" ||
     location.pathname.startsWith("/books/") ||
     cretaDashboardRoute;
+  /**
+   * 본문 컬럼 폭 — 헤더·하위 내비·본문·푸터가 같은 값을 써야 세로 정렬선이 맞는다.
+   *
+   * 넓은 컬럼(1152px)은 그리드·대시보드용, 좁은 컬럼(768px)은 글 읽는 폭이다
+   * (한 줄 45~75자 규칙). 큰 화면에서 더 넓혀 봤지만 카드가 잘게 쪼개져 보여 되돌렸다.
+   */
+  const WIDE_COLUMN = "max-w-6xl";
+  const NARROW_COLUMN = "max-w-3xl";
+
   /** 크레타 영역(북 목록·워크스페이스·플레이리스트·스케줄·디바이스)은 넓은 컬럼(그리드·대시보드형) */
   const wideMain =
     location.pathname === "/books" ||
@@ -208,7 +217,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div
           className={cn(
             "mx-auto w-full px-4 py-8",
-            wideMain ? "max-w-6xl" : "max-w-3xl",
+            wideMain ? WIDE_COLUMN : NARROW_COLUMN,
           )}
         >
           {children}
@@ -232,10 +241,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               "mx-auto flex h-12 w-full items-center justify-between gap-4 px-4",
               /* 북 풀블리드여도 내비는 홈·글·북 목록과 동일 `max-w-3xl` 컬럼에 맞춤 */
               bookShellRoute
-                ? "max-w-3xl"
+                ? NARROW_COLUMN
                 : wideMain
-                  ? "max-w-6xl"
-                  : "max-w-3xl",
+                  ? WIDE_COLUMN
+                  : NARROW_COLUMN,
             )}
           >
             <nav className="flex items-center gap-2 text-sm font-medium sm:gap-3">
@@ -364,7 +373,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             aria-label="크레타 하위 메뉴"
             className={cn(
               "mx-auto flex w-full items-center gap-1 overflow-x-auto px-4 py-1.5",
-              wideMain ? "max-w-6xl" : "max-w-3xl",
+              wideMain ? WIDE_COLUMN : NARROW_COLUMN,
             )}
           >
             <NavLink href="/community" prefetch className={cretaSubNavClass}>
@@ -403,10 +412,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             className={cn(
               "mx-auto flex w-full flex-col gap-2 px-4 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:py-2.5",
               bookShellRoute
-                ? "max-w-3xl"
+                ? NARROW_COLUMN
                 : wideMain
-                  ? "max-w-6xl"
-                  : "max-w-3xl",
+                  ? WIDE_COLUMN
+                  : NARROW_COLUMN,
             )}
           >
             <div className="space-y-0.5">

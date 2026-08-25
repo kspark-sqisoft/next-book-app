@@ -38,6 +38,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import {
+  CARD_GRID_COLUMNS,
+  GRID_CARD_HOVER,
+  LIST_ROW_HOVER,
+} from "@/lib/card-hover";
+import {
   createCretaWall,
   CRETA_WALL_MODE_LABEL,
   deleteCretaWall,
@@ -134,10 +139,7 @@ export function WallListPage() {
           {list.map((wall) => {
             const master = wall.members.find((m) => m.isMaster);
             return (
-              <Card
-                key={wall.id}
-                className="py-0 transition-colors hover:border-primary/50"
-              >
+              <Card key={wall.id} className={`py-0 ${LIST_ROW_HOVER}`}>
                 <CardContent className="flex items-center gap-3 px-3 py-2.5">
                   <Link
                     href={`/walls/${wall.id}`}
@@ -207,14 +209,14 @@ export function WallListPage() {
           })}
         </div>
       ) : (
-        /* 동기 미리보기 썸네일이 잘 보이도록 다른 목록보다 큰 카드(최대 2열, 폭 제한으로 과대 방지) */
-        <div className="grid max-w-sm gap-4 lg:max-w-3xl lg:grid-cols-2">
+        /* 열 수는 스튜디오·커뮤니티 등 다른 목록과 동일하게 맞춘다 */
+        <div className={CARD_GRID_COLUMNS}>
           {list.map((wall) => {
             const master = wall.members.find((m) => m.isMaster);
             return (
               <Card
                 key={wall.id}
-                className="group relative h-full gap-3 py-4 transition-colors hover:border-primary/50"
+                className={`group h-full gap-3 py-4 ${GRID_CARD_HOVER}`}
               >
                 <CardContent className="space-y-3 px-4">
                   <Link

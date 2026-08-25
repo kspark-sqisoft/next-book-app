@@ -50,6 +50,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Spinner } from "@/components/ui/spinner";
+import { GRID_CARD_HOVER, LIST_ROW_INSIDE_CARD_HOVER } from "@/lib/card-hover";
 import { cretaAlertCoversDevice } from "@/lib/creta-alerts-api";
 import {
   createCretaDevice,
@@ -323,7 +324,8 @@ export function DeviceListPage() {
               <Card
                 key={device.id}
                 className={cn(
-                  "overflow-hidden py-0 transition-colors",
+                  "overflow-hidden py-0",
+                  GRID_CARD_HOVER,
                   st === "online" && "border-emerald-500/45",
                   st === "error" && "border-red-500/70 ring-1 ring-red-500/35",
                   st === "offline" && "border-zinc-500/45 opacity-80",
@@ -384,7 +386,10 @@ export function DeviceListPage() {
             {list.map((device) => (
               <div
                 key={device.id}
-                className="flex flex-wrap items-center gap-4 px-4 py-3 sm:px-6"
+                className={cn(
+                  "flex flex-wrap items-center gap-4 px-4 py-3 sm:px-6",
+                  LIST_ROW_INSIDE_CARD_HOVER,
+                )}
               >
                 <Link
                   href={`/devices/${device.id}`}
