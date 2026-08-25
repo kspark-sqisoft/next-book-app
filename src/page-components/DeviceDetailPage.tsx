@@ -50,7 +50,10 @@ import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { publicAssetUrl } from "@/lib/api";
-import { fetchCretaAdActiveCreatives } from "@/lib/creta-ads-api";
+import {
+  fetchCretaAdActiveCreatives,
+  fetchCretaAdSlotInventory,
+} from "@/lib/creta-ads-api";
 import { cretaAlertCoversDevice } from "@/lib/creta-alerts-api";
 import {
   CRETA_PLAYER_LATEST,
@@ -72,7 +75,7 @@ import { cretaKeys } from "@/lib/query-keys";
 import { useAuth } from "@/stores/auth-store";
 
 /** 재생 소스 탭에서 다루는 타입 */
-type AssignableSource = "book" | "playlist" | "schedule" | "ad";
+type AssignableSource = "book" | "playlist" | "schedule";
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
@@ -118,6 +121,16 @@ export function DeviceDetailPage() {
     queryFn: fetchCretaAdActiveCreatives,
     staleTime: 60_000,
   });
+  /** 할당된 북에 광고 구좌가 있는지 — "북 + 광고 혼합" 안내용 */
+  const { data: adInventory } = useQuery({
+    queryKey: cretaKeys.adInventory(),
+    queryFn: fetchCretaAdSlotInventory,
+    staleTime: 60_000,
+  });
+  const assignedBookSlotCount =
+    device?.source?.kind === "book"
+      ? (adInventory ?? []).filter((r) => r.bookId === device.source!.id).length
+      : 0;
 
   const applyDevice = (res: CretaDevice) => {
     queryClient.setQueryData(cretaKeys.device(deviceId), res);
@@ -233,7 +246,10 @@ export function DeviceDetailPage() {
   const alertCoversThis =
     activeAlert != null && cretaAlertCoversDevice(activeAlert, device.id);
   const activeTab: AssignableSource =
-    tab ?? (device.source ? device.source.kind : "book");
+    tab ??
+    (device.source && device.source.kind !== "ad"
+      ? device.source.kind
+      : "book");
   const assignedForTab =
     device.source && device.source.kind === activeTab ? device.source : null;
   const previewThumb = thumbs[`device-detail-${device.id}`];
@@ -408,7 +424,15 @@ export function DeviceDetailPage() {
                   </>
                 ) : device.online && device.source ? (
                   <>
-                    {previewThumb ? (
+                    {device.source.previewBookId != null ? (
+                      /* 라이브 미리보기 — 북 프레젠테이션을 embed로 실제 재생 */
+                      <iframe
+                        key={device.source.previewBookId}
+                        src={`/books/${device.source.previewBookId}/preview?embed=1`}
+                        title={`${device.source.title} 라이브 미리보기`}
+                        className="pointer-events-none absolute inset-0 size-full border-0"
+                      />
+                    ) : previewThumb ? (
                       <CretaCoverThumb
                         dataUrl={previewThumb}
                         title={device.source.title}
@@ -643,9 +667,6 @@ export function DeviceDetailPage() {
                   <TabsTrigger value="schedule" className="flex-1">
                     스케줄
                   </TabsTrigger>
-                  <TabsTrigger value="ad" className="flex-1">
-                    광고
-                  </TabsTrigger>
                 </TabsList>
               </Tabs>
               <p className="text-sm font-semibold">할당된 콘텐츠</p>
@@ -657,15 +678,19 @@ export function DeviceDetailPage() {
                     </p>
                     <p className="truncate text-sm font-medium text-primary">
                       {assignedForTab.title}
-                      {assignedForTab.kind === "ad"
-                        ? ` — 활성 소재 ${(adCreatives ?? []).length}개 순환`
-                        : ""}
                     </p>
+                    {assignedForTab.kind === "book" &&
+                    assignedBookSlotCount > 0 ? (
+                      <p className="mt-0.5 text-[11px] leading-snug text-amber-600 dark:text-amber-400">
+                        이 북에는 광고 구좌 {assignedBookSlotCount}개가 있어
+                        콘텐츠와 함께 캠페인 광고가 재생됩니다.
+                      </p>
+                    ) : null}
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    {activeTab === "ad"
-                      ? "광고 전용 재생이 지정되지 않았습니다"
+                    {device.source?.kind === "ad"
+                      ? "광고 전용 재생 중 — 콘텐츠를 지정하면 광고 전용이 해제됩니다"
                       : `할당된 ${PLAY_SOURCE_LABEL[activeTab]} 없음`}
                   </p>
                 )}
@@ -675,30 +700,56 @@ export function DeviceDetailPage() {
                   size="sm"
                   className="shrink-0"
                   disabled={sourceMutation.isPending}
-                  onClick={() => {
-                    if (!requireLogin()) return;
-                    // 광고 전용 재생은 참조 선택이 없어 바로 지정/해제
-                    if (activeTab === "ad") {
-                      sourceMutation.mutate({
-                        type: assignedForTab ? "none" : "ad",
-                      });
-                      return;
-                    }
-                    setChangeOpen(true);
-                  }}
+                  onClick={() => requireLogin() && setChangeOpen(true)}
                 >
-                  {activeTab === "ad"
-                    ? assignedForTab
-                      ? "지정 해제"
-                      : "광고 전용 지정"
-                    : "변경"}
+                  변경
                 </Button>
               </div>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                {activeTab === "ad"
-                  ? "광고 전용 재생 — 광고 메뉴의 활성 캠페인 소재만 100% 루프로 재생합니다(엘리베이터 광고 모니터형)."
-                  : "위의 재생 소스 탭으로 타입을 바꾸고, ‘변경’으로 해당 타입의 다른 항목을 선택할 수 있습니다."}
+                위의 재생 소스 탭으로 타입을 바꾸고, ‘변경’으로 해당 타입의 다른
+                항목을 선택할 수 있습니다.
               </p>
+
+              {/* 광고 전용 재생 — 콘텐츠 선택과 분리된 특수 모드 스위치 */}
+              <div
+                className={
+                  device.source?.kind === "ad"
+                    ? "flex items-center justify-between gap-3 rounded-md border border-amber-500/50 bg-amber-500/10 px-3 py-2.5"
+                    : "flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2.5"
+                }
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">
+                    광고 전용 재생
+                    {device.source?.kind === "ad" ? (
+                      <span className="ml-1.5 rounded bg-amber-500/20 px-1.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                        사용 중 · 활성 소재 {(adCreatives ?? []).length}개 순환
+                      </span>
+                    ) : null}
+                  </p>
+                  <p className="text-xs leading-snug text-muted-foreground">
+                    콘텐츠 대신 광고 메뉴의 활성 캠페인 소재만 100% 재생합니다
+                    (엘리베이터 광고 모니터형).
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant={
+                    device.source?.kind === "ad" ? "secondary" : "outline"
+                  }
+                  size="sm"
+                  className="shrink-0"
+                  disabled={sourceMutation.isPending}
+                  onClick={() => {
+                    if (!requireLogin()) return;
+                    sourceMutation.mutate({
+                      type: device.source?.kind === "ad" ? "none" : "ad",
+                    });
+                  }}
+                >
+                  {device.source?.kind === "ad" ? "해제" : "전환"}
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
@@ -808,7 +859,7 @@ export function DeviceDetailPage() {
           onOpenChange={setChangeOpen}
           title={`${PLAY_SOURCE_LABEL[activeTab]} 지정`}
           description="선택한 콘텐츠를 이 디바이스에서 재생합니다."
-          kinds={[activeTab === "ad" ? "book" : activeTab]}
+          kinds={[activeTab]}
           pending={sourceMutation.isPending}
           clearLabel="지정 해제"
           onClear={() => sourceMutation.mutate({ type: "none" })}

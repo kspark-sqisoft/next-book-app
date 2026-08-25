@@ -42,6 +42,8 @@ export type CretaContentRefPublic = {
   id: number;
   title: string;
   cover: CretaCoverPublic;
+  /** 라이브 미리보기용 북(북=자신, 플레이리스트=첫 북, 스케줄=기본 재생의 북) */
+  previewBookId?: number | null;
 };
 
 /** 소유자(공개 정보). null = 공용 항목 */
@@ -433,6 +435,7 @@ export class CretaService {
         id: r.id,
         title: r.title,
         cover: covers.get(r.id) ?? null,
+        previewBookId: r.id,
       });
     }
     return map;
@@ -467,6 +470,7 @@ export class CretaService {
     for (const r of rows) {
       const fb = firstBook.get(r.id);
       map.set(r.id, {
+        previewBookId: fb ?? null,
         kind: "playlist",
         id: r.id,
         title: r.name,
@@ -500,12 +504,22 @@ export class CretaService {
     ]);
     for (const r of rows) {
       let cover: CretaCoverPublic = null;
+      let previewBookId: number | null = null;
       if (r.defaultSourceType === "book" && r.defaultBookId) {
         cover = bRefs.get(r.defaultBookId)?.cover ?? null;
+        previewBookId = r.defaultBookId;
       } else if (r.defaultSourceType === "playlist" && r.defaultPlaylistId) {
-        cover = pRefs.get(r.defaultPlaylistId)?.cover ?? null;
+        const p = pRefs.get(r.defaultPlaylistId);
+        cover = p?.cover ?? null;
+        previewBookId = p?.previewBookId ?? null;
       }
-      map.set(r.id, { kind: "schedule", id: r.id, title: r.name, cover });
+      map.set(r.id, {
+        kind: "schedule",
+        id: r.id,
+        title: r.name,
+        cover,
+        previewBookId,
+      });
     }
     return map;
   }

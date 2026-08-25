@@ -46,6 +46,8 @@ export type CretaContentRef = {
   id: number;
   title: string;
   cover: BookListCoverPreview | null;
+  /** 라이브 미리보기용 북 id */
+  previewBookId?: number | null;
 };
 
 /** 소유자(공개 정보). null = 공용 항목(소유자 도입 이전 데이터) */
