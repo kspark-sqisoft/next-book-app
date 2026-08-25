@@ -484,3 +484,37 @@ export async function updateCretaDeviceSourceAction(
     rethrowActionError(e, TAG);
   }
 }
+
+/** 디바이스 태그 설정(전체 교체) */
+export async function updateCretaDeviceTagsAction(
+  accessToken: string | null | undefined,
+  deviceId: number,
+  tags: string[],
+): Promise<CretaDevicePublic> {
+  try {
+    await requireUserFromToken(accessToken);
+    return await new CretaService().updateDeviceTags(
+      assertPositiveIntId(deviceId),
+      tags,
+    );
+  } catch (e) {
+    rethrowActionError(e, TAG);
+  }
+}
+
+/** 태그 일괄 배포 — 태그가 붙은 모든 디바이스의 재생 소스 변경 */
+export async function assignCretaSourceByTagAction(
+  accessToken: string | null | undefined,
+  tag: string,
+  body: { type: "book" | "playlist" | "schedule"; refId: number },
+): Promise<{ count: number; devices: CretaDevicePublic[] }> {
+  try {
+    await requireUserFromToken(accessToken);
+    return await new CretaService().assignSourceByTag(String(tag ?? ""), {
+      type: body.type,
+      refId: assertPositiveIntId(body.refId),
+    });
+  } catch (e) {
+    rethrowActionError(e, TAG);
+  }
+}

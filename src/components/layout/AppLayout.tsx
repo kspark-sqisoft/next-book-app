@@ -83,9 +83,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   /** 크레타 하위 섹션(플레이리스트·스케줄·디바이스) — 대시보드형 화면이라 넓은 컬럼 사용 */
   const cretaDashboardRoute =
     location.pathname.startsWith("/community") ||
+    location.pathname.startsWith("/dashboard") ||
     location.pathname.startsWith("/playlists") ||
     location.pathname.startsWith("/schedules") ||
     location.pathname.startsWith("/devices") ||
+    location.pathname.startsWith("/reports") ||
     location.pathname.startsWith("/account");
   /** 크레타 서브내비 노출: 북 목록 + 하위 섹션(북 편집 워크스페이스는 제외) */
   const cretaSubNavRoute =

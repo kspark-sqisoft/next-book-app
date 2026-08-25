@@ -8,6 +8,7 @@ import {
   ChartColumn,
   ChevronsLeft,
   ChevronsRight,
+  LayoutDashboard,
   LayoutGrid,
   ListVideo,
   type LucideIcon,
@@ -24,6 +25,7 @@ import { fetchBooksPage } from "@/lib/api";
 import { isAdminUser } from "@/lib/authz";
 import { cretaDeviceStatus, fetchCretaDevices } from "@/lib/creta-api";
 import { bookKeys, cretaKeys } from "@/lib/query-keys";
+import { useDeviceOfflineNotifier } from "@/lib/use-device-offline-notifier";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/stores/auth-store";
 
@@ -169,11 +171,14 @@ export function CretaSidebar() {
   const devicesQuery = useQuery({
     queryKey: cretaKeys.devices(),
     queryFn: fetchCretaDevices,
-    staleTime: 60_000,
+    staleTime: 10_000,
+    // 오프라인 전환 알림을 위해 크레타 화면 어디서든 주기적으로 갱신
+    refetchInterval: 15_000,
   });
   const onlineCount = (devicesQuery.data ?? []).filter(
     (d) => cretaDeviceStatus(d) === "online",
   ).length;
+  useDeviceOfflineNotifier(devicesQuery.data);
 
   const isActive = (item: Item) =>
     item.exact
@@ -194,6 +199,7 @@ export function CretaSidebar() {
     },
   ];
   const playback: Item[] = [
+    { href: "/dashboard", label: "대시보드", icon: LayoutDashboard },
     { href: "/playlists", label: "플레이리스트", icon: ListVideo },
     { href: "/schedules", label: "스케줄", icon: CalendarDays },
     {

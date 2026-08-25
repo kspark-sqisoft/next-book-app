@@ -2,6 +2,7 @@
 import {
   addCretaPlaylistItemAction,
   addCretaScheduleSlotAction,
+  assignCretaSourceByTagAction,
   createCretaDeviceAction,
   createCretaPlaylistAction,
   createCretaScheduleAction,
@@ -26,6 +27,7 @@ import {
   updateCretaDeviceOnlineAction,
   updateCretaDevicePowerAction,
   updateCretaDeviceSourceAction,
+  updateCretaDeviceTagsAction,
   updateCretaScheduleAction,
   updateCretaScheduleSlotAction,
 } from "@/actions/creta";
@@ -186,6 +188,8 @@ export type CretaDevice = {
   orientation: string;
   online: boolean;
   source: CretaContentRef | null;
+  /** 태그(정렬됨) — 태그 단위 일괄 배포·필터에 사용 */
+  tags: string[];
   /** 전원 예약 "HH:MM"(매일). null = 예약 없음 */
   powerOnTime: string | null;
   powerOffTime: string | null;
@@ -540,4 +544,24 @@ export async function updateCretaDeviceSource(
   return run(() =>
     updateCretaDeviceSourceAction(requireToken(), id, body),
   ) as unknown as CretaDevice;
+}
+
+/** 디바이스 태그 설정(전체 교체) — 각 1~40자, 최대 10개 */
+export async function updateCretaDeviceTags(
+  id: number,
+  tags: string[],
+): Promise<CretaDevice> {
+  return run(() =>
+    updateCretaDeviceTagsAction(requireToken(), id, tags),
+  ) as unknown as CretaDevice;
+}
+
+/** 태그 일괄 배포 — 태그가 붙은 모든 디바이스의 재생 소스를 한 번에 변경 */
+export async function assignCretaSourceByTag(
+  tag: string,
+  body: { type: "book" | "playlist" | "schedule"; refId: number },
+): Promise<{ count: number; devices: CretaDevice[] }> {
+  return run(() =>
+    assignCretaSourceByTagAction(requireToken(), tag, body),
+  ) as unknown as { count: number; devices: CretaDevice[] };
 }

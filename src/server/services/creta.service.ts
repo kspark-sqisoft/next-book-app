@@ -13,6 +13,7 @@ import {
   bookPage,
   bookShare,
   cretaDevice,
+  cretaDeviceTag,
   cretaPlaylist,
   cretaPlaylistItem,
   cretaPlaylistShare,
@@ -188,6 +189,8 @@ export type CretaDevicePublic = {
   orientation: string;
   online: boolean;
   source: CretaContentRefPublic | null;
+  /** 태그(정렬됨) — 태그 단위 일괄 배포·필터에 사용 */
+  tags: string[];
   /** 전원 예약 "HH:MM"(매일). null = 예약 없음 */
   powerOnTime: string | null;
   powerOffTime: string | null;
@@ -1569,7 +1572,7 @@ export class CretaService {
   private async mapDevices(
     rows: (typeof cretaDevice.$inferSelect)[],
   ): Promise<CretaDevicePublic[]> {
-    const [bRefs, pRefs, sRefs] = await Promise.all([
+    const [bRefs, pRefs, sRefs, tagRows] = await Promise.all([
       this.bookRefs(
         rows
           .filter((r) => r.sourceType === "book" && r.sourceBookId)
@@ -1585,7 +1588,28 @@ export class CretaService {
           .filter((r) => r.sourceType === "schedule" && r.sourceScheduleId)
           .map((r) => r.sourceScheduleId!),
       ),
+      rows.length > 0
+        ? this.db()
+            .select({
+              deviceId: cretaDeviceTag.deviceId,
+              tag: cretaDeviceTag.tag,
+            })
+            .from(cretaDeviceTag)
+            .where(
+              inArray(
+                cretaDeviceTag.deviceId,
+                rows.map((r) => r.id),
+              ),
+            )
+            .orderBy(asc(cretaDeviceTag.tag))
+        : Promise.resolve([]),
     ]);
+    const tagsByDevice = new Map<number, string[]>();
+    for (const t of tagRows) {
+      const list = tagsByDevice.get(t.deviceId) ?? [];
+      list.push(t.tag);
+      tagsByDevice.set(t.deviceId, list);
+    }
     return rows.map((r) => ({
       id: r.id,
       name: r.name,
@@ -1602,6 +1626,7 @@ export class CretaService {
             : r.sourceType === "schedule" && r.sourceScheduleId
               ? (sRefs.get(r.sourceScheduleId) ?? null)
               : null,
+      tags: tagsByDevice.get(r.id) ?? [],
       powerOnTime: r.powerOnTime ?? null,
       powerOffTime: r.powerOffTime ?? null,
       powerExcludeDays: parseExcludeDays(r.powerExcludeDays),
@@ -1738,19 +1763,12 @@ export class CretaService {
   }
 
   /** 디바이스 재생 소스 지정(북/플레이리스트/스케줄/없음) */
-  async updateDeviceSource(
-    id: number,
-    input: {
-      type: "none" | "book" | "playlist" | "schedule";
-      refId?: number;
-    },
-  ): Promise<CretaDevicePublic> {
+  /** 재생 소스 입력 검증 → cretaDevice update set (디바이스 단건·태그 일괄 배포 공용) */
+  private async buildDeviceSourceSet(input: {
+    type: "none" | "book" | "playlist" | "schedule";
+    refId?: number;
+  }): Promise<Partial<typeof cretaDevice.$inferInsert>> {
     const db = this.db();
-    const row = await db.query.cretaDevice.findFirst({
-      where: eq(cretaDevice.id, id),
-    });
-    if (!row) throw new HttpError(404, "디바이스를 찾을 수 없습니다.");
-
     const set: Partial<typeof cretaDevice.$inferInsert> = {
       updatedAt: new Date(),
       sourceBookId: null,
@@ -1788,7 +1806,94 @@ export class CretaService {
       set.sourceType = "schedule";
       set.sourceScheduleId = refId;
     }
+    return set;
+  }
+
+  async updateDeviceSource(
+    id: number,
+    input: {
+      type: "none" | "book" | "playlist" | "schedule";
+      refId?: number;
+    },
+  ): Promise<CretaDevicePublic> {
+    const db = this.db();
+    const row = await db.query.cretaDevice.findFirst({
+      where: eq(cretaDevice.id, id),
+    });
+    if (!row) throw new HttpError(404, "디바이스를 찾을 수 없습니다.");
+    const set = await this.buildDeviceSourceSet(input);
     await db.update(cretaDevice).set(set).where(eq(cretaDevice.id, id));
     return this.getDevice(id);
   }
+
+  /** 디바이스 태그 설정(전체 교체) — 각 1~40자, 최대 10개, 중복 제거·정렬 */
+  async updateDeviceTags(
+    id: number,
+    tags: unknown,
+  ): Promise<CretaDevicePublic> {
+    const list = normalizeDeviceTags(tags);
+    const db = this.db();
+    const row = await db.query.cretaDevice.findFirst({
+      where: eq(cretaDevice.id, id),
+      columns: { id: true },
+    });
+    if (!row) throw new HttpError(404, "디바이스를 찾을 수 없습니다.");
+    await db.transaction(async (tx) => {
+      await tx.delete(cretaDeviceTag).where(eq(cretaDeviceTag.deviceId, id));
+      if (list.length > 0) {
+        await tx
+          .insert(cretaDeviceTag)
+          .values(list.map((tag) => ({ deviceId: id, tag })));
+      }
+    });
+    return this.getDevice(id);
+  }
+
+  /** 태그 일괄 배포 — 이 태그가 붙은 모든 디바이스의 재생 소스를 한 번에 바꾼다 */
+  async assignSourceByTag(
+    tag: string,
+    input: { type: "book" | "playlist" | "schedule"; refId: number },
+  ): Promise<{ count: number; devices: CretaDevicePublic[] }> {
+    const t = String(tag ?? "").trim();
+    if (!t) throw new HttpError(400, "태그를 선택하세요.");
+    const db = this.db();
+    const targets = await db
+      .select({ deviceId: cretaDeviceTag.deviceId })
+      .from(cretaDeviceTag)
+      .where(eq(cretaDeviceTag.tag, t));
+    const ids = [...new Set(targets.map((r) => r.deviceId))];
+    if (ids.length === 0) {
+      throw new HttpError(404, "이 태그가 붙은 디바이스가 없습니다.");
+    }
+    const set = await this.buildDeviceSourceSet(input);
+    await db.update(cretaDevice).set(set).where(inArray(cretaDevice.id, ids));
+    const rows = await db
+      .select()
+      .from(cretaDevice)
+      .where(inArray(cretaDevice.id, ids))
+      .orderBy(asc(cretaDevice.id));
+    return { count: rows.length, devices: await this.mapDevices(rows) };
+  }
+}
+
+/** 태그 입력 정규화 — 빈 값·중복 제거, 길이·개수 제한, 가나다 정렬 */
+function normalizeDeviceTags(v: unknown): string[] {
+  if (v == null) return [];
+  if (!Array.isArray(v)) {
+    throw new HttpError(400, "태그는 문자열 배열이어야 합니다.");
+  }
+  const out: string[] = [];
+  for (const raw of v) {
+    if (typeof raw !== "string") continue;
+    const tag = raw.trim();
+    if (!tag) continue;
+    if (tag.length > 40) {
+      throw new HttpError(400, "태그는 40자 이하여야 합니다.");
+    }
+    if (!out.includes(tag)) out.push(tag);
+  }
+  if (out.length > 10) {
+    throw new HttpError(400, "태그는 디바이스당 최대 10개입니다.");
+  }
+  return out.sort((a, b) => a.localeCompare(b, "ko"));
 }

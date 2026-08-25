@@ -590,6 +590,22 @@ export const cretaAlertDevice = pgTable(
   ],
 );
 
+/** 디바이스 태그 — 한 디바이스가 여러 태그(층·매장·방향 등)에 속하며, 태그 단위 일괄 배포에 쓴다 */
+export const cretaDeviceTag = pgTable(
+  "creta_device_tag",
+  {
+    id: serial("id").primaryKey(),
+    deviceId: integer("deviceId")
+      .notNull()
+      .references(() => cretaDevice.id, { onDelete: "cascade" }),
+    tag: varchar("tag", { length: 40 }).notNull(),
+  },
+  (t) => [
+    unique().on(t.deviceId, t.tag),
+    index("creta_device_tag_tag_idx").on(t.tag),
+  ],
+);
+
 /**
  * 재생 이력(Proof-of-Play, 시뮬레이션) — 실제 플레이어가 없어, 디바이스가
  * 온라인 + 소스 지정 상태였던 구간을 리포트 조회 시점에 지연 적재(backfill)한다.

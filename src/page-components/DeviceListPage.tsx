@@ -20,6 +20,7 @@ import {
   useCretaCoverThumbs,
 } from "@/components/creta/CretaCoverThumb";
 import { DeviceStatusBadge } from "@/components/creta/DeviceStatusBadge";
+import { DeviceTagDeployButton } from "@/components/creta/DeviceTagDeployButton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -109,19 +110,31 @@ export function DeviceListPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const list: CretaDevice[] = useMemo(() => devices ?? [], [devices]);
-  const onlineCount = list.filter(
+  /** 태그 필터("" = 전체) — 목록 위 셀렉트에서 선택 */
+  const [tagFilter, setTagFilter] = useState("");
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const d of devices ?? []) for (const t of d.tags) set.add(t);
+    return [...set].sort((a, b) => a.localeCompare(b, "ko"));
+  }, [devices]);
+  const allList: CretaDevice[] = useMemo(() => devices ?? [], [devices]);
+  const list: CretaDevice[] = useMemo(
+    () =>
+      tagFilter ? allList.filter((d) => d.tags.includes(tagFilter)) : allList,
+    [allList, tagFilter],
+  );
+  const onlineCount = allList.filter(
     (d) => cretaDeviceStatus(d) === "online",
   ).length;
-  const errorCount = list.filter(
+  const errorCount = allList.filter(
     (d) => cretaDeviceStatus(d) === "error",
   ).length;
-  const offlineCount = list.filter(
+  const offlineCount = allList.filter(
     (d) => cretaDeviceStatus(d) === "offline",
   ).length;
   const stats: { label: string; value: number; dot: "ok" | "error" | null }[] =
     [
-      { label: "전체 디바이스", value: list.length, dot: null },
+      { label: "전체 디바이스", value: allList.length, dot: null },
       { label: "온라인", value: onlineCount, dot: "ok" },
       { label: "비정상", value: errorCount, dot: "error" },
       { label: "오프라인", value: offlineCount, dot: null },
@@ -172,13 +185,31 @@ export function DeviceListPage() {
         ))}
       </div>
 
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-muted-foreground">
-          디바이스 목록
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
+          <p className="text-sm font-medium text-muted-foreground">
+            디바이스 목록
+          </p>
+          {allTags.length > 0 ? (
+            <NativeSelect
+              value={tagFilter}
+              onChange={(e) => setTagFilter(e.target.value)}
+              aria-label="태그 필터"
+              className="h-8 w-auto text-xs"
+            >
+              <option value="">전체 태그</option>
+              {allTags.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </NativeSelect>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-2">
+          <DeviceTagDeployButton devices={allList} />
           <CretaAlertSendButton
-            devices={list.map((d) => ({
+            devices={allList.map((d) => ({
               id: d.id,
               name: d.name,
               location: d.location,
@@ -250,6 +281,19 @@ export function DeviceListPage() {
                     <p className="mt-0.5 truncate text-xs text-muted-foreground">
                       {device.location || "위치 미지정"} · {device.resolution}
                     </p>
+                    {device.tags.length > 0 ? (
+                      <p className="mt-1 flex flex-wrap items-center gap-1">
+                        {device.tags.map((t) => (
+                          <Badge
+                            key={t}
+                            variant="outline"
+                            className="px-1.5 text-[10px] text-muted-foreground"
+                          >
+                            {t}
+                          </Badge>
+                        ))}
+                      </p>
+                    ) : null}
                   </div>
                   <div className="hidden min-w-0 flex-1 sm:block">
                     <p className="text-xs text-muted-foreground">재생 중</p>

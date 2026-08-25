@@ -31,6 +31,7 @@ import { DevicePowerScheduleCard } from "@/components/creta/DevicePowerScheduleC
 import { DeviceResourceGauges } from "@/components/creta/DeviceResourceGauges";
 import { DeviceSampleLogCard } from "@/components/creta/DeviceSampleLogCard";
 import { DeviceStatusBadge } from "@/components/creta/DeviceStatusBadge";
+import { DeviceTagsCard } from "@/components/creta/DeviceTagsCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -417,6 +418,13 @@ export function DeviceDetailPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* 서버 태그가 바뀌면 key로 다시 마운트해 편집 상태를 동기화 */}
+          <DeviceTagsCard
+            key={`${device.id}|${device.tags.join(",")}`}
+            device={device}
+            requireLogin={requireLogin}
+          />
 
           <Card>
             <CardContent className="space-y-3">
