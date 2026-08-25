@@ -49,6 +49,8 @@ import { Slider } from "@/components/ui/slider";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { publicAssetUrl } from "@/lib/api";
+import { fetchCretaAdActiveCreatives } from "@/lib/creta-ads-api";
 import { cretaAlertCoversDevice } from "@/lib/creta-alerts-api";
 import {
   CRETA_PLAYER_LATEST,
@@ -110,6 +112,12 @@ export function DeviceDetailPage() {
   });
   /** 활성 긴급 알림 — 이 디바이스가 대상이면 재생 표시를 덮는다 */
   const { data: activeAlert } = useActiveCretaAlert();
+  /** 광고 전용 재생용 — 지금 편성 중인 소재(미리보기·소재 수 표시) */
+  const { data: adCreatives } = useQuery({
+    queryKey: cretaKeys.adActiveCreatives(),
+    queryFn: fetchCretaAdActiveCreatives,
+    staleTime: 60_000,
+  });
 
   const applyDevice = (res: CretaDevice) => {
     queryClient.setQueryData(cretaKeys.device(deviceId), res);
@@ -343,7 +351,62 @@ export function DeviceDetailPage() {
                 {activeAlert && alertCoversThis && device.online ? (
                   <CretaAlertOverlay alert={activeAlert} />
                 ) : null}
-                {device.online && device.source ? (
+                {device.online && device.source?.kind === "ad" ? (
+                  /* 광고 전용 루프 — 첫 활성 소재 미리보기 + AD 라벨 */
+                  <>
+                    {(adCreatives ?? []).length > 0 ? (
+                      (adCreatives ?? [])[0].kind === "video" ? (
+                        <video
+                          className="absolute inset-0 size-full object-cover"
+                          src={
+                            publicAssetUrl((adCreatives ?? [])[0].src) ??
+                            (adCreatives ?? [])[0].src
+                          }
+                          muted
+                          playsInline
+                          autoPlay
+                          loop
+                          preload="metadata"
+                        />
+                      ) : (
+                        <img
+                          alt=""
+                          src={
+                            publicAssetUrl((adCreatives ?? [])[0].src) ??
+                            (adCreatives ?? [])[0].src
+                          }
+                          className="absolute inset-0 size-full object-cover"
+                        />
+                      )
+                    ) : (
+                      <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 text-white">
+                        <span className="font-heading text-lg font-bold">
+                          CRETA
+                        </span>
+                        <span className="text-xs">
+                          활성 캠페인이 없어 하우스 광고가 나갑니다
+                        </span>
+                      </span>
+                    )}
+                    <span className="absolute left-2 top-2 rounded bg-black/60 px-1.5 py-px text-[11px] font-semibold tracking-wide text-amber-300">
+                      AD
+                    </span>
+                    <span className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-black/55 px-3 py-2">
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <Badge
+                          variant="secondary"
+                          className="shrink-0 text-[11px]"
+                        >
+                          광고
+                        </Badge>
+                        <span className="truncate text-sm font-semibold text-white">
+                          광고 전용 루프 · 활성 소재{" "}
+                          {(adCreatives ?? []).length}개 순환
+                        </span>
+                      </span>
+                    </span>
+                  </>
+                ) : device.online && device.source ? (
                   <>
                     {previewThumb ? (
                       <CretaCoverThumb
@@ -594,11 +657,16 @@ export function DeviceDetailPage() {
                     </p>
                     <p className="truncate text-sm font-medium text-primary">
                       {assignedForTab.title}
+                      {assignedForTab.kind === "ad"
+                        ? ` — 활성 소재 ${(adCreatives ?? []).length}개 순환`
+                        : ""}
                     </p>
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    할당된 {PLAY_SOURCE_LABEL[activeTab]} 없음
+                    {activeTab === "ad"
+                      ? "광고 전용 재생이 지정되지 않았습니다"
+                      : `할당된 ${PLAY_SOURCE_LABEL[activeTab]} 없음`}
                   </p>
                 )}
                 <Button
@@ -609,9 +677,11 @@ export function DeviceDetailPage() {
                   disabled={sourceMutation.isPending}
                   onClick={() => {
                     if (!requireLogin()) return;
-                    // 광고 전용 재생은 참조 선택이 없어 바로 지정
+                    // 광고 전용 재생은 참조 선택이 없어 바로 지정/해제
                     if (activeTab === "ad") {
-                      sourceMutation.mutate({ type: "ad" });
+                      sourceMutation.mutate({
+                        type: assignedForTab ? "none" : "ad",
+                      });
                       return;
                     }
                     setChangeOpen(true);
@@ -619,7 +689,7 @@ export function DeviceDetailPage() {
                 >
                   {activeTab === "ad"
                     ? assignedForTab
-                      ? "지정됨"
+                      ? "지정 해제"
                       : "광고 전용 지정"
                     : "변경"}
                 </Button>

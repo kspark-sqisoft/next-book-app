@@ -7,6 +7,9 @@ import {
   requireUserFromToken,
   rethrowActionError,
 } from "@/actions/session-token";
+import { saveBookMainAndPoster } from "@/server/books/save-book-media";
+import { HttpError } from "@/server/http/http-error";
+import { BooksService } from "@/server/services/books.service";
 import {
   type CretaAdActiveCreative,
   type CretaAdActor,
@@ -331,6 +334,24 @@ export async function moveCretaAdCreativeAction(
       direction === -1 ? -1 : 1,
       toActor(user),
     );
+  } catch (e) {
+    rethrowActionError(e, TAG);
+  }
+}
+
+/** 광고 소재·하우스 광고 미디어 업로드 — 북 업로드 저장소를 재사용(로그인 필요) */
+export async function uploadCretaAdMediaAction(
+  accessToken: string | null | undefined,
+  formData: FormData,
+): Promise<{ kind: "image" | "video"; url: string }> {
+  try {
+    await requireUserFromToken(accessToken);
+    const file = formData.get("file");
+    if (!(file instanceof File) || file.size === 0) {
+      throw new HttpError(400, "file 필드가 필요합니다.");
+    }
+    const { main } = await saveBookMainAndPoster(file, null);
+    return new BooksService().mapUploadedFile(main);
   } catch (e) {
     rethrowActionError(e, TAG);
   }

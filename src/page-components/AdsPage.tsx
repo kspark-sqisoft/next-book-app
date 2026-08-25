@@ -15,8 +15,9 @@ import {
   Play,
   Plus,
   Trash2,
+  Upload,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -73,6 +74,7 @@ import {
   reviewCretaAdCreative,
   updateCretaAdCampaign,
   updateCretaAdSetting,
+  uploadCretaAdMedia,
 } from "@/lib/creta-ads-api";
 import { formatDateMediumShort } from "@/lib/format-date";
 import { cretaKeys } from "@/lib/query-keys";
@@ -180,6 +182,32 @@ export function AdsPage() {
     onSuccess: () => invalidate(),
     onError: (e: Error) => toast.error(e.message),
   });
+  /** 로컬 파일 업로드 — 완료되면 어느 입력을 채울지 target으로 구분 */
+  const uploadTargetRef = useRef<"creative" | "house">("creative");
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
+  const uploadMutation = useMutation({
+    mutationFn: (file: File) => uploadCretaAdMedia(file),
+    onSuccess: (res) => {
+      if (uploadTargetRef.current === "creative") {
+        setCreativeForm((f) => ({ ...f, kind: res.kind, src: res.url }));
+      } else {
+        setSettingDraft({
+          ...settingForm,
+          houseKind: res.kind,
+          houseSrc: res.url,
+        });
+      }
+      toast.success(
+        `${res.kind === "video" ? "영상" : "이미지"}을(를) 업로드했습니다.`,
+      );
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const openUpload = (target: "creative" | "house") => {
+    if (!requireLogin()) return;
+    uploadTargetRef.current = target;
+    uploadInputRef.current?.click();
+  };
 
   const requireLogin = (): boolean => {
     if (!user) {
@@ -348,6 +376,17 @@ export function AdsPage() {
 
   return (
     <div className="space-y-6">
+      <input
+        ref={uploadInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (f) uploadMutation.mutate(f);
+        }}
+      />
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-heading text-2xl font-bold">광고</h1>
@@ -553,15 +592,28 @@ export function AdsPage() {
             <Label htmlFor="set-house-src">
               하우스 소재 URL(비우면 기본 카드)
             </Label>
-            <Input
-              id="set-house-src"
-              className="font-mono text-xs"
-              value={settingForm.houseSrc}
-              placeholder="/uploads/… 또는 https://…"
-              onChange={(e) =>
-                setSettingDraft({ ...settingForm, houseSrc: e.target.value })
-              }
-            />
+            <div className="flex items-center gap-2">
+              <Input
+                id="set-house-src"
+                className="font-mono text-xs"
+                value={settingForm.houseSrc}
+                placeholder="/uploads/… 또는 https://…"
+                onChange={(e) =>
+                  setSettingDraft({ ...settingForm, houseSrc: e.target.value })
+                }
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                disabled={uploadMutation.isPending}
+                onClick={() => openUpload("house")}
+              >
+                <Upload className="size-3.5" aria-hidden />
+                {uploadMutation.isPending ? "업로드 중…" : "파일 업로드"}
+              </Button>
+            </div>
           </div>
           <p className="text-[11px] leading-snug text-muted-foreground">
             루프 삽입: 프레젠테이션이 N페이지 자동 진행할 때마다 전체 화면 광고
@@ -1288,15 +1340,31 @@ export function AdsPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="cr-src">미디어 URL</Label>
-              <Input
-                id="cr-src"
-                className="font-mono text-xs"
-                value={creativeForm.src}
-                placeholder="/uploads/book-videos/….mp4 또는 https://…"
-                onChange={(e) =>
-                  setCreativeForm({ ...creativeForm, src: e.target.value })
-                }
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  id="cr-src"
+                  className="font-mono text-xs"
+                  value={creativeForm.src}
+                  placeholder="/uploads/book-videos/….mp4 또는 https://…"
+                  onChange={(e) =>
+                    setCreativeForm({ ...creativeForm, src: e.target.value })
+                  }
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                  disabled={uploadMutation.isPending}
+                  onClick={() => openUpload("creative")}
+                >
+                  <Upload className="size-3.5" aria-hidden />
+                  {uploadMutation.isPending ? "업로드 중…" : "파일 업로드"}
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                로컬 PC의 이미지/영상을 올리면 URL과 종류가 자동으로 채워집니다.
+              </p>
             </div>
           </div>
           <DialogFooter>

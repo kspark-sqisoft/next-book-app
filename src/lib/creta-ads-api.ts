@@ -21,6 +21,7 @@ import {
   updateCretaAdCampaignAction,
   updateCretaAdSettingAction,
   updateCretaAdvertiserAction,
+  uploadCretaAdMediaAction,
 } from "@/actions/creta-ads";
 import { getAccessToken, humanizeServerActionError } from "@/lib/api";
 
@@ -338,4 +339,13 @@ export async function moveCretaAdCreative(
   direction: -1 | 1,
 ): Promise<void> {
   await run(() => moveCretaAdCreativeAction(requireToken(), id, direction));
+}
+
+/** 광고 미디어 업로드 — 성공 시 종류와 /uploads URL 반환 */
+export async function uploadCretaAdMedia(
+  file: File,
+): Promise<{ kind: "image" | "video"; url: string }> {
+  const fd = new FormData();
+  fd.append("file", file);
+  return run(() => uploadCretaAdMediaAction(requireToken(), fd));
 }
