@@ -614,6 +614,59 @@ export function AdsPage() {
                 {uploadMutation.isPending ? "업로드 중…" : "파일 업로드"}
               </Button>
             </div>
+            {/* 지정된 하우스 소재 미리보기 — 보고 지우거나 교체 */}
+            {settingForm.houseSrc.trim() ? (
+              <div className="flex items-center gap-3 rounded-md border border-border bg-muted/20 p-2">
+                <span className="relative h-16 w-28 shrink-0 overflow-hidden rounded bg-black/70">
+                  {settingForm.houseKind === "video" ? (
+                    <video
+                      key={settingForm.houseSrc}
+                      className="size-full object-cover"
+                      src={
+                        publicAssetUrl(settingForm.houseSrc) ??
+                        settingForm.houseSrc
+                      }
+                      muted
+                      playsInline
+                      preload="metadata"
+                    />
+                  ) : (
+                    <img
+                      key={settingForm.houseSrc}
+                      alt=""
+                      className="size-full object-cover"
+                      src={
+                        publicAssetUrl(settingForm.houseSrc) ??
+                        settingForm.houseSrc
+                      }
+                    />
+                  )}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">
+                    {settingForm.houseName.trim() || "하우스 광고"}
+                    <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                      {settingForm.houseKind === "video" ? "영상" : "이미지"}
+                    </span>
+                  </p>
+                  <p className="truncate font-mono text-[10px] text-muted-foreground">
+                    {settingForm.houseSrc}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="shrink-0 text-muted-foreground hover:text-destructive"
+                  onClick={() =>
+                    setSettingDraft({ ...settingForm, houseSrc: "" })
+                  }
+                >
+                  <Trash2 className="size-3.5" aria-hidden />
+                  지우기
+                </Button>
+              </div>
+            ) : null}
           </div>
           <p className="text-[11px] leading-snug text-muted-foreground">
             루프 삽입: 프레젠테이션이 N페이지 자동 진행할 때마다 전체 화면 광고
