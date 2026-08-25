@@ -115,7 +115,8 @@ export function DeviceRemoteScreenDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-3 sm:max-w-2xl">
+      {/* 기본 다이얼로그(2xl=672px)의 2배 폭 — 화면이 좁으면 뷰포트에 맞춰 줄어든다 */}
+      <DialogContent className="max-h-[92vh] gap-3 overflow-y-auto sm:max-w-[min(84rem,calc(100vw-2rem))]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MonitorSmartphone
@@ -156,10 +157,11 @@ export function DeviceRemoteScreenDialog({
         {/* 가상 기기 화면 */}
         <div
           className={cn(
-            "relative w-full overflow-hidden rounded-lg border-4 border-zinc-800 bg-black shadow-inner",
+            "relative overflow-hidden rounded-lg border-4 border-zinc-800 bg-black shadow-inner",
+            // 세로형 기기는 높이 기준으로 9:16 비율 유지, 그 외는 다이얼로그 폭에 맞춘 16:9
             isMobileLike && device.orientation === "세로"
-              ? "mx-auto aspect-[9/16] max-h-[60vh]"
-              : "aspect-video",
+              ? "mx-auto aspect-[9/16] h-[74vh] w-auto max-w-full"
+              : "aspect-video w-full",
           )}
           data-testid="remote-screen"
         >
