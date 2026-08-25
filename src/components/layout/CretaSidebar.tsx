@@ -191,7 +191,7 @@ export function CretaSidebar() {
     { href: "/community", label: "커뮤니티", icon: LayoutGrid },
     {
       href: "/books",
-      label: "스튜디오 (크레타북)",
+      label: "스튜디오",
       icon: PanelsTopLeft,
       exact: true,
       badge:
