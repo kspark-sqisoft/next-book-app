@@ -36,6 +36,7 @@ import {
   BOOK_WIDGET_DRAG_TYPE,
   type BookDropWidgetKind,
 } from "@/components/books/BookSlideCanvas";
+import { FloatingPanelResizeHandle } from "@/components/books/FloatingPanelResizeHandle";
 import { Button } from "@/components/ui/button";
 import {
   bookDockedPanelHeaderIconClass,
@@ -43,6 +44,11 @@ import {
   bookDockedPanelHeadingClass,
   bookDockedPanelRootClass,
 } from "@/lib/book-workspace-ui";
+import {
+  type FloatingPanelSize,
+  normalizeFloatingPanelSize,
+  useFloatingPanelResize,
+} from "@/lib/use-floating-panel-resize";
 import { cn } from "@/lib/utils";
 
 /** 텍스트·이미지·동영상은 항상 맨 앞 순서, 그 외 위젯은 뒤에 둡니다. */
@@ -68,7 +74,13 @@ const PANEL_MAX_W = 416; // ~26rem
 const PANEL_COLLAPSED_ESTIMATE_W = 140;
 const VIEW_MARGIN = 8;
 
-type PaletteStored = { left: number; top: number; collapsed: boolean };
+type PaletteStored = {
+  left: number;
+  top: number;
+  collapsed: boolean;
+  /** 사용자가 조절한 창 크기(없으면 기본 크기) */
+  size?: FloatingPanelSize | null;
+};
 
 function loadStored(): PaletteStored | null {
   try {
@@ -80,7 +92,12 @@ function loadStored(): PaletteStored | null {
       typeof p.top === "number" &&
       typeof p.collapsed === "boolean"
     ) {
-      return { left: p.left, top: p.top, collapsed: p.collapsed };
+      return {
+        left: p.left,
+        top: p.top,
+        collapsed: p.collapsed,
+        size: normalizeFloatingPanelSize(p.size),
+      };
     }
   } catch {
     /* ignore */
@@ -290,6 +307,10 @@ function BookWidgetPaletteFloating({
   const [collapsed, setCollapsed] = useState(
     () => loadStored()?.collapsed ?? false,
   );
+  /** 사용자가 키운 창 크기 — null이면 기본(최소) 크기 */
+  const [size, setSize] = useState<FloatingPanelSize | null>(
+    () => loadStored()?.size ?? null,
+  );
   const onCollapsedChangeRef = useRef(onCollapsedChange);
   useEffect(() => {
     onCollapsedChangeRef.current = onCollapsedChange;
@@ -303,6 +324,14 @@ function BookWidgetPaletteFloating({
     }
     return defaultCoords();
   });
+  const { onResizePointerDown, onResizePointerMove, onResizePointerUp } =
+    useFloatingPanelResize({
+      rootRef,
+      baseWidth: PANEL_MAX_W,
+      size,
+      onSizeChange: setSize,
+      viewMargin: VIEW_MARGIN,
+    });
 
   const estimateHeight = collapsed ? 48 : 200;
   const estimateWidth = collapsed
@@ -314,20 +343,17 @@ function BookWidgetPaletteFloating({
         PANEL_MAX_W,
       );
 
-  const persist = useCallback(
-    (next: { left: number; top: number; collapsed: boolean }) => {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        /* ignore */
-      }
-    },
-    [],
-  );
+  const persist = useCallback((next: PaletteStored) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
-    persist({ ...coords, collapsed });
-  }, [coords, collapsed, persist]);
+    persist({ ...coords, collapsed, size });
+  }, [coords, collapsed, size, persist]);
 
   useEffect(() => {
     onCollapsedChangeRef.current?.(collapsed);
@@ -407,6 +433,10 @@ function BookWidgetPaletteFloating({
         left: coords.left,
         top: coords.top,
         ...(stackZIndex != null ? { zIndex: stackZIndex } : {}),
+        // 사용자가 키운 크기(접힌 상태에선 무시) — 없으면 기본(최소) 크기
+        ...(!collapsed && size != null
+          ? { width: size.w, height: size.h }
+          : {}),
       }}
       onPointerDownCapture={(e) => {
         if (e.button !== 0) return;
@@ -494,8 +524,14 @@ function BookWidgetPaletteFloating({
       {!collapsed ? (
         // 자동 줄바꿈 그리드 — 한 줄에 다 욱여넣지 않고 아이템을 넉넉히(≥84px) 잡아
         // 라벨이 글자 단위로 세로로 쪼개지거나 가로 폭을 넘치지 않게 한다.
-        // 최대 3줄까지 보이고 그 이상은 세로 스크롤(약 13.5rem ≈ 3줄).
-        <div className="grid max-h-[13.5rem] grid-cols-[repeat(auto-fill,minmax(84px,1fr))] gap-2 overflow-y-auto overscroll-contain px-0.5 pr-1 [-webkit-overflow-scrolling:touch]">
+        // 기본 크기에선 최대 3줄(약 13.5rem)까지 보이고 그 이상은 세로 스크롤,
+        // 크기를 키운 상태에선 남은 공간을 전부 채운다.
+        <div
+          className={cn(
+            "grid grid-cols-[repeat(auto-fill,minmax(84px,1fr))] content-start gap-2 overflow-y-auto overscroll-contain px-0.5 pr-1 [-webkit-overflow-scrolling:touch]",
+            size != null ? "min-h-0 flex-1 pb-3" : "max-h-[13.5rem]",
+          )}
+        >
           {ITEMS.map(({ kind, label, icon: Icon }) => (
             <div
               key={kind}
@@ -520,6 +556,13 @@ function BookWidgetPaletteFloating({
             />
           ) : null}
         </div>
+      ) : null}
+      {!collapsed ? (
+        <FloatingPanelResizeHandle
+          onPointerDown={onResizePointerDown}
+          onPointerMove={onResizePointerMove}
+          onPointerUp={onResizePointerUp}
+        />
       ) : null}
     </div>
   );

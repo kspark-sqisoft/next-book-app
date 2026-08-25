@@ -26,6 +26,7 @@ import { createPortal } from "react-dom";
 import { toast } from "sonner";
 
 import { BOOK_LIBRARY_DRAG_TYPE } from "@/components/books/BookSlideCanvas";
+import { FloatingPanelResizeHandle } from "@/components/books/FloatingPanelResizeHandle";
 import { MemberShareDialog } from "@/components/share/MemberShareDialog";
 import {
   AlertDialog,
@@ -64,6 +65,11 @@ import {
   bookDockedPanelRootClass,
 } from "@/lib/book-workspace-ui";
 import { bookKeys } from "@/lib/query-keys";
+import {
+  type FloatingPanelSize,
+  normalizeFloatingPanelSize,
+  useFloatingPanelResize,
+} from "@/lib/use-floating-panel-resize";
 import { cn } from "@/lib/utils";
 import { captureVideoPosterJpeg } from "@/lib/video-poster";
 import { useAuth } from "@/stores/auth-store";
@@ -73,7 +79,13 @@ const PANEL_MAX_W = 320;
 const VIEW_MARGIN = 8;
 const PANEL_COLLAPSED_ESTIMATE_W = 168;
 
-type PanelStored = { left: number; top: number; collapsed: boolean };
+type PanelStored = {
+  left: number;
+  top: number;
+  collapsed: boolean;
+  /** 사용자가 조절한 창 크기(없으면 기본 크기) */
+  size?: FloatingPanelSize | null;
+};
 
 function loadStored(): PanelStored | null {
   try {
@@ -85,7 +97,12 @@ function loadStored(): PanelStored | null {
       typeof p.top === "number" &&
       typeof p.collapsed === "boolean"
     ) {
-      return { left: p.left, top: p.top, collapsed: p.collapsed };
+      return {
+        left: p.left,
+        top: p.top,
+        collapsed: p.collapsed,
+        size: normalizeFloatingPanelSize(p.size),
+      };
     }
   } catch {
     /* ignore */
@@ -922,6 +939,10 @@ function BookMediaLibraryFloating({
   const [collapsed, setCollapsed] = useState(
     () => loadStored()?.collapsed ?? false,
   );
+  /** 사용자가 키운 창 크기 — null이면 기본(최소) 크기 */
+  const [size, setSize] = useState<FloatingPanelSize | null>(
+    () => loadStored()?.size ?? null,
+  );
   const onCollapsedChangeRef = useRef(onCollapsedChange);
   useEffect(() => {
     onCollapsedChangeRef.current = onCollapsedChange;
@@ -935,6 +956,14 @@ function BookMediaLibraryFloating({
     }
     return defaultCoords();
   });
+  const { onResizePointerDown, onResizePointerMove, onResizePointerUp } =
+    useFloatingPanelResize({
+      rootRef,
+      baseWidth: PANEL_MAX_W,
+      size,
+      onSizeChange: setSize,
+      viewMargin: VIEW_MARGIN,
+    });
 
   const estimateHeight = collapsed ? 48 : 320;
   const estimateWidth = collapsed
@@ -946,20 +975,17 @@ function BookMediaLibraryFloating({
         PANEL_MAX_W,
       );
 
-  const persist = useCallback(
-    (next: { left: number; top: number; collapsed: boolean }) => {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        /* ignore */
-      }
-    },
-    [],
-  );
+  const persist = useCallback((next: PanelStored) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
-    persist({ ...coords, collapsed });
-  }, [coords, collapsed, persist]);
+    persist({ ...coords, collapsed, size });
+  }, [coords, collapsed, size, persist]);
 
   useEffect(() => {
     onCollapsedChangeRef.current?.(collapsed);
@@ -1039,6 +1065,10 @@ function BookMediaLibraryFloating({
         left: coords.left,
         top: coords.top,
         ...(stackZIndex != null ? { zIndex: stackZIndex } : {}),
+        // 사용자가 키운 크기(접힌 상태에선 무시) — 없으면 기본(최소) 크기
+        ...(!collapsed && size != null
+          ? { width: size.w, height: size.h }
+          : {}),
       }}
       onPointerDownCapture={(e) => {
         if (e.button !== 0) return;
@@ -1151,7 +1181,13 @@ function BookMediaLibraryFloating({
               업로드
             </Button>
           </div>
-          <div className="max-h-[220px] overflow-y-auto overflow-x-hidden px-0.5">
+          <div
+            className={cn(
+              "overflow-y-auto overflow-x-hidden px-0.5",
+              // 크기 지정 시엔 남은 공간을 채우고, 기본 크기에선 3줄 정도까지만
+              size != null ? "min-h-0 flex-1 pb-3" : "max-h-[220px]",
+            )}
+          >
             <MediaGrid
               bookId={bookId}
               items={items}
@@ -1166,6 +1202,11 @@ function BookMediaLibraryFloating({
               gridClassName="grid-cols-3"
             />
           </div>
+          <FloatingPanelResizeHandle
+            onPointerDown={onResizePointerDown}
+            onPointerMove={onResizePointerMove}
+            onPointerUp={onResizePointerUp}
+          />
         </>
       ) : null}
     </div>
