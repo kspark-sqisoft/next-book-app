@@ -5,6 +5,7 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   CalendarDays,
+  ChartColumn,
   ChevronsLeft,
   ChevronsRight,
   LayoutGrid,
@@ -204,6 +205,7 @@ export function CretaSidebar() {
           ? { text: String(onlineCount), tone: "online" }
           : null,
     },
+    { href: "/reports", label: "재생 리포트", icon: ChartColumn },
   ];
   const account: Item[] = [
     { href: "/account", label: "마이페이지", icon: UserRound },

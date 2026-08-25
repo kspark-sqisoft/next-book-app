@@ -590,6 +590,30 @@ export const cretaAlertDevice = pgTable(
   ],
 );
 
+/**
+ * 재생 이력(Proof-of-Play, 시뮬레이션) — 실제 플레이어가 없어, 디바이스가
+ * 온라인 + 소스 지정 상태였던 구간을 리포트 조회 시점에 지연 적재(backfill)한다.
+ * 콘텐츠가 삭제돼도 리포트가 유지되도록 제목을 비정규화해 저장한다.
+ */
+export const cretaPlayLog = pgTable(
+  "creta_play_log",
+  {
+    id: serial("id").primaryKey(),
+    deviceId: integer("deviceId")
+      .notNull()
+      .references(() => cretaDevice.id, { onDelete: "cascade" }),
+    contentKind: varchar("contentKind", { length: 16 }).notNull(), // book|playlist|schedule
+    contentId: integer("contentId"),
+    contentTitle: varchar("contentTitle", { length: 200 }).notNull(),
+    startedAt: timestamp("startedAt", { mode: "date" }).notNull(),
+    durationSec: integer("durationSec").notNull(),
+  },
+  (t) => [
+    index("creta_play_log_deviceId_startedAt_idx").on(t.deviceId, t.startedAt),
+    index("creta_play_log_startedAt_idx").on(t.startedAt),
+  ],
+);
+
 /** 플레이리스트 공유 — 공유받은 사용자는 소유자처럼 편집 가능(삭제·공유 관리는 소유자·관리자) */
 export const cretaPlaylistShare = pgTable(
   "creta_playlist_share",

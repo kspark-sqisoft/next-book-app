@@ -53,6 +53,9 @@ export const cretaKeys = {
   device: (id: number) => [...cretaKeys.all, "device", id] as const,
   /** 긴급 알림(활성 1건) — 디바이스 화면들이 폴링 */
   alert: () => [...cretaKeys.all, "alert"] as const,
+  /** 재생 리포트(Proof-of-Play) — 기간(일)별 */
+  playReport: (rangeDays: number) =>
+    [...cretaKeys.all, "play-report", rangeDays] as const,
   /** 크레타 > 계정: 내가 만든/공유받은 북·플레이리스트·스케줄 */
   overview: (userId: number) => [...cretaKeys.all, "overview", userId] as const,
   /** 커뮤니티 댓글 */
