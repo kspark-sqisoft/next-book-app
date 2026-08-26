@@ -4,12 +4,14 @@ import {
   ClipboardPaste,
   Copy,
   FolderOpen,
+  ImagePlus,
   Library,
   Pause,
   Pin,
   Play,
   Scissors,
   Square,
+  Video,
 } from "lucide-react";
 import {
   type CSSProperties,
@@ -74,6 +76,7 @@ import { publicAssetUrl } from "@/lib/api";
 import { appLog } from "@/lib/app-log";
 import {
   BOOK_CANVAS_DRAG_GRID_PX,
+  BOOK_MEDIA_PLACEHOLDER_FILL,
   BOOK_SHAPE_KINDS,
   type BookCanvasElement,
   bookElementOverlayTopLeftFromPivot,
@@ -598,6 +601,92 @@ function formatMediaClock(seconds: number): string {
 const VIDEO_BAR_HIDE_DELAY_MS = 2000;
 
 /**
+ * 이미지·동영상 위젯의 빈 자리 안내. 미디어(플레이리스트) 위젯의 빈 상태와
+ * 배경·아이콘·문구 크기 규칙을 그대로 맞춘다 — 세 위젯을 나란히 놓아도 형식이 같아야 한다.
+ */
+function BookMediaEmptyPlaceholder({
+  kind,
+  scale,
+  heightPx,
+}: {
+  kind: "image" | "video";
+  scale: number;
+  /** 위젯의 화면 높이(px) — 아이콘·글자를 위젯 크기에 맞춰 키운다 */
+  heightPx: number;
+}) {
+  const Icon = kind === "image" ? ImagePlus : Video;
+  const noun = kind === "image" ? "이미지" : "비디오";
+  const hintPx = Math.max(10 * scale, heightPx * 0.032);
+  const iconPx = Math.max(14 * scale, heightPx * 0.055);
+  return (
+    <div
+      className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900 px-3 text-center text-zinc-400"
+      style={{ gap: Math.max(8, scale * 6), fontSize: hintPx }}
+    >
+      <Icon
+        aria-hidden
+        className="opacity-80"
+        style={{ width: iconPx, height: iconPx }}
+      />
+      <p>
+        우클릭·속성 패널에서 파일 또는 미디어 라이브러리로 {noun}를 추가하세요.
+      </p>
+    </div>
+  );
+}
+
+/** 이미지 위젯의 빈 자리 — 동영상과 같은 층(z-2)에 얹어 같은 안내를 보여준다 */
+function BookSlideImageEmptyOverlay({
+  el,
+  scale,
+  mode,
+  liveFrame,
+}: {
+  el: Extract<BookCanvasElement, { type: "image" }>;
+  scale: number;
+  mode: "edit" | "view";
+  liveFrame?: BookTextOverlayLiveFrame | null;
+}) {
+  const pivot = bookElementPivotKonva(el);
+  const origin = bookElementOverlayTopLeftFromPivot(pivot, el.width, el.height);
+  const x = liveFrame?.x ?? origin.x;
+  const y = liveFrame?.y ?? origin.y;
+  const w = liveFrame?.width ?? el.width;
+  const h = liveFrame?.height ?? el.height;
+  const deg =
+    liveFrame != null
+      ? liveFrame.rotation
+      : resolveBookElementRotation(el.rotation);
+  const ow = resolveBookElementOutlineWidth(el);
+  const oc = resolveBookElementOutlineColor(el);
+
+  return (
+    <div
+      className="pointer-events-none absolute z-2 overflow-hidden"
+      style={{
+        left: x * scale,
+        top: y * scale,
+        width: w * scale,
+        height: h * scale,
+        opacity: resolveBookElementOpacity(el.opacity),
+        transform: deg !== 0 ? `rotate(${deg}deg)` : undefined,
+        transformOrigin: "center center",
+        borderRadius: Math.max(0, resolveBookElementBorderRadius(el) * scale),
+        ...(mode === "edit" && ow > 0
+          ? { boxShadow: `0 0 0 ${Math.max(0.5, ow * scale)}px ${oc}` }
+          : {}),
+      }}
+    >
+      <BookMediaEmptyPlaceholder
+        kind="image"
+        scale={scale}
+        heightPx={h * scale}
+      />
+    </div>
+  );
+}
+
+/**
  * 화면 픽셀은 Konva.Image(HTMLVideoElement)로 그림 — Stage 아래 HTML video는 일부 브라우저에서
  * 캔버스에 가려져 보이지 않는 경우가 있어, 재생용 `<video>`는 화면 밖에 두고 ref만 공유합니다.
  */
@@ -756,6 +845,7 @@ function BookSlideVideoOverlay({
   const vh = liveFrame?.height ?? el.height;
   const vDeg = liveFrame != null ? liveFrame.rotation : vRot;
 
+  const videoEmpty = !el.src;
   const vidBr = resolveBookElementBorderRadius(el);
   const vidOw = resolveBookElementOutlineWidth(el);
   const vidOc = resolveBookElementOutlineColor(el);
@@ -806,21 +896,31 @@ function BookSlideVideoOverlay({
           ...(vidOutlineShadow ? { boxShadow: vidOutlineShadow } : {}),
         }}
       >
+        {videoEmpty ? (
+          /* 아직 파일을 안 채운 자리 — 검은 사각형만 보이면 고장으로 읽힌다 */
+          <BookMediaEmptyPlaceholder
+            kind="video"
+            scale={scale}
+            heightPx={vh * scale}
+          />
+        ) : null}
         {el.subtitlesEnabled === true ? (
           /* 하단 간격: 위젯 높이의 7%(최소 16px) + 컨트롤 바가 보이면 바 높이(36px) */
           <BookVideoSubtitleCaption
             lang={el.subtitleLang}
             currentTimeSec={currentTime}
             bottomPx={
-              (barVisible ? 36 : 0) +
+              (barVisible && !videoEmpty ? 36 : 0) +
               Math.max(16, Math.round(vh * scale * 0.07))
             }
             fontSizePx={subtitleFontPx(el.subtitleSize, vh * scale)}
           />
         ) : null}
+        {/* 재생할 파일이 없으면 컨트롤 바도 없다 — 빈 자리에 조작 UI가 뜨면 고장으로 읽힌다 */}
         <div
           className={cn(
             "absolute bottom-0 left-0 right-0 z-10 flex h-9 min-h-9 items-center gap-1 border-t border-white/15 bg-black/75 px-1 py-0.5 transition-opacity duration-200",
+            videoEmpty && "hidden",
             barVisible
               ? "pointer-events-auto opacity-100"
               : "pointer-events-none opacity-0",
@@ -1647,6 +1747,24 @@ export function BookSlideCanvas({
             onBarPointerLeave={() => scheduleHideVideoBar(el.id)}
             onHtmlVideoRef={onHtmlVideoRef}
             onDurationKnown={onVideoDurationKnown}
+          />
+        ))}
+      {visibleElements
+        .filter(
+          (e): e is Extract<BookCanvasElement, { type: "image" }> =>
+            e.type === "image" && !e.src,
+        )
+        .map((el) => (
+          <BookSlideImageEmptyOverlay
+            key={el.id}
+            el={el}
+            scale={scale}
+            mode={mode}
+            liveFrame={overlayLiveFrame(el.id, dragLive, transformLive, {
+              w: el.width,
+              h: el.height,
+              rotation: resolveBookElementRotation(el.rotation),
+            })}
           />
         ))}
       <div className="relative z-[1]">
@@ -3876,6 +3994,7 @@ function BookImageShape({
     [img, el.objectFit, fw, fh],
   );
   const imgOpacity = resolveBookElementOpacity(el.opacity);
+  const imageEmpty = !el.src;
   const imgBr = resolveBookElementBorderRadius(el);
   const imgOw = resolveBookElementOutlineWidth(el);
   const imgOc = resolveBookElementOutlineColor(el);
@@ -3975,9 +4094,10 @@ function BookImageShape({
           width={fw}
           height={fh}
           cornerRadius={imgBr}
-          fill="#e5e7eb"
-          stroke={mode === "edit" ? "#94a3b8" : "transparent"}
-          strokeWidth={mode === "edit" ? 1 : 0}
+          /* 빈 자리는 미디어 위젯과 같은 어두운 배경, 로딩 중(src는 있음)일 때만 회색 */
+          fill={imageEmpty ? BOOK_MEDIA_PLACEHOLDER_FILL : "#e5e7eb"}
+          stroke={mode === "edit" && !imageEmpty ? "#94a3b8" : "transparent"}
+          strokeWidth={mode === "edit" && !imageEmpty ? 1 : 0}
           listening={false}
         />
       )}
@@ -4157,6 +4277,7 @@ function BookVideoBox({
   const showPoster = Boolean(posterLayout && posterImg);
   const showVideoTexture = Boolean(layout && htmlVideoEl && videoFrameReady);
 
+  const videoEmpty = !el.src;
   const vBr = resolveBookElementBorderRadius(el);
   const vOw = resolveBookElementOutlineWidth(el);
   const vOc = resolveBookElementOutlineColor(el);
@@ -4271,9 +4392,9 @@ function BookVideoBox({
           width={fw}
           height={fh}
           cornerRadius={vBr}
-          fill="#0f172a"
-          stroke={mode === "edit" ? "#475569" : "transparent"}
-          strokeWidth={mode === "edit" ? 1 : 0}
+          fill={videoEmpty ? BOOK_MEDIA_PLACEHOLDER_FILL : "#0f172a"}
+          stroke={mode === "edit" && !videoEmpty ? "#475569" : "transparent"}
+          strokeWidth={mode === "edit" && !videoEmpty ? 1 : 0}
           listening={false}
         />
       ) : null}

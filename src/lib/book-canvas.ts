@@ -1245,7 +1245,7 @@ export function parseBookOutlineColor(raw: unknown): string | undefined {
   return s;
 }
 
-/** 저장된 값 + 타입별 기본(텍스트·미디어 0, 날씨·시계 16). */
+/** 저장된 값 + 타입별 기본(텍스트 0, 그 외 위젯 16). */
 export function resolveBookElementBorderRadius(el: BookCanvasElement): number {
   if (el.type === "drawing") return 0;
   if (typeof el.borderRadius === "number" && Number.isFinite(el.borderRadius)) {
@@ -1255,6 +1255,8 @@ export function resolveBookElementBorderRadius(el: BookCanvasElement): number {
     );
   }
   if (
+    el.type === "image" ||
+    el.type === "video" ||
     el.type === "weather" ||
     el.type === "digitalClock" ||
     el.type === "news" ||
@@ -1272,6 +1274,9 @@ export function resolveBookElementBorderRadius(el: BookCanvasElement): number {
   }
   return 0;
 }
+
+/** 비어 있는 이미지·동영상 자리의 배경 — 미디어 위젯 배경(zinc-900)과 같은 색 */
+export const BOOK_MEDIA_PLACEHOLDER_FILL = "#18181b";
 
 export function resolveBookElementOutlineWidth(el: BookCanvasElement): number {
   if (el.type === "drawing") return 0;

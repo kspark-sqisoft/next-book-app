@@ -4,6 +4,7 @@ import type { SceneContext } from "konva/lib/Context";
 import { publicAssetUrl } from "@/lib/api";
 import type { BookCanvasElement } from "@/lib/book-canvas";
 import {
+  BOOK_MEDIA_PLACEHOLDER_FILL,
   bookElementPivotKonva,
   bookWidgetBackdropAlphaFromCss,
   canvasRoundRectPath,
@@ -901,6 +902,9 @@ export async function captureBookSlideToDataURL(
             height: ih,
             rotation: el.rotation,
           });
+          /* 파일을 안 채운 자리는 캔버스와 같은 어두운 배경,
+             src는 있는데 못 읽은 경우만 기존 회색 자리 표시 */
+          const fbEmpty = !el.src;
           const fbBr = sx(resolveBookElementBorderRadius(el));
           const fbOw = resolveBookElementOutlineWidth(el);
           const fbOc = resolveBookElementOutlineColor(el);
@@ -914,10 +918,14 @@ export async function captureBookSlideToDataURL(
               height: ih,
               rotation: ip.rotation,
               cornerRadius: fbBr,
-              fill: "#e5e7eb",
-              stroke: fbOw > 0 ? fbOc : "#94a3b8",
+              fill: fbEmpty ? BOOK_MEDIA_PLACEHOLDER_FILL : "#e5e7eb",
+              stroke: fbOw > 0 ? fbOc : fbEmpty ? "transparent" : "#94a3b8",
               strokeWidth:
-                fbOw > 0 ? Math.max(0.5, sx(fbOw)) : Math.max(0.5, scale),
+                fbOw > 0
+                  ? Math.max(0.5, sx(fbOw))
+                  : fbEmpty
+                    ? 0
+                    : Math.max(0.5, scale),
               opacity: elOp,
             }),
           );
@@ -989,6 +997,7 @@ export async function captureBookSlideToDataURL(
             height: vh,
             rotation: el.rotation,
           });
+          const vfEmpty = !el.src;
           const vfBr = sx(resolveBookElementBorderRadius(el));
           const vfOw = resolveBookElementOutlineWidth(el);
           const vfOc = resolveBookElementOutlineColor(el);
@@ -1002,7 +1011,7 @@ export async function captureBookSlideToDataURL(
               height: vh,
               rotation: vp.rotation,
               cornerRadius: vfBr,
-              fill: "#1e293b",
+              fill: vfEmpty ? BOOK_MEDIA_PLACEHOLDER_FILL : "#1e293b",
               stroke: vfOw > 0 ? vfOc : "transparent",
               strokeWidth: vfOw > 0 ? Math.max(0.5, sx(vfOw)) : 0,
               opacity: elOp,

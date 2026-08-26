@@ -1099,6 +1099,8 @@ function ElementShapeChromeFields({
   const colorPick = outlineInspectorHex(ocResolved);
 
   const typeHint =
+    el.type === "image" ||
+    el.type === "video" ||
     el.type === "weather" ||
     el.type === "digitalClock" ||
     el.type === "news" ||
@@ -1113,7 +1115,7 @@ function ElementShapeChromeFields({
       ? `저장하지 않으면 기본 ${BOOK_WIDGET_DEFAULT_ROUNDED_RADIUS}px(둥근 카드)입니다.`
       : el.type === "shape"
         ? "도형을 감싼 프레임(클립) 모서리입니다. 사각 도형 자체의 둥근 모서리는 인스펙터의 ‘모서리 둥글기’로 바꿉니다."
-        : "텍스트·이미지·동영상은 기본 0(각진 모서리)입니다.";
+        : "텍스트는 기본 0(각진 모서리)입니다.";
 
   return (
     <div className="space-y-2 border-t border-border pt-3">
