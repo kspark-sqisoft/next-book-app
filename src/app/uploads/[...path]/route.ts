@@ -31,9 +31,10 @@ function fileStream(path: string, range?: { start: number; end: number }) {
   );
   return new ReadableStream<Uint8Array>({
     start(controller) {
-      nodeStream.on("data", (chunk: Buffer) => {
+      nodeStream.on("data", (chunk: string | Buffer) => {
         try {
-          controller.enqueue(new Uint8Array(chunk));
+          const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+          controller.enqueue(new Uint8Array(buf));
           // 소비가 느리면 일시정지 — pull()에서 재개(백프레셔)
           if ((controller.desiredSize ?? 0) <= 0) nodeStream.pause();
         } catch {
