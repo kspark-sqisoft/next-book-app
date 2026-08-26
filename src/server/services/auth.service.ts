@@ -16,6 +16,9 @@ import { UsersService } from "@/server/services/users.service";
 import { UserRole } from "@/server/users/user-role";
 
 export class AuthService {
+  /** 회전된 리프레시 토큰의 재사용 유예(ms) — 동시 갱신 경쟁이 로그아웃으로 번지지 않는 최소 폭 */
+  private static readonly ROTATION_GRACE_MS = 60_000;
+
   private usersService = new UsersService();
 
   private db() {
@@ -150,8 +153,18 @@ export class AuthService {
         if (!row || row.expiresAt.getTime() < now) {
           throw new HttpError(401, "Unauthorized");
         }
+        // 즉시 삭제하지 않고 짧은 유예를 남긴다 — 여러 탭이 동시에 갱신하거나
+        // 타임아웃 재시도로 옛 토큰이 한 번 더 오는 경우 로그아웃되지 않게(회전 경쟁 완화).
+        // 유예는 줄이기만 하고 늘리지 않는다.
+        const graceExpiry = new Date(
+          Math.min(
+            row.expiresAt.getTime(),
+            now + AuthService.ROTATION_GRACE_MS,
+          ),
+        );
         await tx
-          .delete(refreshTokenTable)
+          .update(refreshTokenTable)
+          .set({ expiresAt: graceExpiry })
           .where(eq(refreshTokenTable.id, row.id));
 
         const role =

@@ -32,6 +32,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 
 import {
   BOOK_WIDGET_DRAG_TYPE,
@@ -428,7 +429,9 @@ function BookWidgetPaletteFloating({
     endDrag();
   };
 
-  return (
+  // 편집기 컬럼(z-10) 안에서 렌더하면 왼쪽 레일(z-20)이 스태킹 컨텍스트상 항상 위로 와
+  // 팔레트가 가려지고 클릭을 뺏긴다 — AI 패널처럼 body 포털로 띄운다.
+  return createPortal(
     <div
       ref={rootRef}
       style={{
@@ -566,7 +569,8 @@ function BookWidgetPaletteFloating({
           onPointerUp={onResizePointerUp}
         />
       ) : null}
-    </div>
+    </div>,
+    document.body,
   );
 }
 

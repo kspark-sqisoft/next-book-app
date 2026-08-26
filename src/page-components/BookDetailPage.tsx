@@ -695,16 +695,39 @@ function BookDetailOwnerView({
     activePageIndex,
   ]);
 
+  /**
+   * 마지막 저장 시점 스냅샷(참조 비교) — beforeunload "미저장" 판정 기준.
+   * undo 스택(canUndo)은 저장 후에도 남아 있어 기준으로 쓰면 항상 경고가 뜬다.
+   */
+  const lastSavedRef = useRef({
+    pages: initialPagesRef.current,
+    title: serverBook.title,
+    slideWidth: serverBook.slideWidth ?? DEFAULT_SLIDE_WIDTH,
+    slideHeight: serverBook.slideHeight ?? DEFAULT_SLIDE_HEIGHT,
+    presentationLoop: serverBook.presentationLoop !== false,
+  });
+  /** 저장 요청에 실린 값 — 저장 중 추가 편집이 있으면 성공해도 그 편집은 미저장으로 남는다 */
+  const pendingSaveRef = useRef(lastSavedRef.current);
+
   const saveMutation = useMutation({
-    mutationFn: () =>
-      updateBook(bookId, {
+    mutationFn: () => {
+      pendingSaveRef.current = {
+        pages: localPages,
+        title: bookTitle,
+        slideWidth,
+        slideHeight,
+        presentationLoop,
+      };
+      return updateBook(bookId, {
         title: bookTitle.trim() || "제목 없음",
         slideWidth,
         slideHeight,
         presentationLoop,
         pages: toBookPagePayloads(localPages),
-      }),
+      });
+    },
     onSuccess: (res) => {
+      lastSavedRef.current = pendingSaveRef.current;
       void queryClient.setQueryData(bookKeys.detail(bookId), res);
       void queryClient.invalidateQueries({ queryKey: bookKeys.lists() });
       toast.success("저장했습니다.");
@@ -731,15 +754,28 @@ function BookDetailOwnerView({
     return () => window.removeEventListener("keydown", onKey, true);
   }, [widgetDeleteOpen, deleteConfirmOpen, pageDeleteOpen, editorOverlayOpen]);
 
-  // 미저장 편집이 있으면 탭 닫기·새로고침 전에 경고
+  // 미저장 편집이 있으면 탭 닫기·새로고침 전에 경고 — 마지막 저장 스냅샷과 비교(저장하면 경고 없음)
+  const unsavedCheckRef = useRef<() => boolean>(() => false);
+  useLayoutEffect(() => {
+    unsavedCheckRef.current = () => {
+      const saved = lastSavedRef.current;
+      return (
+        localPages !== saved.pages ||
+        bookTitle !== saved.title ||
+        slideWidth !== saved.slideWidth ||
+        slideHeight !== saved.slideHeight ||
+        presentationLoop !== saved.presentationLoop
+      );
+    };
+  });
   useEffect(() => {
-    if (!canUndo) return;
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!unsavedCheckRef.current()) return;
       e.preventDefault();
     };
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [canUndo]);
+  }, []);
 
   const deleteMutation = useMutation({
     mutationFn: (bid: number) => deleteBook(bid),

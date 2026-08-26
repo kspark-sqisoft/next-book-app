@@ -53,7 +53,8 @@ test("북 공유 — 회원 목록 체크, 공유받은 사용자 편집 가능"
   });
   await expect(dialog.getByText("공유 중 1명")).toBeVisible();
   await dialog.screenshot({ path: "test-results/book-share-dialog.png" });
-  await dialog.getByRole("button", { name: "닫기" }).click();
+  // 공유 UI는 팝오버(닫기 버튼 없음) — Escape로 닫는다
+  await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: /^공유/ })).toContainText("1");
   await page.getByRole("button", { name: /^공유/ }).click();
   await page.getByRole("dialog").getByLabel("회원 검색").fill(String(stamp));
@@ -62,7 +63,7 @@ test("북 공유 — 회원 목록 체크, 공유받은 사용자 편집 가능"
       .getByRole("dialog")
       .getByRole("checkbox", { name: new RegExp(guest.name) }),
   ).toHaveAttribute("aria-checked", "true", { timeout: 15_000 });
-  await page.getByRole("dialog").getByRole("button", { name: "닫기" }).click();
+  await page.keyboard.press("Escape");
 
   // 공유받은 회원: 별도 컨텍스트로 로그인 → 편집 UI(저장 버튼)가 보이고 공유 버튼은 없다
   const ctx = await browser.newContext();

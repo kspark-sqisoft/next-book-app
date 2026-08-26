@@ -107,7 +107,9 @@ function loadStored(): PanelStored | null {
 
 function defaultCoords(): { left: number; top: number } {
   return {
-    left: VIEW_MARGIN,
+    // 왼쪽 아이콘 레일·도크 패널(≈380px)을 덮지 않게 캔버스 위쪽에 띄운다
+    // (body 포털이라 겹치면 아래 UI 클릭을 막는다) — 좁은 화면은 왼쪽 여백으로
+    left: window.innerWidth < 800 ? VIEW_MARGIN : 392,
     top: Math.max(VIEW_MARGIN, 96),
   };
 }
@@ -1069,7 +1071,8 @@ function BookMediaLibraryFloating({
     endDrag();
   };
 
-  return (
+  // 편집기 컬럼(z-10) 안이면 왼쪽 레일(z-20)이 항상 위로 와 창이 가려진다 — body 포털로
+  return createPortal(
     <div
       ref={rootRef}
       style={{
@@ -1220,7 +1223,8 @@ function BookMediaLibraryFloating({
           />
         </>
       ) : null}
-    </div>
+    </div>,
+    document.body,
   );
 }
 

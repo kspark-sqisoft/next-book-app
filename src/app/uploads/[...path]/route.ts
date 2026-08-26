@@ -2,7 +2,6 @@
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { join, normalize, resolve } from "node:path";
-import { Readable } from "node:stream";
 
 import { parseByteRange } from "@/lib/http-range";
 import { UPLOAD_ROOT } from "@/server/env";
@@ -20,10 +19,49 @@ function contentTypeForPath(rel: string): string {
   return "application/octet-stream";
 }
 
+/**
+ * `Readable.toWeb()`은 클라이언트가 응답을 중단(비디오 seek 등)한 뒤 남은 청크를
+ * 닫힌 컨트롤러에 넣으며 "Controller is already closed" uncaughtException을 낸다 —
+ * 취소 시 파일 스트림을 destroy하고 닫힌 뒤 enqueue는 무시하는 어댑터로 직접 감싼다.
+ */
 function fileStream(path: string, range?: { start: number; end: number }) {
-  return Readable.toWeb(
-    createReadStream(path, range ? { start: range.start, end: range.end } : {}),
-  ) as ReadableStream<Uint8Array>;
+  const nodeStream = createReadStream(
+    path,
+    range ? { start: range.start, end: range.end } : {},
+  );
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      nodeStream.on("data", (chunk: Buffer) => {
+        try {
+          controller.enqueue(new Uint8Array(chunk));
+          // 소비가 느리면 일시정지 — pull()에서 재개(백프레셔)
+          if ((controller.desiredSize ?? 0) <= 0) nodeStream.pause();
+        } catch {
+          nodeStream.destroy();
+        }
+      });
+      nodeStream.on("end", () => {
+        try {
+          controller.close();
+        } catch {
+          /* 이미 닫힘 */
+        }
+      });
+      nodeStream.on("error", (e) => {
+        try {
+          controller.error(e);
+        } catch {
+          /* 이미 닫힘 */
+        }
+      });
+    },
+    pull() {
+      nodeStream.resume();
+    },
+    cancel() {
+      nodeStream.destroy();
+    },
+  });
 }
 
 export async function GET(

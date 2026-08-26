@@ -33,16 +33,21 @@ export async function signAccessToken(payload: JwtPayload): Promise<string> {
 }
 
 export async function signRefreshToken(payload: JwtPayload): Promise<string> {
-  return new jose.SignJWT({
-    email: payload.email,
-    name: payload.name,
-    role: payload.role,
-  })
-    .setProtectedHeader({ alg: "HS256" })
-    .setSubject(String(payload.sub))
-    .setIssuedAt()
-    .setExpirationTime(JWT_REFRESH_EXPIRES_IN)
-    .sign(encRefresh);
+  return (
+    new jose.SignJWT({
+      email: payload.email,
+      name: payload.name,
+      role: payload.role,
+    })
+      .setProtectedHeader({ alg: "HS256" })
+      .setSubject(String(payload.sub))
+      // iat·exp는 초 단위라 같은 초에 두 번 서명하면 토큰이 완전히 같아져
+      // refresh_token.tokenHash 유니크 충돌(동시 갱신 401)이 난다 — jti로 매번 유일하게
+      .setJti(crypto.randomUUID())
+      .setIssuedAt()
+      .setExpirationTime(JWT_REFRESH_EXPIRES_IN)
+      .sign(encRefresh)
+  );
 }
 
 // API Bearer·서버 액션에서 사용

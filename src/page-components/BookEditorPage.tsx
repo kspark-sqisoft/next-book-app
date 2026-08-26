@@ -426,6 +426,8 @@ export function BookEditorPage() {
     activePageIndex,
   ]);
 
+  /** 생성 성공 여부 — 성공 후에는 편집 내역이 저장된 것이므로 이탈 경고를 끈다 */
+  const createdRef = useRef(false);
   const saveMutation = useMutation({
     mutationFn: () =>
       createBook({
@@ -436,6 +438,8 @@ export function BookEditorPage() {
         pages: toBookPagePayloads(pages),
       }),
     onSuccess: (res) => {
+      // 생성 완료 후에는 상세로 이동하는 동안 이탈 경고를 띄우지 않는다
+      createdRef.current = true;
       void queryClient.invalidateQueries({ queryKey: bookKeys.lists() });
       void queryClient.setQueryData(bookKeys.detail(res.id), res);
       toast.success("북을 만들었습니다.");
@@ -462,10 +466,11 @@ export function BookEditorPage() {
     return () => window.removeEventListener("keydown", onKey, true);
   }, [widgetDeleteOpen, pageDeleteOpen]);
 
-  // 미저장 편집이 있으면 탭 닫기·새로고침 전에 경고
+  // 미저장 편집이 있으면 탭 닫기·새로고침 전에 경고 — 생성 성공 후에는 경고 없음
   useEffect(() => {
     if (!canUndo) return;
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (createdRef.current) return;
       e.preventDefault();
     };
     window.addEventListener("beforeunload", onBeforeUnload);

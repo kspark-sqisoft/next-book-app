@@ -79,7 +79,8 @@ test("플레이리스트·스케줄 소유자 공유", async ({ browser, page, r
   await expect(plRow).toHaveAttribute("aria-checked", "true", {
     timeout: 10_000,
   });
-  await dialog.getByRole("button", { name: "닫기" }).click();
+  // 공유 UI는 팝오버(닫기 버튼 없음) — Escape로 닫는다
+  await page.keyboard.press("Escape");
   await expect(page.getByText(`${guest.name}에게 공유됨`)).toBeVisible();
 
   // 목록 카드: 작성자 + 공유 대상
@@ -109,7 +110,7 @@ test("플레이리스트·스케줄 소유자 공유", async ({ browser, page, r
   await expect(scRow).toHaveAttribute("aria-checked", "true", {
     timeout: 10_000,
   });
-  await dialog.getByRole("button", { name: "닫기" }).click();
+  await page.keyboard.press("Escape");
   await expect(page.getByText(`${guest.name}에게 공유됨`)).toBeVisible();
 
   // ── 공유받은 회원: 편집 가능(스케줄 자동 적용 토글 성공), 공유 버튼은 없음 ──

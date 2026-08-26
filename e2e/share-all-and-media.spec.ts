@@ -49,7 +49,8 @@ test("북 모든 사용자 공유 — 토글 후 다른 사용자 편집 가능"
     timeout: 10_000,
   });
   await expect(page.getByText("모든 사용자에게 공유했습니다.")).toBeVisible();
-  await page.getByRole("dialog").getByRole("button", { name: "닫기" }).click();
+  // 공유 UI는 팝오버(닫기 버튼 없음) — Escape로 닫는다
+  await page.keyboard.press("Escape");
 
   // 다른 사용자: 편집 UI(저장)가 보이고 헤더에 "전체 공유 북" 배지
   const ctx = await browser.newContext();
@@ -124,7 +125,7 @@ test("미디어 라이브러리 파일 공유 — 다른 사용자 북에서 보
   await expect(allToggle).toHaveAttribute("aria-checked", "true", {
     timeout: 10_000,
   });
-  await page.getByRole("dialog").getByRole("button", { name: "닫기" }).click();
+  await page.keyboard.press("Escape");
 
   // 다른 사용자: 자기 북을 만들고 미디어 탭 → 「공유받은 파일」에 보인다
   const ctx = await browser.newContext();
