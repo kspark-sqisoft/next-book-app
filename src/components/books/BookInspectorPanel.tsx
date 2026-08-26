@@ -22,6 +22,7 @@ import type { BookMediaPlaylistPlaybackUiSnapshot } from "@/components/books/Boo
 import { BookNumericIntField } from "@/components/books/BookNumericIntField";
 import { BookTextAnimationPreview } from "@/components/books/BookTextAnimationPreview";
 import { BookTextRichEditor } from "@/components/books/BookTextRichEditor";
+import { BookWeatherLayoutEditor } from "@/components/books/BookWeatherLayoutEditor";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -43,7 +44,6 @@ import {
   BOOK_NEWS_CATEGORIES,
   BOOK_READABILITY_MODES,
   BOOK_SHAPE_KINDS,
-  BOOK_WEATHER_BLOCK_OPTIONS,
   BOOK_WEATHER_LAYOUT_OPTIONS,
   BOOK_WIDGET_DEFAULT_ROUNDED_RADIUS,
   type BookCanvasElement,
@@ -78,6 +78,7 @@ import {
   resolveBookElementRotation,
   resolveBookMapZoomPct,
   resolveBookMediaObjectFit,
+  resolveBookWeatherBlockOrder,
   resolveBookWeatherDisplay,
   resolveBookWeatherLayout,
   resolveBookWeatherRightBlocks,
@@ -2208,9 +2209,10 @@ export function BookInspectorPanel({
                       <div className="space-y-1">
                         <Label htmlFor="insp-weather-layout">배치</Label>
                         <p className="text-[11px] leading-snug text-muted-foreground">
-                          좌우 2열은 왼쪽 날씨·오른쪽 시계/위치/대기, 세로 1열은
-                          모두 위아래로 쌓습니다. 시계만·대기만·기온만 켠 전용
-                          카드에는 적용되지 않습니다.
+                          좌우 2열·세로 1열·가로 1열 중 고르고, 아래에서 블록을
+                          드래그하거나 화살표 버튼으로 원하는 슬롯·순서에 끼워
+                          넣습니다. 시계만·대기만·기온만 켠 전용 카드에는
+                          적용되지 않습니다.
                         </p>
                         <Select
                           value={resolveBookWeatherLayout(
@@ -2238,73 +2240,65 @@ export function BookInspectorPanel({
                             ))}
                           </SelectContent>
                         </Select>
-                        {resolveBookWeatherLayout(selected.weatherLayout) ===
-                        "columns" ? (
-                          <div className="space-y-1 rounded-md border border-border/70 bg-muted/[0.06] p-2">
-                            <p className="text-[11px] font-medium">
-                              블록별 좌/우 배치
-                            </p>
-                            <p className="text-[11px] leading-snug text-muted-foreground">
-                              켜 둔 항목만 표시되며, 각 블록을 왼쪽·오른쪽 열 중
-                              어디에 둘지 고릅니다.
-                            </p>
-                            {BOOK_WEATHER_BLOCK_OPTIONS.map((b) => {
-                              const right = resolveBookWeatherRightBlocks(
-                                selected.weatherRightBlocks,
-                              );
-                              const isRight = right.includes(b.id);
-                              const setSide = (side: "left" | "right") => {
-                                const next = right.filter((k) => k !== b.id);
-                                if (side === "right") next.push(b.id);
-                                onChange(selected.id, {
-                                  weatherRightBlocks: next,
-                                });
-                              };
-                              return (
-                                <div
-                                  key={b.id}
-                                  className="flex items-center justify-between gap-2"
-                                >
-                                  <span className="min-w-0 truncate text-xs">
-                                    {b.label}
-                                  </span>
-                                  <div
-                                    className="flex shrink-0 overflow-hidden rounded-md border border-border"
-                                    role="group"
-                                    aria-label={`${b.label} 배치`}
-                                  >
-                                    <button
-                                      type="button"
-                                      aria-pressed={!isRight}
-                                      onClick={() => setSide("left")}
-                                      className={cn(
-                                        "px-2 py-0.5 text-[11px] font-medium transition-colors",
-                                        !isRight
-                                          ? "bg-primary text-primary-foreground"
-                                          : "bg-background text-muted-foreground hover:bg-muted",
-                                      )}
-                                    >
-                                      왼쪽
-                                    </button>
-                                    <button
-                                      type="button"
-                                      aria-pressed={isRight}
-                                      onClick={() => setSide("right")}
-                                      className={cn(
-                                        "border-l border-border px-2 py-0.5 text-[11px] font-medium transition-colors",
-                                        isRight
-                                          ? "bg-primary text-primary-foreground"
-                                          : "bg-background text-muted-foreground hover:bg-muted",
-                                      )}
-                                    >
-                                      오른쪽
-                                    </button>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : null}
+                        {(() => {
+                          const layout = resolveBookWeatherLayout(
+                            selected.weatherLayout,
+                          );
+                          if (layout === "auto") return null;
+                          const disp = resolveBookWeatherDisplay(
+                            selected.weatherDisplay,
+                          );
+                          // 표시 항목이 모두 꺼진 블록은 흐리게(순서는 유지)
+                          const hiddenKeys = new Set<
+                            "main" | "time" | "location" | "air" | "secondary"
+                          >();
+                          if (!disp.icon && !disp.description && !disp.temp)
+                            hiddenKeys.add("main");
+                          if (!disp.clock && !disp.date) hiddenKeys.add("time");
+                          if (!disp.pm25 && !disp.pm10 && !disp.aqi)
+                            hiddenKeys.add("air");
+                          if (!disp.feelsLike && !disp.humidity && !disp.wind)
+                            hiddenKeys.add("secondary");
+                          const order = resolveBookWeatherBlockOrder(
+                            selected.weatherBlockOrder,
+                          );
+                          const rightBlocks = resolveBookWeatherRightBlocks(
+                            selected.weatherRightBlocks,
+                          );
+                          return (
+                            <div className="space-y-1 rounded-md border border-border/70 bg-muted/[0.06] p-2">
+                              <p className="text-[11px] font-medium">
+                                블록 배치·순서
+                              </p>
+                              <p className="text-[11px] leading-snug text-muted-foreground">
+                                {layout === "columns"
+                                  ? "블록을 드래그해 왼쪽·오른쪽 열에 끼워 넣고 순서를 바꿉니다. 화살표 버튼으로도 이동할 수 있습니다."
+                                  : "블록을 드래그하거나 화살표 버튼으로 순서를 바꿉니다."}
+                              </p>
+                              <BookWeatherLayoutEditor
+                                key={layout}
+                                layout={layout}
+                                order={order}
+                                rightBlocks={rightBlocks}
+                                hiddenKeys={hiddenKeys}
+                                onCommit={(next) => {
+                                  // 값이 그대로면 더티 상태 방지를 위해 커밋 생략
+                                  if (
+                                    next.order.join(",") === order.join(",") &&
+                                    next.rightBlocks.join(",") ===
+                                      rightBlocks.join(",")
+                                  ) {
+                                    return;
+                                  }
+                                  onChange(selected.id, {
+                                    weatherBlockOrder: next.order,
+                                    weatherRightBlocks: next.rightBlocks,
+                                  });
+                                }}
+                              />
+                            </div>
+                          );
+                        })()}
                       </div>
                       <OptionalWidgetBackdropFields
                         elementId={selected.id}

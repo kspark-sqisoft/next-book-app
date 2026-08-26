@@ -183,10 +183,12 @@ export type BookCanvasElementPublic =
       height: number;
       cityQuery?: string;
       weatherDisplay?: Record<string, boolean>;
-      /** auto | columns | single (프론트 `BOOK_WEATHER_LAYOUT_VALUES`) */
+      /** auto | columns | single | row (프론트 `BOOK_WEATHER_LAYOUT_VALUES`) */
       weatherLayout?: string;
       /** 좌우 2열에서 오른쪽에 둘 블록 키 목록 */
       weatherRightBlocks?: string[];
+      /** 블록 표시 순서(드래그 배치) */
+      weatherBlockOrder?: string[];
       weatherBackground?: string;
       weatherTextColor?: string;
       opacity?: number;
@@ -1027,11 +1029,12 @@ export class BooksService {
           if (
             o.weatherLayout !== "auto" &&
             o.weatherLayout !== "columns" &&
-            o.weatherLayout !== "single"
+            o.weatherLayout !== "single" &&
+            o.weatherLayout !== "row"
           ) {
             throw new HttpError(
               400,
-              "날씨 weatherLayout은 auto, columns, single 중 하나여야 합니다.",
+              "날씨 weatherLayout은 auto, columns, single, row 중 하나여야 합니다.",
             );
           }
         }
@@ -1044,6 +1047,18 @@ export class BooksService {
             throw new HttpError(
               400,
               "날씨 weatherRightBlocks 값이 올바르지 않습니다.",
+            );
+          }
+        }
+        if (o.weatherBlockOrder != null) {
+          if (
+            !Array.isArray(o.weatherBlockOrder) ||
+            o.weatherBlockOrder.length > 5 ||
+            !o.weatherBlockOrder.every((k) => BOOK_WEATHER_BLOCK_KEYS.has(k))
+          ) {
+            throw new HttpError(
+              400,
+              "날씨 weatherBlockOrder 값이 올바르지 않습니다.",
             );
           }
         }

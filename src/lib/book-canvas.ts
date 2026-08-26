@@ -423,7 +423,7 @@ export type BookCanvasElement = (
       weatherDisplay?: BookWeatherDisplay;
       /**
        * 배치: auto(생략) = 켠 항목에 따라 자동, columns = 좌우 2열(날씨 | 시계·위치·대기),
-       * single = 세로 1열. 시계만·대기만·기온만 켠 전용 카드에는 영향 없음.
+       * single = 세로 1열, row = 가로 1열. 시계만·대기만·기온만 켠 전용 카드에는 영향 없음.
        */
       weatherLayout?: BookWeatherLayout;
       /**
@@ -431,6 +431,11 @@ export type BookCanvasElement = (
        * 생략 = 기본(날씨 왼쪽, 시계·위치·대기질·부가 정보 오른쪽).
        */
       weatherRightBlocks?: BookWeatherBlockKey[];
+      /**
+       * 블록 표시 순서(드래그 배치). 2열은 좌/우 각 열 안의 순서,
+       * 세로·가로 1열은 전체 순서. 생략 = 기본 순서.
+       */
+      weatherBlockOrder?: BookWeatherBlockKey[];
       /** 카드 배경 CSS 색. 없으면 기본 일러스트 배경. */
       weatherBackground?: string;
       /** 본문·아이콘 색(CSS). 없으면 배경 테마에 맞는 기본 톤. */
@@ -1023,6 +1028,7 @@ export const BOOK_WEATHER_LAYOUT_VALUES = [
   "auto",
   "columns",
   "single",
+  "row",
 ] as const;
 export type BookWeatherLayout = (typeof BOOK_WEATHER_LAYOUT_VALUES)[number];
 
@@ -1033,11 +1039,12 @@ export const BOOK_WEATHER_LAYOUT_OPTIONS: {
   { id: "auto", label: "자동 (켠 항목에 따라)" },
   { id: "columns", label: "좌우 2열" },
   { id: "single", label: "세로 1열" },
+  { id: "row", label: "가로 1열" },
 ];
 
 /** 알 수 없는 값·생략은 auto */
 export function resolveBookWeatherLayout(raw: unknown): BookWeatherLayout {
-  return raw === "columns" || raw === "single" ? raw : "auto";
+  return raw === "columns" || raw === "single" || raw === "row" ? raw : "auto";
 }
 
 /** 좌우 2열에서 좌/우를 고를 수 있는 블록(표시 항목 묶음) */
@@ -1084,6 +1091,25 @@ export function resolveBookWeatherRightBlocks(
   const out: BookWeatherBlockKey[] = [];
   for (const v of raw) {
     if (isBookWeatherBlockKey(v) && !out.includes(v)) out.push(v);
+  }
+  return out;
+}
+
+/**
+ * 저장값 → 블록 표시 순서(항상 5개 전체 순열). 유효한 키를 앞에 두고
+ * 빠진 키는 기본 순서대로 뒤에 붙인다. 생략·비정상은 기본 순서.
+ */
+export function resolveBookWeatherBlockOrder(
+  raw: unknown,
+): BookWeatherBlockKey[] {
+  const out: BookWeatherBlockKey[] = [];
+  if (Array.isArray(raw)) {
+    for (const v of raw) {
+      if (isBookWeatherBlockKey(v) && !out.includes(v)) out.push(v);
+    }
+  }
+  for (const k of BOOK_WEATHER_BLOCK_KEYS) {
+    if (!out.includes(k)) out.push(k);
   }
   return out;
 }

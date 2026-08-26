@@ -18,6 +18,7 @@ import {
   type ReactNode,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -28,6 +29,7 @@ import {
   bookElementOverlayTopLeftFromPivot,
   bookElementPivotKonva,
   bookReadabilityContainerStyle,
+  type BookWeatherBlockKey,
   type BookWeatherDisplayResolved,
   bookWidgetBackdropChromeStyle,
   parseBookWeatherBackground,
@@ -38,6 +40,7 @@ import {
   resolveBookElementOutlineWidth,
   resolveBookElementReadability,
   resolveBookElementRotation,
+  resolveBookWeatherBlockOrder,
   resolveBookWeatherDisplay,
   resolveBookWeatherLayout,
   resolveBookWeatherRightBlocks,
@@ -119,6 +122,51 @@ function pickLayoutVariant(d: BookWeatherDisplayResolved): LayoutVariant {
   if (weatherCore && nAir >= 2) return "split-air";
   if (weatherCore && nAir === 0 && !d.clock && !d.date) return "minimal";
   return "standard";
+}
+
+/**
+ * 사용자 배치(2열·세로 1열): 내용 자연 높이가 박스를 넘으면 통째로 균등
+ * 축소해 블록이 겹치거나 잘리지 않게 한다. transform은 레이아웃 크기에
+ * 영향이 없어 scrollHeight 측정이 피드백 루프 없이 안정적.
+ */
+function FitHeightScale({ children }: { children: ReactNode }) {
+  const outerRef = useRef<HTMLDivElement | null>(null);
+  const innerRef = useRef<HTMLDivElement | null>(null);
+  const [fit, setFit] = useState(1);
+  useEffect(() => {
+    const outer = outerRef.current;
+    const inner = innerRef.current;
+    if (!outer || !inner) return;
+    const update = () => {
+      const oh = outer.clientHeight;
+      const ih = inner.scrollHeight;
+      const next = ih > 0 ? Math.min(1, oh / ih) : 1;
+      setFit((cur) => (Math.abs(cur - next) > 0.02 ? next : cur));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(outer);
+    ro.observe(inner);
+    return () => ro.disconnect();
+  }, []);
+  return (
+    <div
+      ref={outerRef}
+      className="flex h-full max-h-full w-full min-w-0 items-center justify-center overflow-hidden"
+    >
+      <div
+        ref={innerRef}
+        className="w-full min-w-0"
+        style={
+          fit < 1
+            ? { transform: `scale(${fit})`, transformOrigin: "center center" }
+            : undefined
+        }
+      >
+        {children}
+      </div>
+    </div>
+  );
 }
 
 /** 공통: 메시 그라데이션 + 가장자리 비네트 */
@@ -532,22 +580,27 @@ export function BookWeatherWidgetOverlay({
   const layoutPref = resolveBookWeatherLayout(el.weatherLayout);
   const gridVariant = variant === "standard" || variant === "split-air";
   const useWeatherTimeColumns =
-    layoutPref === "single"
+    layoutPref === "single" || layoutPref === "row"
       ? false
       : layoutPref === "columns"
         ? gridVariant && (variant === "split-air" || leftHasPrimary)
         : gridVariant &&
           showTimeCol &&
           (variant === "split-air" || leftHasPrimary);
-  /** 왼쪽이 빌 때의 시계-왼쪽 가로 배치 — 세로 1열을 고르면 사용하지 않음 */
+  /** 왼쪽이 빌 때의 시계-왼쪽 가로 배치 — 세로·가로 1열을 고르면 사용하지 않음 */
   const useTimeLeftRow =
     variant === "standard" &&
     showTimeCol &&
     !leftHasPrimary &&
-    layoutPref !== "single";
+    layoutPref !== "single" &&
+    layoutPref !== "row";
   /** 사용자가 "좌우 2열"을 고른 경우: 블록별 좌/우 배치를 따른다 */
   const customColumns = layoutPref === "columns" && useWeatherTimeColumns;
+  /** 세로·가로 1열: 저장된 블록 순서대로 쌓거나 가로로 나열 */
+  const useOrderedStack = gridVariant && layoutPref === "single";
+  const useOrderedRow = gridVariant && layoutPref === "row";
   const rightBlocks = resolveBookWeatherRightBlocks(el.weatherRightBlocks);
+  const blockOrder = resolveBookWeatherBlockOrder(el.weatherBlockOrder);
   /** 1열(하단 블록)에서 시계·날짜를 그려야 하는 경우 — 2열이 아닐 때 시계가 켜져 있으면 */
   const showTimeInStack =
     showTimeCol && !useWeatherTimeColumns && !useTimeLeftRow;
@@ -1049,9 +1102,9 @@ export function BookWeatherWidgetOverlay({
                 paddingBottom: weatherContentPadY,
               }}
             >
-              {customColumns ? (
+              {customColumns || useOrderedStack || useOrderedRow ? (
                 (() => {
-                  // 블록 단위 좌/우 배치 — 인스펙터 "좌우 2열" 배치 설정
+                  // 블록 단위 사용자 배치 — 인스펙터 "좌우 2열·세로/가로 1열" 배치 설정
                   const mainBlock =
                     disp.icon || disp.description || disp.temp ? (
                       <div
@@ -1194,18 +1247,69 @@ export function BookWeatherWidgetOverlay({
                     air: airBlock,
                     secondary: secondaryBlock,
                   } as const;
-                  const order = [
-                    "main",
-                    "time",
-                    "location",
-                    "air",
-                    "secondary",
-                  ] as const;
-                  const left = order.filter((k) => !rightBlocks.includes(k));
-                  const right = order.filter((k) => rightBlocks.includes(k));
-                  const renderColumn = (
-                    keys: readonly (typeof order)[number][],
-                  ) =>
+                  const dividerClass = useCustomText
+                    ? "border-current/18"
+                    : snowLike
+                      ? "border-slate-600/30"
+                      : "border-white/22";
+                  const orderedKeys = blockOrder.filter(
+                    (k) => nodes[k] != null,
+                  );
+                  if (useOrderedRow) {
+                    return (
+                      <div
+                        className="flex max-h-full w-full min-w-0 items-center justify-center overflow-hidden"
+                        style={{ gap: layoutGapMd }}
+                        data-weather-layout="row"
+                      >
+                        {orderedKeys.map((k, i) => (
+                          <div
+                            key={k}
+                            className={cn(
+                              "min-w-0",
+                              i > 0 && cn("border-l", dividerClass),
+                            )}
+                            style={
+                              i > 0
+                                ? {
+                                    paddingLeft: Math.min(
+                                      11 * scale,
+                                      boxW * 0.028,
+                                    ),
+                                  }
+                                : undefined
+                            }
+                          >
+                            {nodes[k]}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }
+                  if (useOrderedStack) {
+                    return (
+                      <FitHeightScale>
+                        <div
+                          className="flex w-full min-w-0 flex-col"
+                          style={{ gap: layoutGapSm }}
+                          data-weather-layout="single"
+                        >
+                          {orderedKeys.map((k) => (
+                            <div key={k} className="min-w-0 max-w-full">
+                              {nodes[k]}
+                            </div>
+                          ))}
+                        </div>
+                      </FitHeightScale>
+                    );
+                  }
+                  const left = blockOrder.filter(
+                    (k) => !rightBlocks.includes(k),
+                  );
+                  const right = blockOrder.filter((k) =>
+                    rightBlocks.includes(k),
+                  );
+                  const renderColumn = (keys: readonly BookWeatherBlockKey[]) =>
                     keys.map((k) =>
                       nodes[k] ? (
                         <div key={k} className="min-w-0 max-w-full">
@@ -1214,38 +1318,40 @@ export function BookWeatherWidgetOverlay({
                       ) : null,
                     );
                   return (
-                    <div
-                      className="grid max-h-full min-h-0 w-full min-w-0 grid-cols-[minmax(0,1.12fr)_minmax(0,0.98fr)]"
-                      style={{
-                        columnGap: gridGapX,
-                        rowGap: gridGapY,
-                        alignItems: "start",
-                      }}
-                      data-weather-columns="custom"
-                    >
+                    <FitHeightScale>
                       <div
-                        className="flex min-h-0 min-w-0 flex-col justify-start"
-                        style={{ gap: layoutGapSm }}
-                      >
-                        {renderColumn(left)}
-                      </div>
-                      <div
-                        className={cn(
-                          "flex min-h-0 min-w-0 flex-col items-end justify-start overflow-hidden border-l text-end",
-                          useCustomText
-                            ? "border-current/18"
-                            : snowLike
-                              ? "border-slate-600/30"
-                              : "border-white/22",
-                        )}
+                        className="grid w-full min-w-0 grid-cols-[minmax(0,1.12fr)_minmax(0,0.98fr)]"
                         style={{
-                          paddingLeft: Math.min(11 * scale, boxW * 0.028),
-                          gap: layoutGapSm,
+                          columnGap: gridGapX,
+                          rowGap: gridGapY,
+                          alignItems: "start",
                         }}
+                        data-weather-columns="custom"
                       >
-                        {renderColumn(right)}
+                        <div
+                          className="flex min-h-0 min-w-0 flex-col justify-start"
+                          style={{ gap: layoutGapSm }}
+                        >
+                          {renderColumn(left)}
+                        </div>
+                        <div
+                          className={cn(
+                            "flex min-h-0 min-w-0 flex-col items-end justify-start border-l text-end",
+                            useCustomText
+                              ? "border-current/18"
+                              : snowLike
+                                ? "border-slate-600/30"
+                                : "border-white/22",
+                          )}
+                          style={{
+                            paddingLeft: Math.min(11 * scale, boxW * 0.028),
+                            gap: layoutGapSm,
+                          }}
+                        >
+                          {renderColumn(right)}
+                        </div>
                       </div>
-                    </div>
+                    </FitHeightScale>
                   );
                 })()
               ) : (
