@@ -10,6 +10,15 @@ import { toast } from "sonner";
 
 import { useCretaCoverThumbs } from "@/components/creta/CretaCoverThumb";
 import {
+  CretaListSearch,
+  matchesCretaSearch,
+  normalizeCretaSearch,
+} from "@/components/creta/CretaListSearch";
+import {
+  CretaEmptyStateIcon,
+  CretaSectionIcon,
+} from "@/components/creta/CretaSectionIcon";
+import {
   CretaViewToggle,
   useCretaListView,
 } from "@/components/creta/CretaViewToggle";
@@ -70,6 +79,13 @@ export function ScheduleListPage() {
     queryKey: cretaKeys.schedules(),
     queryFn: fetchCretaSchedules,
   });
+  const [search, setSearch] = useState("");
+  const query = normalizeCretaSearch(search);
+  /** 목록 전체를 받아 두므로 걸러내기는 화면에서 바로 한다 */
+  const visibleSchedules = useMemo(
+    () => (schedules ?? []).filter((s) => matchesCretaSearch(query, s.name)),
+    [schedules, query],
+  );
   // 카드 배경 = 지금 재생 중(없으면 기본 재생) 콘텐츠의 첫 슬라이드 썸네일
   const thumbEntries = useMemo(
     () =>
@@ -107,7 +123,10 @@ export function ScheduleListPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-heading text-2xl font-bold">스케줄</h1>
+          <h1 className="flex items-center gap-2 font-heading text-2xl font-bold">
+            <CretaSectionIcon section="schedules" className="size-6" />
+            스케줄
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             날짜·시간대별 재생 편성표
           </p>
@@ -126,10 +145,22 @@ export function ScheduleListPage() {
         </Button>
       </div>
 
+      <CretaListSearch
+        value={search}
+        onChange={setSearch}
+        placeholder="스케줄 이름 검색…"
+        label="스케줄 검색"
+      />
+
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-medium text-muted-foreground">
           저장된 스케줄{" "}
-          <span className="text-foreground">{schedules?.length ?? 0}</span>
+          <span className="text-foreground">{visibleSchedules.length}</span>
+          {query ? (
+            <span className="ml-1 text-xs">
+              / 전체 {schedules?.length ?? 0}
+            </span>
+          ) : null}
         </p>
         <CretaViewToggle view={view} onChange={changeView} />
       </div>
@@ -138,16 +169,19 @@ export function ScheduleListPage() {
         <div className="flex justify-center py-16">
           <Spinner className="size-6" />
         </div>
-      ) : (schedules?.length ?? 0) === 0 ? (
+      ) : visibleSchedules.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            아직 스케줄이 없습니다. “새 스케줄”로 편성표를 만들어 보세요.
+            <CretaEmptyStateIcon section="schedules" />
+            {query
+              ? `“${search.trim()}”와 맞는 스케줄이 없습니다.`
+              : "아직 스케줄이 없습니다. “새 스케줄”로 편성표를 만들어 보세요."}
           </CardContent>
         </Card>
       ) : view === "list" ? (
         /* 리스트 보기 — 작은 썸네일 + 편성 요약 한 줄 */
         <div className="space-y-2">
-          {(schedules ?? []).map((schedule) => {
+          {visibleSchedules.map((schedule) => {
             const thumb = thumbs[`schedule-${schedule.id}`];
             return (
               <Card key={schedule.id} className={`py-0 ${LIST_ROW_HOVER}`}>
@@ -251,7 +285,7 @@ export function ScheduleListPage() {
         </div>
       ) : (
         <div className={CARD_GRID_COLUMNS}>
-          {(schedules ?? []).map((schedule) => {
+          {visibleSchedules.map((schedule) => {
             const thumb = thumbs[`schedule-${schedule.id}`];
             return (
               <Card

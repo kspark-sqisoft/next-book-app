@@ -20,6 +20,15 @@ import {
   useCretaCoverThumbs,
 } from "@/components/creta/CretaCoverThumb";
 import {
+  CretaListSearch,
+  matchesCretaSearch,
+  normalizeCretaSearch,
+} from "@/components/creta/CretaListSearch";
+import {
+  CretaEmptyStateIcon,
+  CretaSectionIcon,
+} from "@/components/creta/CretaSectionIcon";
+import {
   CretaViewToggle,
   useCretaListView,
 } from "@/components/creta/CretaViewToggle";
@@ -118,6 +127,7 @@ export function DeviceListPage() {
 
   /** 태그 필터("" = 전체) — 목록 위 셀렉트에서 선택 */
   const [tagFilter, setTagFilter] = useState("");
+  const [search, setSearch] = useState("");
   /** 상태 필터("" = 전체) — 위 요약 카드를 눌러 전환 */
   const [statusFilter, setStatusFilter] = useState<
     "" | "online" | "error" | "offline"
@@ -135,10 +145,14 @@ export function DeviceListPage() {
     return [...set].sort((a, b) => a.localeCompare(b, "ko"));
   }, [devices]);
   const allList: CretaDevice[] = useMemo(() => devices ?? [], [devices]);
+  const query = normalizeCretaSearch(search);
   const list: CretaDevice[] = useMemo(() => {
-    let next = tagFilter
-      ? allList.filter((d) => d.tags.includes(tagFilter))
+    let next = query
+      ? allList.filter((d) =>
+          matchesCretaSearch(query, d.name, d.location, d.tags.join(" ")),
+        )
       : allList;
+    if (tagFilter) next = next.filter((d) => d.tags.includes(tagFilter));
     if (statusFilter) {
       next = next.filter((d) => cretaDeviceStatus(d) === statusFilter);
     }
@@ -155,7 +169,7 @@ export function DeviceListPage() {
       });
     }
     return next;
-  }, [allList, tagFilter, statusFilter, sortKey]);
+  }, [allList, query, tagFilter, statusFilter, sortKey]);
   const onlineCount = allList.filter(
     (d) => cretaDeviceStatus(d) === "online",
   ).length;
@@ -190,7 +204,10 @@ export function DeviceListPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-heading text-2xl font-bold">디바이스</h1>
+        <h1 className="flex items-center gap-2 font-heading text-2xl font-bold">
+          <CretaSectionIcon section="devices" className="size-6" />
+          디바이스
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           사이니지 원격 재생 및 상태 관리
         </p>
@@ -239,6 +256,13 @@ export function DeviceListPage() {
           );
         })}
       </div>
+
+      <CretaListSearch
+        value={search}
+        onChange={setSearch}
+        placeholder="디바이스 이름·위치·태그 검색…"
+        label="디바이스 검색"
+      />
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
@@ -310,9 +334,12 @@ export function DeviceListPage() {
       ) : list.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            {statusFilter || tagFilter
-              ? "조건에 맞는 디바이스가 없습니다. 위 카드나 필터를 눌러 조건을 바꿔 보세요."
-              : "등록된 디바이스가 없습니다. “디바이스 등록”으로 사이니지를 추가해 보세요."}
+            <CretaEmptyStateIcon section="devices" />
+            {query
+              ? `“${search.trim()}”와 맞는 디바이스가 없습니다.`
+              : statusFilter || tagFilter
+                ? "조건에 맞는 디바이스가 없습니다. 위 카드나 필터를 눌러 조건을 바꿔 보세요."
+                : "등록된 디바이스가 없습니다. “디바이스 등록”으로 사이니지를 추가해 보세요."}
           </CardContent>
         </Card>
       ) : view === "grid" ? (

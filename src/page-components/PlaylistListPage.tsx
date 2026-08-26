@@ -13,6 +13,15 @@ import {
   useCretaCoverThumbs,
 } from "@/components/creta/CretaCoverThumb";
 import {
+  CretaListSearch,
+  matchesCretaSearch,
+  normalizeCretaSearch,
+} from "@/components/creta/CretaListSearch";
+import {
+  CretaEmptyStateIcon,
+  CretaSectionIcon,
+} from "@/components/creta/CretaSectionIcon";
+import {
   CretaViewToggle,
   useCretaListView,
 } from "@/components/creta/CretaViewToggle";
@@ -75,6 +84,16 @@ export function PlaylistListPage() {
     queryKey: cretaKeys.playlists(),
     queryFn: fetchCretaPlaylists,
   });
+  const [search, setSearch] = useState("");
+  const query = normalizeCretaSearch(search);
+  /** 목록 전체를 받아 두므로 걸러내기는 화면에서 바로 한다 */
+  const visiblePlaylists = useMemo(
+    () =>
+      (playlists ?? []).filter((p) =>
+        matchesCretaSearch(query, p.name, p.description),
+      ),
+    [playlists, query],
+  );
 
   const createMutation = useMutation({
     mutationFn: () => createCretaPlaylist({ name, description, loop }),
@@ -121,7 +140,10 @@ export function PlaylistListPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-heading text-2xl font-bold">플레이리스트</h1>
+          <h1 className="flex items-center gap-2 font-heading text-2xl font-bold">
+            <CretaSectionIcon section="playlists" className="size-6" />
+            플레이리스트
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             여러 크레타북을 순서대로 묶어 재생
           </p>
@@ -131,10 +153,22 @@ export function PlaylistListPage() {
         </Button>
       </div>
 
+      <CretaListSearch
+        value={search}
+        onChange={setSearch}
+        placeholder="플레이리스트 이름·설명 검색…"
+        label="플레이리스트 검색"
+      />
+
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-medium text-muted-foreground">
           저장된 플레이리스트{" "}
-          <span className="text-foreground">{playlists?.length ?? 0}</span>
+          <span className="text-foreground">{visiblePlaylists.length}</span>
+          {query ? (
+            <span className="ml-1 text-xs">
+              / 전체 {playlists?.length ?? 0}
+            </span>
+          ) : null}
         </p>
         <CretaViewToggle view={view} onChange={changeView} />
       </div>
@@ -143,17 +177,19 @@ export function PlaylistListPage() {
         <div className="flex justify-center py-16">
           <Spinner className="size-6" />
         </div>
-      ) : (playlists?.length ?? 0) === 0 ? (
+      ) : visiblePlaylists.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            아직 플레이리스트가 없습니다. “새 플레이리스트”로 첫 묶음을 만들어
-            보세요.
+            <CretaEmptyStateIcon section="playlists" />
+            {query
+              ? `“${search.trim()}”와 맞는 플레이리스트가 없습니다.`
+              : "아직 플레이리스트가 없습니다. “새 플레이리스트”로 첫 묶음을 만들어 보세요."}
           </CardContent>
         </Card>
       ) : view === "list" ? (
         /* 리스트 보기 — 작은 썸네일 + 핵심 정보 한 줄 요약 */
         <div className="space-y-2">
-          {(playlists ?? []).map((playlist) => (
+          {visiblePlaylists.map((playlist) => (
             <Card key={playlist.id} className={`py-0 ${LIST_ROW_HOVER}`}>
               <CardContent className="flex items-center gap-3 px-3 py-2.5">
                 <Link
@@ -238,7 +274,7 @@ export function PlaylistListPage() {
         </div>
       ) : (
         <div className={CARD_GRID_COLUMNS}>
-          {(playlists ?? []).map((playlist) => (
+          {visiblePlaylists.map((playlist) => (
             <Card
               key={playlist.id}
               className={`group h-full gap-3 py-4 ${GRID_CARD_HOVER}`}

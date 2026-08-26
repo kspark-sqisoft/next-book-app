@@ -20,6 +20,7 @@ import {
 import { toast } from "sonner";
 
 import { BookListItem } from "@/components/books/BookListItem";
+import { CretaSectionIcon } from "@/components/creta/CretaSectionIcon";
 import { FormErrorAlert } from "@/components/forms/FormErrorAlert";
 import {
   AlertDialog,
@@ -382,7 +383,8 @@ export function BookListPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0 flex-1 space-y-3">
           <div>
-            <h1 className="font-heading text-2xl font-semibold tracking-tight">
+            <h1 className="flex items-center gap-2 font-heading text-2xl font-semibold tracking-tight">
+              <CretaSectionIcon section="studio" className="size-6" />
               스튜디오
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">

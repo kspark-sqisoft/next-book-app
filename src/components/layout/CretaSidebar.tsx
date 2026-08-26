@@ -3,22 +3,7 @@
 // 크레타 왼쪽 사이드바 — 콘텐츠(스튜디오·커뮤니티) / 재생 관리(플레이리스트·스케줄·디바이스) / 마이페이지·관리자.
 // 아이콘만 보이게 축소 가능(localStorage에 유지).
 import { useQuery } from "@tanstack/react-query";
-import {
-  BadgeDollarSign,
-  CalendarDays,
-  ChartColumn,
-  ChevronsLeft,
-  ChevronsRight,
-  Grid2x2,
-  LayoutDashboard,
-  LayoutGrid,
-  ListVideo,
-  type LucideIcon,
-  MonitorSmartphone,
-  PanelsTopLeft,
-  ShieldCheck,
-  UserRound,
-} from "lucide-react";
+import { ChevronsLeft, ChevronsRight } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSyncExternalStore } from "react";
@@ -26,6 +11,7 @@ import { useSyncExternalStore } from "react";
 import { fetchBooksPage } from "@/lib/api";
 import { isAdminUser } from "@/lib/authz";
 import { cretaDeviceStatus, fetchCretaDevices } from "@/lib/creta-api";
+import { CRETA_SECTIONS, type CretaSection } from "@/lib/creta-sections";
 import { bookKeys, cretaKeys } from "@/lib/query-keys";
 import { useDeviceOfflineNotifier } from "@/lib/use-device-offline-notifier";
 import { cn } from "@/lib/utils";
@@ -33,10 +19,13 @@ import { useAuth } from "@/stores/auth-store";
 
 const COLLAPSED_KEY = "creta.sidebar.collapsed";
 
-type Item = {
-  href: string;
-  label: string;
-  icon: LucideIcon;
+/**
+ * 사이드바 항목 = 섹션 정의(아이콘·포인트 컬러) + 사이드바 전용 표시 옵션.
+ *
+ * 글자에는 색을 입히지 않는다 — 색은 "어떤 메뉴인지", 글자·배경은 "지금 어디인지"로
+ * 역할을 나눠야 활성 표시가 묻히지 않는다.
+ */
+type Item = CretaSection & {
   /** 정확히 일치해야 활성(북 목록은 /books만) */
   exact?: boolean;
   badge?: { text: string; tone: "muted" | "online" | "super" } | null;
@@ -94,7 +83,7 @@ function SidebarItem({
         collapsed && "justify-center px-0",
       )}
     >
-      <Icon className="size-4 shrink-0" aria-hidden />
+      <Icon className={cn("size-4 shrink-0", item.iconClass)} aria-hidden />
       {!collapsed ? (
         <span className="min-w-0 flex-1 truncate">{item.label}</span>
       ) : null}
@@ -188,11 +177,9 @@ export function CretaSidebar() {
       : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
   const content: Item[] = [
-    { href: "/community", label: "커뮤니티", icon: LayoutGrid },
+    CRETA_SECTIONS.community,
     {
-      href: "/books",
-      label: "스튜디오",
-      icon: PanelsTopLeft,
+      ...CRETA_SECTIONS.studio,
       exact: true,
       badge:
         booksQuery.data != null
@@ -201,30 +188,26 @@ export function CretaSidebar() {
     },
   ];
   const playback: Item[] = [
-    { href: "/dashboard", label: "대시보드", icon: LayoutDashboard },
-    { href: "/playlists", label: "플레이리스트", icon: ListVideo },
-    { href: "/schedules", label: "스케줄", icon: CalendarDays },
+    CRETA_SECTIONS.dashboard,
+    CRETA_SECTIONS.playlists,
+    CRETA_SECTIONS.schedules,
     {
-      href: "/devices",
-      label: "디바이스",
-      icon: MonitorSmartphone,
+      ...CRETA_SECTIONS.devices,
       badge:
         devicesQuery.data != null
           ? { text: String(onlineCount), tone: "online" }
           : null,
     },
-    { href: "/walls", label: "비디오월", icon: Grid2x2 },
-    { href: "/ads", label: "광고", icon: BadgeDollarSign },
-    { href: "/reports", label: "재생 리포트", icon: ChartColumn },
+    CRETA_SECTIONS.walls,
+    CRETA_SECTIONS.ads,
+    CRETA_SECTIONS.reports,
   ];
   const account: Item[] = [
-    { href: "/account", label: "마이페이지", icon: UserRound },
+    CRETA_SECTIONS.account,
     ...(isAdminUser(user)
       ? [
           {
-            href: "/me",
-            label: "관리자",
-            icon: ShieldCheck,
+            ...CRETA_SECTIONS.admin,
             badge: { text: "SUPER", tone: "super" as const },
           },
         ]
@@ -242,17 +225,22 @@ export function CretaSidebar() {
     >
       <div
         className={cn(
-          "flex h-12 items-center border-b border-border/70 px-3",
+          /* 여백을 아래 메뉴와 같은 구조로 — nav의 p-2 + 항목의 px-2.5 를 그대로 따라가야
+             "Creta" 글자 왼쪽 끝이 아이콘 왼쪽 끝과 한 줄에 선다 */
+          "flex h-12 items-center border-b border-border/70 px-2",
           collapsed && "justify-center px-0",
         )}
       >
+        {/* 접히면 글자가 숨으므로 머리글자만 남긴다 — 헤더가 비지 않게 */}
         <Link
           href="/community"
-          className="flex items-center gap-2 font-heading text-base font-bold"
+          className={cn(
+            "font-heading text-base font-bold",
+            !collapsed && "px-2.5",
+          )}
           title="Creta"
         >
-          <span className="size-2 rounded-full bg-primary" aria-hidden />
-          {!collapsed ? <span>Creta</span> : null}
+          {collapsed ? "C" : "Creta"}
         </Link>
       </div>
       <nav className="flex-1 space-y-2 overflow-y-auto p-2">

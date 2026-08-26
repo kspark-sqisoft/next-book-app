@@ -17,6 +17,10 @@ import {
   useCretaCoverThumbs,
 } from "@/components/creta/CretaCoverThumb";
 import { CretaLikeButton } from "@/components/creta/CretaLikeButton";
+import {
+  CretaEmptyStateIcon,
+  CretaSectionIcon,
+} from "@/components/creta/CretaSectionIcon";
 import { AuthorAvatarInline } from "@/components/posts/AuthorAvatarInline";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -143,7 +147,10 @@ export function CommunityPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-heading text-2xl font-bold">커뮤니티</h1>
+          <h1 className="flex items-center gap-2 font-heading text-2xl font-bold">
+            <CretaSectionIcon section="community" className="size-6" />
+            커뮤니티
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             모든 사용자가 만든 북·플레이리스트를 둘러보고 댓글로 의견을 나눠
             보세요.
@@ -186,6 +193,7 @@ export function CommunityPage() {
       ) : items.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
+            <CretaEmptyStateIcon section="community" />
             표시할 콘텐츠가 없습니다.
           </CardContent>
         </Card>

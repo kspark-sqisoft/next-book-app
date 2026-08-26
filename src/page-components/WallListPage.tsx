@@ -5,9 +5,18 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Crown, Grid2x2, MonitorPlay, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import {
+  CretaListSearch,
+  matchesCretaSearch,
+  normalizeCretaSearch,
+} from "@/components/creta/CretaListSearch";
+import {
+  CretaEmptyStateIcon,
+  CretaSectionIcon,
+} from "@/components/creta/CretaSectionIcon";
 import {
   CretaViewToggle,
   useCretaListView,
@@ -92,13 +101,22 @@ export function WallListPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const list = walls ?? [];
+  const [search, setSearch] = useState("");
+  const query = normalizeCretaSearch(search);
+  /** 목록 전체를 받아 두므로 걸러내기는 화면에서 바로 한다 */
+  const list = useMemo(
+    () => (walls ?? []).filter((w) => matchesCretaSearch(query, w.name)),
+    [walls, query],
+  );
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-heading text-2xl font-bold">비디오월</h1>
+          <h1 className="flex items-center gap-2 font-heading text-2xl font-bold">
+            <CretaSectionIcon section="walls" className="size-6" />
+            비디오월
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             디바이스 여러 대를 묶어 타일 분할·동시 재생을 동기화합니다.
             (플레이어 시뮬레이션)
@@ -122,6 +140,13 @@ export function WallListPage() {
         </div>
       </div>
 
+      <CretaListSearch
+        value={search}
+        onChange={setSearch}
+        placeholder="비디오월 이름 검색…"
+        label="비디오월 검색"
+      />
+
       {isLoading ? (
         <div className="flex justify-center py-16">
           <Spinner className="size-6" />
@@ -129,8 +154,10 @@ export function WallListPage() {
       ) : list.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            아직 비디오월이 없습니다. “비디오월 만들기”로 디바이스를 묶어
-            보세요.
+            <CretaEmptyStateIcon section="walls" />
+            {query
+              ? `“${search.trim()}”와 맞는 비디오월이 없습니다.`
+              : "아직 비디오월이 없습니다. “비디오월 만들기”로 디바이스를 묶어 보세요."}
           </CardContent>
         </Card>
       ) : view === "list" ? (

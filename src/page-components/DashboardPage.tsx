@@ -21,6 +21,7 @@ import {
   CretaCoverThumb,
   useCretaCoverThumbs,
 } from "@/components/creta/CretaCoverThumb";
+import { CretaSectionIcon } from "@/components/creta/CretaSectionIcon";
 import { DeviceStatusBadge } from "@/components/creta/DeviceStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -138,7 +139,10 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-heading text-2xl font-bold">운영 대시보드</h1>
+        <h1 className="flex items-center gap-2 font-heading text-2xl font-bold">
+          <CretaSectionIcon section="dashboard" className="size-6" />
+          운영 대시보드
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           디바이스 상태와 재생 현황을 한눈에 봅니다. 10초마다 자동 갱신됩니다.
         </p>
@@ -210,52 +214,65 @@ export function DashboardPage() {
                 </div>
               ) : (
                 <>
-                  {/* 일자별 스택 막대 — 아래(정상)부터 위(오프라인)로 쌓는다 */}
-                  <div className="flex h-28 items-end gap-1">
+                  {/* 일자별 스택 막대 — 아래(정상)부터 위(오프라인)로 쌓는다.
+                      막대는 24px로 제한하고 남는 폭은 여백으로 둔다. 슬롯을 꽉 채우면
+                      7일처럼 막대가 적을 때 200px짜리 색 덩어리가 되어 차트로 안 읽힌다.
+                      항상 100%를 채우는 구성 막대라 위아래 모두 둥글게. 24px 폭에 rounded-full은
+                      반원이 되어 과하므로 8px로 — 부드럽되 원형은 아니게. */}
+                  <div className="flex h-28 items-end">
                     {uptime.byDay.map((d) => {
                       const total = d.online + d.error + d.offline;
                       const p = (n: number) =>
                         total > 0 ? Math.round((100 * n) / total) : 0;
                       const label = d.date.slice(5).replace("-", "/");
                       return (
+                        /* 바깥은 폭을 나누는 빈 밴드, 안쪽이 실제 막대 */
                         <div
                           key={d.date}
-                          className="flex h-full min-w-0 flex-1 flex-col justify-end overflow-hidden rounded-sm bg-muted/30"
-                          title={
-                            total > 0
-                              ? `${label} · 정상 ${p(d.online)}% · 비정상 ${p(d.error)}% · 오프라인 ${p(d.offline)}%`
-                              : `${label} · 데이터 없음`
-                          }
+                          className="flex h-full min-w-0 flex-1 justify-center px-px"
                         >
                           <div
-                            className="w-full bg-zinc-500/60"
-                            style={{ height: `${p(d.offline)}%` }}
-                          />
-                          <div
-                            className="w-full bg-red-500/85"
-                            style={{ height: `${p(d.error)}%` }}
-                          />
-                          <div
-                            className="w-full bg-emerald-500/80"
-                            style={{ height: `${p(d.online)}%` }}
-                          />
+                            className="flex h-full w-full max-w-6 flex-col justify-end overflow-hidden rounded-lg bg-muted/30"
+                            title={
+                              total > 0
+                                ? `${label} · 정상 ${p(d.online)}% · 비정상 ${p(d.error)}% · 오프라인 ${p(d.offline)}%`
+                                : `${label} · 데이터 없음`
+                            }
+                          >
+                            <div
+                              className="w-full bg-zinc-500/60"
+                              style={{ height: `${p(d.offline)}%` }}
+                            />
+                            <div
+                              className="w-full bg-red-500/85"
+                              style={{ height: `${p(d.error)}%` }}
+                            />
+                            <div
+                              className="w-full bg-emerald-500/80"
+                              style={{ height: `${p(d.online)}%` }}
+                            />
+                          </div>
                         </div>
                       );
                     })}
                   </div>
-                  <div className="flex justify-between text-[10px] tabular-nums text-muted-foreground">
-                    <span>
-                      {uptime.byDay[0]?.date.slice(5).replace("-", "/")}
-                    </span>
-                    <span>
-                      {uptime.byDay
-                        .at(Math.floor(uptime.byDay.length / 2))
-                        ?.date.slice(5)
-                        .replace("-", "/")}
-                    </span>
-                    <span>
-                      {uptime.byDay.at(-1)?.date.slice(5).replace("-", "/")}
-                    </span>
+                  {/* 날짜 축 — 막대와 같은 밴드로 나눠 첫·중간·마지막만 표시(막대 바로 아래 정렬) */}
+                  <div className="flex text-[10px] tabular-nums text-muted-foreground">
+                    {uptime.byDay.map((d, i) => {
+                      const isTick =
+                        i === 0 ||
+                        i === Math.floor(uptime.byDay.length / 2) ||
+                        i === uptime.byDay.length - 1;
+                      return (
+                        <span
+                          key={d.date}
+                          className="min-w-0 flex-1 text-center"
+                          aria-hidden={!isTick}
+                        >
+                          {isTick ? d.date.slice(5).replace("-", "/") : ""}
+                        </span>
+                      );
+                    })}
                   </div>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
                     <span className="inline-flex items-center gap-1.5">

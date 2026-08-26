@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChartColumn, MonitorSmartphone, PlaySquare } from "lucide-react";
 import { useState } from "react";
 
+import { CretaSectionIcon } from "@/components/creta/CretaSectionIcon";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
@@ -96,7 +97,10 @@ export function PlayReportPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-heading text-2xl font-bold">재생 리포트</h1>
+          <h1 className="flex items-center gap-2 font-heading text-2xl font-bold">
+            <CretaSectionIcon section="reports" className="size-6" />
+            재생 리포트
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Proof-of-Play — 어떤 콘텐츠가 언제, 어느 디바이스에서 몇 번
             재생됐는지 확인합니다. (플레이어 시뮬레이션 기준)

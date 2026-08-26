@@ -22,6 +22,7 @@ import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { AdMediaThumb } from "@/components/creta/AdMediaThumb";
+import { CretaSectionIcon } from "@/components/creta/CretaSectionIcon";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -422,7 +423,10 @@ export function AdsPage() {
       />
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-heading text-2xl font-bold">광고</h1>
+          <h1 className="flex items-center gap-2 font-heading text-2xl font-bold">
+            <CretaSectionIcon section="ads" className="size-6" />
+            광고
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             광고주·캠페인·소재를 관리합니다. 활성 캠페인의 소재는 북에 배치한
             광고 위젯(구좌)에서 순환 재생됩니다.
