@@ -105,11 +105,20 @@ function loadStored(): PanelStored | null {
   return null;
 }
 
+/** 도크 패널 폭 추정 — 레일 오른쪽에 붙는 패널 */
+const DOCK_ESTIMATE_W = 336;
+
 function defaultCoords(): { left: number; top: number } {
+  // 왼쪽 레일·도크 패널을 덮지 않게 캔버스 위쪽에 띄운다
+  // (body 포털이라 겹치면 아래 UI 클릭을 막는다) — 좁은 화면은 왼쪽 여백으로.
+  // 레일은 접힘/펼침에 따라 폭이 달라지므로 고정값 대신 실제 폭을 잰다.
+  const rail = document.querySelector('nav[aria-label="편집 메뉴"]');
+  const railW = rail?.getBoundingClientRect().width ?? 56;
   return {
-    // 왼쪽 아이콘 레일·도크 패널(≈380px)을 덮지 않게 캔버스 위쪽에 띄운다
-    // (body 포털이라 겹치면 아래 UI 클릭을 막는다) — 좁은 화면은 왼쪽 여백으로
-    left: window.innerWidth < 800 ? VIEW_MARGIN : 392,
+    left:
+      window.innerWidth < 800
+        ? VIEW_MARGIN
+        : Math.round(railW + DOCK_ESTIMATE_W) + VIEW_MARGIN,
     top: Math.max(VIEW_MARGIN, 96),
   };
 }

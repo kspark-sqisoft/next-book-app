@@ -54,13 +54,15 @@ import {
 import { cn } from "@/lib/utils";
 
 /** 텍스트·이미지·동영상은 항상 맨 앞 순서, 그 외 위젯은 뒤에 둡니다. */
+// 미디어 계열은 모두 같은 흐름 — 끌어다 놓으면 빈 자리가 먼저 배치되고,
+// 우클릭(또는 인스펙터)으로 파일·라이브러리에서 채운다.
 const ITEMS: { kind: BookDropWidgetKind; label: string; icon: LucideIcon }[] = [
   { kind: "text", label: "텍스트", icon: Type },
+  { kind: "mediaPlaylist", label: "미디어", icon: ListVideo },
   { kind: "image", label: "이미지", icon: ImagePlus },
   { kind: "video", label: "동영상", icon: Video },
   { kind: "weather", label: "날씨", icon: CloudSun },
   { kind: "news", label: "뉴스", icon: Newspaper },
-  { kind: "mediaPlaylist", label: "미디어", icon: ListVideo },
   { kind: "digitalClock", label: "디지털 시계", icon: Clock },
   { kind: "webview", label: "웹뷰", icon: Globe },
   { kind: "map", label: "지도", icon: MapPin },
@@ -241,7 +243,8 @@ function BookWidgetPaletteDocked({
         ) : null}
       </div>
       <p className="shrink-0 px-3 pt-2 text-[11px] leading-snug text-muted-foreground">
-        아래를 슬라이드로 끌어다 놓으세요.
+        아래를 슬라이드로 끌어다 놓으세요
+        {onQuickAdd ? " (더블 클릭해도 배치됩니다)" : ""}.
       </p>
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain p-2 [-webkit-overflow-scrolling:touch]">
         <div className="flex flex-col gap-2">
@@ -488,6 +491,7 @@ function BookWidgetPaletteFloating({
           {!collapsed ? (
             <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
               아래를 슬라이드로 끌어다 놓으세요
+              {onQuickAdd ? " (더블 클릭해도 배치됩니다)" : ""}
             </p>
           ) : null}
         </div>

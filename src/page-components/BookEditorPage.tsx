@@ -992,6 +992,33 @@ export function BookEditorPage() {
     [activePageIndex, updatePages],
   );
 
+  /** 이미지·동영상 빈 자리 — 저장 전에도 배치는 되고, 파일은 저장 후 채운다 */
+  const addEmptyMediaAt = useCallback(
+    (x: number, y: number, kind: "image" | "video") => {
+      const id = crypto.randomUUID();
+      const el: BookCanvasElement =
+        kind === "image"
+          ? { id, type: "image", x, y, width: 400, height: 260, src: "" }
+          : {
+              id,
+              type: "video",
+              x,
+              y,
+              width: 480,
+              height: 270,
+              src: "",
+              posterSrc: null,
+            };
+      updatePages((draft) => {
+        const p = draft[activePageIndex];
+        if (p) p.elements.push(el);
+      });
+      setSelectedIds([id]);
+      toast.info("자리를 놓았습니다 — 북을 저장한 뒤 파일을 채울 수 있습니다.");
+    },
+    [activePageIndex, updatePages],
+  );
+
   const onDropWidget = useCallback(
     (point: { x: number; y: number }, kind: BookDropWidgetKind) => {
       if (kind === "text") {
@@ -1046,9 +1073,13 @@ export function BookEditorPage() {
         addMediaPlaylistAt(point.x, point.y);
         return;
       }
-      toast.error(
-        "저장한 뒤 열린 북 화면에서 이미지·동영상 위젯을 넣을 수 있습니다.",
-      );
+      if (kind === "image" || kind === "video") {
+        // 미디어 위젯과 같은 흐름 — 빈 자리를 먼저 놓는다.
+        // 파일 채우기는 업로드에 북 id가 필요해 저장 후에 가능하다.
+        addEmptyMediaAt(point.x, point.y, kind);
+        return;
+      }
+      toast.error("지원하지 않는 위젯 종류입니다.");
     },
     [
       addCalendarAt,
@@ -1064,6 +1095,7 @@ export function BookEditorPage() {
       addWebviewAt,
       addYoutubeAt,
       addAdSlotAt,
+      addEmptyMediaAt,
     ],
   );
 
