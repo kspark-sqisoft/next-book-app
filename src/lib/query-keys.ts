@@ -56,6 +56,9 @@ export const cretaKeys = {
   /** 재생 리포트(Proof-of-Play) — 기간(일)별 */
   playReport: (rangeDays: number) =>
     [...cretaKeys.all, "play-report", rangeDays] as const,
+  /** 디바이스 가동률·장애율 — 기간(일)별 */
+  deviceUptime: (rangeDays: number) =>
+    [...cretaKeys.all, "device-uptime", rangeDays] as const,
   /** 비디오월(동기 재생 시뮬레이션) */
   walls: () => [...cretaKeys.all, "walls"] as const,
   wall: (id: number) => [...cretaKeys.all, "wall", id] as const,

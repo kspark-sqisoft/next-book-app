@@ -30,14 +30,18 @@ const BOOK_WORKSPACE_CHROME_HEADER_KEY =
 const BOOK_WORKSPACE_CHROME_FOOTER_KEY =
   "book-workspace-chrome-footer-collapsed";
 
-/** `true` = 접힘. 저장값 없음 → 북 상세 첫 진입은 접힌 상태가 기본 */
-function readBookChromeCollapsed(key: string): boolean {
+/**
+ * `"1"`=접힘, `"0"`=펼침, 저장값 없음 → null(라우트 기본: 북 상세만 접힘).
+ * SSR과 첫 클라이언트 렌더를 맞추기 위해 마운트 후 효과에서만 호출한다.
+ */
+function readBookChromeCollapsed(key: string): boolean | null {
   try {
     const v = localStorage.getItem(key);
+    if (v === "1") return true;
     if (v === "0") return false;
-    return true;
+    return null;
   } catch {
-    return true;
+    return null;
   }
 }
 
@@ -131,12 +135,22 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const homeRoute = location.pathname === "/";
   const fullViewportShell = bookShellRoute || homeRoute;
 
-  const [bookSiteHeaderCollapsed, setBookSiteHeaderCollapsed] = useState(() =>
-    readBookChromeCollapsed(BOOK_WORKSPACE_CHROME_HEADER_KEY),
-  );
-  const [bookSiteFooterCollapsed, setBookSiteFooterCollapsed] = useState(() =>
-    readBookChromeCollapsed(BOOK_WORKSPACE_CHROME_FOOTER_KEY),
-  );
+  /**
+   * 저장된 접힘 선호(null = 저장값 없음 → 라우트 기본).
+   * SSR엔 localStorage가 없어 초기값은 항상 null — 마운트 후 효과에서 복원해야
+   * 하이드레이션이 어긋나지 않는다.
+   */
+  const [storedHeaderCollapsed, setBookSiteHeaderCollapsed] = useState<
+    boolean | null
+  >(null);
+  const [storedFooterCollapsed, setBookSiteFooterCollapsed] = useState<
+    boolean | null
+  >(null);
+  /** 실제 접힘 — 저장값이 없으면 북 상세만 접힌 상태가 기본, 그 외 크레타 페이지는 펼침 */
+  const bookSiteHeaderCollapsed =
+    storedHeaderCollapsed ?? bookDetailChromeRoute;
+  const bookSiteFooterCollapsed =
+    storedFooterCollapsed ?? bookDetailChromeRoute;
   const bookDetailChromeEnteredRef = useRef(false);
 
   // 메뉴 첫 클릭이 RSC 페치 대기로 “안 먹는 것처럼” 느껴지는 것 완화 — 주요 탭은 백그라운드 프리패치
@@ -181,20 +195,21 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }, [chromeCollapsibleRoute]);
 
   useEffect(() => {
-    if (!chromeCollapsibleRoute) return;
+    // 사용자가 명시적으로 토글했을 때만 저장(null = 아직 선호 없음)
+    if (!chromeCollapsibleRoute || storedHeaderCollapsed == null) return;
     writeBookChromeCollapsed(
       BOOK_WORKSPACE_CHROME_HEADER_KEY,
-      bookSiteHeaderCollapsed,
+      storedHeaderCollapsed,
     );
-  }, [chromeCollapsibleRoute, bookSiteHeaderCollapsed]);
+  }, [chromeCollapsibleRoute, storedHeaderCollapsed]);
 
   useEffect(() => {
-    if (!chromeCollapsibleRoute) return;
+    if (!chromeCollapsibleRoute || storedFooterCollapsed == null) return;
     writeBookChromeCollapsed(
       BOOK_WORKSPACE_CHROME_FOOTER_KEY,
-      bookSiteFooterCollapsed,
+      storedFooterCollapsed,
     );
-  }, [chromeCollapsibleRoute, bookSiteFooterCollapsed]);
+  }, [chromeCollapsibleRoute, storedFooterCollapsed]);
 
   const showBookSiteHeader =
     !chromeCollapsibleRoute || !bookSiteHeaderCollapsed;

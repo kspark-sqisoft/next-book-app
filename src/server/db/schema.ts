@@ -715,6 +715,29 @@ export const cretaPlayLog = pgTable(
 );
 
 /**
+ * 디바이스 상태 스냅샷(시간당 1행) — 가동률·장애율 리포트용.
+ * 실제 헬스 수집기가 없어 조회 시점에 지연 적재(시뮬레이션)한다.
+ */
+export const cretaDeviceStatusLog = pgTable(
+  "creta_device_status_log",
+  {
+    id: serial("id").primaryKey(),
+    deviceId: integer("deviceId")
+      .notNull()
+      .references(() => cretaDevice.id, { onDelete: "cascade" }),
+    status: varchar("status", { length: 12 }).notNull(), // online|error|offline
+    checkedAt: timestamp("checkedAt", { mode: "date" }).notNull(),
+  },
+  (t) => [
+    index("creta_device_status_log_device_time_idx").on(
+      t.deviceId,
+      t.checkedAt,
+    ),
+    index("creta_device_status_log_time_idx").on(t.checkedAt),
+  ],
+);
+
+/**
  * 광고 전역 설정(단일 행) — 전체 화면 루프 삽입 정책과 하우스 광고(빈 구좌 채움).
  * loopEveryN = 프레젠테이션에서 N페이지 재생마다 전체 화면 광고 1스팟(0 = 끔)
  */

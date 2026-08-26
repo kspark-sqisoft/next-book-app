@@ -5,12 +5,13 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity,
+  HeartPulse,
   MonitorSmartphone,
   PlaySquare,
   TriangleAlert,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import {
   CretaAlertBanner,
@@ -20,6 +21,7 @@ import { DeviceStatusBadge } from "@/components/creta/DeviceStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BOOK_AUDIT_ACTION_LABEL, fetchRecentBookAudit } from "@/lib/api";
 import {
   type CretaDevice,
@@ -28,6 +30,8 @@ import {
   PLAY_SOURCE_LABEL,
 } from "@/lib/creta-api";
 import {
+  type DeviceUptimeRange,
+  fetchCretaDeviceUptime,
   fetchCretaPlayReport,
   formatPlayDuration,
 } from "@/lib/creta-reports-api";
@@ -75,6 +79,13 @@ export function DashboardPage() {
   const { data: todayReport } = useQuery({
     queryKey: cretaKeys.playReport(1),
     queryFn: () => fetchCretaPlayReport(1),
+    refetchInterval: 60_000,
+  });
+  /** 디바이스 가동률·장애율(기간별) — 시간당 상태 스냅샷 집계 */
+  const [uptimeRange, setUptimeRange] = useState<DeviceUptimeRange>(7);
+  const { data: uptime } = useQuery({
+    queryKey: cretaKeys.deviceUptime(uptimeRange),
+    queryFn: () => fetchCretaDeviceUptime(uptimeRange),
     refetchInterval: 60_000,
   });
 
@@ -142,6 +153,149 @@ export function DashboardPage() {
               </Card>
             ))}
           </div>
+
+          {/* 디바이스 가동률·장애율 — 시간당 상태 스냅샷(시뮬레이션)의 기간별 집계 */}
+          <Card>
+            <CardContent className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="flex items-center gap-1.5 text-sm font-semibold">
+                  <HeartPulse className="size-4 text-emerald-500" aria-hidden />
+                  디바이스 가동률·장애율
+                  {uptime ? (
+                    <span className="font-normal text-muted-foreground">
+                      평균 가동률{" "}
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                        {uptime.overallUptimePct}%
+                      </span>{" "}
+                      · 장애율{" "}
+                      <span className="font-semibold text-red-600 dark:text-red-400">
+                        {uptime.overallErrorPct}%
+                      </span>
+                    </span>
+                  ) : null}
+                </p>
+                <Tabs
+                  value={String(uptimeRange)}
+                  onValueChange={(v) =>
+                    setUptimeRange(Number(v) as DeviceUptimeRange)
+                  }
+                >
+                  <TabsList className="h-7">
+                    <TabsTrigger value="7" className="px-2 text-xs">
+                      최근 7일
+                    </TabsTrigger>
+                    <TabsTrigger value="30" className="px-2 text-xs">
+                      최근 30일
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+              {!uptime ? (
+                <div className="flex justify-center py-10">
+                  <Spinner className="size-5" />
+                </div>
+              ) : (
+                <>
+                  {/* 일자별 스택 막대 — 아래(정상)부터 위(오프라인)로 쌓는다 */}
+                  <div className="flex h-28 items-end gap-1">
+                    {uptime.byDay.map((d) => {
+                      const total = d.online + d.error + d.offline;
+                      const p = (n: number) =>
+                        total > 0 ? Math.round((100 * n) / total) : 0;
+                      const label = d.date.slice(5).replace("-", "/");
+                      return (
+                        <div
+                          key={d.date}
+                          className="flex h-full min-w-0 flex-1 flex-col justify-end overflow-hidden rounded-sm bg-muted/30"
+                          title={
+                            total > 0
+                              ? `${label} · 정상 ${p(d.online)}% · 비정상 ${p(d.error)}% · 오프라인 ${p(d.offline)}%`
+                              : `${label} · 데이터 없음`
+                          }
+                        >
+                          <div
+                            className="w-full bg-zinc-500/60"
+                            style={{ height: `${p(d.offline)}%` }}
+                          />
+                          <div
+                            className="w-full bg-red-500/85"
+                            style={{ height: `${p(d.error)}%` }}
+                          />
+                          <div
+                            className="w-full bg-emerald-500/80"
+                            style={{ height: `${p(d.online)}%` }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex justify-between text-[10px] tabular-nums text-muted-foreground">
+                    <span>
+                      {uptime.byDay[0]?.date.slice(5).replace("-", "/")}
+                    </span>
+                    <span>
+                      {uptime.byDay
+                        .at(Math.floor(uptime.byDay.length / 2))
+                        ?.date.slice(5)
+                        .replace("-", "/")}
+                    </span>
+                    <span>
+                      {uptime.byDay.at(-1)?.date.slice(5).replace("-", "/")}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="size-2.5 rounded-sm bg-emerald-500/80" />
+                      정상
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="size-2.5 rounded-sm bg-red-500/85" />
+                      비정상(장애)
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="size-2.5 rounded-sm bg-zinc-500/60" />
+                      오프라인
+                    </span>
+                  </div>
+
+                  {/* 디바이스별 가동률 — 문제 많은 단말부터 */}
+                  <div className="space-y-1.5 border-t border-border/60 pt-3">
+                    {uptime.byDevice.map((d) => (
+                      <Link
+                        key={d.deviceId}
+                        href={`/devices/${d.deviceId}`}
+                        className="flex items-center gap-3 rounded-md px-1 py-1 outline-none hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <span
+                          className="w-40 shrink-0 truncate text-xs font-medium sm:w-52"
+                          title={`${d.deviceName} · ${d.location || "위치 미지정"}`}
+                        >
+                          {d.deviceName}
+                        </span>
+                        <span className="flex h-2.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted/40">
+                          <span
+                            className="h-full bg-emerald-500/80"
+                            style={{ width: `${d.uptimePct}%` }}
+                          />
+                          <span
+                            className="h-full bg-red-500/85"
+                            style={{ width: `${d.errorPct}%` }}
+                          />
+                          <span
+                            className="h-full bg-zinc-500/60"
+                            style={{ width: `${d.offlinePct}%` }}
+                          />
+                        </span>
+                        <span className="w-14 shrink-0 text-right text-xs tabular-nums">
+                          {d.uptimePct}%
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Card>

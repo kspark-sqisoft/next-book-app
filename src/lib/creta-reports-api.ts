@@ -1,5 +1,8 @@
 // 재생 리포트(Proof-of-Play) 클라이언트 API + 표시 헬퍼
-import { getCretaPlayReportAction } from "@/actions/creta-reports";
+import {
+  getCretaDeviceUptimeAction,
+  getCretaPlayReportAction,
+} from "@/actions/creta-reports";
 import { humanizeServerActionError } from "@/lib/api";
 
 export const PLAY_REPORT_RANGES = [1, 7, 30] as const;
@@ -45,6 +48,43 @@ export async function fetchCretaPlayReport(
     return (await getCretaPlayReportAction(
       rangeDays,
     )) as unknown as CretaPlayReport;
+  } catch (e) {
+    throw humanizeServerActionError(e);
+  }
+}
+
+export const DEVICE_UPTIME_RANGES = [7, 30] as const;
+export type DeviceUptimeRange = (typeof DEVICE_UPTIME_RANGES)[number];
+
+export type CretaDeviceUptime = {
+  rangeDays: DeviceUptimeRange;
+  generatedAt: string;
+  overallUptimePct: number;
+  overallErrorPct: number;
+  byDay: {
+    date: string;
+    online: number;
+    error: number;
+    offline: number;
+  }[];
+  byDevice: {
+    deviceId: number;
+    deviceName: string;
+    location: string;
+    uptimePct: number;
+    errorPct: number;
+    offlinePct: number;
+    samples: number;
+  }[];
+};
+
+export async function fetchCretaDeviceUptime(
+  rangeDays: DeviceUptimeRange,
+): Promise<CretaDeviceUptime> {
+  try {
+    return (await getCretaDeviceUptimeAction(
+      rangeDays,
+    )) as unknown as CretaDeviceUptime;
   } catch (e) {
     throw humanizeServerActionError(e);
   }
