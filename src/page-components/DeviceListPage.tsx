@@ -387,13 +387,14 @@ export function DeviceListPage() {
               <div
                 key={device.id}
                 className={cn(
-                  "flex flex-wrap items-center gap-4 px-4 py-3 sm:px-6",
+                  "flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-6",
                   LIST_ROW_INSIDE_CARD_HOVER,
                 )}
               >
+                {/* 모바일은 basis-full로 본문이 한 줄을 전부 쓰고 버튼은 아랫줄로 내려간다 */}
                 <Link
                   href={`/devices/${device.id}`}
-                  className="flex min-w-0 flex-1 items-center gap-4 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex min-w-0 grow basis-full items-center gap-4 outline-none focus-visible:ring-2 focus-visible:ring-ring sm:basis-0"
                 >
                   <div className="relative h-12 w-20 shrink-0 overflow-hidden rounded-md">
                     <CretaCoverThumb
@@ -453,7 +454,7 @@ export function DeviceListPage() {
                     </div>
                   </div>
                 </Link>
-                <div className="flex shrink-0 items-center gap-1.5">
+                <div className="ml-auto flex shrink-0 items-center gap-1.5">
                   <Button
                     type="button"
                     variant="outline"

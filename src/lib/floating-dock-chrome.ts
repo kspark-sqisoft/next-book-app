@@ -40,12 +40,13 @@ export const floatingDockBookSiteHeaderCollapsedStripInnerClass =
 
 /**
  * 푸터 접힘: 버튼만 보임. 펼친 푸터와 같은 패딩·세로 정렬만 투명 래퍼로 맞춤.
+ * 오른쪽 여백은 같은 우하단에 뜨는 채팅 FAB(`end-4 sm:end-7`, 지름 3rem)와 겹치지 않게 그만큼 비워 둔다.
  */
 export const floatingDockBookSiteFooterCollapsedStripClass =
   "pointer-events-none fixed inset-x-0 bottom-0 z-[250]";
 
 export const floatingDockBookSiteFooterCollapsedStripInnerClass =
-  "pointer-events-none mx-auto flex w-full max-w-3xl items-center justify-end px-4 py-2 sm:py-2.5";
+  "pointer-events-none mx-auto flex w-full max-w-3xl items-center justify-end ps-4 pe-[4.5rem] py-2 sm:pe-[5.25rem] sm:py-2.5";
 
 /** 닫힌 상태 FAB: 동일 외경·아이콘 크기(Button `size="icon"` 기본 8은 className으로 덮음) */
 export const floatingDockFabButtonClass =
