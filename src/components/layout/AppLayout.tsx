@@ -119,8 +119,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const bookShellRoute =
     location.pathname === "/books/new" ||
     /^\/books\/\d+$/.test(location.pathname);
-  /** 북 **상세**(`/books/:숫자`)만 사이트 헤더·푸터 접기/펼치기 — `/books/new`·그 외 라우트는 항상 헤더·푸터 표시 */
+  /** 북 **상세**(`/books/:숫자`) — 워크스페이스 전용 레이아웃 판별 */
   const bookDetailChromeRoute = /^\/books\/\d+$/.test(location.pathname);
+  /** 크레타 하위 전체(스튜디오 목록·대시보드·북 상세)에서 사이트 헤더·푸터 접기/펼치기 — `/books/new`·그 외 라우트는 항상 표시 */
+  const chromeCollapsibleRoute = bookDetailChromeRoute || cretaSubNavRoute;
   /** 북 슬라이드쇼 미리보기 — 전체 화면에 가깝게 쓰므로 플로팅 채팅 숨김 */
   const bookPresentationPreviewRoute = /^\/books\/\d+\/preview$/.test(
     location.pathname,
@@ -162,7 +164,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }, [user, router]);
 
   useEffect(() => {
-    if (!bookDetailChromeRoute) {
+    if (!chromeCollapsibleRoute) {
       bookDetailChromeEnteredRef.current = false;
       return;
     }
@@ -176,28 +178,28 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         readBookChromeCollapsed(BOOK_WORKSPACE_CHROME_FOOTER_KEY),
       );
     });
-  }, [bookDetailChromeRoute]);
+  }, [chromeCollapsibleRoute]);
 
   useEffect(() => {
-    if (!bookDetailChromeRoute) return;
+    if (!chromeCollapsibleRoute) return;
     writeBookChromeCollapsed(
       BOOK_WORKSPACE_CHROME_HEADER_KEY,
       bookSiteHeaderCollapsed,
     );
-  }, [bookDetailChromeRoute, bookSiteHeaderCollapsed]);
+  }, [chromeCollapsibleRoute, bookSiteHeaderCollapsed]);
 
   useEffect(() => {
-    if (!bookDetailChromeRoute) return;
+    if (!chromeCollapsibleRoute) return;
     writeBookChromeCollapsed(
       BOOK_WORKSPACE_CHROME_FOOTER_KEY,
       bookSiteFooterCollapsed,
     );
-  }, [bookDetailChromeRoute, bookSiteFooterCollapsed]);
+  }, [chromeCollapsibleRoute, bookSiteFooterCollapsed]);
 
   const showBookSiteHeader =
-    !bookShellRoute || !bookDetailChromeRoute || !bookSiteHeaderCollapsed;
+    !chromeCollapsibleRoute || !bookSiteHeaderCollapsed;
   const showBookSiteFooter =
-    !bookShellRoute || !bookDetailChromeRoute || !bookSiteFooterCollapsed;
+    !chromeCollapsibleRoute || !bookSiteFooterCollapsed;
 
   /** 본문 — 크레타 영역에서는 사이드바 옆에, 그 외에는 단독으로 배치 */
   const mainEl = (
@@ -304,7 +306,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   >
                     로그아웃
                   </Button>
-                  {bookDetailChromeRoute ? (
+                  {chromeCollapsibleRoute ? (
                     <Button
                       type="button"
                       variant="outline"
@@ -330,7 +332,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       회원가입
                     </Link>
                   </Button>
-                  {bookDetailChromeRoute ? (
+                  {chromeCollapsibleRoute ? (
                     <Button
                       type="button"
                       variant="outline"
@@ -349,9 +351,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
       ) : null}
-      {bookDetailChromeRoute && bookSiteHeaderCollapsed ? (
+      {chromeCollapsibleRoute && bookSiteHeaderCollapsed ? (
         <div className={floatingDockBookSiteHeaderCollapsedStripClass}>
-          <div className={floatingDockBookSiteHeaderCollapsedStripInnerClass}>
+          <div
+            className={cn(
+              floatingDockBookSiteHeaderCollapsedStripInnerClass,
+              /* 크레타 목록·대시보드는 넓은 컬럼이라 펼침 버튼도 같은 정렬선에 */
+              !bookShellRoute && WIDE_COLUMN,
+            )}
+          >
             <Button
               type="button"
               variant="outline"
@@ -462,7 +470,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   </NavLink>
                 </>
               )}
-              {bookDetailChromeRoute ? (
+              {chromeCollapsibleRoute ? (
                 <Button
                   type="button"
                   variant="outline"
@@ -479,9 +487,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </footer>
       ) : null}
-      {bookDetailChromeRoute && bookSiteFooterCollapsed ? (
+      {chromeCollapsibleRoute && bookSiteFooterCollapsed ? (
         <div className={floatingDockBookSiteFooterCollapsedStripClass}>
-          <div className={floatingDockBookSiteFooterCollapsedStripInnerClass}>
+          <div
+            className={cn(
+              floatingDockBookSiteFooterCollapsedStripInnerClass,
+              !bookShellRoute && WIDE_COLUMN,
+            )}
+          >
             <Button
               type="button"
               variant="outline"
