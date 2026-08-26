@@ -151,17 +151,20 @@ export function PlayReportPage() {
                   </p>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    {/* 콘텐츠 이름이 핵심 정보 — 고정 레이아웃으로 이름 열을 최대한 넓힌다 */}
+                    <table className="w-full table-fixed text-sm">
                       <thead>
                         <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                          <th className="py-2 pr-2 font-medium">콘텐츠</th>
-                          <th className="px-2 py-2 text-right font-medium">
+                          <th className="w-[46%] py-2 pr-2 font-medium">
+                            콘텐츠
+                          </th>
+                          <th className="w-[14%] px-2 py-2 text-right font-medium">
                             횟수
                           </th>
-                          <th className="px-2 py-2 text-right font-medium">
+                          <th className="w-[18%] px-2 py-2 text-right font-medium">
                             재생 시간
                           </th>
-                          <th className="py-2 pl-2 text-right font-medium">
+                          <th className="w-[22%] py-2 pl-2 text-right font-medium">
                             마지막 재생
                           </th>
                         </tr>
@@ -180,7 +183,10 @@ export function PlayReportPage() {
                                 >
                                   {kindLabel(row.kind)}
                                 </Badge>
-                                <span className="truncate font-medium">
+                                <span
+                                  className="truncate font-medium"
+                                  title={row.title}
+                                >
                                   {row.title}
                                 </span>
                               </div>
@@ -218,17 +224,20 @@ export function PlayReportPage() {
                   </p>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    {/* 디바이스명도 잘리지 않게 고정 레이아웃으로 이름 열 확보 */}
+                    <table className="w-full table-fixed text-sm">
                       <thead>
                         <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                          <th className="py-2 pr-2 font-medium">디바이스</th>
-                          <th className="px-2 py-2 text-right font-medium">
+                          <th className="w-[46%] py-2 pr-2 font-medium">
+                            디바이스
+                          </th>
+                          <th className="w-[14%] px-2 py-2 text-right font-medium">
                             횟수
                           </th>
-                          <th className="px-2 py-2 text-right font-medium">
+                          <th className="w-[18%] px-2 py-2 text-right font-medium">
                             재생 시간
                           </th>
-                          <th className="py-2 pl-2 text-right font-medium">
+                          <th className="w-[22%] py-2 pl-2 text-right font-medium">
                             마지막 재생
                           </th>
                         </tr>
@@ -240,7 +249,10 @@ export function PlayReportPage() {
                             className="border-b border-border/60 last:border-b-0"
                           >
                             <td className="max-w-0 py-2 pr-2">
-                              <span className="block truncate font-medium">
+                              <span
+                                className="block truncate font-medium"
+                                title={row.deviceName}
+                              >
                                 {row.deviceName}
                               </span>
                             </td>
@@ -281,13 +293,20 @@ export function PlayReportPage() {
                 </p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  {/* 콘텐츠 열을 가장 넓게 — 고정 레이아웃 */}
+                  <table className="w-full table-fixed text-sm">
                     <thead>
                       <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                        <th className="py-2 pr-2 font-medium">시작 시각</th>
-                        <th className="px-2 py-2 font-medium">디바이스</th>
-                        <th className="px-2 py-2 font-medium">콘텐츠</th>
-                        <th className="py-2 pl-2 text-right font-medium">
+                        <th className="w-[18%] py-2 pr-2 font-medium">
+                          시작 시각
+                        </th>
+                        <th className="w-[26%] px-2 py-2 font-medium">
+                          디바이스
+                        </th>
+                        <th className="w-[42%] px-2 py-2 font-medium">
+                          콘텐츠
+                        </th>
+                        <th className="w-[14%] py-2 pl-2 text-right font-medium">
                           재생 길이
                         </th>
                       </tr>
@@ -302,7 +321,10 @@ export function PlayReportPage() {
                             {formatDateMediumShort(row.startedAt)}
                           </td>
                           <td className="max-w-0 px-2 py-2">
-                            <span className="block truncate">
+                            <span
+                              className="block truncate"
+                              title={row.deviceName}
+                            >
                               {row.deviceName}
                             </span>
                           </td>
@@ -314,7 +336,9 @@ export function PlayReportPage() {
                               >
                                 {kindLabel(row.kind)}
                               </Badge>
-                              <span className="truncate">{row.title}</span>
+                              <span className="truncate" title={row.title}>
+                                {row.title}
+                              </span>
                             </div>
                           </td>
                           <td className="whitespace-nowrap py-2 pl-2 text-right tabular-nums">
@@ -342,17 +366,20 @@ export function PlayReportPage() {
                   </p>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    {/* 캠페인명이 핵심 — 고정 레이아웃으로 이름 열 확보 */}
+                    <table className="w-full table-fixed text-sm">
                       <thead>
                         <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                          <th className="py-2 pr-2 font-medium">캠페인</th>
-                          <th className="px-2 py-2 text-right font-medium">
+                          <th className="w-[44%] py-2 pr-2 font-medium">
+                            캠페인
+                          </th>
+                          <th className="w-[14%] px-2 py-2 text-right font-medium">
                             노출수
                           </th>
-                          <th className="px-2 py-2 text-right font-medium">
+                          <th className="w-[20%] px-2 py-2 text-right font-medium">
                             노출 시간
                           </th>
-                          <th className="py-2 pl-2 text-right font-medium">
+                          <th className="w-[22%] py-2 pl-2 text-right font-medium">
                             정산 예상액
                           </th>
                         </tr>
@@ -366,7 +393,10 @@ export function PlayReportPage() {
                               className="border-b border-border/60 last:border-b-0"
                             >
                               <td className="max-w-0 py-2 pr-2">
-                                <span className="block truncate">
+                                <span
+                                  className="block truncate"
+                                  title={row.campaignName}
+                                >
                                   {row.campaignName}
                                 </span>
                               </td>
@@ -488,15 +518,18 @@ export function PlayReportPage() {
                 </p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  {/* 구좌 식별자가 길어질 수 있어 이름 열을 넓게 확보 */}
+                  <table className="w-full table-fixed text-sm">
                     <thead>
                       <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                        <th className="py-2 pr-2 font-medium">구좌</th>
-                        <th className="px-2 py-2 font-medium">위치(북)</th>
-                        <th className="px-2 py-2 text-right font-medium">
+                        <th className="w-[42%] py-2 pr-2 font-medium">구좌</th>
+                        <th className="w-[18%] px-2 py-2 font-medium">
+                          위치(북)
+                        </th>
+                        <th className="w-[16%] px-2 py-2 text-right font-medium">
                           노출수
                         </th>
-                        <th className="py-2 pl-2 text-right font-medium">
+                        <th className="w-[24%] py-2 pl-2 text-right font-medium">
                           마지막 노출
                         </th>
                       </tr>
@@ -508,7 +541,14 @@ export function PlayReportPage() {
                           className="border-b border-border/60 last:border-b-0"
                         >
                           <td className="max-w-0 py-2 pr-2">
-                            <span className="block truncate font-mono text-xs">
+                            <span
+                              className="block truncate font-mono text-xs"
+                              title={
+                                row.slotElementId === "loop"
+                                  ? "루프 삽입(전체 화면)"
+                                  : row.slotElementId
+                              }
+                            >
                               {row.slotElementId === "loop"
                                 ? "루프 삽입(전체 화면)"
                                 : row.slotElementId}
