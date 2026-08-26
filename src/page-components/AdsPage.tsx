@@ -21,6 +21,7 @@ import {
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { AdMediaThumb } from "@/components/creta/AdMediaThumb";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -650,29 +651,16 @@ export function AdsPage() {
             {settingForm.houseSrc.trim() ? (
               <div className="flex items-center gap-3 rounded-md border border-border bg-muted/20 p-2">
                 <span className="relative h-16 w-28 shrink-0 overflow-hidden rounded bg-black/70">
-                  {settingForm.houseKind === "video" ? (
-                    <video
-                      key={settingForm.houseSrc}
-                      className="size-full object-cover"
-                      src={
-                        publicAssetUrl(settingForm.houseSrc) ??
-                        settingForm.houseSrc
-                      }
-                      muted
-                      playsInline
-                      preload="metadata"
-                    />
-                  ) : (
-                    <img
-                      key={settingForm.houseSrc}
-                      alt=""
-                      className="size-full object-cover"
-                      src={
-                        publicAssetUrl(settingForm.houseSrc) ??
-                        settingForm.houseSrc
-                      }
-                    />
-                  )}
+                  <AdMediaThumb
+                    key={settingForm.houseSrc}
+                    kind={settingForm.houseKind}
+                    src={
+                      publicAssetUrl(settingForm.houseSrc) ??
+                      settingForm.houseSrc
+                    }
+                    maxWidth={336}
+                    className="size-full object-cover"
+                  />
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">
@@ -806,7 +794,8 @@ export function AdsPage() {
                       >
                         {CRETA_AD_PHASE_LABEL[c.phase]}
                       </Badge>
-                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                      {/* 좁은 화면에서 뷰포트를 넘지 않게 줄바꿈 허용 */}
+                      <span className="min-w-0 break-keep text-xs tabular-nums text-muted-foreground">
                         {c.startDate} ~ {c.endDate} ·{" "}
                         {CRETA_AD_DAY_TARGET_LABEL[c.dayTarget]}
                         {c.startMin != null && c.endMin != null
@@ -949,22 +938,11 @@ export function AdsPage() {
                               >
                                 {/* 소재 썸네일 — 영상은 첫 프레임(metadata) 미리보기 */}
                                 <span className="relative h-9 w-16 shrink-0 overflow-hidden rounded bg-black/60">
-                                  {cr.kind === "image" ? (
-                                    <img
-                                      alt=""
-                                      src={publicAssetUrl(cr.src) ?? cr.src}
-                                      draggable={false}
-                                      className="size-full object-cover"
-                                    />
-                                  ) : (
-                                    <video
-                                      className="size-full object-cover"
-                                      src={publicAssetUrl(cr.src) ?? cr.src}
-                                      muted
-                                      playsInline
-                                      preload="metadata"
-                                    />
-                                  )}
+                                  <AdMediaThumb
+                                    kind={cr.kind}
+                                    src={publicAssetUrl(cr.src) ?? cr.src}
+                                    className="size-full object-cover"
+                                  />
                                   <span className="absolute bottom-0 right-0 rounded-tl bg-black/70 px-0.5 text-[8px] text-white/90">
                                     {cr.kind === "image" ? (
                                       <ImageIcon

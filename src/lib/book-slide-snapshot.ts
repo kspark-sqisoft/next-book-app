@@ -24,6 +24,7 @@ import {
   richHtmlToPlainText,
   textWidgetHitHeight,
 } from "@/lib/book-text-widget";
+import { fetchCretaAdActiveCreatives } from "@/lib/creta-ads-api";
 
 export type BookSlideSnapshotPage = {
   backgroundColor: string;
@@ -191,6 +192,41 @@ async function resolveVideoThumbnailImage(el: {
 /** 배경·요소가 바뀌었는지 판별용 서명 */
 export function pageSnapshotSignature(p: BookSlideSnapshotPage): string {
   return `${p.backgroundColor}\0${JSON.stringify(p.elements)}`;
+}
+
+/**
+ * 광고 구좌 미리보기 배경 — 활성 캠페인 소재 하나를 가져와 반투명 파란 카드
+ * 아래에 깔아 "실제로 나갈 광고"가 썸네일에서도 비치게 한다.
+ * 스냅샷은 저장 때마다 돌므로 소재 조회·이미지 로딩은 짧게 캐시한다.
+ */
+const AD_PREVIEW_CACHE_MS = 60_000;
+let adSlotPreviewCache: {
+  at: number;
+  image: Promise<HTMLImageElement | null>;
+} | null = null;
+
+function resolveAdSlotPreviewImage(): Promise<HTMLImageElement | null> {
+  const now = Date.now();
+  if (adSlotPreviewCache && now - adSlotPreviewCache.at < AD_PREVIEW_CACHE_MS) {
+    return adSlotPreviewCache.image;
+  }
+  const image = (async (): Promise<HTMLImageElement | null> => {
+    try {
+      const list = await fetchCretaAdActiveCreatives();
+      const first = list.find((c) => c.kind === "image") ?? list[0];
+      if (!first) return null;
+      if (first.kind === "image") {
+        return loadImageForSnapshot(first.src);
+      }
+      let frame = await loadVideoFrameAsImage(first.src, true);
+      if (!frame) frame = await loadVideoFrameAsImage(first.src, false);
+      return frame;
+    } catch {
+      return null;
+    }
+  })();
+  adSlotPreviewCache = { at: now, image };
+  return image;
 }
 
 function appendBookShapeElementToSnapshotLayer(
@@ -1396,7 +1432,7 @@ export async function captureBookSlideToDataURL(
           }),
         );
       } else if (el.type === "adSlot") {
-        // 광고 구좌 자리표시자 — 파란 카드 + 원형 광고 아이콘($) + 흰 구좌 이름
+        // 광고 구좌 자리표시자 — 실제 활성 소재를 깔고 반투명 파란 카드 + $ 아이콘 + 구좌 이름
         const aw = sx(el.width);
         const ah = sx(el.height);
         const ap = bookElementPivotKonva({
@@ -1415,14 +1451,34 @@ export async function captureBookSlideToDataURL(
           offsetY: ap.offsetY,
           rotation: ap.rotation,
           opacity: elOp,
+          clip: { x: 0, y: 0, width: aw, height: ah },
         });
+        const adPreview = await resolveAdSlotPreviewImage();
+        if (adPreview) {
+          // 소재를 cover로 채우고 위에 반투명 파랑을 덮어 "광고 자리" 톤 유지
+          const coverScale = Math.max(
+            aw / adPreview.width,
+            ah / adPreview.height,
+          );
+          const dw = adPreview.width * coverScale;
+          const dh = adPreview.height * coverScale;
+          ag.add(
+            new Konva.Image({
+              image: adPreview,
+              x: (aw - dw) / 2,
+              y: (ah - dh) / 2,
+              width: dw,
+              height: dh,
+            }),
+          );
+        }
         ag.add(
           new Konva.Rect({
             x: 0,
             y: 0,
             width: aw,
             height: ah,
-            fill: "#2563eb",
+            fill: adPreview ? "rgba(37,99,235,0.55)" : "#2563eb",
             stroke: aOw > 0 ? aOc : "#1d4ed8",
             strokeWidth: aOw > 0 ? Math.max(0.5, sx(aOw)) : 0.5,
             cornerRadius: Math.max(0, sx(resolveBookElementBorderRadius(el))),
