@@ -209,7 +209,7 @@ export function DeviceAlertBell() {
         align="end"
         sideOffset={6}
         collisionPadding={8}
-        className="z-[300] flex max-h-[70vh] w-80 max-w-[calc(100vw-1rem)] flex-col gap-2 p-3"
+        className="z-[300] flex max-h-[70vh] w-[28rem] max-w-[calc(100vw-1rem)] flex-col gap-2 p-3"
         aria-label="실시간 단말 알림"
       >
         <div className="flex items-center gap-2">
