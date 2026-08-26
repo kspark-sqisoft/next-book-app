@@ -55,7 +55,8 @@ function writeBookChromeCollapsed(key: string, collapsed: boolean) {
 
 function headerNavClass({ isActive }: { isActive: boolean }) {
   return cn(
-    "rounded-md px-1.5 py-1 transition-colors",
+    /* 좁은 화면에서 한글이 글자 단위로 세로 줄바꿈되지 않게 고정 폭 유지 */
+    "shrink-0 whitespace-nowrap rounded-md px-1.5 py-1 transition-colors",
     isActive
       ? "font-semibold text-primary"
       : "text-muted-foreground hover:text-foreground",
@@ -64,7 +65,8 @@ function headerNavClass({ isActive }: { isActive: boolean }) {
 
 function cretaSubNavClass({ isActive }: { isActive: boolean }) {
   return cn(
-    "rounded-full px-3 py-1 text-xs font-medium transition-colors sm:text-sm",
+    /* 컨테이너가 가로 스크롤을 담당 — 항목은 줄어들거나 줄바꿈되지 않게 */
+    "shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors sm:text-sm",
     isActive
       ? "bg-primary text-primary-foreground"
       : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -399,11 +401,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               wideMain ? WIDE_COLUMN : NARROW_COLUMN,
             )}
           >
+            {/* 사이드바(CretaSidebar)와 같은 섹션 구성 — 좁은 화면은 가로 스크롤 */}
             <NavLink href="/community" prefetch className={cretaSubNavClass}>
               커뮤니티
             </NavLink>
             <NavLink href="/books" end prefetch className={cretaSubNavClass}>
-              북
+              스튜디오
+            </NavLink>
+            <NavLink href="/dashboard" prefetch className={cretaSubNavClass}>
+              대시보드
             </NavLink>
             <NavLink href="/playlists" prefetch className={cretaSubNavClass}>
               플레이리스트
@@ -414,8 +420,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <NavLink href="/devices" prefetch className={cretaSubNavClass}>
               디바이스
             </NavLink>
+            <NavLink href="/walls" prefetch className={cretaSubNavClass}>
+              비디오월
+            </NavLink>
+            <NavLink href="/ads" prefetch className={cretaSubNavClass}>
+              광고
+            </NavLink>
+            <NavLink href="/reports" prefetch className={cretaSubNavClass}>
+              재생 리포트
+            </NavLink>
             <NavLink href="/account" prefetch className={cretaSubNavClass}>
-              계정
+              마이페이지
             </NavLink>
           </nav>
         </div>

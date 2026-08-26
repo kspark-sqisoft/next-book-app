@@ -158,6 +158,10 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* 한국어: 좁은 화면에서 글자 단위 세로 깨짐 방지 — 단어 단위로 줄바꿈하고,
+       공간이 정말 없을 때만 단어 안에서 개행 */
+    word-break: keep-all;
+    overflow-wrap: break-word;
   }
   html {
     @apply font-sans;
