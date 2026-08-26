@@ -17,6 +17,10 @@ import {
   CretaAlertBanner,
   useActiveCretaAlert,
 } from "@/components/creta/CretaAlertControls";
+import {
+  CretaCoverThumb,
+  useCretaCoverThumbs,
+} from "@/components/creta/CretaCoverThumb";
 import { DeviceStatusBadge } from "@/components/creta/DeviceStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -90,6 +94,16 @@ export function DashboardPage() {
   });
 
   const list = useMemo(() => devices ?? [], [devices]);
+  /** 가동률 행 앞 썸네일 — 디바이스가 지금 재생 중인 소스의 커버 */
+  const thumbEntries = useMemo(
+    () =>
+      list.map((d) => ({
+        key: `device-${d.id}`,
+        cover: d.source?.cover ?? null,
+      })),
+    [list],
+  );
+  const deviceThumbs = useCretaCoverThumbs(thumbEntries);
   const online = list.filter((d) => cretaDeviceStatus(d) === "online");
   const problems = list.filter((d) => cretaDeviceStatus(d) !== "online");
   const onlinePct =
@@ -266,8 +280,19 @@ export function DashboardPage() {
                         href={`/devices/${d.deviceId}`}
                         className="flex items-center gap-3 rounded-md px-1 py-1 outline-none hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring"
                       >
+                        <span className="relative aspect-video w-16 shrink-0 overflow-hidden rounded-md border border-border/60 bg-muted/40">
+                          <CretaCoverThumb
+                            dataUrl={deviceThumbs[`device-${d.deviceId}`]}
+                            title={
+                              /* 커버 없을 때 폴백 — 재생 소스 제목(광고 전용 루프 등) */
+                              list.find((x) => x.id === d.deviceId)?.source
+                                ?.title ?? d.deviceName
+                            }
+                            className="absolute inset-0 size-full rounded-md"
+                          />
+                        </span>
                         <span
-                          className="w-40 shrink-0 truncate text-xs font-medium sm:w-52"
+                          className="w-36 shrink-0 truncate text-xs font-medium sm:w-48"
                           title={`${d.deviceName} · ${d.location || "위치 미지정"}`}
                         >
                           {d.deviceName}
