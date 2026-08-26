@@ -1,7 +1,7 @@
 "use client";
 
 // 사이트 공통 레이아웃: 네비·푸터·테마·채팅 독, 북 워크스페이스/홈에 맞춘 main 폭·패딩·헤더 접힘.
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { startTransition, useEffect, useRef, useState } from "react";
@@ -257,7 +257,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <header className="relative z-280 shrink-0 border-b border-border bg-card/40 backdrop-blur-sm">
           <div
             className={cn(
-              "mx-auto flex h-12 w-full items-center justify-between gap-4 px-4",
+              /* 모바일: 크레타 알림 벨까지 들어가면 한 줄이 빠듯해 여백을 줄인다 */
+              "mx-auto flex h-12 w-full items-center justify-between gap-2 px-3 sm:gap-4 sm:px-4",
               /* 북 풀블리드여도 내비는 홈·글·북 목록과 동일 `max-w-3xl` 컬럼에 맞춤 */
               bookShellRoute
                 ? NARROW_COLUMN
@@ -266,7 +267,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   : NARROW_COLUMN,
             )}
           >
-            <nav className="flex items-center gap-2 text-sm font-medium sm:gap-3">
+            <nav className="flex items-center gap-1.5 text-sm font-medium sm:gap-3">
               <NavLink href="/" end prefetch className={headerNavClass}>
                 홈
               </NavLink>
@@ -295,7 +296,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     href="/me"
                     prefetch
                     aria-label="내 정보"
-                    className="flex min-w-0 max-w-[min(12rem,calc(100vw-7rem))] items-center gap-2 rounded-md py-1 pl-0.5 pr-1 text-left outline-none transition-colors hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    /* 모바일은 아바타만 표시(shrink-0로 원형 유지), sm+에서 이름 노출·말줄임 */
+                    className="flex min-w-0 max-w-[min(12rem,calc(100vw-7rem))] shrink-0 items-center gap-2 rounded-md py-1 pl-0.5 pr-1 text-left outline-none transition-colors hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:shrink"
                   >
                     <SafeImage
                       src={user.imageUrl}
@@ -311,14 +313,27 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                         </span>
                       }
                     />
-                    <span className="min-w-0 truncate text-xs text-muted-foreground">
+                    <span className="hidden min-w-0 truncate text-xs text-muted-foreground sm:inline">
                       {user.name || user.email}
                     </span>
                   </Link>
+                  {/* 모바일은 아이콘 버튼으로 폭 절약, sm+는 기존 텍스트 버튼 */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    className="sm:hidden"
+                    aria-label="로그아웃"
+                    title="로그아웃"
+                    onClick={() => void signOut()}
+                  >
+                    <LogOut className="size-3.5" aria-hidden />
+                  </Button>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
+                    className="hidden sm:inline-flex"
                     onClick={() => void signOut()}
                   >
                     로그아웃
