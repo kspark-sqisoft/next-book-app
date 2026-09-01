@@ -87,6 +87,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   addBookMediaLibraryItem,
   type BookCanvasElement,
@@ -3300,11 +3301,14 @@ function BookDetailGuestBookView({
   sortedPagesView,
   pageIndex,
   setPageIndex,
+  viewLocked,
 }: {
   data: BookDetail;
   sortedPagesView: NonNullable<BookDetail["pages"]>;
   pageIndex: number;
   setPageIndex: Dispatch<SetStateAction<number>>;
+  /** 모바일 보기 전용 — 좌·우 패널 잠금 + 캔버스 위 요소 클릭 차단 */
+  viewLocked?: boolean;
 }) {
   const canvasWrapRef = useRef<HTMLDivElement>(null);
   const guestSlideW = data.slideWidth ?? DEFAULT_SLIDE_WIDTH;
@@ -3378,6 +3382,7 @@ function BookDetailGuestBookView({
 
   return (
     <BookWorkspaceShell
+      panelsLocked={viewLocked}
       titleArea={
         <div className="min-w-0">
           <h1 className="truncate text-base font-semibold leading-tight sm:text-lg">
@@ -3446,6 +3451,11 @@ function BookDetailGuestBookView({
               onSelect={() => undefined}
               onElementChange={() => undefined}
             />
+            {viewLocked ? (
+              /* 모바일 보기 전용 — 위젯(동영상 컨트롤 등)까지 눌리지 않게 투명 방패로 덮는다.
+                 휠·핀치 줌은 부모(canvasWrap) 핸들러로 버블링되어 그대로 동작 */
+              <div className="absolute inset-0 z-50" aria-hidden />
+            ) : null}
           </div>
         </div>
       }
@@ -3471,6 +3481,8 @@ export function BookDetailPage() {
   const id = Number(idParam);
   const { user } = useAuth();
   const [pageIndex, setPageIndex] = useState(0);
+  /** 모바일은 편집 권한과 무관하게 보기 전용 — 패널 잠금·선택 차단 */
+  const isMobile = useIsMobile();
 
   const { data, error, isPending } = useQuery({
     queryKey: bookKeys.detail(id),
@@ -3497,9 +3509,20 @@ export function BookDetailPage() {
     return [...data.pages].sort((a, b) => a.sortOrder - b.sortOrder);
   }, [data]);
 
+  // 편집할 수 있는 북을 모바일로 열었을 때만 안내 — 게스트는 원래 보기 전용이라 조용히 둔다
+  useEffect(() => {
+    if (isMobile && canEdit) {
+      toast.info(
+        "모바일에서는 북을 보기 전용으로 엽니다. 편집은 PC 등 넓은 화면에서 이용해 주세요.",
+        { id: "book-mobile-view-only" },
+      );
+    }
+  }, [isMobile, canEdit]);
+
   if (!Number.isFinite(id) || id <= 0) {
     return (
       <BookWorkspaceShell
+        panelsLocked={isMobile}
         titleArea={
           <span className="text-sm text-muted-foreground">잘못된 주소</span>
         }
@@ -3523,6 +3546,7 @@ export function BookDetailPage() {
   if (isPending) {
     return (
       <BookWorkspaceShell
+        panelsLocked={isMobile}
         titleArea={
           <span className="truncate text-sm text-muted-foreground">
             불러오는 중…
@@ -3543,6 +3567,7 @@ export function BookDetailPage() {
   if (error || !data) {
     return (
       <BookWorkspaceShell
+        panelsLocked={isMobile}
         titleArea={<span className="text-destructive">오류</span>}
         left={<div className="w-52 shrink-0 border-r border-border" />}
         center={
@@ -3556,13 +3581,14 @@ export function BookDetailPage() {
     );
   }
 
-  if (canEdit) {
+  if (canEdit && !isMobile) {
     return <BookDetailOwnerView key={data.id} bookId={id} serverBook={data} />;
   }
 
   if (!sortedPagesView.length) {
     return (
       <BookWorkspaceShell
+        panelsLocked={isMobile}
         titleArea={
           <h1 className="truncate text-base font-semibold sm:text-lg">
             {data.title}
@@ -3588,6 +3614,7 @@ export function BookDetailPage() {
       sortedPagesView={sortedPagesView}
       pageIndex={pageIndex}
       setPageIndex={setPageIndex}
+      viewLocked={isMobile}
     />
   );
 }

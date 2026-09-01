@@ -26,6 +26,12 @@ type BookWorkspaceShellProps = {
   center: ReactNode;
   /** 오른쪽: 속성 패널(없으면 보기 모드) */
   right?: ReactNode;
+  /**
+   * 좌·우 패널을 접힌 상태로 잠근다(모바일 보기 전용).
+   * 펼침 토글은 자리를 지키되 딤 처리되어 눌리지 않는다 — 숨기면 "원래 없는 화면"으로
+   * 오해하지만, 딤이면 "여기선 잠겼다"로 읽힌다.
+   */
+  panelsLocked?: boolean;
   className?: string;
 };
 
@@ -48,12 +54,15 @@ function PanelEdgeToggle({
   onPress,
   title,
   "aria-label": ariaLabel,
+  disabled,
   children,
 }: {
   className?: string;
   onPress: () => void;
   title: string;
   "aria-label": string;
+  /** 딤 처리 + 동작 차단(패널 잠금) — Button의 disabled 스타일이 흐림을 담당 */
+  disabled?: boolean;
   children: ReactNode;
 }) {
   const suppressNextClick = useRef(false);
@@ -67,7 +76,9 @@ function PanelEdgeToggle({
       className={className}
       title={title}
       aria-label={ariaLabel}
+      disabled={disabled}
       onPointerDown={(e) => {
+        if (disabled) return;
         if (e.pointerType === "mouse" && e.button !== 0) return;
         e.preventDefault();
         e.stopPropagation();
@@ -85,6 +96,7 @@ function PanelEdgeToggle({
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
+        if (disabled) return;
         if (suppressNextClick.current) {
           suppressNextClick.current = false;
           if (clearSuppressTimer.current) {
@@ -112,12 +124,16 @@ export function BookWorkspaceShell({
   left,
   center,
   right,
+  panelsLocked,
   className,
 }: BookWorkspaceShellProps) {
   const router = useRouter();
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
   const hasRight = right != null;
+  /* 잠금 중엔 열림 상태를 지우지 않고 표시만 접는다 — 잠금이 풀리면 원래대로 복귀 */
+  const leftVisible = leftOpen && !panelsLocked;
+  const rightVisible = rightOpen && !panelsLocked;
 
   return (
     <div
@@ -145,7 +161,7 @@ export function BookWorkspaceShell({
       </header>
       {/* overflow-x: 패널 밖으로 삐져나온 토글 히트 영역이 잘리지 않게 */}
       <div className="flex min-h-0 min-w-0 flex-1 overflow-x-visible overflow-y-hidden">
-        {leftOpen ? (
+        {leftVisible ? (
           <div className="relative z-20 flex min-h-0 shrink-0 self-stretch overflow-visible">
             <div className="flex h-full min-h-0 max-h-full flex-col overflow-hidden border-e border-border/50 bg-gradient-to-b from-card/80 to-muted/[0.06]">
               {left}
@@ -168,35 +184,53 @@ export function BookWorkspaceShell({
           <div className="relative z-0 min-h-0 flex min-w-0 flex-1 flex-col overflow-hidden">
             {center}
           </div>
-          {!leftOpen ? (
+          {!leftVisible ? (
             <PanelEdgeToggle
               className={cn(
                 floatingToggleClass,
                 "absolute top-1/2 left-3 z-[60] -translate-y-1/2",
               )}
               onPress={() => setLeftOpen(true)}
-              aria-label="페이지 패널 펼치기"
-              title="페이지 패널 펼치기"
+              disabled={panelsLocked}
+              aria-label={
+                panelsLocked
+                  ? "모바일에서는 페이지 패널을 열 수 없습니다"
+                  : "페이지 패널 펼치기"
+              }
+              title={
+                panelsLocked
+                  ? "모바일에서는 페이지 패널을 열 수 없습니다"
+                  : "페이지 패널 펼치기"
+              }
             >
               <PanelLeftOpen className="size-4" aria-hidden />
             </PanelEdgeToggle>
           ) : null}
-          {hasRight && !rightOpen ? (
+          {hasRight && !rightVisible ? (
             <PanelEdgeToggle
               className={cn(
                 floatingToggleClass,
                 "absolute top-1/2 right-3 z-[60] -translate-y-1/2",
               )}
               onPress={() => setRightOpen(true)}
-              aria-label="속성 패널 펼치기"
-              title="속성 패널 펼치기"
+              disabled={panelsLocked}
+              aria-label={
+                panelsLocked
+                  ? "모바일에서는 속성 패널을 열 수 없습니다"
+                  : "속성 패널 펼치기"
+              }
+              title={
+                panelsLocked
+                  ? "모바일에서는 속성 패널을 열 수 없습니다"
+                  : "속성 패널 펼치기"
+              }
             >
               <PanelRightOpen className="size-4" aria-hidden />
             </PanelEdgeToggle>
           ) : null}
         </div>
 
-        {hasRight && rightOpen ? (
+        {hasRight && rightVisible ? (
           <div className="relative z-20 flex min-h-0 shrink-0 self-stretch overflow-visible">
             <PanelEdgeToggle
               className={cn(
