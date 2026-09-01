@@ -3509,15 +3509,17 @@ export function BookDetailPage() {
     return [...data.pages].sort((a, b) => a.sortOrder - b.sortOrder);
   }, [data]);
 
-  // 편집할 수 있는 북을 모바일로 열었을 때만 안내 — 게스트는 원래 보기 전용이라 조용히 둔다
+  // 모바일로 북을 열면 권한과 무관하게 안내 — 실제 폰은 별도 세션이라 로그인·권한이
+  // 제각각인데, 권한자에게만 띄우면 "안내가 안 뜬다"로 보인다. 로드 성공 여부로만 판단
+  const bookLoaded = data != null;
   useEffect(() => {
-    if (isMobile && canEdit) {
+    if (isMobile && bookLoaded) {
       toast.info(
         "모바일에서는 북을 보기 전용으로 엽니다. 편집은 PC 등 넓은 화면에서 이용해 주세요.",
-        { id: "book-mobile-view-only" },
+        { id: "book-mobile-view-only", duration: 5000 },
       );
     }
-  }, [isMobile, canEdit]);
+  }, [isMobile, bookLoaded]);
 
   if (!Number.isFinite(id) || id <= 0) {
     return (
