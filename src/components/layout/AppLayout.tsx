@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { SafeImage } from "@/components/ui/safe-image";
 import { Toaster } from "@/components/ui/sonner";
 import { SITE_APP_MAIN_SCROLL_ID } from "@/lib/app-layout-scroll";
+import { CRETA_SECTIONS, type CretaSection } from "@/lib/creta-sections";
 import {
   floatingDockBookSiteChromeToggleClass,
   floatingDockBookSiteFooterCollapsedStripClass,
@@ -66,12 +67,27 @@ function headerNavClass({ isActive }: { isActive: boolean }) {
 function cretaSubNavClass({ isActive }: { isActive: boolean }) {
   return cn(
     /* 컨테이너가 가로 스크롤을 담당 — 항목은 줄어들거나 줄바꿈되지 않게 */
-    "shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors sm:text-sm",
+    "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors sm:text-sm",
     isActive
       ? "bg-primary text-primary-foreground"
       : "text-muted-foreground hover:bg-muted hover:text-foreground",
   );
 }
+
+/** 모바일 하위 메뉴 항목 — 사이드바(CretaSidebar)와 같은 섹션 구성·순서 */
+const CRETA_SUB_NAV_ITEMS: (CretaSection & { end?: boolean })[] = [
+  CRETA_SECTIONS.community,
+  /* 북 목록은 /books 만 활성(북 상세는 워크스페이스) — 사이드바의 exact와 같은 규칙 */
+  { ...CRETA_SECTIONS.studio, end: true },
+  CRETA_SECTIONS.dashboard,
+  CRETA_SECTIONS.playlists,
+  CRETA_SECTIONS.schedules,
+  CRETA_SECTIONS.devices,
+  CRETA_SECTIONS.walls,
+  CRETA_SECTIONS.ads,
+  CRETA_SECTIONS.reports,
+  CRETA_SECTIONS.account,
+];
 
 function footerNavClass({ isActive }: { isActive: boolean }) {
   return cn(
@@ -416,37 +432,23 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               wideMain ? WIDE_COLUMN : NARROW_COLUMN,
             )}
           >
-            {/* 사이드바(CretaSidebar)와 같은 섹션 구성 — 좁은 화면은 가로 스크롤 */}
-            <NavLink href="/community" prefetch className={cretaSubNavClass}>
-              커뮤니티
-            </NavLink>
-            <NavLink href="/books" end prefetch className={cretaSubNavClass}>
-              스튜디오
-            </NavLink>
-            <NavLink href="/dashboard" prefetch className={cretaSubNavClass}>
-              대시보드
-            </NavLink>
-            <NavLink href="/playlists" prefetch className={cretaSubNavClass}>
-              플레이리스트
-            </NavLink>
-            <NavLink href="/schedules" prefetch className={cretaSubNavClass}>
-              스케줄
-            </NavLink>
-            <NavLink href="/devices" prefetch className={cretaSubNavClass}>
-              디바이스
-            </NavLink>
-            <NavLink href="/walls" prefetch className={cretaSubNavClass}>
-              비디오월
-            </NavLink>
-            <NavLink href="/ads" prefetch className={cretaSubNavClass}>
-              광고
-            </NavLink>
-            <NavLink href="/reports" prefetch className={cretaSubNavClass}>
-              재생 리포트
-            </NavLink>
-            <NavLink href="/account" prefetch className={cretaSubNavClass}>
-              마이페이지
-            </NavLink>
+            {/* 아이콘·포인트 컬러는 사이드바와 같은 정의(CRETA_SECTIONS)를 그대로 —
+                좁은 화면에서 사이드바를 대신하는 자리라 색으로 메뉴를 알아보는 규칙도 이어진다 */}
+            {CRETA_SUB_NAV_ITEMS.map((item) => (
+              <NavLink
+                key={item.href}
+                href={item.href}
+                end={item.end}
+                prefetch
+                className={cretaSubNavClass}
+              >
+                <item.icon
+                  className={cn("size-3.5 shrink-0", item.iconClass)}
+                  aria-hidden
+                />
+                {item.label}
+              </NavLink>
+            ))}
           </nav>
         </div>
       ) : null}
