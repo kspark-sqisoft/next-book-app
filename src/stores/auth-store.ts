@@ -123,6 +123,9 @@ function createAuthStore() {
             const token = data.access_token;
             if (!token) throw new Error("액세스 토큰을 받지 못했습니다.");
             setAccessToken(token);
+            // 같은 탭에서 계정이 바뀌는 경로 — 이전 사용자의 북·디바이스·광고 캐시가 남아 있으면
+            // staleTime 동안 리페치 없이 그대로 렌더된다(쿼리 키에 뷰어 차원이 없음).
+            queryClient.clear();
             const me = await fetchMe();
             if (!me) throw new Error("사용자 정보를 불러오지 못했습니다.");
             set(
@@ -178,14 +181,17 @@ function createAuthStore() {
             false,
             "auth/signOut",
           );
-          void queryClient.removeQueries({ queryKey: userKeys.all });
+          // userKeys만 지우면 북(초안 포함)·디바이스·광고 캐시가 모듈 싱글턴에 남아
+          // 다음 로그인 사용자에게 그대로 노출된다. 로그아웃은 리로드를 동반하지 않는다.
+          queryClient.clear();
         },
 
         refreshUser: async () => {
           const me = await fetchMe();
           if (!me) {
             setAccessToken(null);
-            void queryClient.removeQueries({ queryKey: userKeys.all });
+            // 세션이 끊긴 것으로 판정된 경로 — signOut과 같은 기준으로 캐시를 통째로 비운다.
+            queryClient.clear();
             set(
               (state) => {
                 state.user = null;
