@@ -43,8 +43,10 @@ services:
       DB_PASSWORD: reactauth
       DB_NAME: reactauth
       UPLOAD_ROOT: /app/uploads
-      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-change-me-access}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-me-refresh}
+      # 기본값을 두지 않는다 — 미설정이면 `docker compose up`이 기동 전에 실패한다.
+      # 생성: openssl rand -base64 48
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?호스트 .env 에 설정하세요}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?호스트 .env 에 설정하세요}
       # 위젯·AI 어시스턴트용 API 키 — 이미지에 .env를 넣지 않으므로 호스트 .env에서 주입
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       PEXELS_API_KEY: ${PEXELS_API_KEY:-}

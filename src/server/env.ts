@@ -1,4 +1,8 @@
+import { randomBytes } from "node:crypto";
 import { join } from "node:path";
+
+/** 서명 키 최소 길이 — 무차별 대입으로 복원 불가능한 수준 */
+const MIN_SECRET_LEN = 32;
 
 // 환경변수 문자열을 양의 정수로; 잘못된 값은 fallback
 function positiveInt(v: string | undefined, fallback: number): number {
@@ -47,10 +51,37 @@ export const BOOK_VIDEOS_SUBDIR = "book-videos";
 export const BOOK_VIDEO_POSTERS_SUBDIR = "book-video-posters";
 export const CAT_IMAGES_SUBDIR = "cat-images";
 
-export const JWT_ACCESS_SECRET =
-  process.env.JWT_ACCESS_SECRET ?? "dev-access-secret-change-me";
-export const JWT_REFRESH_SECRET =
-  process.env.JWT_REFRESH_SECRET ?? "dev-refresh-secret-change-me";
+/**
+ * 토큰 서명 키에는 기본값을 두지 않는다. 폴백이 있으면 환경변수를 빠뜨린 배포가
+ * **공개된 키로 조용히 기동**하고, 그 키로 누구나 `role: "admin"` 토큰을 위조할 수 있다.
+ * - 프로덕션: 미설정이거나 32자 미만이면 기동 실패(빠르고 시끄럽게).
+ * - 개발·테스트: 값이 있으면 그대로 쓰고, 없으면 프로세스마다 임의 키를 만든다.
+ *   재시작하면 세션이 끊기지만, 알려진 상수를 저장소에 박아 두는 것보다 안전하다.
+ */
+function requiredSecret(name: string): string {
+  const v = process.env[name]?.trim();
+  const isProd = process.env.NODE_ENV === "production";
+  if (v && v.length >= MIN_SECRET_LEN) return v;
+  if (isProd) {
+    throw new Error(
+      `${name} 가 설정되지 않았거나 ${MIN_SECRET_LEN}자 미만입니다. ` +
+        `\`openssl rand -base64 48\` 등으로 생성해 환경변수로 주입하세요.`,
+    );
+  }
+  if (v) {
+    console.warn(
+      `[env] ${name} 가 ${MIN_SECRET_LEN}자 미만입니다 — 개발 중에만 허용됩니다.`,
+    );
+    return v;
+  }
+  console.warn(
+    `[env] ${name} 미설정 — 개발 전용 임시 키를 생성합니다(재시작 시 로그인 유지 안 됨).`,
+  );
+  return randomBytes(48).toString("base64");
+}
+
+export const JWT_ACCESS_SECRET = requiredSecret("JWT_ACCESS_SECRET");
+export const JWT_REFRESH_SECRET = requiredSecret("JWT_REFRESH_SECRET");
 export const JWT_ACCESS_EXPIRES_IN = process.env.JWT_ACCESS_EXPIRES_IN ?? "15m";
 export const JWT_REFRESH_EXPIRES_IN =
   process.env.JWT_REFRESH_EXPIRES_IN ?? "7d";
