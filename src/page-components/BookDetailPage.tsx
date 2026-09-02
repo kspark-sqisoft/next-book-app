@@ -2507,7 +2507,7 @@ function BookDetailOwnerView({
                 />
               )}
               {authorTitleInfo}
-              {bookStatusControls}
+              {readOnly ? null : bookStatusControls}
             </div>
           }
           actions={
@@ -2643,7 +2643,7 @@ function BookDetailOwnerView({
                   첫 페이지 추가
                 </Button>
               </div>
-              {floatingWidgetPaletteOpen ? (
+              {!readOnly && floatingWidgetPaletteOpen ? (
                 <BookWidgetPalette
                   variant="floating"
                   floatingStackZIndex={floatingPanelZ.widget}
@@ -2654,7 +2654,7 @@ function BookDetailOwnerView({
                   onQuickAdd={handlePaletteQuickAdd}
                 />
               ) : null}
-              {floatingMediaLibraryOpen ? (
+              {!readOnly && floatingMediaLibraryOpen ? (
                 <BookMediaLibraryPanel
                   bookId={bookId}
                   variant="floating"
@@ -2705,7 +2705,7 @@ function BookDetailOwnerView({
               />
             )}
             {authorTitleInfo}
-            {bookStatusControls}
+            {readOnly ? null : bookStatusControls}
           </div>
         }
         actions={
@@ -2860,15 +2860,20 @@ function BookDetailOwnerView({
                   onZoomIn={zoomIn}
                   onZoomOut={zoomOut}
                   onZoomReset={zoomReset}
-                  showUndoRedo
-                  canUndo={canUndo}
-                  canRedo={canRedo}
-                  onUndo={undo}
-                  onRedo={redo}
-                  centerGuideThresholdPx={centerGuideThresholdPx}
-                  onCenterGuideThresholdPxChange={setCenterGuideThresholdPx}
-                  dragGridPx={dragGridPx}
-                  onDragGridPxChange={setDragGridPx}
+                  {...(readOnly
+                    ? {}
+                    : {
+                        showUndoRedo: true,
+                        canUndo,
+                        canRedo,
+                        onUndo: undo,
+                        onRedo: redo,
+                        centerGuideThresholdPx,
+                        onCenterGuideThresholdPxChange:
+                          setCenterGuideThresholdPx,
+                        dragGridPx,
+                        onDragGridPxChange: setDragGridPx,
+                      })}
                 />
               </div>
               <div
@@ -3022,7 +3027,7 @@ function BookDetailOwnerView({
                 ) : null}
               </div>
             </div>
-            {floatingWidgetPaletteOpen ? (
+            {!readOnly && floatingWidgetPaletteOpen ? (
               <BookWidgetPalette
                 variant="floating"
                 floatingStackZIndex={floatingPanelZ.widget}
@@ -3033,7 +3038,7 @@ function BookDetailOwnerView({
                 onQuickAdd={handlePaletteQuickAdd}
               />
             ) : null}
-            {floatingMediaLibraryOpen ? (
+            {!readOnly && floatingMediaLibraryOpen ? (
               <BookMediaLibraryPanel
                 bookId={bookId}
                 variant="floating"
