@@ -279,9 +279,16 @@ function BookSlidePreviewOpenButton({
 function BookDetailOwnerView({
   bookId,
   serverBook,
+  readOnly = false,
 }: {
   bookId: number;
   serverBook: BookDetail;
+  /**
+   * 모바일 폭에서의 보기 전용 잠금. 이 컴포넌트를 **언마운트하지 않고** 잠그는 것이 핵심 —
+   * 편집 상태(페이지·되돌리기 스택·선택)가 전부 로컬이라, 창 폭이 768px를 오갈 때
+   * 컴포넌트를 갈아끼우면 미저장 작업이 경고 없이 사라진다.
+   */
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -2479,6 +2486,7 @@ function BookDetailOwnerView({
     return (
       <>
         <BookWorkspaceShell
+          panelsLocked={readOnly}
           titleArea={
             <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:gap-x-3">
               <Input
@@ -2488,13 +2496,16 @@ function BookDetailOwnerView({
                 placeholder="북 제목"
                 maxLength={200}
                 aria-label="북 제목"
+                readOnly={readOnly}
               />
-              <BookHeaderSlideDimensions
-                slideWidth={slideWidth}
-                slideHeight={slideHeight}
-                onChangeSlideWidth={setSlideWidth}
-                onChangeSlideHeight={setSlideHeight}
-              />
+              {readOnly ? null : (
+                <BookHeaderSlideDimensions
+                  slideWidth={slideWidth}
+                  slideHeight={slideHeight}
+                  onChangeSlideWidth={setSlideWidth}
+                  onChangeSlideHeight={setSlideHeight}
+                />
+              )}
               {authorTitleInfo}
               {bookStatusControls}
             </div>
@@ -2673,6 +2684,7 @@ function BookDetailOwnerView({
   return (
     <>
       <BookWorkspaceShell
+        panelsLocked={readOnly}
         titleArea={
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:gap-x-3">
             <Input
@@ -2682,13 +2694,16 @@ function BookDetailOwnerView({
               placeholder="북 제목"
               maxLength={200}
               aria-label="북 제목"
+              readOnly={readOnly}
             />
-            <BookHeaderSlideDimensions
-              slideWidth={slideWidth}
-              slideHeight={slideHeight}
-              onChangeSlideWidth={setSlideWidth}
-              onChangeSlideHeight={setSlideHeight}
-            />
+            {readOnly ? null : (
+              <BookHeaderSlideDimensions
+                slideWidth={slideWidth}
+                slideHeight={slideHeight}
+                onChangeSlideWidth={setSlideWidth}
+                onChangeSlideHeight={setSlideHeight}
+              />
+            )}
             {authorTitleInfo}
             {bookStatusControls}
           </div>
@@ -2700,46 +2715,52 @@ function BookDetailOwnerView({
                 bookId={bookId}
                 currentIndex={activePageIndex}
               />
-              {renderShareButton(
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-7 px-2.5 text-xs"
-                >
-                  <Share2 className="mr-1.5 size-3.5" />
-                  공유
-                  {serverBook.sharedUserIds?.length ? (
-                    <span className="ml-1 rounded-full bg-primary/10 px-1.5 text-[10px] font-semibold text-primary">
-                      {serverBook.sharedUserIds.length}
-                    </span>
-                  ) : null}
-                </Button>,
+              {readOnly
+                ? null
+                : renderShareButton(
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2.5 text-xs"
+                    >
+                      <Share2 className="mr-1.5 size-3.5" />
+                      공유
+                      {serverBook.sharedUserIds?.length ? (
+                        <span className="ml-1 rounded-full bg-primary/10 px-1.5 text-[10px] font-semibold text-primary">
+                          {serverBook.sharedUserIds.length}
+                        </span>
+                      ) : null}
+                    </Button>,
+                  )}
+              {readOnly ? null : (
+                <>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-7 border-transparent bg-blue-600 px-2.5 text-xs text-white hover:bg-blue-700 focus-visible:ring-blue-500/40 disabled:opacity-100"
+                    onClick={() => saveMutation.mutate()}
+                    disabled={saveMutation.isPending}
+                  >
+                    {saveMutation.isPending ? (
+                      <Spinner className="mr-1.5 size-3.5 text-white" />
+                    ) : (
+                      <Save className="mr-1.5 size-3.5" />
+                    )}
+                    저장
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-7 border-transparent bg-red-600 px-2.5 text-xs text-white hover:bg-red-700 focus-visible:ring-red-500/40"
+                    disabled={deleteMutation.isPending}
+                    onClick={() => setDeleteConfirmOpen(true)}
+                  >
+                    <Trash2 className="mr-1.5 size-3.5" />
+                    삭제
+                  </Button>
+                </>
               )}
-              <Button
-                type="button"
-                size="sm"
-                className="h-7 border-transparent bg-blue-600 px-2.5 text-xs text-white hover:bg-blue-700 focus-visible:ring-blue-500/40 disabled:opacity-100"
-                onClick={() => saveMutation.mutate()}
-                disabled={saveMutation.isPending}
-              >
-                {saveMutation.isPending ? (
-                  <Spinner className="mr-1.5 size-3.5 text-white" />
-                ) : (
-                  <Save className="mr-1.5 size-3.5" />
-                )}
-                저장
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                className="h-7 border-transparent bg-red-600 px-2.5 text-xs text-white hover:bg-red-700 focus-visible:ring-red-500/40"
-                disabled={deleteMutation.isPending}
-                onClick={() => setDeleteConfirmOpen(true)}
-              >
-                <Trash2 className="mr-1.5 size-3.5" />
-                삭제
-              </Button>
             </div>
           </>
         }
@@ -2927,12 +2948,12 @@ function BookDetailOwnerView({
                   }
                   scale={displayScale}
                   elements={activePage.elements}
-                  mode="edit"
+                  mode={readOnly ? "view" : "edit"}
                   selectedIds={canvasSelectedIds}
                   onSelect={handleCanvasSelect}
                   onElementChange={onElementChange}
                   onElementsChange={onElementsChange}
-                  keyboardShortcutsDisabled={editorOverlayOpen}
+                  keyboardShortcutsDisabled={editorOverlayOpen || readOnly}
                   onDropWidget={onDropWidget}
                   onDropShape={onDropShape}
                   onDropLibraryMedia={onDropLibraryMedia}
@@ -2993,6 +3014,11 @@ function BookDetailOwnerView({
                       onElementChange={() => undefined}
                     />
                   </div>
+                ) : null}
+                {readOnly ? (
+                  /* 게스트 뷰와 같은 규칙 — 위젯(동영상 컨트롤 등)까지 눌리지 않게 투명 방패로 덮는다.
+                     휠·핀치 줌은 부모(canvasWrap) 핸들러로 버블링되어 그대로 동작 */
+                  <div className="absolute inset-0 z-50" aria-hidden />
                 ) : null}
               </div>
             </div>
@@ -3583,8 +3609,17 @@ export function BookDetailPage() {
     );
   }
 
-  if (canEdit && !isMobile) {
-    return <BookDetailOwnerView key={data.id} bookId={id} serverBook={data} />;
+  if (canEdit) {
+    // 모바일에서도 **같은 컴포넌트를 유지한 채** 잠근다 — 폭 변화로 갈아끼우면
+    // 편집 상태가 컴포넌트 로컬이라 미저장 작업과 되돌리기 스택이 통째로 사라진다.
+    return (
+      <BookDetailOwnerView
+        key={data.id}
+        bookId={id}
+        serverBook={data}
+        readOnly={isMobile}
+      />
+    );
   }
 
   if (!sortedPagesView.length) {
