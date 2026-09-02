@@ -13,8 +13,11 @@ import {
 
 const TAG = "creta-walls-actions";
 
-export async function listCretaWallsAction(): Promise<CretaVideoWallPublic[]> {
+export async function listCretaWallsAction(
+  accessToken: string | null | undefined,
+): Promise<CretaVideoWallPublic[]> {
   try {
+    await requireUserFromToken(accessToken);
     return await new CretaWallsService().list();
   } catch (e) {
     rethrowActionError(e, TAG);
@@ -22,9 +25,11 @@ export async function listCretaWallsAction(): Promise<CretaVideoWallPublic[]> {
 }
 
 export async function getCretaWallAction(
+  accessToken: string | null | undefined,
   wallId: number,
 ): Promise<CretaVideoWallPublic> {
   try {
+    await requireUserFromToken(accessToken);
     return await new CretaWallsService().get(assertPositiveIntId(wallId));
   } catch (e) {
     rethrowActionError(e, TAG);
@@ -59,10 +64,11 @@ export async function updateCretaWallAction(
   },
 ): Promise<CretaVideoWallPublic> {
   try {
-    await requireUserFromToken(accessToken);
+    const user = await requireUserFromToken(accessToken);
     return await new CretaWallsService().update(
       assertPositiveIntId(wallId),
       input ?? {},
+      { id: user.sub, role: user.role },
     );
   } catch (e) {
     rethrowActionError(e, TAG);
@@ -76,10 +82,11 @@ export async function setCretaWallMembersAction(
   members: { deviceId: number; isMaster?: boolean; bookId?: number | null }[],
 ): Promise<CretaVideoWallPublic> {
   try {
-    await requireUserFromToken(accessToken);
+    const user = await requireUserFromToken(accessToken);
     return await new CretaWallsService().setMembers(
       assertPositiveIntId(wallId),
       Array.isArray(members) ? members : [],
+      { id: user.sub, role: user.role },
     );
   } catch (e) {
     rethrowActionError(e, TAG);
@@ -91,8 +98,11 @@ export async function deleteCretaWallAction(
   wallId: number,
 ): Promise<void> {
   try {
-    await requireUserFromToken(accessToken);
-    await new CretaWallsService().remove(assertPositiveIntId(wallId));
+    const user = await requireUserFromToken(accessToken);
+    await new CretaWallsService().remove(assertPositiveIntId(wallId), {
+      id: user.sub,
+      role: user.role,
+    });
   } catch (e) {
     rethrowActionError(e, TAG);
   }

@@ -33,10 +33,11 @@ function toActor(u: {
 
 const TAG = "creta-ads-actions";
 
-export async function listCretaAdvertisersAction(): Promise<
-  CretaAdvertiserPublic[]
-> {
+export async function listCretaAdvertisersAction(
+  accessToken: string | null | undefined,
+): Promise<CretaAdvertiserPublic[]> {
   try {
+    await requireUserFromToken(accessToken);
     return await new CretaAdsService().listAdvertisers();
   } catch (e) {
     rethrowActionError(e, TAG);
@@ -64,10 +65,11 @@ export async function updateCretaAdvertiserAction(
   input: { name?: string; contact?: string },
 ): Promise<void> {
   try {
-    await requireUserFromToken(accessToken);
+    const user = await requireUserFromToken(accessToken);
     await new CretaAdsService().updateAdvertiser(
       assertPositiveIntId(advertiserId),
       input ?? {},
+      toActor(user),
     );
   } catch (e) {
     rethrowActionError(e, TAG);
@@ -89,10 +91,11 @@ export async function deleteCretaAdvertiserAction(
   }
 }
 
-export async function listCretaAdCampaignsAction(): Promise<
-  CretaAdCampaignPublic[]
-> {
+export async function listCretaAdCampaignsAction(
+  accessToken: string | null | undefined,
+): Promise<CretaAdCampaignPublic[]> {
   try {
+    await requireUserFromToken(accessToken);
     return await new CretaAdsService().listCampaigns();
   } catch (e) {
     rethrowActionError(e, TAG);
@@ -230,9 +233,11 @@ export async function logCretaAdPlayAction(input: {
 }
 
 export async function cretaAdCampaignReportAction(
+  accessToken: string | null | undefined,
   days?: number,
 ): Promise<Awaited<ReturnType<CretaAdsService["campaignReport"]>>> {
   try {
+    await requireUserFromToken(accessToken);
     return await new CretaAdsService().campaignReport(days ?? 30);
   } catch (e) {
     rethrowActionError(e, TAG);
@@ -270,9 +275,11 @@ export async function updateCretaAdSettingAction(
 }
 
 export async function cretaAdHourlyReportAction(
+  accessToken: string | null | undefined,
   days?: number,
 ): Promise<Awaited<ReturnType<CretaAdsService["hourlyReport"]>>> {
   try {
+    await requireUserFromToken(accessToken);
     return await new CretaAdsService().hourlyReport(days ?? 30);
   } catch (e) {
     rethrowActionError(e, TAG);
@@ -280,9 +287,11 @@ export async function cretaAdHourlyReportAction(
 }
 
 export async function cretaAdSlotReportAction(
+  accessToken: string | null | undefined,
   days?: number,
 ): Promise<Awaited<ReturnType<CretaAdsService["slotReport"]>>> {
   try {
+    await requireUserFromToken(accessToken);
     return await new CretaAdsService().slotReport(days ?? 30);
   } catch (e) {
     rethrowActionError(e, TAG);
@@ -308,8 +317,11 @@ export async function reviewCretaAdCreativeAction(
 }
 
 /** 광고 변경 이력(감사 로그) — 최근 30건 */
-export async function listCretaAdAuditAction(): Promise<CretaAdAuditPublic[]> {
+export async function listCretaAdAuditAction(
+  accessToken: string | null | undefined,
+): Promise<CretaAdAuditPublic[]> {
   try {
+    await requireUserFromToken(accessToken);
     return await new CretaAdsService().listAudit(30);
   } catch (e) {
     rethrowActionError(e, TAG);
@@ -317,10 +329,11 @@ export async function listCretaAdAuditAction(): Promise<CretaAdAuditPublic[]> {
 }
 
 /** 화면 인벤토리(판매 가능량) — 디바이스 × 시간당 노출 능력 */
-export async function cretaAdScreenInventoryAction(): Promise<
-  CretaAdScreenInventory[]
-> {
+export async function cretaAdScreenInventoryAction(
+  accessToken: string | null | undefined,
+): Promise<CretaAdScreenInventory[]> {
   try {
+    await requireUserFromToken(accessToken);
     return await new CretaAdsService().screenInventory();
   } catch (e) {
     rethrowActionError(e, TAG);
@@ -329,9 +342,11 @@ export async function cretaAdScreenInventoryAction(): Promise<
 
 /** 디바이스별 광고 노출 리포트 */
 export async function cretaAdDeviceReportAction(
+  accessToken: string | null | undefined,
   days?: number,
 ): Promise<Awaited<ReturnType<CretaAdsService["deviceReport"]>>> {
   try {
+    await requireUserFromToken(accessToken);
     return await new CretaAdsService().deviceReport(days ?? 30);
   } catch (e) {
     rethrowActionError(e, TAG);

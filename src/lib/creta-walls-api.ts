@@ -64,14 +64,14 @@ function requireToken(): string {
 }
 
 export async function fetchCretaWalls(): Promise<CretaVideoWall[]> {
-  return run(() => listCretaWallsAction()) as unknown as Promise<
+  return run(() => listCretaWallsAction(requireToken())) as unknown as Promise<
     CretaVideoWall[]
   >;
 }
 
 export async function fetchCretaWall(id: number): Promise<CretaVideoWall> {
   return run(() =>
-    getCretaWallAction(id),
+    getCretaWallAction(requireToken(), id),
   ) as unknown as Promise<CretaVideoWall>;
 }
 

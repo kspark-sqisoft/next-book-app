@@ -132,9 +132,9 @@ function requireToken(): string {
 }
 
 export async function fetchCretaAdvertisers(): Promise<CretaAdvertiser[]> {
-  return run(() => listCretaAdvertisersAction()) as unknown as Promise<
-    CretaAdvertiser[]
-  >;
+  return run(() =>
+    listCretaAdvertisersAction(requireToken()),
+  ) as unknown as Promise<CretaAdvertiser[]>;
 }
 
 export async function createCretaAdvertiser(input: {
@@ -156,9 +156,9 @@ export async function deleteCretaAdvertiser(id: number): Promise<void> {
 }
 
 export async function fetchCretaAdCampaigns(): Promise<CretaAdCampaign[]> {
-  return run(() => listCretaAdCampaignsAction()) as unknown as Promise<
-    CretaAdCampaign[]
-  >;
+  return run(() =>
+    listCretaAdCampaignsAction(requireToken()),
+  ) as unknown as Promise<CretaAdCampaign[]>;
 }
 
 export async function createCretaAdCampaign(input: {
@@ -246,9 +246,9 @@ export async function logCretaAdPlay(input: {
 export async function fetchCretaAdCampaignReport(
   days = 30,
 ): Promise<CretaAdCampaignReportRow[]> {
-  return run(() => cretaAdCampaignReportAction(days)) as unknown as Promise<
-    CretaAdCampaignReportRow[]
-  >;
+  return run(() =>
+    cretaAdCampaignReportAction(requireToken(), days),
+  ) as unknown as Promise<CretaAdCampaignReportRow[]>;
 }
 
 export async function fetchCretaAdSetting(): Promise<CretaAdSetting> {
@@ -280,17 +280,17 @@ export type CretaAdSlotRow = {
 export async function fetchCretaAdHourlyReport(
   days = 30,
 ): Promise<CretaAdHourlyRow[]> {
-  return run(() => cretaAdHourlyReportAction(days)) as unknown as Promise<
-    CretaAdHourlyRow[]
-  >;
+  return run(() =>
+    cretaAdHourlyReportAction(requireToken(), days),
+  ) as unknown as Promise<CretaAdHourlyRow[]>;
 }
 
 export async function fetchCretaAdSlotReport(
   days = 30,
 ): Promise<CretaAdSlotRow[]> {
-  return run(() => cretaAdSlotReportAction(days)) as unknown as Promise<
-    CretaAdSlotRow[]
-  >;
+  return run(() =>
+    cretaAdSlotReportAction(requireToken(), days),
+  ) as unknown as Promise<CretaAdSlotRow[]>;
 }
 
 export type CretaAdAuditRow = {
@@ -346,25 +346,25 @@ export async function reviewCretaAdCreative(
 }
 
 export async function fetchCretaAdAudit(): Promise<CretaAdAuditRow[]> {
-  return run(() => listCretaAdAuditAction()) as unknown as Promise<
-    CretaAdAuditRow[]
-  >;
+  return run(() =>
+    listCretaAdAuditAction(requireToken()),
+  ) as unknown as Promise<CretaAdAuditRow[]>;
 }
 
 export async function fetchCretaAdScreenInventory(): Promise<
   CretaAdScreenInventoryRow[]
 > {
-  return run(() => cretaAdScreenInventoryAction()) as unknown as Promise<
-    CretaAdScreenInventoryRow[]
-  >;
+  return run(() =>
+    cretaAdScreenInventoryAction(requireToken()),
+  ) as unknown as Promise<CretaAdScreenInventoryRow[]>;
 }
 
 export async function fetchCretaAdDeviceReport(
   days = 30,
 ): Promise<CretaAdDeviceReportRow[]> {
-  return run(() => cretaAdDeviceReportAction(days)) as unknown as Promise<
-    CretaAdDeviceReportRow[]
-  >;
+  return run(() =>
+    cretaAdDeviceReportAction(requireToken(), days),
+  ) as unknown as Promise<CretaAdDeviceReportRow[]>;
 }
 
 /** 소재 순서 이동 — 앞(-1)/뒤(1) */

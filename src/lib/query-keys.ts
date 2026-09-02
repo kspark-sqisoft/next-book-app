@@ -47,6 +47,10 @@ export const cretaKeys = {
   all: ["creta"] as const,
   playlists: () => [...cretaKeys.all, "playlists"] as const,
   playlist: (id: number) => [...cretaKeys.all, "playlist", id] as const,
+  /** 커뮤니티 갤러리용 — 전체 공개만 담기므로 인증 목록과 캐시를 섞으면 안 된다 */
+  publicPlaylists: () => [...cretaKeys.all, "public-playlists"] as const,
+  publicPlaylist: (id: number) =>
+    [...cretaKeys.all, "public-playlist", id] as const,
   schedules: () => [...cretaKeys.all, "schedules"] as const,
   schedule: (id: number) => [...cretaKeys.all, "schedule", id] as const,
   devices: () => [...cretaKeys.all, "devices"] as const,

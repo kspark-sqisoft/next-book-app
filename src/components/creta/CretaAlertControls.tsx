@@ -21,6 +21,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { isAdminUser } from "@/lib/authz";
 import {
   activateCretaAlert,
   CRETA_ALERT_LEVEL_CLASS,
@@ -96,6 +97,12 @@ export function CretaAlertBanner({ alert }: { alert: CretaAlert }) {
         onClick={() => {
           if (!user) {
             toast.error("로그인이 필요합니다.");
+            return;
+          }
+          // 서버도 관리자만 허용한다. 프로덕션에서는 서버 액션 오류 상세가 가려져
+          // 일반 실패 메시지로 도착하므로, 이유를 여기서 미리 알려 준다.
+          if (!isAdminUser(user)) {
+            toast.error("긴급 알림 해제는 관리자만 할 수 있습니다.");
             return;
           }
           clearMutation.mutate();
@@ -190,6 +197,10 @@ export function CretaAlertSendButton({
         onClick={() => {
           if (!user) {
             toast.error("로그인이 필요합니다.");
+            return;
+          }
+          if (!isAdminUser(user)) {
+            toast.error("긴급 알림 발송은 관리자만 할 수 있습니다.");
             return;
           }
           setOpen(true);

@@ -59,6 +59,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Spinner } from "@/components/ui/spinner";
+import { isAdminUser } from "@/lib/authz";
 import { GRID_CARD_HOVER, LIST_ROW_INSIDE_CARD_HOVER } from "@/lib/card-hover";
 import { cretaAlertCoversDevice } from "@/lib/creta-alerts-api";
 import {
@@ -525,6 +526,12 @@ export function DeviceListPage() {
                     onClick={() => {
                       if (!user) {
                         toast.error("로그인이 필요합니다.");
+                        return;
+                      }
+                      // 화면은 소유자 컬럼이 없는 전역 자원이라 서버가 관리자만 허용한다.
+                      // 프로덕션에서는 서버 액션 오류 상세가 가려지므로 여기서 이유를 알린다.
+                      if (!isAdminUser(user)) {
+                        toast.error("디바이스 삭제는 관리자만 할 수 있습니다.");
                         return;
                       }
                       setDeleteTarget({ id: device.id, name: device.name });

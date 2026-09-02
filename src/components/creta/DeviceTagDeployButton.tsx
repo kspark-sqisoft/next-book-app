@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
+import { isAdminUser } from "@/lib/authz";
 import { assignCretaSourceByTag, type CretaDevice } from "@/lib/creta-api";
 import { cretaKeys } from "@/lib/query-keys";
 import { useAuth } from "@/stores/auth-store";
@@ -82,6 +83,11 @@ export function DeviceTagDeployButton({ devices }: { devices: CretaDevice[] }) {
         onClick={() => {
           if (!user) {
             toast.error("로그인이 필요합니다.");
+            return;
+          }
+          // 태그가 붙은 모든 화면의 송출을 한 번에 바꾸므로 서버가 관리자만 허용한다
+          if (!isAdminUser(user)) {
+            toast.error("태그 일괄 배포는 관리자만 할 수 있습니다.");
             return;
           }
           if (tagCounts.length === 0) {

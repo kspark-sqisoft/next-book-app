@@ -122,6 +122,10 @@ export type CretaAdScreenInventory = {
 /** 감사 로그 행위자(JWT에서 전달) */
 export type CretaAdActor = { sub: number; name: string; role: string };
 
+function isAdminActor(actor: CretaAdActor): boolean {
+  return actor.role === "admin";
+}
+
 /** 광고 위젯이 재생할 활성 소재 — 캠페인 가중치·이름 포함 */
 export type CretaAdActiveCreative = CretaAdCreativePublic & {
   campaignName: string;
@@ -351,6 +355,55 @@ export class CretaAdsService {
     }));
   }
 
+  /**
+   * 광고 자원 소유권 — 스키마의 `cretaAdvertiser.ownerId`를 실제로 강제한다.
+   * 지금까지는 저장만 하고 어느 변경 경로에서도 읽지 않아, 로그인한 아무나
+   * id를 훑으며 남의 광고주·캠페인·소재를 지울 수 있었다.
+   * 관리자는 전체 통과. 소유자가 없는 레거시 행은 관리자만 만질 수 있다.
+   */
+  private async assertAdvertiserOwner(
+    advertiserId: number,
+    actor: CretaAdActor,
+  ): Promise<void> {
+    if (isAdminActor(actor)) return;
+    const row = await this.db().query.cretaAdvertiser.findFirst({
+      where: eq(cretaAdvertiser.id, advertiserId),
+      columns: { ownerId: true },
+    });
+    if (!row) throw new HttpError(404, "광고주를 찾을 수 없습니다.");
+    if (row.ownerId == null || row.ownerId !== actor.sub) {
+      throw new HttpError(403, "광고주 소유자·관리자만 할 수 있습니다.");
+    }
+  }
+
+  /** 캠페인 → 광고주로 거슬러 올라가 소유권 확인 */
+  private async assertCampaignOwner(
+    campaignId: number,
+    actor: CretaAdActor,
+  ): Promise<void> {
+    if (isAdminActor(actor)) return;
+    const row = await this.db().query.cretaAdCampaign.findFirst({
+      where: eq(cretaAdCampaign.id, campaignId),
+      columns: { advertiserId: true },
+    });
+    if (!row) throw new HttpError(404, "캠페인을 찾을 수 없습니다.");
+    await this.assertAdvertiserOwner(row.advertiserId, actor);
+  }
+
+  /** 소재 → 캠페인 → 광고주 */
+  private async assertCreativeOwner(
+    creativeId: number,
+    actor: CretaAdActor,
+  ): Promise<void> {
+    if (isAdminActor(actor)) return;
+    const row = await this.db().query.cretaAdCreative.findFirst({
+      where: eq(cretaAdCreative.id, creativeId),
+      columns: { campaignId: true },
+    });
+    if (!row) throw new HttpError(404, "소재를 찾을 수 없습니다.");
+    await this.assertCampaignOwner(row.campaignId, actor);
+  }
+
   async createAdvertiser(
     input: { name: string; contact?: string },
     actor: CretaAdActor,
@@ -371,7 +424,9 @@ export class CretaAdsService {
   async updateAdvertiser(
     id: number,
     input: { name?: string; contact?: string },
+    actor: CretaAdActor,
   ): Promise<void> {
+    await this.assertAdvertiserOwner(id, actor);
     const set: Partial<typeof cretaAdvertiser.$inferInsert> = {
       updatedAt: new Date(),
     };
@@ -390,6 +445,7 @@ export class CretaAdsService {
   }
 
   async removeAdvertiser(id: number, actor: CretaAdActor): Promise<void> {
+    await this.assertAdvertiserOwner(id, actor);
     const deleted = await this.db()
       .delete(cretaAdvertiser)
       .where(eq(cretaAdvertiser.id, id))
@@ -586,6 +642,7 @@ export class CretaAdsService {
     },
     actor: CretaAdActor,
   ): Promise<void> {
+    await this.assertCampaignOwner(id, actor);
     const set: Partial<typeof cretaAdCampaign.$inferInsert> = {
       updatedAt: new Date(),
     };
@@ -669,6 +726,7 @@ export class CretaAdsService {
   }
 
   async removeCampaign(id: number, actor: CretaAdActor): Promise<void> {
+    await this.assertCampaignOwner(id, actor);
     const deleted = await this.db()
       .delete(cretaAdCampaign)
       .where(eq(cretaAdCampaign.id, id))
@@ -696,6 +754,7 @@ export class CretaAdsService {
     },
     actor: CretaAdActor,
   ): Promise<{ id: number }> {
+    await this.assertCampaignOwner(Number(input.campaignId), actor);
     const db = this.db();
     const campaign = await db.query.cretaAdCampaign.findFirst({
       where: eq(cretaAdCampaign.id, Number(input.campaignId)),
@@ -744,6 +803,7 @@ export class CretaAdsService {
     direction: -1 | 1,
     actor: CretaAdActor,
   ): Promise<void> {
+    await this.assertCreativeOwner(id, actor);
     const db = this.db();
     const target = await db.query.cretaAdCreative.findFirst({
       where: eq(cretaAdCreative.id, id),
@@ -808,6 +868,7 @@ export class CretaAdsService {
   }
 
   async removeCreative(id: number, actor: CretaAdActor): Promise<void> {
+    await this.assertCreativeOwner(id, actor);
     const deleted = await this.db()
       .delete(cretaAdCreative)
       .where(eq(cretaAdCreative.id, id))
@@ -1062,6 +1123,10 @@ export class CretaAdsService {
     },
     actor: CretaAdActor,
   ): Promise<CretaAdSettingPublic> {
+    // 전 화면에 공통 적용되는 전역 상태(루프 삽입·하우스 광고) — 소유자 개념이 없다
+    if (!isAdminActor(actor)) {
+      throw new HttpError(403, "광고 전역 설정은 관리자만 변경할 수 있습니다.");
+    }
     await this.getSetting(); // 행 보장
     const set: Partial<typeof cretaAdSetting.$inferInsert> = {
       updatedAt: new Date(),

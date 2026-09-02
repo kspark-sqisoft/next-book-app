@@ -4,6 +4,7 @@
 // 조회는 공개, 변경은 로그인 필요(북 목록과 동일한 학습용 정책).
 import {
   assertPositiveIntId,
+  requireAdminFromToken,
   requireUserFromToken,
   rethrowActionError,
 } from "@/actions/session-token";
@@ -117,20 +118,48 @@ export async function getMyCretaOverviewAction(
 
 // ── 플레이리스트 ──────────────────────────────────────────────────
 
-export async function listCretaPlaylistsAction(): Promise<
-  CretaPlaylistListItemPublic[]
-> {
+export async function listCretaPlaylistsAction(
+  accessToken: string | null | undefined,
+): Promise<CretaPlaylistListItemPublic[]> {
   try {
+    await requireUserFromToken(accessToken);
     return await new CretaService().listPlaylists();
   } catch (e) {
     rethrowActionError(e, TAG);
   }
 }
 
-export async function getCretaPlaylistAction(
+/** 커뮤니티 갤러리(비로그인) 전용 — 전체 공개 플레이리스트만 */
+export async function listPublicCretaPlaylistsAction(): Promise<
+  CretaPlaylistListItemPublic[]
+> {
+  try {
+    return await new CretaService().listPlaylists({ publicOnly: true });
+  } catch (e) {
+    rethrowActionError(e, TAG);
+  }
+}
+
+/** 커뮤니티 상세(비로그인) 전용 — 전체 공개가 아니면 404 */
+export async function getPublicCretaPlaylistAction(
   playlistId: number,
 ): Promise<CretaPlaylistDetailPublic> {
   try {
+    return await new CretaService().getPlaylist(
+      assertPositiveIntId(playlistId),
+      { publicOnly: true },
+    );
+  } catch (e) {
+    rethrowActionError(e, TAG);
+  }
+}
+
+export async function getCretaPlaylistAction(
+  accessToken: string | null | undefined,
+  playlistId: number,
+): Promise<CretaPlaylistDetailPublic> {
+  try {
+    await requireUserFromToken(accessToken);
     const id = assertPositiveIntId(playlistId);
     return await new CretaService().getPlaylist(id);
   } catch (e) {
@@ -224,10 +253,11 @@ export async function moveCretaPlaylistItemAction(
 
 // ── 스케줄 ────────────────────────────────────────────────────────
 
-export async function listCretaSchedulesAction(): Promise<
-  CretaScheduleListItemPublic[]
-> {
+export async function listCretaSchedulesAction(
+  accessToken: string | null | undefined,
+): Promise<CretaScheduleListItemPublic[]> {
   try {
+    await requireUserFromToken(accessToken);
     return await new CretaService().listSchedules();
   } catch (e) {
     rethrowActionError(e, TAG);
@@ -235,9 +265,11 @@ export async function listCretaSchedulesAction(): Promise<
 }
 
 export async function getCretaScheduleAction(
+  accessToken: string | null | undefined,
   scheduleId: number,
 ): Promise<CretaScheduleDetailPublic> {
   try {
+    await requireUserFromToken(accessToken);
     return await new CretaService().getSchedule(
       assertPositiveIntId(scheduleId),
     );
@@ -368,8 +400,11 @@ export async function removeCretaScheduleSlotAction(
 
 // ── 디바이스 ──────────────────────────────────────────────────────
 
-export async function listCretaDevicesAction(): Promise<CretaDevicePublic[]> {
+export async function listCretaDevicesAction(
+  accessToken: string | null | undefined,
+): Promise<CretaDevicePublic[]> {
   try {
+    await requireUserFromToken(accessToken);
     return await new CretaService().listDevices();
   } catch (e) {
     rethrowActionError(e, TAG);
@@ -377,9 +412,11 @@ export async function listCretaDevicesAction(): Promise<CretaDevicePublic[]> {
 }
 
 export async function getCretaDeviceAction(
+  accessToken: string | null | undefined,
   deviceId: number,
 ): Promise<CretaDevicePublic> {
   try {
+    await requireUserFromToken(accessToken);
     return await new CretaService().getDevice(assertPositiveIntId(deviceId));
   } catch (e) {
     rethrowActionError(e, TAG);
@@ -409,7 +446,8 @@ export async function deleteCretaDeviceAction(
   deviceId: number,
 ): Promise<void> {
   try {
-    await requireUserFromToken(accessToken);
+    // 화면은 소유자 컬럼이 없는 전역 자원 — 삭제는 관리자만
+    await requireAdminFromToken(accessToken);
     await new CretaService().deleteDevice(assertPositiveIntId(deviceId));
   } catch (e) {
     rethrowActionError(e, TAG);
@@ -544,7 +582,8 @@ export async function assignCretaSourceByTagAction(
   body: { type: "book" | "playlist" | "schedule"; refId: number },
 ): Promise<{ count: number; devices: CretaDevicePublic[] }> {
   try {
-    await requireUserFromToken(accessToken);
+    // 태그가 붙은 **모든** 화면의 송출을 한 번에 바꾼다 — 관리자만
+    await requireAdminFromToken(accessToken);
     return await new CretaService().assignSourceByTag(String(tag ?? ""), {
       type: body.type,
       refId: assertPositiveIntId(body.refId),

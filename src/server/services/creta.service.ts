@@ -212,6 +212,9 @@ export type CretaDevicePublic = {
   createdAt: Date;
 };
 
+/** `visibility` 컬럼이 갖는 두 값 중 공개 쪽 — 커뮤니티 갤러리 노출 기준 */
+const PLAYLIST_VISIBILITY_PUBLIC = "전체 공개";
+
 const NAME_MAX = 120;
 const HHMM_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const YMD_RE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
@@ -543,11 +546,22 @@ export class CretaService {
 
   // ── 플레이리스트 ─────────────────────────────────────────────────
 
-  async listPlaylists(): Promise<CretaPlaylistListItemPublic[]> {
+  /**
+   * `publicOnly`는 커뮤니티 갤러리(비로그인 접근)용 — 북의 `publishedOnly`와 같은 역할이다.
+   * 이 필터가 없으면 "멤버 공개" 플레이리스트까지 갤러리에 노출된다.
+   */
+  async listPlaylists(opts?: {
+    publicOnly?: boolean;
+  }): Promise<CretaPlaylistListItemPublic[]> {
     const db = this.db();
     const rows = await db
       .select()
       .from(cretaPlaylist)
+      .where(
+        opts?.publicOnly
+          ? eq(cretaPlaylist.visibility, PLAYLIST_VISIBILITY_PUBLIC)
+          : undefined,
+      )
       .orderBy(desc(cretaPlaylist.updatedAt));
     const ids = rows.map((r) => r.id);
     const countsMap = new Map<number, number>();
@@ -829,12 +843,19 @@ export class CretaService {
     return this.getSchedule(id);
   }
 
-  async getPlaylist(id: number): Promise<CretaPlaylistDetailPublic> {
+  async getPlaylist(
+    id: number,
+    opts?: { publicOnly?: boolean },
+  ): Promise<CretaPlaylistDetailPublic> {
     const db = this.db();
     const row = await db.query.cretaPlaylist.findFirst({
       where: eq(cretaPlaylist.id, id),
     });
     if (!row) throw new HttpError(404, "플레이리스트를 찾을 수 없습니다.");
+    // 비로그인 상세는 전체 공개만 — 존재 여부도 흘리지 않게 404로 통일
+    if (opts?.publicOnly && row.visibility !== PLAYLIST_VISIBILITY_PUBLIC) {
+      throw new HttpError(404, "플레이리스트를 찾을 수 없습니다.");
+    }
     const items = await db
       .select({
         itemId: cretaPlaylistItem.id,

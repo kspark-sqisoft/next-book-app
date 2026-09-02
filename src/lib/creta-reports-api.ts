@@ -3,7 +3,13 @@ import {
   getCretaDeviceUptimeAction,
   getCretaPlayReportAction,
 } from "@/actions/creta-reports";
-import { humanizeServerActionError } from "@/lib/api";
+import { getAccessToken, humanizeServerActionError } from "@/lib/api";
+
+function requireToken(): string {
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+  return token;
+}
 
 export const PLAY_REPORT_RANGES = [1, 7, 30] as const;
 export type PlayReportRange = (typeof PLAY_REPORT_RANGES)[number];
@@ -46,6 +52,7 @@ export async function fetchCretaPlayReport(
 ): Promise<CretaPlayReport> {
   try {
     return (await getCretaPlayReportAction(
+      requireToken(),
       rangeDays,
     )) as unknown as CretaPlayReport;
   } catch (e) {
@@ -83,6 +90,7 @@ export async function fetchCretaDeviceUptime(
 ): Promise<CretaDeviceUptime> {
   try {
     return (await getCretaDeviceUptimeAction(
+      requireToken(),
       rangeDays,
     )) as unknown as CretaDeviceUptime;
   } catch (e) {

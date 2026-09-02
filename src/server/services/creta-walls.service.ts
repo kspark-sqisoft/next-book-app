@@ -2,6 +2,10 @@
 // 실제 플레이어가 없어 재생 동기는 월 상세 미리보기가 공통 클록으로 시뮬레이션한다.
 import { asc, eq, inArray } from "drizzle-orm";
 
+import {
+  type AuthActor,
+  canMutateOwnedResource,
+} from "@/server/auth/auth-policy";
 import { getDb } from "@/server/db";
 import {
   book as bookTable,
@@ -179,6 +183,31 @@ export class CretaWallsService {
     return this.get(row.id);
   }
 
+  /**
+   * 비디오월 소유권 — `create`가 `ownerId`를 저장해 두는데도 어떤 변경 경로에서도
+   * 읽지 않아, 로그인한 아무나 남의 월을 수정·삭제할 수 있었다.
+   * 소유자가 없는 레거시 행은 관리자만.
+   */
+  private async assertWallOwner(id: number, actor: AuthActor): Promise<void> {
+    const row = await this.db().query.cretaVideoWall.findFirst({
+      where: eq(cretaVideoWall.id, id),
+      columns: { ownerId: true },
+    });
+    if (!row) throw new HttpError(404, "비디오월을 찾을 수 없습니다.");
+    if (row.ownerId == null) {
+      if (actor.role !== "admin") {
+        throw new HttpError(
+          403,
+          "공용 비디오월은 관리자만 관리할 수 있습니다.",
+        );
+      }
+      return;
+    }
+    if (!canMutateOwnedResource(actor, row.ownerId)) {
+      throw new HttpError(403, "비디오월 소유자·관리자만 할 수 있습니다.");
+    }
+  }
+
   async update(
     id: number,
     input: {
@@ -189,7 +218,9 @@ export class CretaWallsService {
       bookId?: number | null;
       slideSec?: number;
     },
+    actor: AuthActor,
   ): Promise<CretaVideoWallPublic> {
+    await this.assertWallOwner(id, actor);
     const db = this.db();
     const set: Partial<typeof cretaVideoWall.$inferInsert> = {
       updatedAt: new Date(),
@@ -247,7 +278,9 @@ export class CretaWallsService {
   async setMembers(
     id: number,
     members: { deviceId: number; isMaster?: boolean; bookId?: number | null }[],
+    actor: AuthActor,
   ): Promise<CretaVideoWallPublic> {
+    await this.assertWallOwner(id, actor);
     const db = this.db();
     const wall = await db.query.cretaVideoWall.findFirst({
       where: eq(cretaVideoWall.id, id),
@@ -345,7 +378,8 @@ export class CretaWallsService {
     return this.get(id);
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: number, actor: AuthActor): Promise<void> {
+    await this.assertWallOwner(id, actor);
     const deleted = await this.db()
       .delete(cretaVideoWall)
       .where(eq(cretaVideoWall.id, id))

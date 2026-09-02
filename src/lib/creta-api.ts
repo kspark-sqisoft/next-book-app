@@ -13,9 +13,11 @@ import {
   getCretaPlaylistAction,
   getCretaScheduleAction,
   getMyCretaOverviewAction,
+  getPublicCretaPlaylistAction,
   listCretaDevicesAction,
   listCretaPlaylistsAction,
   listCretaSchedulesAction,
+  listPublicCretaPlaylistsAction,
   moveCretaPlaylistItemAction,
   removeCretaPlaylistItemAction,
   removeCretaScheduleSlotAction,
@@ -303,15 +305,32 @@ function requireToken(): string {
 // 플레이리스트
 export async function fetchCretaPlaylists(): Promise<CretaPlaylistListItem[]> {
   return run(() =>
-    listCretaPlaylistsAction(),
+    listCretaPlaylistsAction(requireToken()),
   ) as unknown as CretaPlaylistListItem[];
+}
+
+/** 커뮤니티 갤러리 — 비로그인도 볼 수 있는 전체 공개 플레이리스트만 */
+export async function fetchPublicCretaPlaylists(): Promise<
+  CretaPlaylistListItem[]
+> {
+  return run(() =>
+    listPublicCretaPlaylistsAction(),
+  ) as unknown as CretaPlaylistListItem[];
+}
+
+export async function fetchPublicCretaPlaylist(
+  id: number,
+): Promise<CretaPlaylistDetail> {
+  return run(() =>
+    getPublicCretaPlaylistAction(id),
+  ) as unknown as CretaPlaylistDetail;
 }
 
 export async function fetchCretaPlaylist(
   id: number,
 ): Promise<CretaPlaylistDetail> {
   return run(() =>
-    getCretaPlaylistAction(id),
+    getCretaPlaylistAction(requireToken(), id),
   ) as unknown as CretaPlaylistDetail;
 }
 
@@ -410,7 +429,7 @@ export async function setCretaScheduleShareAll(
 
 export async function fetchCretaSchedules(): Promise<CretaScheduleListItem[]> {
   return run(() =>
-    listCretaSchedulesAction(),
+    listCretaSchedulesAction(requireToken()),
   ) as unknown as CretaScheduleListItem[];
 }
 
@@ -418,7 +437,7 @@ export async function fetchCretaSchedule(
   id: number,
 ): Promise<CretaScheduleDetail> {
   return run(() =>
-    getCretaScheduleAction(id),
+    getCretaScheduleAction(requireToken(), id),
   ) as unknown as CretaScheduleDetail;
 }
 
@@ -496,11 +515,15 @@ export async function removeCretaScheduleSlot(
 
 // 디바이스
 export async function fetchCretaDevices(): Promise<CretaDevice[]> {
-  return run(() => listCretaDevicesAction()) as unknown as CretaDevice[];
+  return run(() =>
+    listCretaDevicesAction(requireToken()),
+  ) as unknown as CretaDevice[];
 }
 
 export async function fetchCretaDevice(id: number): Promise<CretaDevice> {
-  return run(() => getCretaDeviceAction(id)) as unknown as CretaDevice;
+  return run(() =>
+    getCretaDeviceAction(requireToken(), id),
+  ) as unknown as CretaDevice;
 }
 
 export async function createCretaDevice(input: {

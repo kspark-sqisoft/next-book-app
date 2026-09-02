@@ -1,4 +1,5 @@
 // 서버 액션에서 Bearer(클라이언트가 넘긴 accessToken 문자열) 검증
+import { isAdminRole } from "@/server/auth/auth-policy";
 import { verifyAccessToken } from "@/server/auth/jwt";
 import type { JwtPayload } from "@/server/auth/jwt-payload";
 import { HttpError } from "@/server/http/http-error";
@@ -38,6 +39,21 @@ export async function requireUserFromToken(
   } catch {
     throw new HttpError(401, "Unauthorized");
   }
+}
+
+/**
+ * 관리자 전용. 소유자 개념이 없는 **전역·파괴적** 조작(화면 삭제, 태그 일괄 배포,
+ * 긴급 알림)에 쓴다 — 이런 자원은 소유자 컬럼이 없어 "로그인 여부"만으로는
+ * 아무 계정이나 전체 화면에 영향을 줄 수 있다.
+ */
+export async function requireAdminFromToken(
+  accessToken: string | null | undefined,
+): Promise<JwtPayload> {
+  const user = await requireUserFromToken(accessToken);
+  if (!isAdminRole(user.role)) {
+    throw new HttpError(403, "관리자만 할 수 있습니다.");
+  }
+  return user;
 }
 
 // 서버 액션은 클라이언트에 Error 문자열만 던지는 패턴이 많음

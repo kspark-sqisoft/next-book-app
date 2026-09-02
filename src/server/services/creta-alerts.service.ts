@@ -2,7 +2,7 @@
 // 한 번에 하나만 활성 — 새 알림을 발송하면 기존 활성 알림은 자동 종료된다.
 import { desc, eq, inArray } from "drizzle-orm";
 
-import type { AuthActor } from "@/server/auth/auth-policy";
+import { type AuthActor, isAdminRole } from "@/server/auth/auth-policy";
 import { getDb } from "@/server/db";
 import {
   cretaAlert,
@@ -82,6 +82,10 @@ export class CretaAlertsService {
     actor: AuthActor,
     input: { message: string; level?: string; deviceIds?: number[] | null },
   ): Promise<CretaAlertPublic> {
+    // 전 화면의 현재 재생을 덮어쓰는 공지 — 소유자 개념이 없어 관리자만
+    if (!isAdminRole(actor.role)) {
+      throw new HttpError(403, "긴급 알림 발송은 관리자만 할 수 있습니다.");
+    }
     const message = String(input.message ?? "").trim();
     if (!message) throw new HttpError(400, "알림 메시지를 입력하세요.");
     if (message.length > MESSAGE_MAX) {

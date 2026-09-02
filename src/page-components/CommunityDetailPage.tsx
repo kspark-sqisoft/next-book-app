@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { fetchBook } from "@/lib/api";
-import { fetchCretaPlaylist, sharedWithSummary } from "@/lib/creta-api";
+import { fetchPublicCretaPlaylist, sharedWithSummary } from "@/lib/creta-api";
 import { fetchCretaLikes } from "@/lib/creta-likes-api";
 import { formatDateMediumShort } from "@/lib/format-date";
 import { goBackOrPush } from "@/lib/navigate-back";
@@ -63,8 +63,8 @@ export function CommunityDetailPage() {
     enabled: valid && kind === "book",
   });
   const playlistQuery = useQuery({
-    queryKey: cretaKeys.playlist(id),
-    queryFn: () => fetchCretaPlaylist(id),
+    queryKey: cretaKeys.publicPlaylist(id),
+    queryFn: () => fetchPublicCretaPlaylist(id),
     enabled: valid && kind === "playlist",
   });
   const { user } = useAuth();

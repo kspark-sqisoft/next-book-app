@@ -29,7 +29,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { type BookListCoverPreview, fetchBooksPage } from "@/lib/api";
 import { CARD_GRID_COLUMNS, GRID_CARD_HOVER } from "@/lib/card-hover";
-import { fetchCretaPlaylists, sharedWithSummary } from "@/lib/creta-api";
+import { fetchPublicCretaPlaylists, sharedWithSummary } from "@/lib/creta-api";
 import { fetchCretaCommentCounts } from "@/lib/creta-comments-api";
 import { fetchCretaLikes } from "@/lib/creta-likes-api";
 import { formatDateMediumShort } from "@/lib/format-date";
@@ -64,8 +64,8 @@ export function CommunityPage() {
     queryFn: () => fetchBooksPage({ take: 60, publishedOnly: true }),
   });
   const playlistsQuery = useQuery({
-    queryKey: cretaKeys.playlists(),
-    queryFn: fetchCretaPlaylists,
+    queryKey: cretaKeys.publicPlaylists(),
+    queryFn: fetchPublicCretaPlaylists,
   });
 
   const items: GalleryItem[] = useMemo(() => {

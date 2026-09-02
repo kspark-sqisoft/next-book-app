@@ -2,6 +2,7 @@
 
 // 긴급 알림 서버 액션: 조회는 공개, 발송·해제는 로그인 필요(디바이스 관리와 동일 정책)
 import {
+  requireAdminFromToken,
   requireUserFromToken,
   rethrowActionError,
 } from "@/actions/session-token";
@@ -44,7 +45,8 @@ export async function deactivateCretaAlertAction(
   accessToken: string | null | undefined,
 ): Promise<void> {
   try {
-    await requireUserFromToken(accessToken);
+    // 전 화면 긴급 알림 해제 — 발송과 같은 급의 전역 조작
+    await requireAdminFromToken(accessToken);
     await new CretaAlertsService().deactivate();
   } catch (e) {
     rethrowActionError(e, TAG);

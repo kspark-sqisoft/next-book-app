@@ -22,6 +22,7 @@ import {
 } from "@/lib/creta-api";
 import { cretaKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/stores/auth-store";
 
 const HISTORY_KEY = "creta-device-alert-history";
 const ACK_KEY = "creta-device-alert-ack-ts";
@@ -91,6 +92,7 @@ function formatEventTime(ts: number): string {
 }
 
 export function DeviceAlertBell() {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [history, setHistory] = useState<DeviceAlertEvent[]>([]);
   const [ackTs, setAckTs] = useState(0);
@@ -99,6 +101,8 @@ export function DeviceAlertBell() {
     queryKey: cretaKeys.devices(),
     queryFn: fetchCretaDevices,
     refetchInterval: 10_000,
+    // 디바이스 목록은 로그인 필요 — 비로그인 상태에서 폴링하면 10초마다 실패한다
+    enabled: !!user,
   });
 
   useEffect(() => {

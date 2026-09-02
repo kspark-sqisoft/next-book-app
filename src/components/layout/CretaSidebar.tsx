@@ -165,6 +165,8 @@ export function CretaSidebar() {
     staleTime: 10_000,
     // 오프라인 전환 알림을 위해 크레타 화면 어디서든 주기적으로 갱신
     refetchInterval: 15_000,
+    // 디바이스 목록은 로그인 필요 — 비로그인 방문자가 15초마다 실패하지 않게
+    enabled: !!user,
   });
   const onlineCount = (devicesQuery.data ?? []).filter(
     (d) => cretaDeviceStatus(d) === "online",
