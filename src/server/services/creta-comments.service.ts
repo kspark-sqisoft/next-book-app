@@ -5,7 +5,7 @@ import {
   type AuthActor,
   canMutateOwnedResource,
 } from "@/server/auth/auth-policy";
-import { getDb } from "@/server/db";
+import { type DbOrTx, getDb } from "@/server/db";
 import {
   book as bookTable,
   cretaComment,
@@ -202,11 +202,13 @@ export class CretaCommentsService {
   }
 
   /** 대상이 삭제될 때 호출 — 고아 댓글 정리(루트만 지우면 답글은 cascade) */
+  /** 대상 삭제 시 일괄 정리. `tx`를 주면 호출자의 트랜잭션에 합류한다(원자성). */
   async removeAllForTarget(
     kind: CretaCommentTargetKind,
     targetId: number,
+    tx?: DbOrTx,
   ): Promise<void> {
-    await this.db()
+    await (tx ?? this.db())
       .delete(cretaComment)
       .where(
         and(

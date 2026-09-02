@@ -1,7 +1,7 @@
 // 북·페이지·캔버스 요소 CRUD, 미디어 업로드 한도·전환 키 검증
 import { join } from "node:path";
 
-import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 
 import {
   type AuthActor,
@@ -10,6 +10,7 @@ import {
 import { getDb } from "@/server/db";
 import {
   book as bookTable,
+  bookMediaItem,
   bookPage,
   bookShare,
   user as userTable,
@@ -2812,17 +2813,21 @@ export class BooksService {
       pages.map((p) => p.elementsJson),
     );
 
-    // 커뮤니티 댓글(대상 FK가 없어 별도 정리)
-    await new CretaCommentsService().removeAllForTarget("book", bookId);
-    await new CretaLikesService().removeAllForTarget("book", bookId);
-    // 페이지·북 삭제를 원자 처리 — 중간 실패 시 고아 행 방지
+    // 댓글·좋아요는 book에 FK가 없어(targetId가 평범한 정수) 이 정리가 유일하다.
+    // 트랜잭션 밖에서 먼저 커밋하면, 이어지는 페이지·북 삭제가 실패했을 때
+    // 북은 멀쩡히 살아 있는데 커뮤니티 반응만 사라진 복구 불가 상태가 된다.
     await db.transaction(async (tx) => {
+      await new CretaCommentsService().removeAllForTarget("book", bookId, tx);
+      await new CretaLikesService().removeAllForTarget("book", bookId, tx);
       await tx.delete(bookPage).where(eq(bookPage.bookId, bookId));
       await tx.delete(bookTable).where(eq(bookTable.id, bookId));
     });
 
-    // 커밋 확정 후 업로드 파일 정리 — 실패해도 고아 파일이 남을 뿐 데이터는 안전
-    for (const rel of mediaPaths) {
+    // 커밋 확정 후 업로드 파일 정리 — 실패해도 고아 파일이 남을 뿐 데이터는 안전.
+    // 단, 미디어 라이브러리는 파일 공유를 의도적으로 지원하므로(book-media.service.ts)
+    // 다른 북·라이브러리 항목이 아직 가리키는 파일을 지우면 그쪽이 영구히 깨진다.
+    const unreferenced = await this.filterUnreferencedUploadPaths(mediaPaths);
+    for (const rel of unreferenced) {
       const relative = rel.slice("/uploads/".length);
       await tryUnlink(join(UPLOAD_ROOT, relative));
     }
@@ -2834,6 +2839,46 @@ export class BooksService {
       detail: "북 삭제",
       actorId: actor.id,
     });
+  }
+
+  /**
+   * 삭제 커밋 후, 아무도 참조하지 않는 업로드 경로만 남긴다.
+   * 확인 대상은 ① 다른 북의 페이지(elementsJson) ② 미디어 라이브러리 항목(src·posterSrc).
+   * 삭제된 북의 라이브러리 행은 FK cascade로 이미 사라졌으므로 남은 행은 전부 "다른 북"이다.
+   * LIKE 와일드카드가 파일명에 섞여도 매칭이 넓어질 뿐이라 "안 지움" 쪽으로만 틀린다.
+   */
+  private async filterUnreferencedUploadPaths(
+    paths: string[],
+  ): Promise<string[]> {
+    if (paths.length === 0) return [];
+    const db = this.db();
+    const referenced = new Set<string>();
+
+    const libRows = await db
+      .select({ src: bookMediaItem.src, posterSrc: bookMediaItem.posterSrc })
+      .from(bookMediaItem)
+      .where(
+        or(
+          inArray(bookMediaItem.src, paths),
+          inArray(bookMediaItem.posterSrc, paths),
+        ),
+      );
+    for (const r of libRows) {
+      if (r.src) referenced.add(r.src);
+      if (r.posterSrc) referenced.add(r.posterSrc);
+    }
+
+    for (const p of paths) {
+      if (referenced.has(p)) continue;
+      const [hit] = await db
+        .select({ id: bookPage.id })
+        .from(bookPage)
+        .where(like(bookPage.elementsJson, `%${p}%`))
+        .limit(1);
+      if (hit) referenced.add(p);
+    }
+
+    return paths.filter((p) => !referenced.has(p));
   }
 
   async assertBookOwner(bookId: number, actor: AuthActor) {

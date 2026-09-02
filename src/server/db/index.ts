@@ -34,4 +34,10 @@ export function getDb() {
 }
 
 export type Db = ReturnType<typeof getDb>;
+/**
+ * `db` 본체 또는 트랜잭션 핸들. 여러 테이블에 걸친 정리를 호출자의 트랜잭션에
+ * 합류시킬 때 쓴다 — 서비스가 각자 `this.db()`를 잡으면 원자성이 깨지고,
+ * 이미 트랜잭션이 열린 상태라면 풀에서 커넥션을 하나 더 물어 교착이 날 수 있다.
+ */
+export type DbOrTx = Db | Parameters<Parameters<Db["transaction"]>[0]>[0];
 export * from "./schema";

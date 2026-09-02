@@ -1,7 +1,7 @@
 // 커뮤니티 좋아요: 북·플레이리스트 대상 토글, 대상별 개수 + 내가 눌렀는지
 import { and, count, eq, inArray } from "drizzle-orm";
 
-import { getDb } from "@/server/db";
+import { type DbOrTx, getDb } from "@/server/db";
 import { cretaLike } from "@/server/db/schema";
 import { HttpError } from "@/server/http/http-error";
 import {
@@ -85,11 +85,13 @@ export class CretaLikesService {
     return state[targetId] ?? { count: 0, likedByMe: false };
   }
 
+  /** 대상 삭제 시 일괄 정리. `tx`를 주면 호출자의 트랜잭션에 합류한다(원자성). */
   async removeAllForTarget(
     kind: CretaCommentTargetKind,
     targetId: number,
+    tx?: DbOrTx,
   ): Promise<void> {
-    await this.db()
+    await (tx ?? this.db())
       .delete(cretaLike)
       .where(
         and(eq(cretaLike.targetKind, kind), eq(cretaLike.targetId, targetId)),
