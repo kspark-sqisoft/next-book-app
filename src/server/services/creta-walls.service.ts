@@ -47,6 +47,8 @@ export type CretaVideoWallPublic = {
   bookTitle: string | null;
   slideSec: number;
   /** 만든 사람 이름(작성자 표시용) */
+  /** 소유자 판별용 — 클라이언트가 canManageOwned로 편집·삭제 노출을 정한다 */
+  ownerId: number | null;
   ownerName: string | null;
   members: CretaWallMemberPublic[];
   updatedAt: Date;
@@ -132,6 +134,7 @@ export class CretaWallsService {
       bookId: r.bookId ?? null,
       bookTitle: r.bookId != null ? (bookTitle.get(r.bookId) ?? null) : null,
       slideSec: r.slideSec,
+      ownerId: r.ownerId ?? null,
       ownerName: r.ownerId != null ? (ownerName.get(r.ownerId) ?? null) : null,
       updatedAt: r.updatedAt,
       members: members

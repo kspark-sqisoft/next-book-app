@@ -31,6 +31,8 @@ export type CretaAdvertiserPublic = {
   id: number;
   name: string;
   contact: string;
+  /** 소유자 판별용 — 클라이언트가 canManageOwned로 편집·삭제 노출을 정한다 */
+  ownerId: number | null;
   ownerName: string | null;
   campaignCount: number;
   updatedAt: Date;
@@ -349,6 +351,7 @@ export class CretaAdsService {
       id: r.id,
       name: r.name,
       contact: r.contact,
+      ownerId: r.ownerId ?? null,
       ownerName: r.ownerId != null ? (ownerName.get(r.ownerId) ?? null) : null,
       campaignCount: countMap.get(r.id) ?? 0,
       updatedAt: r.updatedAt,

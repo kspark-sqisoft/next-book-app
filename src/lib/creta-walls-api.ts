@@ -43,6 +43,8 @@ export type CretaVideoWall = {
   bookId: number | null;
   bookTitle: string | null;
   slideSec: number;
+  /** 소유자 판별용 — canManageOwned로 편집·삭제 노출을 정한다 */
+  ownerId: number | null;
   /** 만든 사람 이름(작성자 표시) */
   ownerName: string | null;
   members: CretaWallMember[];

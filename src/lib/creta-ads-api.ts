@@ -35,6 +35,7 @@ export type CretaAdvertiser = {
   id: number;
   name: string;
   contact: string;
+  ownerId: number | null;
   ownerName: string | null;
   campaignCount: number;
   updatedAt: string;

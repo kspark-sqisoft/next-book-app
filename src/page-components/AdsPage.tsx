@@ -54,7 +54,7 @@ import {
 } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import { publicAssetUrl } from "@/lib/api";
-import { isAdminUser } from "@/lib/authz";
+import { canManageOwned, isAdminUser } from "@/lib/authz";
 import {
   addCretaAdCreative,
   createCretaAdCampaign,
@@ -734,14 +734,22 @@ export function AdsPage() {
                     size="icon-sm"
                     aria-label={`${a.name} 삭제`}
                     className="text-muted-foreground hover:text-destructive"
-                    onClick={() =>
-                      requireLogin() &&
+                    onClick={() => {
+                      if (!requireLogin()) return;
+                      // 서버가 advertiser.ownerId로 막는다. 프로덕션에서는 서버 액션
+                      // 오류 상세가 가려져 일반 실패 문구로 도착하므로 여기서 먼저 알린다.
+                      if (!canManageOwned(user, a.ownerId)) {
+                        toast.error(
+                          "광고주 소유자·관리자만 삭제할 수 있습니다.",
+                        );
+                        return;
+                      }
                       setAdvDeleteTarget({
                         id: a.id,
                         name: a.name,
                         campaignCount: a.campaignCount,
-                      })
-                    }
+                      });
+                    }}
                   >
                     <Trash2 className="size-3.5" aria-hidden />
                   </Button>

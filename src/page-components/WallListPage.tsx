@@ -46,6 +46,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
+import { canManageOwned } from "@/lib/authz";
 import {
   CARD_GRID_COLUMNS,
   GRID_CARD_HOVER,
@@ -225,6 +226,13 @@ export function WallListPage() {
                         toast.error("로그인이 필요합니다.");
                         return;
                       }
+                      // 서버가 ownerId로 막는다 — 프로덕션에서는 오류 상세가 가려지므로 먼저 안내
+                      if (!canManageOwned(user, wall.ownerId)) {
+                        toast.error(
+                          "비디오월 소유자·관리자만 삭제할 수 있습니다.",
+                        );
+                        return;
+                      }
                       setDeleteTarget({ id: wall.id, name: wall.name });
                     }}
                   >
@@ -314,6 +322,12 @@ export function WallListPage() {
                       onClick={() => {
                         if (!user) {
                           toast.error("로그인이 필요합니다.");
+                          return;
+                        }
+                        if (!canManageOwned(user, wall.ownerId)) {
+                          toast.error(
+                            "비디오월 소유자·관리자만 삭제할 수 있습니다.",
+                          );
                           return;
                         }
                         setDeleteTarget({ id: wall.id, name: wall.name });
