@@ -23,6 +23,7 @@ AGENTS.md가 명시하듯 이 버전은 관례가 달라, 일반적으로 알려
 | `useQuery` 사용 파일                | 42                                  |
 
 검증 기준선: `npm run typecheck` 통과, `vitest run` **23파일 / 107 테스트** 통과.
+(2026-09-03 진행 중 현재: **25파일 / 128 테스트**)
 **각 단계는 이 두 가지를 통과시킨 상태로 커밋한다.**
 
 ---
@@ -206,26 +207,38 @@ function ProjectData({ id }) {
 
 ---
 
-## 3. 브리지 계층(`lib/*-api.ts`) 제거
+## 3. 브리지 계층(`lib/*-api.ts`) 정리 — **접근을 수정함**
 
-**문제** — 페이지 → `lib/creta-api.ts` → `actions/creta.ts` → `services`의 4단 경로에서
-브리지가 하는 일은 토큰 주입과 `as unknown as` 캐스팅뿐이다. 그 캐스팅이 **79건**이라
-서버 반환 타입과 클라이언트 타입이 어긋나도 컴파일러가 잡지 못한다.
-2번이 끝나면 토큰 주입이라는 존재 이유가 사라진다.
+**착수 후 확인한 것** — 2번으로 토큰 주입이 사라진 뒤 브리지에 남은 일은 두 가지다.
 
-**범위** — `creta-api.ts`(624), `creta-ads-api.ts`(386), `creta-walls-api.ts`(116),
-`creta-reports-api.ts`(110), `creta-alerts-api.ts`(84), `creta-comments-api.ts`(70).
-타입·라벨 등 순수 정의는 살려 `features/<domain>/types.ts`로 옮긴다(4번과 연결).
+1. `run()` = `humanizeServerActionError` 로 오류 문구를 사람이 읽을 수 있게 바꿈
+   ("앱이 새 버전으로 배포되었습니다…" 등 React #441·액션 ID 불일치 처리). **이건 실제 기능이다.**
+2. 서버 DTO → 클라이언트 중복 타입으로의 `as unknown as` 이중 캐스팅. **이게 문제다.**
 
-**M4 병행** — 옮기는 김에 **조회 액션을 라우트 핸들러로 되돌릴지 판단한다.**
-서버 액션 조회는 클라이언트당 직렬화되므로, 한 화면에서 여러 건을 부르는
-`DeviceDetailPage`·`DashboardPage`가 우선 후보다. 5번에서 서버 프리페치로 덮이는 화면은 제외.
+따라서 **파일을 통째로 지우는 것이 목표가 아니다.** 지우면 `run()`이 화면 27개로 흩어진다.
+할 일은 **타입 이중화를 없애는 것**이고, 그러면 캐스팅 79건이 사라진다.
 
-**검증** — typecheck + `vitest run`. `as unknown as`가 79에서 **20 이하**로 줄어야 한다.
+**왜 급한가 — 이미 실제 버그가 나왔다.** `CretaPlaylistListItemPublic.updatedAt`은 `Date`인데
+클라이언트 `CretaPlaylistListItem.updatedAt`은 `string`으로 선언돼 있었다. 서버 액션은 React
+직렬화가 `Date`를 보존하므로 런타임에는 `Date`가 온다. 커뮤니티 갤러리가 REST(문자열)와
+액션(Date)을 한 목록으로 합쳐 `a < b`로 정렬했고, 이 조합의 관계 비교는 **양방향 모두 false**라
+정렬이 조용히 무의미해졌다 — 2020년 플레이리스트가 2026년 북보다 위에 왔다(`9e34446`에서 수정).
 
-**위험** — 중간. 캐스팅이 사라지며 **숨어 있던 타입 불일치가 드러난다** — 그게 목적이다.
+**남은 작업**
 
----
+- 클라이언트 중복 타입을 없애고 서버 `*Public` DTO를 단일 출처로 삼는다.
+  타입 전용 import는 런타임에 지워지므로 `server-only` 모듈에서 가져와도 안전하고,
+  누군가 값 import로 바꾸면 빌드가 시끄럽게 실패한다(원하는 동작).
+- 경계에서 `Date`를 그대로 둘지 문자열로 정규화할지 **한 번만 정한다.** 지금은 경로마다 다르다.
+- 캐스팅이 사라지며 드러나는 불일치를 건건이 확인한다 — 위 정렬 버그가 첫 사례일 뿐이다.
+
+**M4 병행** — 조회를 서버 액션으로 하면 클라이언트당 직렬화된다. 한 화면에서 여러 건을 부르는
+`DeviceDetailPage`·`DashboardPage`가 라우트 핸들러 환원 후보. 5번에서 서버 프리페치로 덮이는 화면은 제외.
+
+**검증** — typecheck + `vitest run` + `playwright test`.
+`as unknown as`가 79에서 **20 이하**로 줄어야 한다.
+
+**위험** — 중간. 드러나는 불일치마다 런타임 동작을 확인해야 한다(정렬 버그처럼 조용히 틀린 것들).
 
 ## 4. `src/lib` 해체
 
@@ -297,12 +310,26 @@ function ProjectData({ id }) {
 
 ## 진행
 
-- [ ] 0. `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` 필수화 (M7)
-- [ ] 1. tRPC 삭제
-- [ ] 2. 토큰 → httpOnly 쿠키 + DAL 세션 (M1·M2·M3)
-- [ ] 3. 브리지 계층 제거 (+ M4 조회 경로 판단)
+- [x] 0. `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` 필수화 (M7) — `3a49a5f`
+- [x] 1. tRPC 삭제 — `e42d4dc`
+- [x] 2. 토큰 → httpOnly 쿠키 + DAL 세션 (M1·M2·M3) — `32ac29e` `99faa77` `a2b5cb0`
+- [ ] 3. 브리지 계층 정리 (+ M4 조회 경로 판단) — 착수(`9e34446`)
 - [ ] 4. `lib` 해체
 - [ ] 5. 서버 프리페치 + 하이드레이션 (선행: M6)
 - [ ] 6. 대형 컴포넌트 분해 + 에디터 스토어
+
+### 2번에서 실제로 한 것
+
+- 액세스 JWT를 httpOnly 쿠키로도 발급(세션 쿠키). REST의 Bearer·소켓 핸드셰이크용
+  클라이언트 사본은 유지 — 공존시켜야 화면을 건드리지 않고 옮길 수 있다.
+- `server/auth/session.ts`: `cache()`로 감싼 `getCurrentUser`/`requireUser`/`requireAdmin`.
+- **서버 액션 99개에서 `accessToken` 인자 제거**, 호출부 101곳 정리.
+  `session-token.ts` → `action-guards.ts`로 개명(토큰 헬퍼가 빠지면 남는 건 id 정규화와 오류 변환뿐).
+- 서비스·액션·db·video 40개 파일에 `server-only`.
+- 인가 감시 테스트에 "어떤 액션도 토큰을 인자로 받지 않는다" 추가.
+- e2e 19개 전부 통과로 확인. 다만 이 머신에서 `npm run test:e2e`는 **원래 실패한다** —
+  Playwright가 Ubuntu 26.04용 크로미움을 제공하지 않는다(`Playwright does not support
+chromium on ubuntu26.04-x64`). 시스템 Chrome(`channel: "chrome"`)으로 돌려 확인했다.
+  CI가 아닌 로컬 검증 수단을 저장소에 남길지는 별도 판단이 필요하다.
 
 각 항목 완료 시 이 체크리스트와 기준선 표를 갱신한다.

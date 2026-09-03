@@ -32,7 +32,11 @@ import { CARD_GRID_COLUMNS, GRID_CARD_HOVER } from "@/lib/card-hover";
 import { fetchPublicCretaPlaylists, sharedWithSummary } from "@/lib/creta-api";
 import { fetchCretaCommentCounts } from "@/lib/creta-comments-api";
 import { fetchCretaLikes } from "@/lib/creta-likes-api";
-import { formatDateMediumShort } from "@/lib/format-date";
+import {
+  type DateLike,
+  formatDateMediumShort,
+  toTimestamp,
+} from "@/lib/format-date";
 import { bookKeys, cretaKeys } from "@/lib/query-keys";
 import { useAuth } from "@/stores/auth-store";
 
@@ -45,7 +49,8 @@ type GalleryItem = {
   subtitle: string;
   author: { id: number; name: string; imageUrl: string | null } | null;
   cover: BookListCoverPreview | null;
-  updatedAt: string;
+  /** 서버 액션은 Date를, JSON 경로는 문자열을 준다 — 한쪽으로 단정하지 않는다 */
+  updatedAt: DateLike;
   /** 공유받은 사용자(이름) — 카드 "○○에게 공유됨" 표시용 */
   sharedWith: { id: number; name: string }[];
   /** 모든 사용자에게 공유 여부 */
@@ -100,7 +105,7 @@ export function CommunityPage() {
           it.title.toLowerCase().includes(q) ||
           (it.author?.name ?? "").toLowerCase().includes(q),
       )
-      .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+      .sort((a, b) => toTimestamp(b.updatedAt) - toTimestamp(a.updatedAt));
   }, [booksQuery.data, playlistsQuery.data, filter, search]);
 
   const bookIds = useMemo(
