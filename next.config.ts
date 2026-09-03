@@ -23,6 +23,14 @@ const konvaPackageRoot = path.resolve(
 const konvaTurbopackAlias = "./node_modules/konva";
 
 const nextConfig: NextConfig = {
+  /**
+   * React Compiler — 컴포넌트 메모이제이션을 자동으로 넣는다.
+   *
+   * 이 저장소에는 `React.memo` 가 한 곳도 없고 4,400줄 캔버스가 매 렌더 전체를 다시 그린다.
+   * 무거운 컴포넌트에 손으로 memo 를 붙이는 대신 컴파일러가 전부 처리하게 한다 —
+   * eslint 의 컴파일러 규칙 기준으로 이미 오류가 0이라 켤 준비가 되어 있었다.
+   */
+  reactCompiler: true,
   // 서버 렌더 서비스가 쓰는 Playwright는 네이티브 바이너리라 번들 대상에서 제외(서버에서 require)
   // ffmpeg-installer도 플랫폼별 바이너리를 동적 require 하므로 번들하면 해석이 깨진다.
   serverExternalPackages: [
