@@ -5,26 +5,14 @@ import { useCallback, useMemo } from "react";
 
 import {
   type BookCanvasElement,
+  type BookDropWidgetKind,
   type BookEditorPageState,
   type BookShapeKind,
   createBookShapeElement,
   placeBookShapeElementAtPointer,
 } from "@/features/book/book-canvas";
 import { setSelectedIds } from "@/features/book/editor-ui-store";
-import {
-  createAdSlotWidget,
-  createCalendarWidget,
-  createChartWidget,
-  createDigitalClockWidget,
-  createMapWidget,
-  createNewsWidget,
-  createQrWidget,
-  createTextWidget,
-  createTickerWidget,
-  createWeatherWidget,
-  createWebviewWidget,
-  createYoutubeWidget,
-} from "@/features/book/widget-factories";
+import { WIDGET_FACTORY_BY_KIND } from "@/features/book/widget-factories";
 
 type UpdatePages = (
   recipe: (draft: Draft<BookEditorPageState>[]) => void,
@@ -59,15 +47,6 @@ export function useWidgetInserters(opts: {
     [activePageIndex, updatePages],
   );
 
-  /** 좌표를 받아 요소를 만드는 팩토리를 삽입 핸들러로 바꾼다 */
-  const inserterFor = useCallback(
-    (make: (x: number, y: number) => BookCanvasElement) =>
-      (x: number, y: number) => {
-        appendElement(make(x, y));
-      },
-    [appendElement],
-  );
-
   /** 도형은 슬라이드 크기에 맞춰 만들고 포인터 위치로 옮긴 뒤 넣는다 */
   const addShapeAt = useCallback(
     (x: number, y: number, kind: BookShapeKind) => {
@@ -86,24 +65,55 @@ export function useWidgetInserters(opts: {
     [appendElement, slideHeight, slideWidth],
   );
 
+  /**
+   * 팔레트 종류로 바로 삽입. 표에 없는 종류(미디어·PDF 등 화면마다 다르게 다뤄야 하는 것)면
+   * `false` 를 돌려주어 호출부가 이어서 처리하게 한다.
+   */
+  const addByKind = useCallback(
+    (kind: BookDropWidgetKind, x: number, y: number): boolean => {
+      const make = WIDGET_FACTORY_BY_KIND[kind];
+      if (!make) return false;
+      appendElement(make(x, y));
+      return true;
+    },
+    [appendElement],
+  );
+
+  /**
+   * 슬라이드 한가운데에 삽입(팔레트 더블 클릭).
+   *
+   * 이전에는 종류마다 기본 크기를 다시 적어 가운데를 계산했다. 요소를 먼저 만들면
+   * 크기가 그 안에 있으므로 표를 따로 둘 필요가 없다 — 기본값이 바뀌어도 자동으로 따라간다.
+   */
+  const addByKindCentered = useCallback(
+    (kind: BookDropWidgetKind): boolean => {
+      const make = WIDGET_FACTORY_BY_KIND[kind];
+      if (!make) return false;
+      const el = make(0, 0);
+      appendElement({
+        ...el,
+        x: Math.max(0, Math.round((slideWidth - (el.width ?? 0)) / 2)),
+        y: Math.max(0, Math.round((slideHeight - (el.height ?? 0)) / 2)),
+      });
+      return true;
+    },
+    [appendElement, slideHeight, slideWidth],
+  );
+
   return useMemo(
     () => ({
       appendElement,
+      addByKind,
+      addByKindCentered,
       addShapeAt,
       addFromElementsPanel,
-      addTextAt: inserterFor(createTextWidget),
-      addWeatherAt: inserterFor(createWeatherWidget),
-      addDigitalClockAt: inserterFor(createDigitalClockWidget),
-      addNewsAt: inserterFor(createNewsWidget),
-      addTickerAt: inserterFor(createTickerWidget),
-      addQrAt: inserterFor(createQrWidget),
-      addWebviewAt: inserterFor(createWebviewWidget),
-      addYoutubeAt: inserterFor(createYoutubeWidget),
-      addMapAt: inserterFor(createMapWidget),
-      addChartAt: inserterFor(createChartWidget),
-      addCalendarAt: inserterFor(createCalendarWidget),
-      addAdSlotAt: inserterFor(createAdSlotWidget),
     }),
-    [appendElement, addShapeAt, addFromElementsPanel, inserterFor],
+    [
+      appendElement,
+      addByKind,
+      addByKindCentered,
+      addShapeAt,
+      addFromElementsPanel,
+    ],
   );
 }

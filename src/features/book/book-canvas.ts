@@ -204,6 +204,34 @@ export function snapKonvaBookCenterPivotGroupToGrid(
 /** 드래그 시 저장 좌표(박스 왼쪽 위)를 이 간격(px)에 맞춥니다. */
 export const BOOK_CANVAS_DRAG_GRID_PX = 4;
 
+/**
+ * 팔레트에서 끌어다 놓을 수 있는 종류(요소 타입 + pdfImport 동작).
+ *
+ * 타입이 아니라 배열이 원본이다 — 종류별 처리표(`WIDGET_FACTORY_BY_KIND`)에 무엇이
+ * 빠졌는지 런타임에서 확인하려면 목록을 실제 값으로 가지고 있어야 한다.
+ */
+export const BOOK_DROP_WIDGET_KINDS = [
+  "text",
+  "image",
+  "video",
+  "weather",
+  "digitalClock",
+  "webview",
+  "map",
+  "calendar",
+  "qr",
+  "chart",
+  "ticker",
+  "youtube",
+  "news",
+  "mediaPlaylist",
+  "adSlot",
+  /** 요소 타입이 아니라 "PDF 가져오기" 동작 — 드롭 지점에서 파일 선택을 연다 */
+  "pdfImport",
+] as const;
+
+export type BookDropWidgetKind = (typeof BOOK_DROP_WIDGET_KINDS)[number];
+
 /** 드래그 중 가운데 기준선이 뜨는 거리(논리 px) */
 export const DEFAULT_BOOK_SLIDE_CENTER_GUIDE_THRESHOLD_PX = 10;
 

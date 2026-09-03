@@ -3,6 +3,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  BOOK_DROP_WIDGET_KINDS,
+  type BookDropWidgetKind,
   DEFAULT_BOOK_CHART_DATA,
   DEFAULT_BOOK_MAP_QUERY,
   DEFAULT_BOOK_QR_VALUE,
@@ -20,6 +22,7 @@ import {
   createWeatherWidget,
   createWebviewWidget,
   createYoutubeWidget,
+  WIDGET_FACTORY_BY_KIND,
 } from "@/features/book/widget-factories";
 
 /**
@@ -88,5 +91,48 @@ describe("위젯 팩토리", () => {
     expect(a.chartData).toEqual(DEFAULT_BOOK_CHART_DATA);
     expect(a.chartData).not.toBe(DEFAULT_BOOK_CHART_DATA);
     expect(a.chartData).not.toBe(b.chartData);
+  });
+});
+
+/**
+ * 드롭·팔레트 처리가 13분기 if 체인에서 표 하나로 바뀌면서, 종류를 표에 넣는 것을
+ * 잊어도 **타입은 통과한다**(`Partial<Record<…>>`). 그 경우 화면은 조용히
+ * "지원하지 않는 위젯 종류입니다" 토스트를 띄운다 — 오류 없이 기능만 사라진다.
+ * 그래서 표의 열쇠 집합 자체를 고정한다.
+ */
+describe("팔레트 종류 → 팩토리 표", () => {
+  /** 표에 없어야 하는 것들 — 파일 업로드·안내 문구처럼 화면마다 다르게 다룬다 */
+  const HANDLED_PER_SCREEN: readonly BookDropWidgetKind[] = [
+    "image",
+    "video",
+    "mediaPlaylist",
+    "pdfImport",
+  ];
+
+  it("화면별로 다루는 4종을 뺀 모든 종류를 덮는다", () => {
+    const expected = BOOK_DROP_WIDGET_KINDS.filter(
+      (kind) => !HANDLED_PER_SCREEN.includes(kind),
+    );
+    expect(Object.keys(WIDGET_FACTORY_BY_KIND).sort()).toEqual(
+      [...expected].sort(),
+    );
+  });
+
+  it("표의 팩토리는 요청한 종류의 요소를 그 좌표에 만든다", () => {
+    for (const [kind, make] of Object.entries(WIDGET_FACTORY_BY_KIND)) {
+      const el = make?.(12, 34);
+      expect(el?.type).toBe(kind);
+      expect(el?.x).toBe(12);
+      expect(el?.y).toBe(34);
+    }
+  });
+
+  /** 가운데 정렬은 요소의 width/height 로 계산한다 — 없으면 왼쪽 위로 붙는다 */
+  it("표의 모든 팩토리가 크기를 채운다", () => {
+    for (const make of Object.values(WIDGET_FACTORY_BY_KIND)) {
+      const el = make?.(0, 0);
+      expect(el?.width).toBeGreaterThan(0);
+      expect(el?.height).toBeGreaterThan(0);
+    }
   });
 });

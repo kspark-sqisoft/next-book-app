@@ -1,3 +1,4 @@
+import type { BookDropWidgetKind } from "@/features/book/book-canvas";
 import {
   type BookCanvasElement,
   DEFAULT_BOOK_AD_SLOT_HEIGHT,
@@ -193,3 +194,30 @@ export function createAdSlotWidget(x: number, y: number): BookCanvasElement {
     height: DEFAULT_BOOK_AD_SLOT_HEIGHT,
   };
 }
+
+/**
+ * 팔레트 종류 → 팩토리.
+ *
+ * 이전에는 드롭 처리와 팔레트 더블클릭 처리가 각각 13분기 if 체인이었고, 그 두 벌이
+ * 화면 두 곳에 또 복사돼 있었다(합계 400줄 남짓). 표 하나로 바꾸면 분기가 사라지고,
+ * 새 위젯을 추가할 때 고칠 자리도 여기 한 곳이 된다.
+ *
+ * 여기 없는 종류(image·video·mediaPlaylist·pdfImport)는 파일 업로드·안내 문구처럼
+ * 화면마다 다르게 처리해야 하는 것들이라 호출부에 남긴다.
+ */
+export const WIDGET_FACTORY_BY_KIND: Partial<
+  Record<BookDropWidgetKind, (x: number, y: number) => BookCanvasElement>
+> = {
+  text: createTextWidget,
+  weather: createWeatherWidget,
+  digitalClock: createDigitalClockWidget,
+  news: createNewsWidget,
+  ticker: createTickerWidget,
+  qr: createQrWidget,
+  webview: createWebviewWidget,
+  youtube: createYoutubeWidget,
+  map: createMapWidget,
+  chart: createChartWidget,
+  calendar: createCalendarWidget,
+  adSlot: createAdSlotWidget,
+};

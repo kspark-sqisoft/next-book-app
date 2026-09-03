@@ -231,24 +231,9 @@ export function parseShapeDropPayload(
 export { DEFAULT_BOOK_SLIDE_CENTER_GUIDE_THRESHOLD_PX } from "@/features/book/book-canvas";
 import { DEFAULT_BOOK_SLIDE_CENTER_GUIDE_THRESHOLD_PX } from "@/features/book/book-canvas";
 
-export type BookDropWidgetKind =
-  | "text"
-  | "image"
-  | "video"
-  | "weather"
-  | "digitalClock"
-  | "webview"
-  | "map"
-  | "calendar"
-  | "qr"
-  | "chart"
-  | "ticker"
-  | "youtube"
-  | "news"
-  | "mediaPlaylist"
-  | "adSlot"
-  /** 요소 타입이 아니라 "PDF 가져오기" 동작 — 드롭 지점에서 파일 선택을 연다 */
-  | "pdfImport";
+// 정의는 도메인 모듈에 — 삽입 훅 등 React 를 모르는 코드도 쓴다
+export type { BookDropWidgetKind } from "@/features/book/book-canvas";
+import type { BookDropWidgetKind } from "@/features/book/book-canvas";
 
 /** `id: null` = 선택 해제. `shiftKey` = 기존 선택에 토글 추가 */
 export type BookCanvasSelectDetail = { id: string | null; shiftKey?: boolean };

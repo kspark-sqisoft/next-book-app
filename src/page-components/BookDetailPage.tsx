@@ -92,30 +92,8 @@ import {
   type BookShapeKind,
   collectBookOverlayElements,
   createEmptyEditorPage,
-  DEFAULT_BOOK_AD_SLOT_HEIGHT,
-  DEFAULT_BOOK_AD_SLOT_WIDTH,
-  DEFAULT_BOOK_CALENDAR_HEIGHT,
-  DEFAULT_BOOK_CALENDAR_WIDTH,
-  DEFAULT_BOOK_CHART_HEIGHT,
-  DEFAULT_BOOK_CHART_WIDTH,
-  DEFAULT_BOOK_DIGITAL_CLOCK_HEIGHT,
-  DEFAULT_BOOK_DIGITAL_CLOCK_WIDTH,
-  DEFAULT_BOOK_MAP_HEIGHT,
-  DEFAULT_BOOK_MAP_WIDTH,
   DEFAULT_BOOK_MEDIA_PLAYLIST_HEIGHT,
   DEFAULT_BOOK_MEDIA_PLAYLIST_WIDTH,
-  DEFAULT_BOOK_NEWS_WIDGET_HEIGHT,
-  DEFAULT_BOOK_NEWS_WIDGET_WIDTH,
-  DEFAULT_BOOK_QR_HEIGHT,
-  DEFAULT_BOOK_QR_WIDTH,
-  DEFAULT_BOOK_TICKER_HEIGHT,
-  DEFAULT_BOOK_TICKER_WIDTH,
-  DEFAULT_BOOK_WEATHER_WIDGET_HEIGHT,
-  DEFAULT_BOOK_WEATHER_WIDGET_WIDTH,
-  DEFAULT_BOOK_WEBVIEW_HEIGHT,
-  DEFAULT_BOOK_WEBVIEW_WIDTH,
-  DEFAULT_BOOK_YOUTUBE_HEIGHT,
-  DEFAULT_BOOK_YOUTUBE_WIDTH,
   DEFAULT_PAGE_BACKGROUND,
   DEFAULT_SLIDE_HEIGHT,
   DEFAULT_SLIDE_WIDTH,
@@ -147,7 +125,6 @@ import {
   type BookSlideTemplateId,
   instantiateBookSlideTemplate,
 } from "@/features/book/book-slide-templates";
-import { defaultTextWidgetBoxHeight } from "@/features/book/book-text-widget";
 import {
   bookCanvasStageMatClass,
   bookCanvasToolbarRowClass,
@@ -445,20 +422,10 @@ function BookDetailOwnerView({
   // 위젯 삽입 — 종류별 핸들러 13개가 BookEditorPage 와 글자 단위로 같은 복사본이었다
   const {
     appendElement: onAppendDrawingElement,
+    addByKind,
+    addByKindCentered,
     addShapeAt,
     addFromElementsPanel: onAddShapeFromElementsPanel,
-    addTextAt,
-    addWeatherAt,
-    addDigitalClockAt,
-    addNewsAt,
-    addTickerAt,
-    addQrAt,
-    addWebviewAt,
-    addYoutubeAt,
-    addMapAt,
-    addChartAt,
-    addCalendarAt,
-    addAdSlotAt,
   } = useWidgetInserters({
     activePageIndex,
     updatePages,
@@ -1469,56 +1436,9 @@ function BookDetailOwnerView({
 
   const onDropWidget = useCallback(
     (point: { x: number; y: number }, kind: BookDropWidgetKind) => {
-      if (kind === "text") {
-        addTextAt(point.x, point.y);
-        return;
-      }
-      if (kind === "weather") {
-        addWeatherAt(point.x, point.y);
-        return;
-      }
-      if (kind === "news") {
-        addNewsAt(point.x, point.y);
-        return;
-      }
+      if (addByKind(kind, point.x, point.y)) return;
       if (kind === "mediaPlaylist") {
         addMediaPlaylistAt(point.x, point.y);
-        return;
-      }
-      if (kind === "digitalClock") {
-        addDigitalClockAt(point.x, point.y);
-        return;
-      }
-      if (kind === "webview") {
-        addWebviewAt(point.x, point.y);
-        return;
-      }
-      if (kind === "map") {
-        addMapAt(point.x, point.y);
-        return;
-      }
-      if (kind === "calendar") {
-        addCalendarAt(point.x, point.y);
-        return;
-      }
-      if (kind === "qr") {
-        addQrAt(point.x, point.y);
-        return;
-      }
-      if (kind === "chart") {
-        addChartAt(point.x, point.y);
-        return;
-      }
-      if (kind === "ticker") {
-        addTickerAt(point.x, point.y);
-        return;
-      }
-      if (kind === "youtube") {
-        addYoutubeAt(point.x, point.y);
-        return;
-      }
-      if (kind === "adSlot") {
-        addAdSlotAt(point.x, point.y);
         return;
       }
       if (kind === "pdfImport") {
@@ -1535,23 +1455,7 @@ function BookDetailOwnerView({
       }
       toast.error("지원하지 않는 위젯 종류입니다.");
     },
-    [
-      addCalendarAt,
-      addChartAt,
-      addDigitalClockAt,
-      addMapAt,
-      addMediaPlaylistAt,
-      addNewsAt,
-      addQrAt,
-      addTextAt,
-      addTickerAt,
-      addWeatherAt,
-      addWebviewAt,
-      addYoutubeAt,
-      addAdSlotAt,
-      addEmptyMediaAt,
-      pdfImportBusy,
-    ],
+    [addByKind, addEmptyMediaAt, addMediaPlaylistAt, pdfImportBusy],
   );
 
   /** 이미지 편집기 내보내기 — 업로드 후 미디어 라이브러리에 등록 */
@@ -1592,97 +1496,18 @@ function BookDetailOwnerView({
   /** 팔레트 더블 클릭 — 위젯을 슬라이드 가운데에 바로 추가 */
   const handlePaletteQuickAdd = useCallback(
     (kind: BookDropWidgetKind) => {
+      if (addByKindCentered(kind)) return;
+
       const center = (w: number, h: number) => ({
         x: Math.max(0, Math.round((slideWidth - w) / 2)),
         y: Math.max(0, Math.round((slideHeight - h) / 2)),
       });
-      if (kind === "text") {
-        const p = center(480, defaultTextWidgetBoxHeight(28));
-        addTextAt(p.x, p.y);
-        return;
-      }
-      if (kind === "weather") {
-        const p = center(
-          DEFAULT_BOOK_WEATHER_WIDGET_WIDTH,
-          DEFAULT_BOOK_WEATHER_WIDGET_HEIGHT,
-        );
-        addWeatherAt(p.x, p.y);
-        return;
-      }
-      if (kind === "news") {
-        const p = center(
-          DEFAULT_BOOK_NEWS_WIDGET_WIDTH,
-          DEFAULT_BOOK_NEWS_WIDGET_HEIGHT,
-        );
-        addNewsAt(p.x, p.y);
-        return;
-      }
       if (kind === "mediaPlaylist") {
         const p = center(
           DEFAULT_BOOK_MEDIA_PLAYLIST_WIDTH,
           DEFAULT_BOOK_MEDIA_PLAYLIST_HEIGHT,
         );
         addMediaPlaylistAt(p.x, p.y);
-        return;
-      }
-      if (kind === "digitalClock") {
-        const p = center(
-          DEFAULT_BOOK_DIGITAL_CLOCK_WIDTH,
-          DEFAULT_BOOK_DIGITAL_CLOCK_HEIGHT,
-        );
-        addDigitalClockAt(p.x, p.y);
-        return;
-      }
-      if (kind === "webview") {
-        const p = center(
-          DEFAULT_BOOK_WEBVIEW_WIDTH,
-          DEFAULT_BOOK_WEBVIEW_HEIGHT,
-        );
-        addWebviewAt(p.x, p.y);
-        return;
-      }
-      if (kind === "map") {
-        const p = center(DEFAULT_BOOK_MAP_WIDTH, DEFAULT_BOOK_MAP_HEIGHT);
-        addMapAt(p.x, p.y);
-        return;
-      }
-      if (kind === "calendar") {
-        const p = center(
-          DEFAULT_BOOK_CALENDAR_WIDTH,
-          DEFAULT_BOOK_CALENDAR_HEIGHT,
-        );
-        addCalendarAt(p.x, p.y);
-        return;
-      }
-      if (kind === "qr") {
-        const p = center(DEFAULT_BOOK_QR_WIDTH, DEFAULT_BOOK_QR_HEIGHT);
-        addQrAt(p.x, p.y);
-        return;
-      }
-      if (kind === "chart") {
-        const p = center(DEFAULT_BOOK_CHART_WIDTH, DEFAULT_BOOK_CHART_HEIGHT);
-        addChartAt(p.x, p.y);
-        return;
-      }
-      if (kind === "ticker") {
-        const p = center(DEFAULT_BOOK_TICKER_WIDTH, DEFAULT_BOOK_TICKER_HEIGHT);
-        addTickerAt(p.x, p.y);
-        return;
-      }
-      if (kind === "youtube") {
-        const p = center(
-          DEFAULT_BOOK_YOUTUBE_WIDTH,
-          DEFAULT_BOOK_YOUTUBE_HEIGHT,
-        );
-        addYoutubeAt(p.x, p.y);
-        return;
-      }
-      if (kind === "adSlot") {
-        const p = center(
-          DEFAULT_BOOK_AD_SLOT_WIDTH,
-          DEFAULT_BOOK_AD_SLOT_HEIGHT,
-        );
-        addAdSlotAt(p.x, p.y);
         return;
       }
       if (kind === "pdfImport") {
@@ -1700,20 +1525,9 @@ function BookDetailOwnerView({
       addEmptyMediaAt(at.x, at.y, kind === "image" ? "image" : "video");
     },
     [
-      addCalendarAt,
-      addChartAt,
-      addDigitalClockAt,
-      addMapAt,
-      addMediaPlaylistAt,
-      addNewsAt,
-      addQrAt,
-      addTextAt,
-      addTickerAt,
-      addWeatherAt,
-      addWebviewAt,
-      addYoutubeAt,
-      addAdSlotAt,
+      addByKindCentered,
       addEmptyMediaAt,
+      addMediaPlaylistAt,
       pdfImportBusy,
       slideHeight,
       slideWidth,
