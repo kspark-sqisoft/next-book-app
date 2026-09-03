@@ -3,6 +3,12 @@ import path from "node:path";
 
 import type { NextConfig } from "next";
 
+import { assertServerActionsEncryptionKey } from "./src/server/server-actions-encryption-key";
+
+// 서버 액션 암호화 키는 빌드 산출물에 박히므로 `next build` 시점에 확인해야 한다.
+// next.config는 빌드와 기동 양쪽에서 평가되는 유일한 지점이다.
+assertServerActionsEncryptionKey();
+
 /** react-konva·book-slide-snapshot 등이 서로 다른 해석 경로로 konva를 두 번 묶으면 "Several Konva instances" + 힙 낭비 */
 const require = createRequire(import.meta.url);
 /** `konva/package.json` 은 exports에 없어 resolve 불가 → 메인 엔트리(`lib/…`)의 상위가 패키지 루트 */
