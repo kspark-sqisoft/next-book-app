@@ -8,6 +8,8 @@ import {
   createEmptyEditorPage,
   duplicateBookEditorPage,
   pageIndexAfterRemove,
+  pageIndexAfterReorder,
+  reorderPagesArray,
 } from "@/features/book/book-canvas";
 import {
   closePageDelete,
@@ -37,9 +39,10 @@ type CommitPages = (
  */
 export function usePageOperations(opts: {
   activePageIndex: number;
+  pageCount: number;
   commitPages: CommitPages;
 }) {
-  const { activePageIndex, commitPages } = opts;
+  const { activePageIndex, pageCount, commitPages } = opts;
   const pageDeleteIndex = useBookEditorUiStore((s) => s.pageDeleteIndex);
 
   const addPageAtInsertIndex = useCallback(
@@ -107,6 +110,24 @@ export function usePageOperations(opts: {
     [commitPages],
   );
 
+  /**
+   * 드래그로 순서 바꾸기. 활성 페이지가 옮겨졌으면 따라간다 — 사용자가 보고 있던
+   * 슬라이드가 갑자기 다른 것으로 바뀌면 안 된다. 인덱스는 상한으로 두 번 자른다:
+   * 스토어의 값이 낡았을 수 있고(`cur`), 계산 결과도 배열 밖일 수 있다.
+   */
+  const reorderPages = useCallback(
+    (from: number, to: number) => {
+      if (from === to) return;
+      const maxIdx = Math.max(0, pageCount - 1);
+      commitPages((prev) => reorderPagesArray(prev, from, to));
+      setPageIndex((cur) => {
+        const c = Math.min(cur, maxIdx);
+        return Math.min(pageIndexAfterReorder(c, from, to), maxIdx);
+      });
+    },
+    [commitPages, pageCount],
+  );
+
   return useMemo(
     () => ({
       addPageAtInsertIndex,
@@ -114,6 +135,7 @@ export function usePageOperations(opts: {
       requestRemoveCurrentPageForAi,
       confirmRemovePageAt,
       duplicatePageAt,
+      reorderPages,
     }),
     [
       addPageAtInsertIndex,
@@ -121,6 +143,7 @@ export function usePageOperations(opts: {
       requestRemoveCurrentPageForAi,
       confirmRemovePageAt,
       duplicatePageAt,
+      reorderPages,
     ],
   );
 }

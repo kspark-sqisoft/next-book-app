@@ -8,6 +8,7 @@ import {
 } from "@/features/book/book-canvas";
 import {
   resetEditorUi,
+  setPageIndex,
   setSelectedIds,
   useBookEditorUiStore,
 } from "@/features/book/editor-ui-store";
@@ -41,7 +42,11 @@ function harness(initial: BookEditorPageState[], activePageIndex = 0) {
     pages = recipe(pages);
   };
   const view = renderHook(() =>
-    usePageOperations({ activePageIndex, commitPages }),
+    usePageOperations({
+      activePageIndex,
+      pageCount: initial.length,
+      commitPages,
+    }),
   );
   return {
     view,
@@ -144,5 +149,33 @@ describe("usePageOperations", () => {
     act(() => h.view.result.current.requestRemoveCurrentPageForAi());
 
     expect(useBookEditorUiStore.getState().pageDeleteIndex).toBe(2);
+  });
+
+  describe("순서 바꾸기", () => {
+    it("드래그한 페이지가 목표 위치로 간다", () => {
+      const h = harness([pageAt(0), pageAt(1), pageAt(2)]);
+      const keys = h.pages.map((p) => p.clientKey);
+      act(() => h.view.result.current.reorderPages(0, 2));
+      expect(h.pages.map((p) => p.clientKey)).toEqual([
+        keys[1],
+        keys[2],
+        keys[0],
+      ]);
+    });
+
+    /** 보고 있던 슬라이드가 옮겨졌으면 따라가야 한다 — 갑자기 다른 슬라이드가 보이면 안 된다 */
+    it("활성 페이지가 옮겨지면 따라간다", () => {
+      const h = harness([pageAt(0), pageAt(1), pageAt(2)], 0);
+      act(() => setPageIndex(0));
+      act(() => h.view.result.current.reorderPages(0, 2));
+      expect(pageIndex()).toBe(2);
+    });
+
+    it("같은 자리로는 아무것도 하지 않는다", () => {
+      const h = harness([pageAt(0), pageAt(1)]);
+      const before = h.pages;
+      act(() => h.view.result.current.reorderPages(1, 1));
+      expect(h.pages).toBe(before);
+    });
   });
 });

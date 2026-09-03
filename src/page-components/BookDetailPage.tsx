@@ -18,6 +18,10 @@ import { toast } from "sonner";
 import { BookAiAssistantPanel } from "@/components/books/BookAiAssistantPanel";
 import {} from "@/components/books/BookCanvasStageOverlays";
 import { BookEditorCanvasStage } from "@/components/books/BookEditorCanvasStage";
+import {
+  BookPageDeleteDialog,
+  BookWidgetDeleteDialog,
+} from "@/components/books/BookEditorDeleteDialogs";
 import { BookEditorLeftDock } from "@/components/books/BookEditorLeftDock";
 import { BookEditorRightDock } from "@/components/books/BookEditorRightDock";
 import { BookEditorToolRail } from "@/components/books/BookEditorToolRail";
@@ -49,7 +53,6 @@ import { BookMediaLibraryPickDialog } from "@/components/books/BookMediaLibraryP
 import { BookPageSidebar } from "@/components/books/BookPageSidebar";
 import { BookSharePopover } from "@/components/books/BookShareDialog";
 import {
-  type BookCanvasSelectDetail,
   type BookDropWidgetKind,
   type BookLibraryDragPayload,
 } from "@/components/books/BookSlideCanvas";
@@ -84,11 +87,10 @@ import {
   DEFAULT_SLIDE_HEIGHT,
   DEFAULT_SLIDE_WIDTH,
   MEDIA_PLAYLIST_MAX_ITEMS,
-  pageIndexAfterReorder,
-  reorderPagesArray,
   resolveEffectivePresentationTimingElementId,
 } from "@/features/book/book-canvas";
 import { isBookEditorTypingTarget } from "@/features/book/book-editor-keyboard";
+import { pageDeleteTargetLabel } from "@/features/book/book-element-labels";
 import {
   readFloatingMediaLibraryVisible,
   writeFloatingMediaLibraryVisible,
@@ -105,8 +107,6 @@ import {
 } from "@/features/book/book-slide-templates";
 import { bookLeftDockContentColumnClass } from "@/features/book/book-workspace-ui";
 import {
-  closePageDelete,
-  closeWidgetDelete,
   openPageDelete,
   openWidgetDelete,
   resetEditorUi,
@@ -117,7 +117,6 @@ import {
   setPageIndex,
   setSelectedIds,
   setVideoDuration as handleVideoDurationKnown,
-  toggleSelectedId,
   useBookEditorUiValues,
 } from "@/features/book/editor-ui-store";
 import { useAiDocumentEdits } from "@/features/book/use-ai-document-edits";
@@ -127,10 +126,12 @@ import { useBookMediaUploads } from "@/features/book/use-book-media-uploads";
 import { useBookPageThumbnails } from "@/features/book/use-book-page-thumbnails";
 import { useBookSaveAndDelete } from "@/features/book/use-book-save-and-delete";
 import { useBookWidgetClipboard } from "@/features/book/use-book-widget-clipboard";
+import { useCanvasSelection } from "@/features/book/use-canvas-selection";
 import { useElementMutations } from "@/features/book/use-element-mutations";
 import { useMediaPlaylistPlayback } from "@/features/book/use-media-playlist-playback";
 import { usePageOperations } from "@/features/book/use-page-operations";
 import { usePageProperties } from "@/features/book/use-page-properties";
+import { useWidgetDeleteFlow } from "@/features/book/use-widget-delete-flow";
 import { useWidgetInserters } from "@/features/book/use-widget-inserters";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -200,13 +201,11 @@ function BookDetailOwnerView({
   // 한쪽만 고치면 두 화면이 조용히 달라졌다(features/book/editor-ui-store.ts).
   const {
     pageIndex,
-    selectedIds,
     leftDockTab,
     drawingStrokeColor,
     drawingStrokeWidth,
     floatingWidgetPaletteOpen,
     widgetDeleteOpen,
-    widgetDeleteIds,
     pageDeleteOpen,
     pageDeleteIndex,
     videoDurationByElementId,
@@ -409,16 +408,11 @@ function BookDetailOwnerView({
     updatePagesSilent,
   ]);
 
-  const canvasSelectedIds = useMemo(() => {
-    if (!activePage) return [];
-    const onPage = new Set(activePage.elements.map((e) => e.id));
-    return selectedIds.filter((id) => onPage.has(id));
-  }, [selectedIds, activePage]);
-
-  const playlistInspectorSelectionKey = useMemo(
-    () => (canvasSelectedIds.length === 1 ? (canvasSelectedIds[0] ?? "") : ""),
-    [canvasSelectedIds],
-  );
+  const {
+    canvasSelectedIds,
+    inspectorSelectionKey: playlistInspectorSelectionKey,
+    onCanvasSelect: handleCanvasSelect,
+  } = useCanvasSelection(activePage);
 
   const {
     playbackIndexByElementId: mediaPlaylistPlaybackByElementId,
@@ -432,11 +426,6 @@ function BookDetailOwnerView({
     activePageIndex,
     inspectorSelectionKey: playlistInspectorSelectionKey,
   });
-
-  const handleCanvasSelect = useCallback((d: BookCanvasSelectDetail) => {
-    if (d.id === null) setSelectedIds([]);
-    else toggleSelectedId(d.id, d.shiftKey);
-  }, []);
 
   useEffect(() => {
     if (!activePage) return;
@@ -843,7 +832,12 @@ function BookDetailOwnerView({
     requestRemoveCurrentPageForAi,
     confirmRemovePageAt,
     duplicatePageAt,
-  } = usePageOperations({ activePageIndex, commitPages });
+    reorderPages,
+  } = usePageOperations({
+    activePageIndex,
+    pageCount: localPages.length,
+    commitPages,
+  });
 
   const {
     hasClipboard: widgetClipboardHasContent,
@@ -910,38 +904,18 @@ function BookDetailOwnerView({
     );
   }, [activePage, videoDurationByElementId]);
 
-  const requestRemoveWidget = useCallback((elementId: string) => {
-    openWidgetDelete([elementId]);
-  }, []);
-
-  const confirmRemoveWidget = useCallback(() => {
-    if (widgetDeleteIds.length > 0) removeElementsByIds(widgetDeleteIds);
-    closeWidgetDelete();
-  }, [widgetDeleteIds, removeElementsByIds]);
-
-  const removeSelected = useCallback(() => {
-    if (canvasSelectedIds.length !== 1) return;
-    requestRemoveWidget(canvasSelectedIds[0]!);
-  }, [canvasSelectedIds, requestRemoveWidget]);
-
-  const removeSelectedBulk = useCallback(() => {
-    if (canvasSelectedIds.length === 0) return;
-    openWidgetDelete([...canvasSelectedIds]);
-  }, [canvasSelectedIds]);
-
-  const reorderPages = useCallback(
-    (from: number, to: number) => {
-      if (from === to) return;
-      const maxIdx = Math.max(0, localPages.length - 1);
-      commitPages((prev) => reorderPagesArray(prev, from, to));
-      setPageIndex((cur) => {
-        const c = Math.min(cur, maxIdx);
-        const next = pageIndexAfterReorder(c, from, to);
-        return Math.min(next, maxIdx);
-      });
-    },
-    [commitPages, localPages.length],
-  );
+  const {
+    widgetDeleteIds,
+    widgetDeleteKindLabel,
+    requestRemoveWidget,
+    confirmRemoveWidget,
+    removeSelected,
+    removeSelectedBulk,
+  } = useWidgetDeleteFlow({
+    activePage,
+    canvasSelectedIds,
+    removeElementsByIds,
+  });
 
   const selectedEl = useMemo(() => {
     if (canvasSelectedIds.length !== 1 || !activePage) return null;
@@ -976,97 +950,20 @@ function BookDetailOwnerView({
     onRequestPickLibraryMediaForReplace({ elementId: selectedEl.id });
   }, [selectedEl, onRequestPickLibraryMediaForReplace]);
 
-  const widgetDeleteKindLabel = useMemo(() => {
-    if (widgetDeleteIds.length === 0 || !activePage) return "위젯";
-    if (widgetDeleteIds.length > 1) return `${widgetDeleteIds.length}개 위젯`;
-    const el = activePage.elements.find((e) => e.id === widgetDeleteIds[0]);
-    if (!el) return "위젯";
-    if (el.type === "text") return "텍스트 위젯";
-    if (el.type === "image") return "이미지 위젯";
-    if (el.type === "video") return "동영상 위젯";
-    if (el.type === "weather") return "날씨 위젯";
-    if (el.type === "news") return "뉴스 위젯";
-    if (el.type === "mediaPlaylist") return "미디어 위젯";
-    if (el.type === "digitalClock") return "디지털 시계 위젯";
-    if (el.type === "webview") return "웹뷰 위젯";
-    if (el.type === "map") return "지도 위젯";
-    if (el.type === "calendar") return "캘린더 위젯";
-    if (el.type === "qr") return "QR코드 위젯";
-    if (el.type === "chart") return "차트 위젯";
-    if (el.type === "ticker") return "티커 위젯";
-    if (el.type === "youtube") return "유튜브 위젯";
-    if (el.type === "adSlot") return "광고 위젯";
-    if (el.type === "drawing") return "그리기";
-    return "위젯";
-  }, [widgetDeleteIds, activePage]);
-
   const mediaHint = useMemo(() => uploadError, [uploadError]);
 
   const widgetDeleteDialog = (
-    <AlertDialog
-      open={widgetDeleteOpen}
-      onOpenChange={(open) => {
-        if (!open) closeWidgetDelete();
-      }}
-    >
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>위젯을 삭제할까요?</AlertDialogTitle>
-          <AlertDialogDescription>
-            이 슬라이드에서 「{widgetDeleteKindLabel}」을(를) 제거합니다.
-            {widgetDeleteIds.length > 1
-              ? " 선택한 위젯이 모두 삭제됩니다."
-              : ""}{" "}
-            실행 후에는 되돌리기(Ctrl+Z)로 복구할 수 있습니다.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel type="button">취소</AlertDialogCancel>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={() => confirmRemoveWidget()}
-          >
-            삭제
-          </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <BookWidgetDeleteDialog
+      kindLabel={widgetDeleteKindLabel}
+      count={widgetDeleteIds.length}
+      onConfirm={confirmRemoveWidget}
+    />
   );
-
-  const pageDeleteTargetLabel =
-    pageDeleteIndex != null && localPages[pageDeleteIndex]
-      ? localPages[pageDeleteIndex].name.trim() ||
-        `슬라이드 ${pageDeleteIndex + 1}`
-      : "이 슬라이드";
-
   const pageDeleteDialog = (
-    <AlertDialog
-      open={pageDeleteOpen}
-      onOpenChange={(open) => {
-        if (!open) closePageDelete();
-      }}
-    >
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>슬라이드를 삭제할까요?</AlertDialogTitle>
-          <AlertDialogDescription>
-            「{pageDeleteTargetLabel}」와 이 페이지에 있는 모든 위젯이
-            제거됩니다. 되돌리기(Ctrl+Z)로 복구할 수 있습니다.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel type="button">취소</AlertDialogCancel>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={() => confirmRemovePageAt()}
-          >
-            삭제
-          </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <BookPageDeleteDialog
+      targetLabel={pageDeleteTargetLabel(pageDeleteIndex, localPages)}
+      onConfirm={confirmRemovePageAt}
+    />
   );
 
   const pageLabels = useMemo(() => localPages.map((p) => p.name), [localPages]);

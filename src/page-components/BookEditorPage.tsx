@@ -17,24 +17,16 @@ import { toast } from "sonner";
 import { BookAiAssistantPanel } from "@/components/books/BookAiAssistantPanel";
 import {} from "@/components/books/BookCanvasStageOverlays";
 import { BookEditorCanvasStage } from "@/components/books/BookEditorCanvasStage";
+import {
+  BookPageDeleteDialog,
+  BookWidgetDeleteDialog,
+} from "@/components/books/BookEditorDeleteDialogs";
 import { BookEditorLeftDock } from "@/components/books/BookEditorLeftDock";
 import { BookEditorRightDock } from "@/components/books/BookEditorRightDock";
 import { BookHeaderSlideDimensions } from "@/components/books/BookHeaderSlideDimensions";
-import {
-  type BookCanvasSelectDetail,
-  type BookDropWidgetKind,
-} from "@/components/books/BookSlideCanvas";
+import { type BookDropWidgetKind } from "@/components/books/BookSlideCanvas";
 import { BookWidgetPalette } from "@/components/books/BookWidgetPalette";
 import { BookWorkspaceShell } from "@/components/books/BookWorkspaceShell";
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
@@ -47,12 +39,11 @@ import {
   DEFAULT_PAGE_BACKGROUND,
   DEFAULT_SLIDE_HEIGHT,
   DEFAULT_SLIDE_WIDTH,
-  pageIndexAfterReorder,
-  reorderPagesArray,
   resolveEffectivePresentationTimingElementId,
   toBookPagePayloads,
 } from "@/features/book/book-canvas";
 import { isBookEditorTypingTarget } from "@/features/book/book-editor-keyboard";
+import { pageDeleteTargetLabel } from "@/features/book/book-element-labels";
 import {} from "@/features/book/book-floating-ui-prefs";
 import { warmBookCanvasImagesForNeighborPages } from "@/features/book/book-image-cache";
 import { computeSlidePresentationDurationSec } from "@/features/book/book-presentation";
@@ -63,8 +54,6 @@ import {
 } from "@/features/book/book-slide-templates";
 import {} from "@/features/book/book-workspace-ui";
 import {
-  closePageDelete,
-  closeWidgetDelete,
   openPageDelete,
   openWidgetDelete,
   resetEditorUi,
@@ -72,7 +61,6 @@ import {
   setPageIndex,
   setSelectedIds,
   setVideoDuration as handleVideoDurationKnown,
-  toggleSelectedId,
   useBookEditorUiValues,
 } from "@/features/book/editor-ui-store";
 import { useAiDocumentEdits } from "@/features/book/use-ai-document-edits";
@@ -80,10 +68,12 @@ import {} from "@/features/book/use-book-canvas-display-scale";
 import { useBookDocumentHistory } from "@/features/book/use-book-document-history";
 import { useBookPageThumbnails } from "@/features/book/use-book-page-thumbnails";
 import { useBookWidgetClipboard } from "@/features/book/use-book-widget-clipboard";
+import { useCanvasSelection } from "@/features/book/use-canvas-selection";
 import { useElementMutations } from "@/features/book/use-element-mutations";
 import { useMediaPlaylistPlayback } from "@/features/book/use-media-playlist-playback";
 import { usePageOperations } from "@/features/book/use-page-operations";
 import { usePageProperties } from "@/features/book/use-page-properties";
+import { useWidgetDeleteFlow } from "@/features/book/use-widget-delete-flow";
 import { useWidgetInserters } from "@/features/book/use-widget-inserters";
 import { createBook } from "@/lib/api";
 import { bookKeys } from "@/lib/query-keys";
@@ -95,13 +85,11 @@ export function BookEditorPage() {
   // 두 화면이 조용히 벌어지지 않게 한다(features/book/editor-ui-store.ts).
   const {
     pageIndex,
-    selectedIds,
     leftDockTab,
     drawingStrokeColor,
     drawingStrokeWidth,
     floatingWidgetPaletteOpen,
     widgetDeleteOpen,
-    widgetDeleteIds,
     pageDeleteOpen,
     pageDeleteIndex,
     videoDurationByElementId,
@@ -152,11 +140,11 @@ export function BookEditorPage() {
   });
 
   const currentPage = pages[activePageIndex] ?? pages[0];
-  const canvasSelectedIds = useMemo(() => {
-    if (!currentPage) return [];
-    const onPage = new Set(currentPage.elements.map((e) => e.id));
-    return selectedIds.filter((id) => onPage.has(id));
-  }, [selectedIds, currentPage]);
+  const {
+    canvasSelectedIds,
+    inspectorSelectionKey: playlistInspectorSelectionKey,
+    onCanvasSelect: handleCanvasSelect,
+  } = useCanvasSelection(currentPage);
 
   const currentPageElementIdsKey = useMemo(
     () => currentPage?.elements.map((e) => e.id).join("\0") ?? "",
@@ -200,11 +188,6 @@ export function BookEditorPage() {
     updatePagesSilent,
   ]);
 
-  const handleCanvasSelect = useCallback((d: BookCanvasSelectDetail) => {
-    if (d.id === null) setSelectedIds([]);
-    else toggleSelectedId(d.id, d.shiftKey);
-  }, []);
-
   useEffect(() => {
     if (!currentPage) return;
     const onPage = new Set(currentPage.elements.map((e) => e.id));
@@ -224,11 +207,6 @@ export function BookEditorPage() {
   useEffect(() => {
     warmBookCanvasImagesForNeighborPages(pages, activePageIndex);
   }, [pages, activePageIndex]);
-
-  const playlistInspectorSelectionKey = useMemo(
-    () => (canvasSelectedIds.length === 1 ? (canvasSelectedIds[0] ?? "") : ""),
-    [canvasSelectedIds],
-  );
 
   const {
     playbackIndexByElementId: mediaPlaylistPlaybackByElementId,
@@ -521,24 +499,18 @@ export function BookEditorPage() {
     );
   }, [currentPage, videoDurationByElementId]);
 
-  const requestRemoveWidget = useCallback((elementId: string) => {
-    openWidgetDelete([elementId]);
-  }, []);
-
-  const confirmRemoveWidget = useCallback(() => {
-    if (widgetDeleteIds.length > 0) removeElementsByIds(widgetDeleteIds);
-    closeWidgetDelete();
-  }, [widgetDeleteIds, removeElementsByIds]);
-
-  const removeSelected = useCallback(() => {
-    if (canvasSelectedIds.length !== 1) return;
-    requestRemoveWidget(canvasSelectedIds[0]!);
-  }, [canvasSelectedIds, requestRemoveWidget]);
-
-  const removeSelectedBulk = useCallback(() => {
-    if (canvasSelectedIds.length === 0) return;
-    openWidgetDelete([...canvasSelectedIds]);
-  }, [canvasSelectedIds]);
+  const {
+    widgetDeleteIds,
+    widgetDeleteKindLabel,
+    requestRemoveWidget,
+    confirmRemoveWidget,
+    removeSelected,
+    removeSelectedBulk,
+  } = useWidgetDeleteFlow({
+    activePage: currentPage,
+    canvasSelectedIds,
+    removeElementsByIds,
+  });
 
   const addPage = () => {
     commitPages((prev) =>
@@ -554,21 +526,12 @@ export function BookEditorPage() {
     requestRemoveCurrentPageForAi,
     confirmRemovePageAt,
     duplicatePageAt,
-  } = usePageOperations({ activePageIndex, commitPages });
-
-  const reorderPages = useCallback(
-    (from: number, to: number) => {
-      if (from === to) return;
-      const maxIdx = Math.max(0, pages.length - 1);
-      commitPages((prev) => reorderPagesArray(prev, from, to));
-      setPageIndex((cur) => {
-        const c = Math.min(cur, maxIdx);
-        const next = pageIndexAfterReorder(c, from, to);
-        return Math.min(next, maxIdx);
-      });
-    },
-    [commitPages, pages.length],
-  );
+    reorderPages,
+  } = usePageOperations({
+    activePageIndex,
+    pageCount: pages.length,
+    commitPages,
+  });
 
   const selectedEl = useMemo(() => {
     if (canvasSelectedIds.length !== 1 || !currentPage) return null;
@@ -581,30 +544,6 @@ export function BookEditorPage() {
     if (selectedEl.type !== "image" && selectedEl.type !== "video") return null;
     return { elementId: selectedEl.id, kind: selectedEl.type };
   }, [selectedEl]);
-
-  const widgetDeleteKindLabel = useMemo(() => {
-    if (widgetDeleteIds.length === 0 || !currentPage) return "위젯";
-    if (widgetDeleteIds.length > 1) return `${widgetDeleteIds.length}개 위젯`;
-    const el = currentPage.elements.find((e) => e.id === widgetDeleteIds[0]);
-    if (!el) return "위젯";
-    if (el.type === "text") return "텍스트 위젯";
-    if (el.type === "image") return "이미지 위젯";
-    if (el.type === "video") return "동영상 위젯";
-    if (el.type === "weather") return "날씨 위젯";
-    if (el.type === "news") return "뉴스 위젯";
-    if (el.type === "mediaPlaylist") return "미디어 위젯";
-    if (el.type === "digitalClock") return "디지털 시계 위젯";
-    if (el.type === "webview") return "웹뷰 위젯";
-    if (el.type === "map") return "지도 위젯";
-    if (el.type === "calendar") return "캘린더 위젯";
-    if (el.type === "qr") return "QR코드 위젯";
-    if (el.type === "chart") return "차트 위젯";
-    if (el.type === "ticker") return "티커 위젯";
-    if (el.type === "youtube") return "유튜브 위젯";
-    if (el.type === "adSlot") return "광고 위젯";
-    if (el.type === "drawing") return "그리기";
-    return "위젯";
-  }, [widgetDeleteIds, currentPage]);
 
   const mediaHint = useMemo(
     () =>
@@ -799,66 +738,15 @@ export function BookEditorPage() {
           ) : null
         }
       />
-      <AlertDialog
-        open={widgetDeleteOpen}
-        onOpenChange={(open) => {
-          if (!open) closeWidgetDelete();
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>위젯을 삭제할까요?</AlertDialogTitle>
-            <AlertDialogDescription>
-              이 슬라이드에서 「{widgetDeleteKindLabel}」을(를) 제거합니다.
-              {widgetDeleteIds.length > 1
-                ? " 선택한 위젯이 모두 삭제됩니다."
-                : ""}{" "}
-              실행 후에는 되돌리기(Ctrl+Z)로 복구할 수 있습니다.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel type="button">취소</AlertDialogCancel>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() => confirmRemoveWidget()}
-            >
-              삭제
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      <AlertDialog
-        open={pageDeleteOpen}
-        onOpenChange={(open) => {
-          if (!open) closePageDelete();
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>슬라이드를 삭제할까요?</AlertDialogTitle>
-            <AlertDialogDescription>
-              「
-              {pageDeleteIndex != null && pages[pageDeleteIndex]
-                ? pages[pageDeleteIndex].name.trim() ||
-                  `슬라이드 ${pageDeleteIndex + 1}`
-                : "이 슬라이드"}
-              」와 이 페이지에 있는 모든 위젯이 제거됩니다. 되돌리기(Ctrl+Z)로
-              복구할 수 있습니다.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel type="button">취소</AlertDialogCancel>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() => confirmRemovePageAt()}
-            >
-              삭제
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <BookWidgetDeleteDialog
+        kindLabel={widgetDeleteKindLabel}
+        count={widgetDeleteIds.length}
+        onConfirm={confirmRemoveWidget}
+      />
+      <BookPageDeleteDialog
+        targetLabel={pageDeleteTargetLabel(pageDeleteIndex, pages)}
+        onConfirm={confirmRemovePageAt}
+      />
     </>
   );
 }
