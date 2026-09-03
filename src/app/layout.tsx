@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "next-book-app",
-  description: "Next.js + Drizzle + tRPC + PostgreSQL",
+  description: "Next.js + Drizzle + PostgreSQL",
 };
 
 // 앱 전체 래퍼: html/body는 서버 컴포넌트

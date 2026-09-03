@@ -1,4 +1,4 @@
-// Route Handler·tRPC: Authorization 헤더에서 액세스 JWT 추출
+// Route Handler: Authorization 헤더에서 액세스 JWT 추출
 import { verifyAccessToken } from "@/server/auth/jwt";
 import type { JwtPayload } from "@/server/auth/jwt-payload";
 import { HttpError } from "@/server/http/http-error";

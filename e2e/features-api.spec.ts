@@ -1,16 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-/** 공개·보조 REST·tRPC. 외부 API 키 유무와 무관하게 판정이 흔들리지 않도록 응답 본문까지 확인한다. */
-test("GET /api/trpc/health", async ({ request }) => {
-  const res = await request.get("/api/trpc/health");
-  expect(res.ok()).toBeTruthy();
-  // superjson 변환 계층 포함: {result:{data:{json:{ok:true}}}}
-  const json = (await res.json()) as {
-    result?: { data?: { json?: { ok?: boolean } } };
-  };
-  expect(json.result?.data?.json?.ok).toBe(true);
-});
-
+/** 공개·보조 REST. 외부 API 키 유무와 무관하게 판정이 흔들리지 않도록 응답 본문까지 확인한다. */
 test("GET /api/weather/seoul — 200이면 스키마, 키 없으면 503만 허용(그 외 상태는 실패)", async ({
   request,
 }) => {
