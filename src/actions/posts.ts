@@ -72,13 +72,13 @@ export async function listPostsAction(params?: {
     const cursor = params?.cursor;
     const user = await getCurrentUser();
     const posts = new PostsService();
-    return (await posts.findPage(
+    return await posts.findPage(
       take,
       user?.sub,
       search ?? undefined,
       category ?? undefined,
       cursor ?? undefined,
-    )) as unknown as PostsPageResponse;
+    );
   } catch (e) {
     rethrowActionError(e, "posts-actions");
   }
@@ -89,7 +89,7 @@ export async function getPostAction(postId: number): Promise<Post> {
     const id = assertPositiveIntId(postId);
     const user = await getCurrentUser();
     const posts = new PostsService();
-    return (await posts.findOne(id, user?.sub)) as unknown as Post;
+    return await posts.findOne(id, user?.sub);
   } catch (e) {
     rethrowActionError(e, "posts-actions");
   }
@@ -102,7 +102,7 @@ export async function fetchPostCommentsAction(
   try {
     const id = assertPositiveIntId(postId);
     const comments = new CommentsService();
-    return (await comments.findTreeByPostId(id)) as unknown as PostComment[];
+    return await comments.findTreeByPostId(id);
   } catch (e) {
     rethrowActionError(e, "posts-actions");
   }
@@ -116,10 +116,10 @@ export async function createPostCommentAction(
     const user = await requireUser();
     const id = assertPositiveIntId(postId);
     const comments = new CommentsService();
-    return (await comments.create(id, user.sub, {
+    return await comments.create(id, user.sub, {
       content: input.content,
       parentId: input.parentId ?? undefined,
-    })) as unknown as PostComment;
+    });
   } catch (e) {
     rethrowActionError(e, "posts-actions");
   }
@@ -169,14 +169,14 @@ export async function createPostAction(formData: FormData): Promise<Post> {
     const parsed = await parsePostCreateMultipart(formData);
     toClean = [...parsed.attachmentFiles, ...parsed.posterFiles];
     const posts = new PostsService();
-    return (await posts.createWithAttachments(
+    return await posts.createWithAttachments(
       user.sub,
       parsed.title,
       parsed.content,
       parsed.category,
       parsed.attachmentFiles,
       parsed.posterFiles,
-    )) as unknown as Post;
+    );
   } catch (e) {
     await cleanupPostUploadedFiles(toClean);
     rethrowActionError(e, "posts-actions");
@@ -204,7 +204,7 @@ export async function updatePostAction(
 
     const mediaPlan = parseMediaPlan(body.mediaPlanRaw);
 
-    return (await posts.updatePost({ id: user.sub, role: user.role }, id, {
+    return await posts.updatePost({ id: user.sub, role: user.role }, id, {
       title: body.title,
       content: body.content,
       category: body.category,
@@ -212,7 +212,7 @@ export async function updatePostAction(
       mediaPlan,
       newFiles: body.newFiles,
       newPosters: body.newPosters,
-    })) as unknown as Post;
+    });
   } catch (e) {
     await cleanupPostUploadedFiles(toClean);
     rethrowActionError(e, "posts-actions");

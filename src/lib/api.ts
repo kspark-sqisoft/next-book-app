@@ -44,10 +44,20 @@ import {
 } from "@/actions/video-render";
 import { appLog } from "@/lib/app-log";
 import type { BookCanvasElement } from "@/lib/book-canvas";
+import type { BookListCoverPreviewPublic } from "@/server/services/books.service";
+import type {
+  BookListItemPublic,
+  BookPublic,
+} from "@/server/services/books.service";
 import type {
   CreateBookDto,
   UpdateBookDto,
 } from "@/server/services/books-types";
+import type { CommentPublic } from "@/server/services/comments.service";
+import type {
+  PostAuthorPublic,
+  PostPublic,
+} from "@/server/services/posts.service";
 // 서버 렌더 타입 — import type 이라 런타임(playwright 등)은 클라이언트 번들에 포함되지 않음
 import type { RenderJobView } from "@/server/video/render-jobs";
 import type {
@@ -120,12 +130,7 @@ export type AuthUser = {
   role?: "user" | "admin";
 };
 
-export type PostAuthor = {
-  id: number;
-  name: string;
-  /** `/uploads/avatars/...` 또는 null */
-  imageUrl: string | null;
-};
+export type PostAuthor = PostAuthorPublic;
 
 /** 목록 한 번에 가져오는 글 수(무한 스크롤 페이지 크기) */
 const POST_PAGE_DEFAULT = 12;
@@ -137,39 +142,12 @@ export type PostMediaItem = {
   posterUrl: string | null;
 };
 
-export type Post = {
-  id: number;
-  title: string;
-  content: string;
-  /** tech | life | study | chat | general */
-  category: string;
-  /** 순서대로 첨부 */
-  media: PostMediaItem[];
-  /** 목록 썸네일(첫 첨부) */
-  coverThumbUrl: string | null;
-  coverKind: "image" | "video" | null;
-  /** 첫 첨부가 이미지일 때 (호환) */
-  imageUrl: string | null;
-  videoUrl: string | null;
-  videoPosterUrl: string | null;
-  createdAt: string;
-  updatedAt: string;
-  author: PostAuthor;
-  likeCount: number;
-  likedByMe: boolean;
-};
+export type Post = PostPublic;
 
 export type PostLikeState = { likeCount: number; likedByMe: boolean };
 
 /** 계층 댓글(무한 depth; replies가 비어 있을 수 있음) */
-export type PostComment = {
-  id: number;
-  content: string;
-  createdAt: string;
-  updatedAt: string;
-  author: PostAuthor;
-  replies: PostComment[];
-};
+export type PostComment = CommentPublic;
 
 export function getAccessToken(): string | null {
   return sessionStorage.getItem(ACCESS_TOKEN_KEY);
@@ -781,28 +759,10 @@ export type BookPageDto = {
 };
 
 /** 북 목록 카드 — 첫 슬라이드 썸네일 합성용 */
-export type BookListCoverPreview = {
-  slideWidth: number;
-  slideHeight: number;
-  backgroundColor: string;
-  elements: BookCanvasElement[];
-};
+// 서버 DTO를 단일 출처로 삼는다(타입 전용 import 라 런타임에는 지워진다)
+export type BookListCoverPreview = BookListCoverPreviewPublic;
 
-export type BookListItem = {
-  id: number;
-  title: string;
-  createdAt: string;
-  updatedAt: string;
-  author: PostAuthor;
-  pageCount: number;
-  coverPreview: BookListCoverPreview | null;
-  /** 공유받은 사용자(이름) — 구버전 응답은 생략될 수 있음 */
-  sharedWith?: { id: number; name: string }[];
-  /** true면 모든 로그인 사용자가 편집 가능 */
-  sharedToAll?: boolean;
-  /** 승인 워크플로 상태(생략 = published) */
-  status?: BookStatus;
-};
+export type BookListItem = BookListItemPublic;
 
 /** 승인 워크플로: draft(작성 중) → review(검토 중) → published(게시됨) */
 export type BookStatus = "draft" | "review" | "published";
@@ -813,25 +773,7 @@ export const BOOK_STATUS_LABEL: Record<BookStatus, string> = {
   published: "게시됨",
 };
 
-export type BookDetail = {
-  id: number;
-  title: string;
-  /** 모든 슬라이드 공통 캔버스 크기(px) */
-  slideWidth: number;
-  slideHeight: number;
-  /** 미리보기: 마지막 슬라이드 후 처음으로 돌아갈지(기본 true) */
-  presentationLoop?: boolean;
-  createdAt: string;
-  updatedAt: string;
-  author: PostAuthor;
-  pages: BookPageDto[];
-  /** 공유받은 사용자 id(편집 가능). 구버전 응답은 생략될 수 있음 */
-  sharedUserIds?: number[];
-  /** true면 모든 로그인 사용자가 편집 가능 */
-  sharedToAll?: boolean;
-  /** 승인 워크플로 상태(생략 = published) */
-  status?: BookStatus;
-};
+export type BookDetail = BookPublic;
 
 /** 북 공유 대상으로 고를 수 있는 회원 */
 export type BookShareUser = {

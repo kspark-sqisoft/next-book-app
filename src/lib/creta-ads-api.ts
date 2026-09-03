@@ -25,30 +25,23 @@ import {
   uploadCretaAdMediaAction,
 } from "@/actions/creta-ads";
 import { humanizeServerActionError } from "@/lib/api";
+// 서버 DTO를 단일 출처로 삼는다(타입 전용 import 라 런타임에는 지워진다)
+import type {
+  CretaAdAuditPublic,
+  CretaAdCampaignPublic,
+  CretaAdCreativePublic,
+  CretaAdSettingPublic,
+  CretaAdvertiserPublic,
+} from "@/server/services/creta-ads.service";
 
 export const CRETA_AD_CAMPAIGN_STATUS_LABEL: Record<string, string> = {
   live: "라이브",
   paused: "일시중지",
 };
 
-export type CretaAdvertiser = {
-  id: number;
-  name: string;
-  contact: string;
-  ownerId: number | null;
-  ownerName: string | null;
-  campaignCount: number;
-  updatedAt: string;
-};
+export type CretaAdvertiser = CretaAdvertiserPublic;
 
-export type CretaAdCreative = {
-  id: number;
-  campaignId: number;
-  name: string;
-  kind: "image" | "video";
-  src: string;
-  status: "pending" | "approved" | "rejected";
-};
+export type CretaAdCreative = CretaAdCreativePublic;
 
 export const CRETA_AD_CREATIVE_STATUS_LABEL: Record<
   CretaAdCreative["status"],
@@ -59,35 +52,9 @@ export const CRETA_AD_CREATIVE_STATUS_LABEL: Record<
   rejected: "반려",
 };
 
-export type CretaAdCampaign = {
-  id: number;
-  advertiserId: number;
-  advertiserName: string;
-  name: string;
-  status: "live" | "paused";
-  startDate: string;
-  endDate: string;
-  weight: number;
-  cpm: number;
-  dayTarget: "all" | "weekday" | "weekend";
-  startMin: number | null;
-  endMin: number | null;
-  maxPerHour: number | null;
-  /** 대상 화면(디바이스 태그). 빈 배열 = 전체 화면 대상 */
-  targetTags: string[];
-  creatives: CretaAdCreative[];
-  inFlight: boolean;
-  phase: "scheduled" | "live" | "paused" | "ended";
-  updatedAt: string;
-};
+export type CretaAdCampaign = CretaAdCampaignPublic;
 
-export type CretaAdSetting = {
-  loopEveryN: number;
-  spotSec: number;
-  houseName: string;
-  houseKind: "image" | "video";
-  houseSrc: string;
-};
+export type CretaAdSetting = CretaAdSettingPublic;
 
 export const CRETA_AD_PHASE_LABEL: Record<CretaAdCampaign["phase"], string> = {
   scheduled: "예정",
@@ -115,7 +82,8 @@ export type CretaAdCampaignReportRow = {
   campaignName: string;
   plays: number;
   totalSec: number;
-  lastPlayedAt: string | null;
+  /** 서버 액션 경로라 Date 가 그대로 온다(React Flight가 Date를 왕복 보존) */
+  lastPlayedAt: Date | null;
 };
 
 async function run<T>(call: () => Promise<T>): Promise<T> {
@@ -127,9 +95,7 @@ async function run<T>(call: () => Promise<T>): Promise<T> {
 }
 
 export async function fetchCretaAdvertisers(): Promise<CretaAdvertiser[]> {
-  return run(() => listCretaAdvertisersAction()) as unknown as Promise<
-    CretaAdvertiser[]
-  >;
+  return run(() => listCretaAdvertisersAction());
 }
 
 export async function createCretaAdvertiser(input: {
@@ -151,9 +117,7 @@ export async function deleteCretaAdvertiser(id: number): Promise<void> {
 }
 
 export async function fetchCretaAdCampaigns(): Promise<CretaAdCampaign[]> {
-  return run(() => listCretaAdCampaignsAction()) as unknown as Promise<
-    CretaAdCampaign[]
-  >;
+  return run(() => listCretaAdCampaignsAction());
 }
 
 export async function createCretaAdCampaign(input: {
@@ -217,9 +181,7 @@ export async function deleteCretaAdCreative(id: number): Promise<void> {
 export async function fetchCretaAdActiveCreatives(
   deviceId?: number | null,
 ): Promise<CretaAdActiveCreative[]> {
-  return run(() =>
-    listCretaAdActiveCreativesAction(deviceId),
-  ) as unknown as Promise<CretaAdActiveCreative[]>;
+  return run(() => listCretaAdActiveCreativesAction(deviceId));
 }
 
 /** 재생 기록 — 실패해도 화면 재생을 막지 않는다(fire-and-forget용) */
@@ -241,15 +203,11 @@ export async function logCretaAdPlay(input: {
 export async function fetchCretaAdCampaignReport(
   days = 30,
 ): Promise<CretaAdCampaignReportRow[]> {
-  return run(() => cretaAdCampaignReportAction(days)) as unknown as Promise<
-    CretaAdCampaignReportRow[]
-  >;
+  return run(() => cretaAdCampaignReportAction(days));
 }
 
 export async function fetchCretaAdSetting(): Promise<CretaAdSetting> {
-  return run(() =>
-    getCretaAdSettingAction(),
-  ) as unknown as Promise<CretaAdSetting>;
+  return run(() => getCretaAdSettingAction());
 }
 
 export async function updateCretaAdSetting(input: {
@@ -259,9 +217,7 @@ export async function updateCretaAdSetting(input: {
   houseKind?: "image" | "video";
   houseSrc?: string;
 }): Promise<CretaAdSetting> {
-  return run(() =>
-    updateCretaAdSettingAction(input),
-  ) as unknown as Promise<CretaAdSetting>;
+  return run(() => updateCretaAdSettingAction(input));
 }
 
 export type CretaAdHourlyRow = { hour: number; plays: number };
@@ -269,34 +225,23 @@ export type CretaAdSlotRow = {
   slotElementId: string;
   bookId: number | null;
   plays: number;
-  lastPlayedAt: string | null;
+  /** 서버 액션 경로라 Date 가 그대로 온다 */
+  lastPlayedAt: Date | null;
 };
 
 export async function fetchCretaAdHourlyReport(
   days = 30,
 ): Promise<CretaAdHourlyRow[]> {
-  return run(() => cretaAdHourlyReportAction(days)) as unknown as Promise<
-    CretaAdHourlyRow[]
-  >;
+  return run(() => cretaAdHourlyReportAction(days));
 }
 
 export async function fetchCretaAdSlotReport(
   days = 30,
 ): Promise<CretaAdSlotRow[]> {
-  return run(() => cretaAdSlotReportAction(days)) as unknown as Promise<
-    CretaAdSlotRow[]
-  >;
+  return run(() => cretaAdSlotReportAction(days));
 }
 
-export type CretaAdAuditRow = {
-  id: number;
-  entityKind: "advertiser" | "campaign" | "creative" | "setting";
-  entityName: string;
-  action: string;
-  detail: string;
-  actorName: string;
-  createdAt: string;
-};
+export type CretaAdAuditRow = CretaAdAuditPublic;
 
 export const CRETA_AD_AUDIT_KIND_LABEL: Record<
   CretaAdAuditRow["entityKind"],
@@ -341,25 +286,19 @@ export async function reviewCretaAdCreative(
 }
 
 export async function fetchCretaAdAudit(): Promise<CretaAdAuditRow[]> {
-  return run(() => listCretaAdAuditAction()) as unknown as Promise<
-    CretaAdAuditRow[]
-  >;
+  return run(() => listCretaAdAuditAction());
 }
 
 export async function fetchCretaAdScreenInventory(): Promise<
   CretaAdScreenInventoryRow[]
 > {
-  return run(() => cretaAdScreenInventoryAction()) as unknown as Promise<
-    CretaAdScreenInventoryRow[]
-  >;
+  return run(() => cretaAdScreenInventoryAction());
 }
 
 export async function fetchCretaAdDeviceReport(
   days = 30,
 ): Promise<CretaAdDeviceReportRow[]> {
-  return run(() => cretaAdDeviceReportAction(days)) as unknown as Promise<
-    CretaAdDeviceReportRow[]
-  >;
+  return run(() => cretaAdDeviceReportAction(days));
 }
 
 /** 소재 순서 이동 — 앞(-1)/뒤(1) */

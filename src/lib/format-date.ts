@@ -42,3 +42,16 @@ export function formatDateFullShort(value: DateLike): string {
     return String(value);
   }
 }
+
+/**
+ * `<time dateTime>` 용 ISO 문자열.
+ *
+ * `datetime` 속성은 기계가 읽는 값이라 ISO 형식이어야 한다. Date를 그대로 넣으면
+ * React가 `String(date)`로 바꿔 "Thu Sep 03 2026 19:00:00 GMT+0900 (…)" 같은
+ * 로케일 문자열이 들어가고, 이는 유효한 datetime 값이 아니다.
+ */
+export function toIsoString(value: DateLike | null | undefined): string {
+  if (value == null) return "";
+  const d = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(d.getTime()) ? "" : d.toISOString();
+}

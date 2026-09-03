@@ -35,67 +35,38 @@ import {
   updateCretaScheduleSlotAction,
   upgradeCretaDevicePlayerAction,
 } from "@/actions/creta";
-import {
-  type BookListCoverPreview,
-  humanizeServerActionError,
-} from "@/lib/api";
+import { humanizeServerActionError } from "@/lib/api";
+// 서버 DTO를 단일 출처로 삼는다. 타입 전용 import 라 런타임에는 지워지므로
+// server-only 모듈에서 가져와도 클라이언트 번들에 들어가지 않는다.
+import type {
+  CretaContentRefPublic,
+  CretaDevicePublic,
+  CretaMyOverviewPublic,
+  CretaOverviewItemPublic,
+  CretaOwnerPublic,
+  CretaPlaylistDetailPublic,
+  CretaPlaylistItemPublic,
+  CretaPlaylistListItemPublic,
+  CretaScheduleDetailPublic,
+  CretaScheduleListItemPublic,
+  CretaScheduleSlotPublic,
+  CretaSharedUserPublic,
+} from "@/server/services/creta.service";
 
 // ── 타입(서버 Public DTO의 클라이언트 뷰) ─────────────────────────
 
-export type CretaContentRef = {
-  kind: "book" | "playlist" | "schedule" | "ad";
-  id: number;
-  title: string;
-  cover: BookListCoverPreview | null;
-  /** 라이브 미리보기용 북 id */
-  previewBookId?: number | null;
-};
+export type CretaContentRef = CretaContentRefPublic;
 
 /** 소유자(공개 정보). null = 공용 항목(소유자 도입 이전 데이터) */
-export type CretaOwner = {
-  id: number;
-  name: string;
-  imageUrl: string | null;
-};
+export type CretaOwner = CretaOwnerPublic;
 
-export type CretaSharedUser = { id: number; name: string };
+export type CretaSharedUser = CretaSharedUserPublic;
 
-export type CretaPlaylistListItem = {
-  id: number;
-  name: string;
-  description: string;
-  loop: boolean;
-  visibility: string;
-  itemCount: number;
-  cover: BookListCoverPreview | null;
-  updatedAt: string;
-  owner: CretaOwner | null;
-  sharedWith: CretaSharedUser[];
-  /** true면 모든 로그인 사용자가 편집 가능 */
-  sharedToAll: boolean;
-};
+export type CretaPlaylistListItem = CretaPlaylistListItemPublic;
 
-export type CretaPlaylistItem = {
-  itemId: number;
-  bookId: number;
-  title: string;
-  pageCount: number;
-  cover: BookListCoverPreview | null;
-};
+export type CretaPlaylistItem = CretaPlaylistItemPublic;
 
-export type CretaPlaylistDetail = {
-  id: number;
-  name: string;
-  description: string;
-  loop: boolean;
-  visibility: string;
-  items: CretaPlaylistItem[];
-  owner: CretaOwner | null;
-  sharedUserIds: number[];
-  sharedWith: CretaSharedUser[];
-  /** true면 모든 로그인 사용자가 편집 가능 */
-  sharedToAll: boolean;
-};
+export type CretaPlaylistDetail = CretaPlaylistDetailPublic;
 
 export type CretaSlotRepeat =
   | "once"
@@ -112,66 +83,16 @@ export const SLOT_REPEAT_LABEL: Record<CretaSlotRepeat, string> = {
   range: "기간 지정",
 };
 
-export type CretaScheduleSlot = {
-  id: number;
-  startMin: number;
-  endMin: number;
-  repeat: CretaSlotRepeat;
-  repeatStart: string | null;
-  repeatEnd: string | null;
-  content: CretaContentRef | null;
-};
+export type CretaScheduleSlot = CretaScheduleSlotPublic;
 
-export type CretaScheduleListItem = {
-  id: number;
-  name: string;
-  slotCount: number;
-  autoApply: boolean;
-  defaultContent: CretaContentRef | null;
-  /** 지금 편성된 시간대의 콘텐츠(없으면 기본 재생) */
-  currentContent: CretaContentRef | null;
-  appliedDeviceNames: string[];
-  owner: CretaOwner | null;
-  sharedWith: CretaSharedUser[];
-  /** true면 모든 로그인 사용자가 편집 가능 */
-  sharedToAll: boolean;
-};
+export type CretaScheduleListItem = CretaScheduleListItemPublic;
 
-export type CretaScheduleDetail = {
-  id: number;
-  name: string;
-  autoApply: boolean;
-  defaultContent: CretaContentRef | null;
-  slots: CretaScheduleSlot[];
-  appliedDevices: { id: number; name: string }[];
-  owner: CretaOwner | null;
-  sharedUserIds: number[];
-  sharedWith: CretaSharedUser[];
-  /** true면 모든 로그인 사용자가 편집 가능 */
-  sharedToAll: boolean;
-};
+export type CretaScheduleDetail = CretaScheduleDetailPublic;
 
 /** 크레타 > 계정: 항목 한 줄 */
-export type CretaOverviewItem = {
-  id: number;
-  title: string;
-  updatedAt: string;
-  ownerName: string | null;
-  sharedWith: string[];
-};
+export type CretaOverviewItem = CretaOverviewItemPublic;
 
-export type CretaMyOverview = {
-  user: {
-    id: number;
-    name: string;
-    email: string;
-    role: "user" | "admin";
-    imageUrl: string | null;
-  };
-  books: { owned: CretaOverviewItem[]; shared: CretaOverviewItem[] };
-  playlists: { owned: CretaOverviewItem[]; shared: CretaOverviewItem[] };
-  schedules: { owned: CretaOverviewItem[]; shared: CretaOverviewItem[] };
-};
+export type CretaMyOverview = CretaMyOverviewPublic;
 
 /** 공유 대상 요약: "A, B, C 외 2명" */
 export function sharedWithSummary(
@@ -184,32 +105,7 @@ export function sharedWithSummary(
   return rest > 0 ? `${head} 외 ${rest}명` : head;
 }
 
-export type CretaDevice = {
-  id: number;
-  name: string;
-  location: string;
-  platform: string;
-  resolution: string;
-  orientation: string;
-  online: boolean;
-  source: CretaContentRef | null;
-  /** 태그(정렬됨) — 태그 단위 일괄 배포·필터에 사용 */
-  tags: string[];
-  /** 원격 제어(시뮬레이션): 볼륨·밝기(0~100), 플레이어 버전 */
-  volume: number;
-  brightness: number;
-  playerVersion: string;
-  /** 전원 예약 "HH:MM"(매일). null = 예약 없음 */
-  powerOnTime: string | null;
-  powerOffTime: string | null;
-  /** 전원 예약 제외 요일(0=일…6=토) */
-  powerExcludeDays: number[];
-  /** 전원 예약 제외 날짜(YYYY-MM-DD) */
-  powerExcludeDates: string[];
-  /** 단말 상태(시뮬레이션): ok | error */
-  health: "ok" | "error";
-  createdAt: string;
-};
+export type CretaDevice = CretaDevicePublic;
 
 export type CretaDevicePowerInput = {
   powerOnTime: string | null;
@@ -297,34 +193,26 @@ async function run<T>(call: () => Promise<T>): Promise<T> {
 
 // 플레이리스트
 export async function fetchCretaPlaylists(): Promise<CretaPlaylistListItem[]> {
-  return run(() =>
-    listCretaPlaylistsAction(),
-  ) as unknown as CretaPlaylistListItem[];
+  return run(() => listCretaPlaylistsAction());
 }
 
 /** 커뮤니티 갤러리 — 비로그인도 볼 수 있는 전체 공개 플레이리스트만 */
 export async function fetchPublicCretaPlaylists(): Promise<
   CretaPlaylistListItem[]
 > {
-  return run(() =>
-    listPublicCretaPlaylistsAction(),
-  ) as unknown as CretaPlaylistListItem[];
+  return run(() => listPublicCretaPlaylistsAction());
 }
 
 export async function fetchPublicCretaPlaylist(
   id: number,
 ): Promise<CretaPlaylistDetail> {
-  return run(() =>
-    getPublicCretaPlaylistAction(id),
-  ) as unknown as CretaPlaylistDetail;
+  return run(() => getPublicCretaPlaylistAction(id));
 }
 
 export async function fetchCretaPlaylist(
   id: number,
 ): Promise<CretaPlaylistDetail> {
-  return run(() =>
-    getCretaPlaylistAction(id),
-  ) as unknown as CretaPlaylistDetail;
+  return run(() => getCretaPlaylistAction(id));
 }
 
 export async function createCretaPlaylist(input: {
@@ -333,9 +221,7 @@ export async function createCretaPlaylist(input: {
   loop?: boolean;
   visibility?: string;
 }): Promise<CretaPlaylistDetail> {
-  return run(() =>
-    createCretaPlaylistAction(input),
-  ) as unknown as CretaPlaylistDetail;
+  return run(() => createCretaPlaylistAction(input));
 }
 
 export async function deleteCretaPlaylist(id: number): Promise<void> {
@@ -346,18 +232,14 @@ export async function addCretaPlaylistItem(
   playlistId: number,
   bookId: number,
 ): Promise<CretaPlaylistDetail> {
-  return run(() =>
-    addCretaPlaylistItemAction(playlistId, bookId),
-  ) as unknown as CretaPlaylistDetail;
+  return run(() => addCretaPlaylistItemAction(playlistId, bookId));
 }
 
 export async function removeCretaPlaylistItem(
   playlistId: number,
   itemId: number,
 ): Promise<CretaPlaylistDetail> {
-  return run(() =>
-    removeCretaPlaylistItemAction(playlistId, itemId),
-  ) as unknown as CretaPlaylistDetail;
+  return run(() => removeCretaPlaylistItemAction(playlistId, itemId));
 }
 
 export async function moveCretaPlaylistItem(
@@ -365,15 +247,13 @@ export async function moveCretaPlaylistItem(
   itemId: number,
   direction: -1 | 1,
 ): Promise<CretaPlaylistDetail> {
-  return run(() =>
-    moveCretaPlaylistItemAction(playlistId, itemId, direction),
-  ) as unknown as CretaPlaylistDetail;
+  return run(() => moveCretaPlaylistItemAction(playlistId, itemId, direction));
 }
 
 // 스케줄
 /** 크레타 > 계정 현황(로그인 필요) */
 export async function fetchMyCretaOverview(): Promise<CretaMyOverview> {
-  return run(() => getMyCretaOverviewAction()) as unknown as CretaMyOverview;
+  return run(() => getMyCretaOverviewAction());
 }
 
 /** 플레이리스트 공유 추가/해제 — 갱신된 상세 반환 */
@@ -382,9 +262,7 @@ export async function setCretaPlaylistShare(
   userId: number,
   shared: boolean,
 ): Promise<CretaPlaylistDetail> {
-  return run(() =>
-    setCretaPlaylistShareAction(id, userId, shared),
-  ) as unknown as CretaPlaylistDetail;
+  return run(() => setCretaPlaylistShareAction(id, userId, shared));
 }
 
 /** 스케줄 공유 추가/해제 — 갱신된 상세 반환 */
@@ -393,9 +271,7 @@ export async function setCretaScheduleShare(
   userId: number,
   shared: boolean,
 ): Promise<CretaScheduleDetail> {
-  return run(() =>
-    setCretaScheduleShareAction(id, userId, shared),
-  ) as unknown as CretaScheduleDetail;
+  return run(() => setCretaScheduleShareAction(id, userId, shared));
 }
 
 /** 플레이리스트 모든 사용자 공유 켜기/끄기 — 소유자·관리자만 */
@@ -403,9 +279,7 @@ export async function setCretaPlaylistShareAll(
   id: number,
   shared: boolean,
 ): Promise<CretaPlaylistDetail> {
-  return run(() =>
-    setCretaPlaylistShareAllAction(id, shared),
-  ) as unknown as CretaPlaylistDetail;
+  return run(() => setCretaPlaylistShareAllAction(id, shared));
 }
 
 /** 스케줄 모든 사용자 공유 켜기/끄기 — 소유자·관리자만 */
@@ -413,31 +287,23 @@ export async function setCretaScheduleShareAll(
   id: number,
   shared: boolean,
 ): Promise<CretaScheduleDetail> {
-  return run(() =>
-    setCretaScheduleShareAllAction(id, shared),
-  ) as unknown as CretaScheduleDetail;
+  return run(() => setCretaScheduleShareAllAction(id, shared));
 }
 
 export async function fetchCretaSchedules(): Promise<CretaScheduleListItem[]> {
-  return run(() =>
-    listCretaSchedulesAction(),
-  ) as unknown as CretaScheduleListItem[];
+  return run(() => listCretaSchedulesAction());
 }
 
 export async function fetchCretaSchedule(
   id: number,
 ): Promise<CretaScheduleDetail> {
-  return run(() =>
-    getCretaScheduleAction(id),
-  ) as unknown as CretaScheduleDetail;
+  return run(() => getCretaScheduleAction(id));
 }
 
 export async function createCretaSchedule(input: {
   name: string;
 }): Promise<CretaScheduleDetail> {
-  return run(() =>
-    createCretaScheduleAction(input),
-  ) as unknown as CretaScheduleDetail;
+  return run(() => createCretaScheduleAction(input));
 }
 
 export async function deleteCretaSchedule(id: number): Promise<void> {
@@ -453,9 +319,7 @@ export async function updateCretaSchedule(
     defaultPlaylistId?: number | null;
   },
 ): Promise<CretaScheduleDetail> {
-  return run(() =>
-    updateCretaScheduleAction(id, patch),
-  ) as unknown as CretaScheduleDetail;
+  return run(() => updateCretaScheduleAction(id, patch));
 }
 
 export async function addCretaScheduleSlot(
@@ -471,9 +335,7 @@ export async function addCretaScheduleSlot(
     repeatEnd?: string | null;
   },
 ): Promise<CretaScheduleDetail> {
-  return run(() =>
-    addCretaScheduleSlotAction(scheduleId, body),
-  ) as unknown as CretaScheduleDetail;
+  return run(() => addCretaScheduleSlotAction(scheduleId, body));
 }
 
 export async function updateCretaScheduleSlot(
@@ -490,27 +352,23 @@ export async function updateCretaScheduleSlot(
     repeatEnd?: string | null;
   },
 ): Promise<CretaScheduleDetail> {
-  return run(() =>
-    updateCretaScheduleSlotAction(scheduleId, slotId, body),
-  ) as unknown as CretaScheduleDetail;
+  return run(() => updateCretaScheduleSlotAction(scheduleId, slotId, body));
 }
 
 export async function removeCretaScheduleSlot(
   scheduleId: number,
   slotId: number,
 ): Promise<CretaScheduleDetail> {
-  return run(() =>
-    removeCretaScheduleSlotAction(scheduleId, slotId),
-  ) as unknown as CretaScheduleDetail;
+  return run(() => removeCretaScheduleSlotAction(scheduleId, slotId));
 }
 
 // 디바이스
 export async function fetchCretaDevices(): Promise<CretaDevice[]> {
-  return run(() => listCretaDevicesAction()) as unknown as CretaDevice[];
+  return run(() => listCretaDevicesAction());
 }
 
 export async function fetchCretaDevice(id: number): Promise<CretaDevice> {
-  return run(() => getCretaDeviceAction(id)) as unknown as CretaDevice;
+  return run(() => getCretaDeviceAction(id));
 }
 
 export async function createCretaDevice(input: {
@@ -520,7 +378,7 @@ export async function createCretaDevice(input: {
   resolution?: string;
   orientation?: string;
 }): Promise<CretaDevice> {
-  return run(() => createCretaDeviceAction(input)) as unknown as CretaDevice;
+  return run(() => createCretaDeviceAction(input));
 }
 
 export async function deleteCretaDevice(id: number): Promise<void> {
@@ -531,27 +389,21 @@ export async function updateCretaDeviceOnline(
   id: number,
   online: boolean,
 ): Promise<CretaDevice> {
-  return run(() =>
-    updateCretaDeviceOnlineAction(id, online),
-  ) as unknown as CretaDevice;
+  return run(() => updateCretaDeviceOnlineAction(id, online));
 }
 
 export async function updateCretaDeviceHealth(
   id: number,
   health: "ok" | "error",
 ): Promise<CretaDevice> {
-  return run(() =>
-    updateCretaDeviceHealthAction(id, health),
-  ) as unknown as CretaDevice;
+  return run(() => updateCretaDeviceHealthAction(id, health));
 }
 
 export async function updateCretaDevicePower(
   id: number,
   body: CretaDevicePowerInput,
 ): Promise<CretaDevice> {
-  return run(() =>
-    updateCretaDevicePowerAction(id, body),
-  ) as unknown as CretaDevice;
+  return run(() => updateCretaDevicePowerAction(id, body));
 }
 
 export async function updateCretaDeviceSource(
@@ -561,9 +413,7 @@ export async function updateCretaDeviceSource(
     refId?: number;
   },
 ): Promise<CretaDevice> {
-  return run(() =>
-    updateCretaDeviceSourceAction(id, body),
-  ) as unknown as CretaDevice;
+  return run(() => updateCretaDeviceSourceAction(id, body));
 }
 
 /** 플레이어 최신 버전(시뮬레이션) — 서버 상수와 동일하게 유지 */
@@ -574,18 +424,14 @@ export async function updateCretaDeviceControls(
   id: number,
   body: { volume?: number; brightness?: number },
 ): Promise<CretaDevice> {
-  return run(() =>
-    updateCretaDeviceControlsAction(id, body),
-  ) as unknown as CretaDevice;
+  return run(() => updateCretaDeviceControlsAction(id, body));
 }
 
 /** 원격 제어(시뮬레이션): 플레이어 최신 버전 업데이트 */
 export async function upgradeCretaDevicePlayer(
   id: number,
 ): Promise<CretaDevice> {
-  return run(() =>
-    upgradeCretaDevicePlayerAction(id),
-  ) as unknown as CretaDevice;
+  return run(() => upgradeCretaDevicePlayerAction(id));
 }
 
 /** 디바이스 태그 설정(전체 교체) — 각 1~40자, 최대 10개 */
@@ -593,9 +439,7 @@ export async function updateCretaDeviceTags(
   id: number,
   tags: string[],
 ): Promise<CretaDevice> {
-  return run(() =>
-    updateCretaDeviceTagsAction(id, tags),
-  ) as unknown as CretaDevice;
+  return run(() => updateCretaDeviceTagsAction(id, tags));
 }
 
 /** 태그 일괄 배포 — 태그가 붙은 모든 디바이스의 재생 소스를 한 번에 변경 */
@@ -603,8 +447,5 @@ export async function assignCretaSourceByTag(
   tag: string,
   body: { type: "book" | "playlist" | "schedule"; refId: number },
 ): Promise<{ count: number; devices: CretaDevice[] }> {
-  return run(() => assignCretaSourceByTagAction(tag, body)) as unknown as {
-    count: number;
-    devices: CretaDevice[];
-  };
+  return run(() => assignCretaSourceByTagAction(tag, body));
 }

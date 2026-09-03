@@ -26,7 +26,7 @@ import {
 import { appLog } from "@/lib/app-log";
 import { canEditAsOwnerOrAdmin } from "@/lib/authz";
 import { formDataGetString } from "@/lib/form-data-utils";
-import { formatDateMediumShort } from "@/lib/format-date";
+import { formatDateMediumShort, toIsoString } from "@/lib/format-date";
 import { postKeys } from "@/lib/query-keys";
 
 type CommentFormState = {
@@ -125,7 +125,7 @@ function CommentItem({
           />
           <time
             className="text-xs text-muted-foreground"
-            dateTime={comment.createdAt}
+            dateTime={toIsoString(comment.createdAt)}
           >
             {formatDateMediumShort(comment.createdAt)}
           </time>

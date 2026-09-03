@@ -4,50 +4,20 @@ import {
   getCretaPlayReportAction,
 } from "@/actions/creta-reports";
 import { humanizeServerActionError } from "@/lib/api";
+import type { CretaDeviceUptimePublic } from "@/server/services/creta-device-uptime.service";
+// 서버 DTO를 단일 출처로 삼는다(타입 전용 import 라 런타임에는 지워진다)
+import type { CretaPlayReportPublic } from "@/server/services/creta-play-log.service";
 
 export const PLAY_REPORT_RANGES = [1, 7, 30] as const;
 export type PlayReportRange = (typeof PLAY_REPORT_RANGES)[number];
 
-export type CretaPlayReport = {
-  rangeDays: PlayReportRange;
-  generatedAt: string;
-  totalPlays: number;
-  totalDurationSec: number;
-  deviceCount: number;
-  contentCount: number;
-  byContent: {
-    kind: string;
-    contentId: number | null;
-    title: string;
-    plays: number;
-    durationSec: number;
-    lastPlayedAt: string;
-  }[];
-  byDevice: {
-    deviceId: number;
-    deviceName: string;
-    plays: number;
-    durationSec: number;
-    lastPlayedAt: string;
-  }[];
-  recent: {
-    id: number;
-    deviceId: number;
-    deviceName: string;
-    kind: string;
-    title: string;
-    startedAt: string;
-    durationSec: number;
-  }[];
-};
+export type CretaPlayReport = CretaPlayReportPublic;
 
 export async function fetchCretaPlayReport(
   rangeDays: PlayReportRange,
 ): Promise<CretaPlayReport> {
   try {
-    return (await getCretaPlayReportAction(
-      rangeDays,
-    )) as unknown as CretaPlayReport;
+    return await getCretaPlayReportAction(rangeDays);
   } catch (e) {
     throw humanizeServerActionError(e);
   }
@@ -56,35 +26,13 @@ export async function fetchCretaPlayReport(
 export const DEVICE_UPTIME_RANGES = [7, 30] as const;
 export type DeviceUptimeRange = (typeof DEVICE_UPTIME_RANGES)[number];
 
-export type CretaDeviceUptime = {
-  rangeDays: DeviceUptimeRange;
-  generatedAt: string;
-  overallUptimePct: number;
-  overallErrorPct: number;
-  byDay: {
-    date: string;
-    online: number;
-    error: number;
-    offline: number;
-  }[];
-  byDevice: {
-    deviceId: number;
-    deviceName: string;
-    location: string;
-    uptimePct: number;
-    errorPct: number;
-    offlinePct: number;
-    samples: number;
-  }[];
-};
+export type CretaDeviceUptime = CretaDeviceUptimePublic;
 
 export async function fetchCretaDeviceUptime(
   rangeDays: DeviceUptimeRange,
 ): Promise<CretaDeviceUptime> {
   try {
-    return (await getCretaDeviceUptimeAction(
-      rangeDays,
-    )) as unknown as CretaDeviceUptime;
+    return await getCretaDeviceUptimeAction(rangeDays);
   } catch (e) {
     throw humanizeServerActionError(e);
   }

@@ -32,6 +32,7 @@ import {
   floatingDockFabIconClass,
   floatingDockVerticalInsetClass,
 } from "@/lib/floating-dock-chrome";
+import { toIsoString } from "@/lib/format-date";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/stores/auth-store";
 
@@ -182,7 +183,7 @@ function ChatMessageBubble({
           </div>
           <time
             className="mb-0.5 shrink-0 text-[10px] tabular-nums leading-none text-muted-foreground"
-            dateTime={msg.createdAt}
+            dateTime={toIsoString(msg.createdAt)}
           >
             {formatTime(msg.createdAt)}
           </time>

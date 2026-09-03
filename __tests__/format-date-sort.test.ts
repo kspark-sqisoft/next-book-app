@@ -57,9 +57,12 @@ describe("toTimestamp", () => {
   it("Date와 문자열을 섞으면 관계 비교가 양방향 모두 false — 이 테스트의 존재 이유", () => {
     const d = new Date("2026-09-03T10:00:00Z");
     const s = "2026-01-01T00:00:00.000Z";
-    // 양방향 모두 false: 비교 자체가 성립하지 않는다
-    expect(d < s).toBe(false);
-    expect(s < d).toBe(false);
+    // 타입을 단일 출처로 모은 뒤로는 TS가 이 비교를 컴파일 단계에서 막는다(TS2365).
+    // 여기서는 "막지 못했을 때 런타임이 어떻게 되는지"를 남기려는 것이므로 일부러 통과시킨다.
+    const lt = (a: unknown, b: unknown) =>
+      (a as number) < (b as number) === true;
+    expect(lt(d, s)).toBe(false);
+    expect(lt(s, d)).toBe(false);
   });
 });
 

@@ -1,24 +1,20 @@
 /**
  * 텍스트 위젯 애니메이션 — 식별자·기본값·글자/단어 분할·CSS 변수 계산.
  * 실제 키프레임은 `src/book-text-animations.css`, 적용은 `BookTextAnimatedContent`.
- * 새 효과 추가: 아래 IDS·META·OPTIONS·CSS·백엔드 화이트리스트(`books.service.ts`)를 함께 수정.
+ * 새 효과 추가: `book-text-animation-ids.ts`의 IDS와 아래 META·OPTIONS·CSS를 수정.
+ * 서버 화이트리스트는 같은 IDS를 import 하므로 따로 고칠 필요가 없다.
  */
 
-export const BOOK_TEXT_ANIMATION_IDS = [
-  "none",
-  "typewriter",
-  "fadeIn",
-  "slideUp",
-  "zoomIn",
-  "blurIn",
-  "charPop",
-  "wordFade",
-  "wave",
-  "marquee",
-  "scrollUp",
-] as const;
-
-export type BookTextAnimationId = (typeof BOOK_TEXT_ANIMATION_IDS)[number];
+// 식별자는 서버와 공용이다(서버 화이트리스트가 같은 목록을 쓴다) — 정의는 한 곳에만 둔다.
+export {
+  BOOK_TEXT_ANIMATION_IDS,
+  type BookTextAnimationId,
+  isBookTextAnimationId,
+} from "@/lib/book-text-animation-ids";
+import {
+  type BookTextAnimationId,
+  isBookTextAnimationId,
+} from "@/lib/book-text-animation-ids";
 
 /** block = 위젯 전체, char = 글자(자소) 단위, word = 공백 기준 단어 단위 */
 export type BookTextAnimationUnit = "block" | "char" | "word";
@@ -129,10 +125,6 @@ export const BOOK_TEXT_ANIMATION_MAX_SEC = 120;
 
 /** 글자·단어 span이 이보다 많으면 분할하지 않음(DOM·애니메이션 부하 방지) → 블록 페이드로 폴백 */
 export const MAX_BOOK_TEXT_ANIMATION_UNITS = 800;
-
-export function isBookTextAnimationId(s: string): s is BookTextAnimationId {
-  return (BOOK_TEXT_ANIMATION_IDS as readonly string[]).includes(s);
-}
 
 export function normalizeBookTextAnimation(raw: unknown): BookTextAnimationId {
   const s = typeof raw === "string" ? raw.trim() : "";

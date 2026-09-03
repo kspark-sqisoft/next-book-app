@@ -6,16 +6,12 @@ import {
   listCretaCommentsAction,
 } from "@/actions/creta-comments";
 import { humanizeServerActionError } from "@/lib/api";
+// 서버 DTO를 단일 출처로 삼는다(타입 전용 import 라 런타임에는 지워진다)
+import type { CretaCommentPublic } from "@/server/services/creta-comments.service";
 
 export type CretaCommentTargetKind = "book" | "playlist";
 
-export type CretaComment = {
-  id: number;
-  content: string;
-  createdAt: string;
-  author: { id: number; name: string; imageUrl: string | null };
-  replies: CretaComment[];
-};
+export type CretaComment = CretaCommentPublic;
 
 async function run<T>(call: () => Promise<T>): Promise<T> {
   try {
@@ -29,9 +25,7 @@ export async function fetchCretaComments(
   kind: CretaCommentTargetKind,
   targetId: number,
 ): Promise<CretaComment[]> {
-  return run(() =>
-    listCretaCommentsAction(kind, targetId),
-  ) as unknown as CretaComment[];
+  return run(() => listCretaCommentsAction(kind, targetId));
 }
 
 export async function fetchCretaCommentCounts(
@@ -47,9 +41,7 @@ export async function createCretaComment(
   targetId: number,
   body: { content: string; parentId?: number | null },
 ): Promise<CretaComment[]> {
-  return run(() =>
-    createCretaCommentAction(kind, targetId, body),
-  ) as unknown as CretaComment[];
+  return run(() => createCretaCommentAction(kind, targetId, body));
 }
 
 export async function deleteCretaComment(

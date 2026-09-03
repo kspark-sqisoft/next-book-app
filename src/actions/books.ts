@@ -51,9 +51,9 @@ export async function listBooksAction(params?: {
       ? Math.min(50, Math.max(1, Math.floor(takeRaw)))
       : 12;
     const books = new BooksService();
-    return (await books.findPage(skip, take, search, {
+    return await books.findPage(skip, take, search, {
       publishedOnly: params?.publishedOnly === true,
-    })) as unknown as BooksPageResponse;
+    });
   } catch (e) {
     rethrowActionError(e, "books-actions");
   }
@@ -63,7 +63,7 @@ export async function getBookAction(bookId: number): Promise<BookDetail> {
   try {
     const id = assertPositiveIntId(bookId);
     const books = new BooksService();
-    return (await books.findOne(id)) as unknown as BookDetail;
+    return await books.findOne(id);
   } catch (e) {
     rethrowActionError(e, "books-actions");
   }
@@ -75,7 +75,7 @@ export async function createBookAction(
   try {
     const user = await requireUser();
     const books = new BooksService();
-    return (await books.create(user.sub, body)) as unknown as BookDetail;
+    return await books.create(user.sub, body);
   } catch (e) {
     rethrowActionError(e, "books-actions");
   }
@@ -89,11 +89,7 @@ export async function updateBookAction(
     const user = await requireUser();
     const id = assertPositiveIntId(bookId);
     const books = new BooksService();
-    return (await books.update(
-      id,
-      { id: user.sub, role: user.role },
-      body,
-    )) as unknown as BookDetail;
+    return await books.update(id, { id: user.sub, role: user.role }, body);
   } catch (e) {
     rethrowActionError(e, "books-actions");
   }
@@ -121,12 +117,12 @@ export async function setBookShareAction(
     const user = await requireUser();
     const id = assertPositiveIntId(bookId);
     const target = assertPositiveIntId(userId);
-    return (await new BooksService().setShare(
+    return await new BooksService().setShare(
       id,
       { id: user.sub, role: user.role },
       target,
       Boolean(shared),
-    )) as unknown as BookDetail;
+    );
   } catch (e) {
     rethrowActionError(e, "books-actions");
   }
@@ -140,11 +136,11 @@ export async function setBookShareAllAction(
   try {
     const user = await requireUser();
     const id = assertPositiveIntId(bookId);
-    return (await new BooksService().setShareAll(
+    return await new BooksService().setShareAll(
       id,
       { id: user.sub, role: user.role },
       Boolean(shared),
-    )) as unknown as BookDetail;
+    );
   } catch (e) {
     rethrowActionError(e, "books-actions");
   }
@@ -158,11 +154,11 @@ export async function setBookStatusAction(
   try {
     const user = await requireUser();
     const id = assertPositiveIntId(bookId);
-    return (await new BooksService().setStatus(
+    return await new BooksService().setStatus(
       id,
       { id: user.sub, role: user.role },
       status,
-    )) as unknown as BookDetail;
+    );
   } catch (e) {
     rethrowActionError(e, "books-actions");
   }
@@ -295,7 +291,7 @@ export async function requestBookLayoutAiAction(body: {
       }
     }
 
-    return result as unknown as BookLayoutAiResponse;
+    return result;
   } catch (e) {
     rethrowActionError(e, "books-actions");
   }

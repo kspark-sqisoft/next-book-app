@@ -1,5 +1,8 @@
-import "server-only";
-
+// NOTE: 여기에는 `server-only` 를 붙이지 않는다.
+// 커스텀 서버(`server.ts` + socket.io)가 Next 의 react-server 레이어 **밖에서** 이 모듈을
+// 직접 import 하는데, `server-only` 는 그 조건에서 해석되면 즉시 throw 한다(기동 실패).
+// 보호는 이 위층인 `server/services/*` 가 맡는다 — 서비스에는 표시가 붙어 있고,
+// 이 파일은 pg·drizzle 같은 노드 전용 의존을 써서 클라이언트 번들에 들어가면 어차피 깨진다.
 // Drizzle + postgres-js 드라이버
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";

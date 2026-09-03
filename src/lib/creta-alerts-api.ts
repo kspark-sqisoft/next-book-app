@@ -5,20 +5,13 @@ import {
   getActiveCretaAlertAction,
 } from "@/actions/creta-alerts";
 import { humanizeServerActionError } from "@/lib/api";
+// 서버 DTO를 단일 출처로 삼는다(타입 전용 import 라 런타임에는 지워진다)
+import type { CretaAlertPublic } from "@/server/services/creta-alerts.service";
 
 export const CRETA_ALERT_LEVELS = ["긴급", "주의", "안내"] as const;
 export type CretaAlertLevel = (typeof CRETA_ALERT_LEVELS)[number];
 
-export type CretaAlert = {
-  id: number;
-  message: string;
-  level: CretaAlertLevel;
-  /** true면 모든 디바이스 대상(deviceIds 무시) */
-  allDevices: boolean;
-  deviceIds: number[];
-  createdAt: string;
-  createdByName: string | null;
-};
+export type CretaAlert = CretaAlertPublic;
 
 /** 레벨별 배너·배지 색(라이트·다크 공통 토큰) */
 export const CRETA_ALERT_LEVEL_CLASS: Record<
@@ -57,9 +50,7 @@ async function run<T>(call: () => Promise<T>): Promise<T> {
 }
 
 export async function fetchActiveCretaAlert(): Promise<CretaAlert | null> {
-  return run(() =>
-    getActiveCretaAlertAction(),
-  ) as unknown as Promise<CretaAlert | null>;
+  return run(() => getActiveCretaAlertAction());
 }
 
 /** 발송 — deviceIds가 비어 있으면 모든 디바이스 대상 */
@@ -68,9 +59,7 @@ export async function activateCretaAlert(input: {
   level: CretaAlertLevel;
   deviceIds?: number[];
 }): Promise<CretaAlert> {
-  return run(() =>
-    activateCretaAlertAction(input),
-  ) as unknown as Promise<CretaAlert>;
+  return run(() => activateCretaAlertAction(input));
 }
 
 export async function deactivateCretaAlert(): Promise<void> {

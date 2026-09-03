@@ -8,6 +8,11 @@ import {
   updateCretaWallAction,
 } from "@/actions/creta-walls";
 import { humanizeServerActionError } from "@/lib/api";
+// 서버 DTO를 단일 출처로 삼는다(타입 전용 import 라 런타임에는 지워진다)
+import type {
+  CretaVideoWallPublic,
+  CretaWallMemberPublic,
+} from "@/server/services/creta-walls.service";
 
 export const CRETA_WALL_MODES = ["tile", "mirror", "multi"] as const;
 export type CretaWallMode = (typeof CRETA_WALL_MODES)[number];
@@ -24,32 +29,9 @@ export const CRETA_WALL_MODE_DESC: Record<CretaWallMode, string> = {
   multi: "디바이스마다 다른 북을 재생하되, 페이지 전환 타이밍을 함께 맞춥니다.",
 };
 
-export type CretaWallMember = {
-  deviceId: number;
-  deviceName: string;
-  online: boolean;
-  position: number;
-  isMaster: boolean;
-  bookId: number | null;
-  bookTitle: string | null;
-};
+export type CretaWallMember = CretaWallMemberPublic;
 
-export type CretaVideoWall = {
-  id: number;
-  name: string;
-  mode: CretaWallMode;
-  rows: number;
-  cols: number;
-  bookId: number | null;
-  bookTitle: string | null;
-  slideSec: number;
-  /** 소유자 판별용 — canManageOwned로 편집·삭제 노출을 정한다 */
-  ownerId: number | null;
-  /** 만든 사람 이름(작성자 표시) */
-  ownerName: string | null;
-  members: CretaWallMember[];
-  updatedAt: string;
-};
+export type CretaVideoWall = CretaVideoWallPublic;
 
 async function run<T>(call: () => Promise<T>): Promise<T> {
   try {
@@ -60,23 +42,17 @@ async function run<T>(call: () => Promise<T>): Promise<T> {
 }
 
 export async function fetchCretaWalls(): Promise<CretaVideoWall[]> {
-  return run(() => listCretaWallsAction()) as unknown as Promise<
-    CretaVideoWall[]
-  >;
+  return run(() => listCretaWallsAction());
 }
 
 export async function fetchCretaWall(id: number): Promise<CretaVideoWall> {
-  return run(() =>
-    getCretaWallAction(id),
-  ) as unknown as Promise<CretaVideoWall>;
+  return run(() => getCretaWallAction(id));
 }
 
 export async function createCretaWall(input: {
   name: string;
 }): Promise<CretaVideoWall> {
-  return run(() =>
-    createCretaWallAction(input),
-  ) as unknown as Promise<CretaVideoWall>;
+  return run(() => createCretaWallAction(input));
 }
 
 export async function updateCretaWall(
@@ -90,9 +66,7 @@ export async function updateCretaWall(
     slideSec?: number;
   },
 ): Promise<CretaVideoWall> {
-  return run(() =>
-    updateCretaWallAction(id, input),
-  ) as unknown as Promise<CretaVideoWall>;
+  return run(() => updateCretaWallAction(id, input));
 }
 
 /** 멤버 전체 교체 — 배열 순서 = 타일 위치(행 우선) */
@@ -100,9 +74,7 @@ export async function setCretaWallMembers(
   id: number,
   members: { deviceId: number; isMaster?: boolean; bookId?: number | null }[],
 ): Promise<CretaVideoWall> {
-  return run(() =>
-    setCretaWallMembersAction(id, members),
-  ) as unknown as Promise<CretaVideoWall>;
+  return run(() => setCretaWallMembersAction(id, members));
 }
 
 export async function deleteCretaWall(id: number): Promise<void> {
