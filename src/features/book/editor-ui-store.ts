@@ -193,10 +193,6 @@ export function useBookEditorUiValues() {
     leftDockTab: useBookEditorUiStore((s) => s.leftDockTab),
     drawingStrokeColor: useBookEditorUiStore((s) => s.drawingStrokeColor),
     drawingStrokeWidth: useBookEditorUiStore((s) => s.drawingStrokeWidth),
-    centerGuideThresholdPx: useBookEditorUiStore(
-      (s) => s.centerGuideThresholdPx,
-    ),
-    dragGridPx: useBookEditorUiStore((s) => s.dragGridPx),
     floatingWidgetPaletteOpen: useBookEditorUiStore(
       (s) => s.floatingWidgetPaletteOpen,
     ),

@@ -11,17 +11,13 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import { toast } from "sonner";
 
 import { BookAiAssistantPanel } from "@/components/books/BookAiAssistantPanel";
-import {
-  BookCanvasPageNavBadge,
-  BookCanvasPlaybackBadge,
-} from "@/components/books/BookCanvasStageOverlays";
-import { BookCanvasToolbar } from "@/components/books/BookCanvasToolbar";
+import {} from "@/components/books/BookCanvasStageOverlays";
+import { BookEditorCanvasStage } from "@/components/books/BookEditorCanvasStage";
 import { BookEditorLeftDock } from "@/components/books/BookEditorLeftDock";
 import { BookEditorRightDock } from "@/components/books/BookEditorRightDock";
 import { BookEditorToolRail } from "@/components/books/BookEditorToolRail";
@@ -56,7 +52,6 @@ import {
   type BookCanvasSelectDetail,
   type BookDropWidgetKind,
   type BookLibraryDragPayload,
-  BookSlideCanvas,
 } from "@/components/books/BookSlideCanvas";
 import { BookSlideDrawingPanel } from "@/components/books/BookSlideDrawingPanel";
 import { BookSlideTemplatesPanel } from "@/components/books/BookSlideTemplatesPanel";
@@ -108,19 +103,13 @@ import {
   type BookSlideTemplateId,
   instantiateBookSlideTemplate,
 } from "@/features/book/book-slide-templates";
-import {
-  bookCanvasStageMatClass,
-  bookCanvasToolbarRowClass,
-  bookLeftDockContentColumnClass,
-} from "@/features/book/book-workspace-ui";
+import { bookLeftDockContentColumnClass } from "@/features/book/book-workspace-ui";
 import {
   closePageDelete,
   closeWidgetDelete,
   openPageDelete,
   openWidgetDelete,
   resetEditorUi,
-  setCenterGuideThresholdPx,
-  setDragGridPx,
   setDrawingStrokeColor,
   setDrawingStrokeWidth,
   setFloatingWidgetPaletteOpen as persistWidgetFloatingOpen,
@@ -132,10 +121,7 @@ import {
   useBookEditorUiValues,
 } from "@/features/book/editor-ui-store";
 import { useAiDocumentEdits } from "@/features/book/use-ai-document-edits";
-import {
-  BOOK_CANVAS_STAGE_DISPLAY_OPTS,
-  useBookCanvasDisplayScale,
-} from "@/features/book/use-book-canvas-display-scale";
+import {} from "@/features/book/use-book-canvas-display-scale";
 import { useBookDocumentHistory } from "@/features/book/use-book-document-history";
 import { useBookMediaUploads } from "@/features/book/use-book-media-uploads";
 import { useBookPageThumbnails } from "@/features/book/use-book-page-thumbnails";
@@ -218,8 +204,6 @@ function BookDetailOwnerView({
     leftDockTab,
     drawingStrokeColor,
     drawingStrokeWidth,
-    centerGuideThresholdPx,
-    dragGridPx,
     floatingWidgetPaletteOpen,
     widgetDeleteOpen,
     widgetDeleteIds,
@@ -254,7 +238,6 @@ function BookDetailOwnerView({
     [bookId, queryClient],
   );
   const [bookTitle, setBookTitle] = useState(serverBook.title);
-  const canvasWrapRef = useRef<HTMLDivElement>(null);
   /**
    * 마운트 시 1회만 쓰이는 초기값 — 매 렌더 전체 페이지 재계산(정렬·정규화)을 막는다.
    *
@@ -494,13 +477,6 @@ function BookDetailOwnerView({
     },
     shortcutBlocked: editorOverlayOpen || widgetDeleteOpen || pageDeleteOpen,
   });
-
-  const { displayScale, zoomPercent, zoomIn, zoomOut, zoomReset, handleWheel } =
-    useBookCanvasDisplayScale(canvasWrapRef, {
-      slideWidth,
-      slideHeight,
-      ...BOOK_CANVAS_STAGE_DISPLAY_OPTS,
-    });
 
   useEffect(() => {
     warmBookCanvasImagesForNeighborPages(localPages, activePageIndex);
@@ -1479,126 +1455,53 @@ function BookDetailOwnerView({
         }
         center={
           <>
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              <div className={bookCanvasToolbarRowClass()}>
-                <BookCanvasToolbar
-                  zoomPercent={zoomPercent}
-                  onZoomIn={zoomIn}
-                  onZoomOut={zoomOut}
-                  onZoomReset={zoomReset}
-                  {...(readOnly
-                    ? {}
-                    : {
-                        showUndoRedo: true,
-                        canUndo,
-                        canRedo,
-                        onUndo: undo,
-                        onRedo: redo,
-                        centerGuideThresholdPx,
-                        onCenterGuideThresholdPxChange:
-                          setCenterGuideThresholdPx,
-                        dragGridPx,
-                        onDragGridPxChange: setDragGridPx,
-                      })}
-                />
-              </div>
-              <div
-                ref={canvasWrapRef}
-                className={bookCanvasStageMatClass(
-                  "relative flex min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden p-2",
-                )}
-                onWheel={handleWheel}
-                onPointerDown={(e) => {
-                  const slide = (e.currentTarget as HTMLElement).querySelector(
-                    "[data-book-slide-root]",
-                  );
-                  if (slide?.contains(e.target as Node)) return;
-                  setSelectedIds([]);
-                }}
-              >
-                <BookCanvasPageNavBadge
-                  pageCount={localPages.length}
-                  activePageIndex={activePageIndex}
-                  pageName={activePage?.name}
-                />
-                <BookCanvasPlaybackBadge playbackSec={activePagePlaybackSec} />
-                <BookSlideCanvas
-                  pageWidth={slideWidth}
-                  pageHeight={slideHeight}
-                  pageBackgroundColor={
-                    activePage.backgroundColor?.trim() ||
-                    DEFAULT_PAGE_BACKGROUND
-                  }
-                  scale={displayScale}
-                  elements={activePage.elements}
-                  mode={readOnly ? "view" : "edit"}
-                  selectedIds={canvasSelectedIds}
-                  onSelect={handleCanvasSelect}
-                  onElementChange={onElementChange}
-                  onElementsChange={onElementsChange}
-                  keyboardShortcutsDisabled={editorOverlayOpen || readOnly}
-                  onReorderZ={onReorderZ}
-                  onDeleteElement={requestRemoveWidget}
-                  centerGuideThresholdPx={centerGuideThresholdPx}
-                  dragGridPx={dragGridPx}
-                  drop={{ onDropWidget, onDropShape, onDropLibraryMedia }}
-                  drawing={{
-                    tool: leftDockTab === "drawing" ? "draw" : "default",
-                    strokeColor: drawingStrokeColor,
-                    strokeWidth: drawingStrokeWidth,
-                    onAppendElement: onAppendDrawingElement,
-                  }}
-                  media={{
-                    onRequestReplaceMediaFromFile,
-                    onRequestPickLibraryMediaForReplace,
-                    onRequestPlaylistAppendFromFile,
-                    onRequestPlaylistAppendFromLibrary,
-                    libraryReplaceEnabled: true,
-                    onPlaylistPlaybackIndexChange:
-                      handleMediaPlaylistPlaybackIndex,
-                    onPlaylistPlaybackUiReport:
-                      handleMediaPlaylistPlaybackUiReport,
-                    playlistRemoteCommand: playlistRemoteCmd,
-                    onPlaylistRemoteCommandConsumed: clearPlaylistRemoteCmd,
-                    onVideoDurationKnown: handleVideoDurationKnown,
-                  }}
-                  clipboard={{
-                    onCopyElement: copyElementOrSelection,
-                    onCutElement: cutElementOrSelection,
-                    onPaste: pasteWidgetClipboard,
-                    hasContent: widgetClipboardHasContent,
-                  }}
-                />
-                {/* 다른 페이지의 공통 위젯 고스트 — 위치 참고용(반투명·클릭 불가) */}
-                {editorOverlayGhosts.length > 0 ? (
-                  <div
-                    className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center opacity-60"
-                    aria-hidden
-                  >
-                    <BookSlideCanvas
-                      pageWidth={slideWidth}
-                      pageHeight={slideHeight}
-                      pageBackgroundColor="transparent"
-                      readabilityBackgroundColor={
-                        activePage.backgroundColor?.trim() ||
-                        DEFAULT_PAGE_BACKGROUND
-                      }
-                      scale={displayScale}
-                      elements={editorOverlayGhosts}
-                      mode="view"
-                      selectedIds={[]}
-                      onSelect={() => undefined}
-                      onElementChange={() => undefined}
-                    />
-                  </div>
-                ) : null}
-                {readOnly ? (
-                  /* 게스트 뷰와 같은 규칙 — 위젯(동영상 컨트롤 등)까지 눌리지 않게 투명 방패로 덮는다.
-                     휠·핀치 줌은 부모(canvasWrap) 핸들러로 버블링되어 그대로 동작 */
-                  <div className="absolute inset-0 z-50" aria-hidden />
-                ) : null}
-              </div>
-            </div>
+            <BookEditorCanvasStage
+              slideWidth={slideWidth}
+              slideHeight={slideHeight}
+              page={activePage}
+              pageCount={localPages.length}
+              activePageIndex={activePageIndex}
+              playbackSec={activePagePlaybackSec}
+              readOnly={readOnly}
+              history={{ canUndo, canRedo, undo, redo }}
+              ghosts={editorOverlayGhosts}
+              canvas={{
+                selectedIds: canvasSelectedIds,
+                onSelect: handleCanvasSelect,
+                onElementChange,
+                onElementsChange,
+                keyboardShortcutsDisabled: editorOverlayOpen || readOnly,
+                onReorderZ,
+                onDeleteElement: requestRemoveWidget,
+                drop: { onDropWidget, onDropShape, onDropLibraryMedia },
+                drawing: {
+                  tool: leftDockTab === "drawing" ? "draw" : "default",
+                  strokeColor: drawingStrokeColor,
+                  strokeWidth: drawingStrokeWidth,
+                  onAppendElement: onAppendDrawingElement,
+                },
+                media: {
+                  onRequestReplaceMediaFromFile,
+                  onRequestPickLibraryMediaForReplace,
+                  onRequestPlaylistAppendFromFile,
+                  onRequestPlaylistAppendFromLibrary,
+                  libraryReplaceEnabled: true,
+                  onPlaylistPlaybackIndexChange:
+                    handleMediaPlaylistPlaybackIndex,
+                  onPlaylistPlaybackUiReport:
+                    handleMediaPlaylistPlaybackUiReport,
+                  playlistRemoteCommand: playlistRemoteCmd,
+                  onPlaylistRemoteCommandConsumed: clearPlaylistRemoteCmd,
+                  onVideoDurationKnown: handleVideoDurationKnown,
+                },
+                clipboard: {
+                  onCopyElement: copyElementOrSelection,
+                  onCutElement: cutElementOrSelection,
+                  onPaste: pasteWidgetClipboard,
+                  hasContent: widgetClipboardHasContent,
+                },
+              }}
+            />
             {!readOnly && floatingWidgetPaletteOpen ? (
               <BookWidgetPalette
                 variant="floating"

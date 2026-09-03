@@ -311,7 +311,7 @@ export type BookSlideCanvasDropProps = {
   ) => void;
 };
 
-type BookSlideCanvasProps = {
+export type BookSlideCanvasProps = {
   pageWidth: number;
   pageHeight: number;
   /** 슬라이드 배경(CSS 색) */

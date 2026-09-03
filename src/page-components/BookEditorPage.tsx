@@ -15,18 +15,14 @@ import {
 import { toast } from "sonner";
 
 import { BookAiAssistantPanel } from "@/components/books/BookAiAssistantPanel";
-import {
-  BookCanvasPageNavBadge,
-  BookCanvasPlaybackBadge,
-} from "@/components/books/BookCanvasStageOverlays";
-import { BookCanvasToolbar } from "@/components/books/BookCanvasToolbar";
+import {} from "@/components/books/BookCanvasStageOverlays";
+import { BookEditorCanvasStage } from "@/components/books/BookEditorCanvasStage";
 import { BookEditorLeftDock } from "@/components/books/BookEditorLeftDock";
 import { BookEditorRightDock } from "@/components/books/BookEditorRightDock";
 import { BookHeaderSlideDimensions } from "@/components/books/BookHeaderSlideDimensions";
 import {
   type BookCanvasSelectDetail,
   type BookDropWidgetKind,
-  BookSlideCanvas,
 } from "@/components/books/BookSlideCanvas";
 import { BookWidgetPalette } from "@/components/books/BookWidgetPalette";
 import { BookWorkspaceShell } from "@/components/books/BookWorkspaceShell";
@@ -65,18 +61,13 @@ import {
   type BookSlideTemplateId,
   instantiateBookSlideTemplate,
 } from "@/features/book/book-slide-templates";
-import {
-  bookCanvasStageMatClass,
-  bookCanvasToolbarRowClass,
-} from "@/features/book/book-workspace-ui";
+import {} from "@/features/book/book-workspace-ui";
 import {
   closePageDelete,
   closeWidgetDelete,
   openPageDelete,
   openWidgetDelete,
   resetEditorUi,
-  setCenterGuideThresholdPx,
-  setDragGridPx,
   setFloatingWidgetPaletteOpen as persistWidgetFloatingOpen,
   setPageIndex,
   setSelectedIds,
@@ -85,10 +76,7 @@ import {
   useBookEditorUiValues,
 } from "@/features/book/editor-ui-store";
 import { useAiDocumentEdits } from "@/features/book/use-ai-document-edits";
-import {
-  BOOK_CANVAS_STAGE_DISPLAY_OPTS,
-  useBookCanvasDisplayScale,
-} from "@/features/book/use-book-canvas-display-scale";
+import {} from "@/features/book/use-book-canvas-display-scale";
 import { useBookDocumentHistory } from "@/features/book/use-book-document-history";
 import { useBookPageThumbnails } from "@/features/book/use-book-page-thumbnails";
 import { useBookWidgetClipboard } from "@/features/book/use-book-widget-clipboard";
@@ -111,8 +99,6 @@ export function BookEditorPage() {
     leftDockTab,
     drawingStrokeColor,
     drawingStrokeWidth,
-    centerGuideThresholdPx,
-    dragGridPx,
     floatingWidgetPaletteOpen,
     widgetDeleteOpen,
     widgetDeleteIds,
@@ -140,7 +126,6 @@ export function BookEditorPage() {
   } = useBookDocumentHistory(
     applyAutoSlideNamesByIndex([createEmptyEditorPage(0)]),
   );
-  const canvasWrapRef = useRef<HTMLDivElement>(null);
   const [slideWidth, setSlideWidth] = useState(DEFAULT_SLIDE_WIDTH);
   const [slideHeight, setSlideHeight] = useState(DEFAULT_SLIDE_HEIGHT);
   const [presentationLoop, setPresentationLoop] = useState(true);
@@ -259,13 +244,6 @@ export function BookEditorPage() {
   });
 
   // 상세 페이지와 동일 — 동영상 실제 길이를 반영해야 재생 시간 배지·타이밍 계산이 맞음
-
-  const { displayScale, zoomPercent, zoomIn, zoomOut, zoomReset, handleWheel } =
-    useBookCanvasDisplayScale(canvasWrapRef, {
-      slideWidth,
-      slideHeight,
-      ...BOOK_CANVAS_STAGE_DISPLAY_OPTS,
-    });
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -715,89 +693,45 @@ export function BookEditorPage() {
         }
         center={
           <>
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              <div className={bookCanvasToolbarRowClass()}>
-                <BookCanvasToolbar
-                  zoomPercent={zoomPercent}
-                  onZoomIn={zoomIn}
-                  onZoomOut={zoomOut}
-                  onZoomReset={zoomReset}
-                  showUndoRedo
-                  canUndo={canUndo}
-                  canRedo={canRedo}
-                  onUndo={undo}
-                  onRedo={redo}
-                  centerGuideThresholdPx={centerGuideThresholdPx}
-                  onCenterGuideThresholdPxChange={setCenterGuideThresholdPx}
-                  dragGridPx={dragGridPx}
-                  onDragGridPxChange={setDragGridPx}
-                />
-              </div>
-              <div
-                ref={canvasWrapRef}
-                className={bookCanvasStageMatClass(
-                  "relative flex min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden p-2",
-                )}
-                onWheel={handleWheel}
-                onPointerDown={(e) => {
-                  const slide = (e.currentTarget as HTMLElement).querySelector(
-                    "[data-book-slide-root]",
-                  );
-                  if (slide?.contains(e.target as Node)) return;
-                  setSelectedIds([]);
-                }}
-              >
-                <BookCanvasPageNavBadge
-                  pageCount={pages.length}
-                  activePageIndex={activePageIndex}
-                  pageName={currentPage?.name}
-                />
-                <BookCanvasPlaybackBadge playbackSec={currentPagePlaybackSec} />
-                {currentPage ? (
-                  <BookSlideCanvas
-                    pageWidth={slideWidth}
-                    pageHeight={slideHeight}
-                    pageBackgroundColor={
-                      currentPage.backgroundColor?.trim() ||
-                      DEFAULT_PAGE_BACKGROUND
-                    }
-                    scale={displayScale}
-                    elements={currentPage.elements}
-                    mode="edit"
-                    selectedIds={canvasSelectedIds}
-                    onSelect={handleCanvasSelect}
-                    onElementChange={onElementChange}
-                    onElementsChange={onElementsChange}
-                    onReorderZ={onReorderZ}
-                    onDeleteElement={requestRemoveWidget}
-                    centerGuideThresholdPx={centerGuideThresholdPx}
-                    dragGridPx={dragGridPx}
-                    drop={{ onDropWidget, onDropShape }}
-                    drawing={{
-                      tool: leftDockTab === "drawing" ? "draw" : "default",
-                      strokeColor: drawingStrokeColor,
-                      strokeWidth: drawingStrokeWidth,
-                      onAppendElement: onAppendDrawingElement,
-                    }}
-                    media={{
-                      onPlaylistPlaybackIndexChange:
-                        handleMediaPlaylistPlaybackIndex,
-                      onPlaylistPlaybackUiReport:
-                        handleMediaPlaylistPlaybackUiReport,
-                      playlistRemoteCommand: playlistRemoteCmd,
-                      onPlaylistRemoteCommandConsumed: clearPlaylistRemoteCmd,
-                      onVideoDurationKnown: handleVideoDurationKnown,
-                    }}
-                    clipboard={{
-                      onCopyElement: copyElementOrSelection,
-                      onCutElement: cutElementOrSelection,
-                      onPaste: pasteWidgetClipboard,
-                      hasContent: widgetClipboardHasContent,
-                    }}
-                  />
-                ) : null}
-              </div>
-            </div>
+            <BookEditorCanvasStage
+              slideWidth={slideWidth}
+              slideHeight={slideHeight}
+              page={currentPage}
+              pageCount={pages.length}
+              activePageIndex={activePageIndex}
+              playbackSec={currentPagePlaybackSec}
+              history={{ canUndo, canRedo, undo, redo }}
+              canvas={{
+                selectedIds: canvasSelectedIds,
+                onSelect: handleCanvasSelect,
+                onElementChange,
+                onElementsChange,
+                onReorderZ,
+                onDeleteElement: requestRemoveWidget,
+                drop: { onDropWidget, onDropShape },
+                drawing: {
+                  tool: leftDockTab === "drawing" ? "draw" : "default",
+                  strokeColor: drawingStrokeColor,
+                  strokeWidth: drawingStrokeWidth,
+                  onAppendElement: onAppendDrawingElement,
+                },
+                media: {
+                  onPlaylistPlaybackIndexChange:
+                    handleMediaPlaylistPlaybackIndex,
+                  onPlaylistPlaybackUiReport:
+                    handleMediaPlaylistPlaybackUiReport,
+                  playlistRemoteCommand: playlistRemoteCmd,
+                  onPlaylistRemoteCommandConsumed: clearPlaylistRemoteCmd,
+                  onVideoDurationKnown: handleVideoDurationKnown,
+                },
+                clipboard: {
+                  onCopyElement: copyElementOrSelection,
+                  onCutElement: cutElementOrSelection,
+                  onPaste: pasteWidgetClipboard,
+                  hasContent: widgetClipboardHasContent,
+                },
+              }}
+            />
             {floatingWidgetPaletteOpen ? (
               <BookWidgetPalette
                 variant="floating"
