@@ -18,7 +18,11 @@ services:
       retries: 5
 
   app:
-    build: .
+    build:
+      context: .
+      args:
+        # 빌드 시점에 필요 — 키가 .next 산출물에 박힌다
+        NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY:?호스트 .env 에 설정하세요 (openssl rand -base64 32)}
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -47,6 +51,8 @@ services:
       # 생성: openssl rand -base64 48
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?호스트 .env 에 설정하세요}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?호스트 .env 에 설정하세요}
+      # 빌드에 박힌 값과 **같아야** 한다 — 어긋나면 "Failed to find Server Action" 이 난다
+      NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY:?호스트 .env 에 설정하세요 (openssl rand -base64 32)}
       # 위젯·AI 어시스턴트용 API 키 — 이미지에 .env를 넣지 않으므로 호스트 .env에서 주입
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       PEXELS_API_KEY: ${PEXELS_API_KEY:-}

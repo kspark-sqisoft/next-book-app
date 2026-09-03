@@ -18,6 +18,18 @@ FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# 서버 액션 클로저 암호화 키 — 빌드 산출물에 박히므로 `next build` 시점에 있어야 한다.
+# 없으면 next.config.ts 가 프로덕션 빌드를 세운다(server-actions-encryption-key.ts).
+# 런타임에도 같은 값을 줘야 한다 — compose 가 빌드 인자와 환경변수 양쪽에 같은 값을 넣는다.
+ARG NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
+ENV NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}
+# `next build` 의 "Collecting page data" 는 라우트 모듈을 **평가**한다. `src/server/env.ts` 는
+# 모듈 최상위에서 JWT 키를 읽고 프로덕션이면 없을 때 던지므로(1be8bc6 에서 폴백 제거), 값이
+# 없으면 빌드가 그 자리에서 멈춘다. 실제 시크릿은 런타임에만 필요하니 여기서는 형식만 맞춘
+# 자리 채우기를 준다 — 빌더 스테이지는 runner 로 이어지지 않아 이미지에 남지 않는다.
+# (산출물에 박히지 않는 것은 아래 grep 검증으로 확인한다: `.next` 에 이 문자열이 없어야 한다.)
+ENV JWT_ACCESS_SECRET=build-only-placeholder-not-used-at-runtime-access
+ENV JWT_REFRESH_SECRET=build-only-placeholder-not-used-at-runtime-refresh
 # deps 스테이지의 npm ci 시점엔 patches/ 가 없어 patch-package가 스킵됨 — 여기서 적용
 RUN npx patch-package --error-on-fail
 RUN npm run build
