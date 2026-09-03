@@ -67,7 +67,6 @@ import {} from "@/features/book/book-floating-ui-prefs";
 import { warmBookCanvasImagesForNeighborPages } from "@/features/book/book-image-cache";
 import { computeSlidePresentationDurationSec } from "@/features/book/book-presentation";
 import {
-  type BookPresentationTransitionId,
   clampBookPresentationTransitionMs,
   normalizeBookPresentationTransition,
 } from "@/features/book/book-presentation-transition";
@@ -99,6 +98,7 @@ import {
   toggleSelectedId,
   useBookEditorUiValues,
 } from "@/features/book/editor-ui-store";
+import { useAiDocumentEdits } from "@/features/book/use-ai-document-edits";
 import {
   BOOK_CANVAS_STAGE_DISPLAY_OPTS,
   useBookCanvasDisplayScale,
@@ -109,8 +109,9 @@ import { useBookWidgetClipboard } from "@/features/book/use-book-widget-clipboar
 import { useElementMutations } from "@/features/book/use-element-mutations";
 import { useMediaPlaylistPlayback } from "@/features/book/use-media-playlist-playback";
 import { usePageOperations } from "@/features/book/use-page-operations";
+import { usePageProperties } from "@/features/book/use-page-properties";
 import { useWidgetInserters } from "@/features/book/use-widget-inserters";
-import { type BookCanvasElement, createBook } from "@/lib/api";
+import { createBook } from "@/lib/api";
 import { bookKeys } from "@/lib/query-keys";
 
 /** `/books/new` — 저장 후 `/books/:id`로 이동해 동일 편집 UI를 씁니다. */
@@ -386,6 +387,7 @@ export function BookEditorPage() {
   }, [canUndo]);
 
   const {
+    mutateActivePage,
     onElementChange,
     onElementsChange,
     onReorderZ,
@@ -424,92 +426,19 @@ export function BookEditorPage() {
     [addShapeAt],
   );
 
-  const updateCurrentPageName = useCallback(
-    (name: string) => {
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (p) p.name = name;
-      });
-    },
-    [activePageIndex, updatePages],
-  );
-
-  const updatePageNameAt = useCallback(
-    (index: number, name: string) => {
-      updatePages((draft) => {
-        const p = draft[index];
-        if (p) p.name = name;
-      });
-    },
-    [updatePages],
-  );
-
-  const applyPageTitleFromAi = useCallback(
-    (name: string, opts?: { slideNumber?: number }) => {
-      const n = opts?.slideNumber;
-      if (n == null || !Number.isFinite(n)) {
-        updatePageNameAt(activePageIndex, name);
-        return;
-      }
-      if (pages.length === 0) return;
-      const idx = Math.round(n) - 1;
-      const clamped = Math.min(pages.length - 1, Math.max(0, idx));
-      updatePageNameAt(clamped, name);
-    },
-    [activePageIndex, pages.length, updatePageNameAt],
-  );
-
-  const updateCurrentPageBackground = useCallback(
-    (backgroundColor: string) => {
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (p) p.backgroundColor = backgroundColor;
-      });
-    },
-    [activePageIndex, updatePages],
-  );
-
-  const updatePresentationTimingElementId = useCallback(
-    (id: string | null) => {
-      // 상세 페이지와 동일한 검증 — 삭제된 요소 id가 그대로 저장되지 않게
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (!p) return;
-        if (p.elements.length === 0) {
-          p.presentationTimingElementId = null;
-          return;
-        }
-        const trimmed = typeof id === "string" ? id.trim() : "";
-        if (trimmed && p.elements.some((e) => e.id === trimmed)) {
-          p.presentationTimingElementId = trimmed;
-          return;
-        }
-        p.presentationTimingElementId =
-          resolveEffectivePresentationTimingElementId(p.elements, null);
-      });
-    },
-    [activePageIndex, updatePages],
-  );
-
-  const updatePresentationTransition = useCallback(
-    (transition: BookPresentationTransitionId) => {
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (p) p.presentationTransition = transition;
-      });
-    },
-    [activePageIndex, updatePages],
-  );
-
-  const updatePresentationTransitionMs = useCallback(
-    (ms: number) => {
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (p) p.presentationTransitionMs = ms;
-      });
-    },
-    [activePageIndex, updatePages],
-  );
+  const {
+    updateCurrentPageName,
+    applyPageTitleFromAi,
+    updateCurrentPageBackground,
+    updatePresentationTransition,
+    updatePresentationTransitionMs,
+    updatePresentationTimingElementId,
+  } = usePageProperties({
+    activePageIndex,
+    pageCount: pages.length,
+    updatePages,
+    mutateActivePage,
+  });
 
   const onDropWidget = useCallback(
     (point: { x: number; y: number }, kind: BookDropWidgetKind) => {
@@ -556,64 +485,15 @@ export function BookEditorPage() {
     [addByKindCentered, addMediaPlaylistAt, slideHeight, slideWidth],
   );
 
-  const applyAiElements = useCallback(
-    (elements: BookCanvasElement[], opts?: { targetSlideNumber?: number }) => {
-      if (elements.length === 0) return;
-      let navigatedIdx: number | null = null;
-      updatePages((draft) => {
-        const maxIdx = Math.max(0, draft.length - 1);
-        const idx =
-          typeof opts?.targetSlideNumber === "number" &&
-          Number.isFinite(opts.targetSlideNumber)
-            ? Math.min(
-                maxIdx,
-                Math.max(0, Math.round(opts.targetSlideNumber) - 1),
-              )
-            : Math.min(Math.max(0, activePageIndex), maxIdx);
-        const p = draft[idx];
-        if (!p) return;
-        for (const el of elements) p.elements.push(el);
-        if (
-          typeof opts?.targetSlideNumber === "number" &&
-          Number.isFinite(opts.targetSlideNumber)
-        ) {
-          navigatedIdx = idx;
-        }
-      });
-      if (navigatedIdx != null) {
-        setPageIndex(navigatedIdx);
-      }
-      setSelectedIds([elements[elements.length - 1]!.id]);
-    },
-    [activePageIndex, updatePages],
-  );
-
-  const addPagesFromAi = useCallback(
-    (count: number) => {
-      const n = Math.min(20, Math.max(1, Math.round(count)));
-      const prevLen = pages.length;
-      commitPages((prev) => {
-        const next = [...prev];
-        for (let i = 0; i < n; i++) {
-          next.push(createEmptyEditorPage(next.length));
-        }
-        return applyAutoSlideNamesByIndex(next);
-      });
-      setPageIndex(prevLen + n - 1);
-      setSelectedIds([]);
-    },
-    [commitPages, pages.length],
-  );
-
-  const applySlideDimensionsFromAi = useCallback(
-    (partial: { slideWidth?: number; slideHeight?: number }) => {
-      if (typeof partial.slideWidth === "number")
-        setSlideWidth(partial.slideWidth);
-      if (typeof partial.slideHeight === "number")
-        setSlideHeight(partial.slideHeight);
-    },
-    [],
-  );
+  const { applyAiElements, addPagesFromAi, applySlideDimensionsFromAi } =
+    useAiDocumentEdits({
+      activePageIndex,
+      pageCount: pages.length,
+      updatePages,
+      commitPages,
+      setSlideWidth,
+      setSlideHeight,
+    });
 
   const {
     hasClipboard: widgetClipboardHasContent,
