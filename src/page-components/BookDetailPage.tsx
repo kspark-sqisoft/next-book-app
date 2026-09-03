@@ -2,14 +2,7 @@
 
 // 북 상세·편집: 서버 페이지 → 로컬 히스토리, 소유자는 BookDetailOwnerView / 비로그인·타인은 읽기 전용 게스트 뷰
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  ChevronLeft,
-  ChevronRight,
-  MonitorPlay,
-  Save,
-  Share2,
-  Trash2,
-} from "lucide-react";
+import { MonitorPlay, Save, Share2, Trash2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -27,6 +20,10 @@ import {
 import { toast } from "sonner";
 
 import { BookAiAssistantPanel } from "@/components/books/BookAiAssistantPanel";
+import {
+  BookCanvasPageNavBadge,
+  BookCanvasPlaybackBadge,
+} from "@/components/books/BookCanvasStageOverlays";
 import { BookCanvasToolbar } from "@/components/books/BookCanvasToolbar";
 import { BookEditorToolRail } from "@/components/books/BookEditorToolRail";
 
@@ -98,12 +95,9 @@ import {
   DEFAULT_SLIDE_HEIGHT,
   DEFAULT_SLIDE_WIDTH,
   duplicateBookEditorPage,
-  type ElementZOrderOp,
   MEDIA_PLAYLIST_MAX_ITEMS,
   pageIndexAfterRemove,
   pageIndexAfterReorder,
-  reorderBookElementsByDisplayIndex,
-  reorderElementsZ,
   reorderPagesArray,
   resolveEffectivePresentationTimingElementId,
   toBookPagePayloads,
@@ -155,6 +149,7 @@ import {
 import { useBookDocumentHistory } from "@/features/book/use-book-document-history";
 import { useBookPageThumbnails } from "@/features/book/use-book-page-thumbnails";
 import { useBookWidgetClipboard } from "@/features/book/use-book-widget-clipboard";
+import { useElementMutations } from "@/features/book/use-element-mutations";
 import { useWidgetInserters } from "@/features/book/use-widget-inserters";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -855,86 +850,14 @@ function BookDetailOwnerView({
     </AlertDialog>
   );
 
-  const onElementChange = useCallback(
-    (elId: string, patch: Partial<BookCanvasElement>) => {
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (!p) return;
-        const el = p.elements.find((x) => x.id === elId);
-        if (!el) return;
-        Object.assign(el, patch);
-      });
-    },
-    [activePageIndex, updatePages],
-  );
-
-  // 그룹 드래그·다중 nudge — 한 번의 조작 = 한 개의 undo 엔트리
-  const onElementsChange = useCallback(
-    (patches: { id: string; patch: Partial<BookCanvasElement> }[]) => {
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (!p) return;
-        for (const { id, patch } of patches) {
-          const el = p.elements.find((x) => x.id === id);
-          if (el) Object.assign(el, patch);
-        }
-      });
-    },
-    [activePageIndex, updatePages],
-  );
-
-  const onReorderZ = useCallback(
-    (elementId: string, op: ElementZOrderOp) => {
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (!p) return;
-        p.elements = reorderElementsZ(p.elements, elementId, op);
-      });
-    },
-    [activePageIndex, updatePages],
-  );
-
-  const onLayerDragReorder = useCallback(
-    (fromDisplay: number, toDisplay: number) => {
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (!p) return;
-        p.elements = reorderBookElementsByDisplayIndex(
-          p.elements,
-          fromDisplay,
-          toDisplay,
-        );
-      });
-    },
-    [activePageIndex, updatePages],
-  );
-
-  const onLayerVisibilityChange = useCallback(
-    (elementId: string, visible: boolean) => {
-      onElementChange(
-        elementId,
-        visible
-          ? ({ visible: undefined } as Partial<BookCanvasElement>)
-          : { visible: false },
-      );
-      if (!visible) {
-        setSelectedIds((prev) => prev.filter((id) => id !== elementId));
-      }
-    },
-    [onElementChange],
-  );
-
-  const onLayerLockChange = useCallback(
-    (elementId: string, locked: boolean) => {
-      onElementChange(
-        elementId,
-        locked
-          ? { locked: true }
-          : ({ locked: undefined } as Partial<BookCanvasElement>),
-      );
-    },
-    [onElementChange],
-  );
+  const {
+    onElementChange,
+    onElementsChange,
+    onReorderZ,
+    onLayerDragReorder,
+    onLayerVisibilityChange,
+    onLayerLockChange,
+  } = useElementMutations({ activePageIndex, updatePages });
 
   const applySlideTemplate = useCallback(
     (templateId: BookSlideTemplateId) => {
@@ -2419,60 +2342,12 @@ function BookDetailOwnerView({
                   setSelectedIds([]);
                 }}
               >
-                {/* 캔버스 상단 가운데 — 현재 페이지 이름 + 좌우 이동(페이지 1개면 이동 숨김) */}
-                <div className="absolute left-1/2 top-2 z-10 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-1 rounded-md bg-black/60 px-1.5 py-1 text-[11px] text-white shadow-sm backdrop-blur-sm">
-                  {localPages.length > 1 ? (
-                    <button
-                      type="button"
-                      className="flex size-5 shrink-0 items-center justify-center rounded hover:bg-white/20 disabled:opacity-30"
-                      title="이전 페이지"
-                      aria-label="이전 페이지"
-                      disabled={activePageIndex <= 0}
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
-                    >
-                      <ChevronLeft className="size-3.5" aria-hidden />
-                    </button>
-                  ) : null}
-                  <span
-                    className="min-w-0 truncate font-medium"
-                    title="현재 페이지"
-                  >
-                    {activePage?.name?.trim() ||
-                      `슬라이드 ${activePageIndex + 1}`}
-                  </span>
-                  {localPages.length > 1 ? (
-                    <>
-                      <span className="shrink-0 tabular-nums text-white/50">
-                        {activePageIndex + 1}/{localPages.length}
-                      </span>
-                      <button
-                        type="button"
-                        className="flex size-5 shrink-0 items-center justify-center rounded hover:bg-white/20 disabled:opacity-30"
-                        title="다음 페이지"
-                        aria-label="다음 페이지"
-                        disabled={activePageIndex >= localPages.length - 1}
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onClick={() =>
-                          setPageIndex((i) =>
-                            Math.min(localPages.length - 1, i + 1),
-                          )
-                        }
-                      >
-                        <ChevronRight className="size-3.5" aria-hidden />
-                      </button>
-                    </>
-                  ) : null}
-                </div>
-                {/* 캔버스 우상단 — 페이지 재생 시간(별도) */}
-                {activePagePlaybackSec != null ? (
-                  <div
-                    className="pointer-events-none absolute right-2 top-2 z-10 rounded-md bg-black/60 px-2 py-1 font-mono text-[11px] tabular-nums text-white shadow-sm backdrop-blur-sm"
-                    title="기준 레이어 기준 이 페이지의 슬라이드쇼 재생 시간"
-                  >
-                    재생 {activePagePlaybackSec}초
-                  </div>
-                ) : null}
+                <BookCanvasPageNavBadge
+                  pageCount={localPages.length}
+                  activePageIndex={activePageIndex}
+                  pageName={activePage?.name}
+                />
+                <BookCanvasPlaybackBadge playbackSec={activePagePlaybackSec} />
                 <BookSlideCanvas
                   pageWidth={slideWidth}
                   pageHeight={slideHeight}
