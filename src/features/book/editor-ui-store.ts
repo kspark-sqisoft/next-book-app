@@ -178,6 +178,39 @@ export const useBookEditorUiStore =
   })();
 
 /**
+ * 편집 화면이 쓰는 UI 값 전부를 한 번에 구독한다.
+ *
+ * 두 화면이 똑같은 셀렉터 13줄을 나란히 늘어놓고 있었다. 여기서도 필드마다 개별
+ * 셀렉터로 구독하므로 리렌더 조건은 이전과 같다 — 달라지는 것은 호출부의 줄 수뿐이다.
+ *
+ * 값 하나만 필요한 컴포넌트는 이걸 쓰지 말고 `useBookEditorUiStore` 로 그 필드만
+ * 구독한다. 여기 묶인 값 중 아무거나 바뀌면 이 훅을 쓴 쪽은 전부 다시 그린다.
+ */
+export function useBookEditorUiValues() {
+  return {
+    pageIndex: useBookEditorUiStore((s) => s.pageIndex),
+    selectedIds: useBookEditorUiStore((s) => s.selectedIds),
+    leftDockTab: useBookEditorUiStore((s) => s.leftDockTab),
+    drawingStrokeColor: useBookEditorUiStore((s) => s.drawingStrokeColor),
+    drawingStrokeWidth: useBookEditorUiStore((s) => s.drawingStrokeWidth),
+    centerGuideThresholdPx: useBookEditorUiStore(
+      (s) => s.centerGuideThresholdPx,
+    ),
+    dragGridPx: useBookEditorUiStore((s) => s.dragGridPx),
+    floatingWidgetPaletteOpen: useBookEditorUiStore(
+      (s) => s.floatingWidgetPaletteOpen,
+    ),
+    widgetDeleteOpen: useBookEditorUiStore((s) => s.widgetDeleteOpen),
+    widgetDeleteIds: useBookEditorUiStore((s) => s.widgetDeleteIds),
+    pageDeleteOpen: useBookEditorUiStore((s) => s.pageDeleteOpen),
+    pageDeleteIndex: useBookEditorUiStore((s) => s.pageDeleteIndex),
+    videoDurationByElementId: useBookEditorUiStore(
+      (s) => s.videoDurationByElementId,
+    ),
+  };
+}
+
+/**
  * 액션을 **모듈 상수 함수**로도 내보낸다.
  *
  * 훅 셀렉터(`useBookEditorUiStore((s) => s.setX)`)로 받으면 React Compiler 가 그 값의

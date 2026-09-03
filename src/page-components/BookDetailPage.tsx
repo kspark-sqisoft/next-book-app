@@ -134,7 +134,7 @@ import {
   setSelectedIds,
   setVideoDuration as handleVideoDurationKnown,
   toggleSelectedId,
-  useBookEditorUiStore,
+  useBookEditorUiValues,
 } from "@/features/book/editor-ui-store";
 import {
   BOOK_CANVAS_STAGE_DISPLAY_OPTS,
@@ -265,25 +265,21 @@ function BookDetailOwnerView({
   // ── 에디터 UI·도구 상태 ─────────────────────────────────────────
   // BookEditorPage 와 **같은 스토어**를 쓴다. 이전에는 13개가 양쪽에 복사돼 있어
   // 한쪽만 고치면 두 화면이 조용히 달라졌다(features/book/editor-ui-store.ts).
-  const pageIndex = useBookEditorUiStore((s) => s.pageIndex);
-  const selectedIds = useBookEditorUiStore((s) => s.selectedIds);
-  const leftDockTab = useBookEditorUiStore((s) => s.leftDockTab);
-  const drawingStrokeColor = useBookEditorUiStore((s) => s.drawingStrokeColor);
-  const drawingStrokeWidth = useBookEditorUiStore((s) => s.drawingStrokeWidth);
-  const centerGuideThresholdPx = useBookEditorUiStore(
-    (s) => s.centerGuideThresholdPx,
-  );
-  const dragGridPx = useBookEditorUiStore((s) => s.dragGridPx);
-  const floatingWidgetPaletteOpen = useBookEditorUiStore(
-    (s) => s.floatingWidgetPaletteOpen,
-  );
-  const widgetDeleteOpen = useBookEditorUiStore((s) => s.widgetDeleteOpen);
-  const widgetDeleteIds = useBookEditorUiStore((s) => s.widgetDeleteIds);
-  const pageDeleteOpen = useBookEditorUiStore((s) => s.pageDeleteOpen);
-  const pageDeleteIndex = useBookEditorUiStore((s) => s.pageDeleteIndex);
-  const videoDurationByElementId = useBookEditorUiStore(
-    (s) => s.videoDurationByElementId,
-  );
+  const {
+    pageIndex,
+    selectedIds,
+    leftDockTab,
+    drawingStrokeColor,
+    drawingStrokeWidth,
+    centerGuideThresholdPx,
+    dragGridPx,
+    floatingWidgetPaletteOpen,
+    widgetDeleteOpen,
+    widgetDeleteIds,
+    pageDeleteOpen,
+    pageDeleteIndex,
+    videoDurationByElementId,
+  } = useBookEditorUiValues();
 
   // 스토어는 모듈 수명이라 화면을 옮겨도 값이 남는다. 부모가 `key={book.id}` 로 이 컴포넌트를
   // 리마운트해 왔으므로 useState 시절에는 자동으로 비워졌지만, 이제는 명시적으로 지운다 —

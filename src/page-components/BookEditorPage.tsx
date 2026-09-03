@@ -97,7 +97,7 @@ import {
   setSelectedIds,
   setVideoDuration as handleVideoDurationKnown,
   toggleSelectedId,
-  useBookEditorUiStore,
+  useBookEditorUiValues,
 } from "@/features/book/editor-ui-store";
 import {
   BOOK_CANVAS_STAGE_DISPLAY_OPTS,
@@ -118,25 +118,21 @@ export function BookEditorPage() {
   // ── 에디터 UI·도구 상태 ─────────────────────────────────────────
   // 같은 13개가 BookDetailPage 소유자 뷰에도 복사돼 있었다. 정의를 스토어 한 곳에 모아
   // 두 화면이 조용히 벌어지지 않게 한다(features/book/editor-ui-store.ts).
-  const pageIndex = useBookEditorUiStore((s) => s.pageIndex);
-  const selectedIds = useBookEditorUiStore((s) => s.selectedIds);
-  const leftDockTab = useBookEditorUiStore((s) => s.leftDockTab);
-  const drawingStrokeColor = useBookEditorUiStore((s) => s.drawingStrokeColor);
-  const drawingStrokeWidth = useBookEditorUiStore((s) => s.drawingStrokeWidth);
-  const centerGuideThresholdPx = useBookEditorUiStore(
-    (s) => s.centerGuideThresholdPx,
-  );
-  const dragGridPx = useBookEditorUiStore((s) => s.dragGridPx);
-  const floatingWidgetPaletteOpen = useBookEditorUiStore(
-    (s) => s.floatingWidgetPaletteOpen,
-  );
-  const widgetDeleteOpen = useBookEditorUiStore((s) => s.widgetDeleteOpen);
-  const widgetDeleteIds = useBookEditorUiStore((s) => s.widgetDeleteIds);
-  const pageDeleteOpen = useBookEditorUiStore((s) => s.pageDeleteOpen);
-  const pageDeleteIndex = useBookEditorUiStore((s) => s.pageDeleteIndex);
-  const videoDurationByElementId = useBookEditorUiStore(
-    (s) => s.videoDurationByElementId,
-  );
+  const {
+    pageIndex,
+    selectedIds,
+    leftDockTab,
+    drawingStrokeColor,
+    drawingStrokeWidth,
+    centerGuideThresholdPx,
+    dragGridPx,
+    floatingWidgetPaletteOpen,
+    widgetDeleteOpen,
+    widgetDeleteIds,
+    pageDeleteOpen,
+    pageDeleteIndex,
+    videoDurationByElementId,
+  } = useBookEditorUiValues();
 
   // 새 북 편집을 시작할 때 이전 북에서 남은 슬라이드 위치·선택을 지운다
   useEffect(() => resetEditorUi(), []);
