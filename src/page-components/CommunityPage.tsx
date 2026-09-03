@@ -60,6 +60,9 @@ type GalleryItem = {
   sharedToAll: boolean;
 };
 
+/** 라우트의 서버 프리페치와 같은 값이어야 한다 — 다르면 시드가 조용히 무시된다 */
+export const COMMUNITY_BOOKS_TAKE = 60;
+
 export function CommunityPage() {
   const { user } = useAuth();
   const viewerKey = user?.sub ?? "anon";
@@ -69,7 +72,8 @@ export function CommunityPage() {
   const booksQuery = useQuery({
     queryKey: [...bookKeys.lists(), "community"],
     // 승인 워크플로: 커뮤니티 갤러리에는 게시(published)된 북만
-    queryFn: () => fetchBooksPage({ take: 60, publishedOnly: true }),
+    queryFn: () =>
+      fetchBooksPage({ take: COMMUNITY_BOOKS_TAKE, publishedOnly: true }),
   });
   const playlistsQuery = useQuery({
     queryKey: cretaKeys.publicPlaylists(),
