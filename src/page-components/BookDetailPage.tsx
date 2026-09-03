@@ -22,6 +22,7 @@ import {
   BookCanvasPlaybackBadge,
 } from "@/components/books/BookCanvasStageOverlays";
 import { BookCanvasToolbar } from "@/components/books/BookCanvasToolbar";
+import { BookEditorLeftDock } from "@/components/books/BookEditorLeftDock";
 import { BookEditorToolRail } from "@/components/books/BookEditorToolRail";
 import { BookMediaFileInputs } from "@/components/books/BookMediaFileInputs";
 import { BookSlidePreviewOpenButton } from "@/components/books/BookSlidePreviewOpenButton";
@@ -1226,77 +1227,40 @@ function BookDetailOwnerView({
             </>
           }
           left={
-            <div className="flex h-full min-h-0 w-fit max-w-full flex-row">
-              <BookEditorToolRail
-                activeTab={leftDockTab}
-                onActiveTabChange={setLeftDockTab}
-                mediaLibraryEnabled
-                onOpenImageEditor={() => setImageEditorOpen(true)}
-                onOpenVideoEditor={() => setVideoEditorOpen(true)}
-              />
-              <div
-                className={bookLeftDockContentColumnClass(
-                  "border-s border-border/40",
-                  {
-                    slideWidth,
-                    slideHeight,
-                  },
-                )}
-              >
-                {leftDockTab === "page" ? (
-                  <BookPageSidebar
-                    fluid
-                    pageCount={0}
-                    activeIndex={0}
-                    onSelectPage={() => undefined}
-                    mode="edit"
-                    onAddPage={addPage}
-                    canRemovePage={false}
-                    slideWidth={slideWidth}
-                    slideHeight={slideHeight}
-                  />
-                ) : null}
-                {leftDockTab === "widgets" ? (
-                  <BookWidgetPalette
-                    variant="docked"
-                    className="min-h-0 flex-1"
-                    onRequestFloat={() => persistWidgetFloatingOpen(true)}
-                    onRequestImportPdf={() => requestImportPdf(null)}
-                    pdfImportBusy={pdfImportBusy}
-                    onQuickAdd={handlePaletteQuickAdd}
-                  />
-                ) : null}
-                {leftDockTab === "media" ? (
-                  <BookMediaLibraryPanel
-                    variant="docked"
-                    bookId={bookId}
-                    className="min-h-0 flex-1"
-                    onRequestFloat={() => persistMediaFloatingOpen(true)}
-                  />
-                ) : null}
-                {leftDockTab === "templates" ? (
-                  <BookSlideTemplatesPanel
-                    className="min-h-0 flex-1"
-                    onApplyTemplate={applySlideTemplate}
-                  />
-                ) : null}
-                {leftDockTab === "elements" ? (
-                  <BookElementsPanel
-                    className="min-h-0 flex-1"
-                    onAddShape={onAddShapeFromElementsPanel}
-                  />
-                ) : null}
-                {leftDockTab === "drawing" ? (
-                  <BookSlideDrawingPanel
-                    className="min-h-0 flex-1"
-                    strokeColor={drawingStrokeColor}
-                    strokeWidth={drawingStrokeWidth}
-                    onStrokeColorChange={setDrawingStrokeColor}
-                    onStrokeWidthChange={setDrawingStrokeWidth}
-                  />
-                ) : null}
-              </div>
-            </div>
+            <BookEditorLeftDock
+              pages={{
+                count: localPages.length,
+                keys: pageKeys,
+                labels: pageLabels,
+                thumbnailsByKey: slideThumbnails,
+                activeIndex: activePageIndex,
+                visibles: pageVisibles,
+                onReorder: reorderPages,
+                onAdd: addPage,
+                onAddAt: addPageAtInsertIndex,
+                onRemoveAt: requestRemovePageAt,
+                onDuplicateAt: duplicatePageAt,
+                onToggleVisibleAt: togglePageVisibleAt,
+              }}
+              slideWidth={slideWidth}
+              slideHeight={slideHeight}
+              onApplyTemplate={applySlideTemplate}
+              onAddShape={onAddShapeFromElementsPanel}
+              widgets={{
+                onFloat: () => persistWidgetFloatingOpen(true),
+                onQuickAdd: handlePaletteQuickAdd,
+                onImportPdf: () => requestImportPdf(null),
+                pdfImportBusy,
+              }}
+              media={{
+                bookId,
+                onFloat: () => persistMediaFloatingOpen(true),
+              }}
+              editors={{
+                onOpenImageEditor: () => setImageEditorOpen(true),
+                onOpenVideoEditor: () => setVideoEditorOpen(true),
+              }}
+            />
           }
           center={
             <>

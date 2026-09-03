@@ -20,20 +20,16 @@ import {
   BookCanvasPlaybackBadge,
 } from "@/components/books/BookCanvasStageOverlays";
 import { BookCanvasToolbar } from "@/components/books/BookCanvasToolbar";
-import { BookEditorToolRail } from "@/components/books/BookEditorToolRail";
-import { BookElementsPanel } from "@/components/books/BookElementsPanel";
+import { BookEditorLeftDock } from "@/components/books/BookEditorLeftDock";
 import { BookHeaderSlideDimensions } from "@/components/books/BookHeaderSlideDimensions";
 import { BookInspectorPanel } from "@/components/books/BookInspectorPanel";
 import { BookLayersPanel } from "@/components/books/BookLayersPanel";
 import { BookPagePropertiesPanel } from "@/components/books/BookPagePropertiesPanel";
-import { BookPageSidebar } from "@/components/books/BookPageSidebar";
 import {
   type BookCanvasSelectDetail,
   type BookDropWidgetKind,
   BookSlideCanvas,
 } from "@/components/books/BookSlideCanvas";
-import { BookSlideDrawingPanel } from "@/components/books/BookSlideDrawingPanel";
-import { BookSlideTemplatesPanel } from "@/components/books/BookSlideTemplatesPanel";
 import { BookWidgetPalette } from "@/components/books/BookWidgetPalette";
 import { BookWorkspaceShell } from "@/components/books/BookWorkspaceShell";
 import {
@@ -77,7 +73,6 @@ import {
 import {
   bookCanvasStageMatClass,
   bookCanvasToolbarRowClass,
-  bookLeftDockContentColumnClass,
   bookRightDockInspectorShellClass,
 } from "@/features/book/book-workspace-ui";
 import {
@@ -88,10 +83,7 @@ import {
   resetEditorUi,
   setCenterGuideThresholdPx,
   setDragGridPx,
-  setDrawingStrokeColor,
-  setDrawingStrokeWidth,
   setFloatingWidgetPaletteOpen as persistWidgetFloatingOpen,
-  setLeftDockTab,
   setPageIndex,
   setSelectedIds,
   setVideoDuration as handleVideoDurationKnown,
@@ -704,77 +696,28 @@ export function BookEditorPage() {
           </Button>
         }
         left={
-          <div className="flex h-full min-h-0 w-fit max-w-full flex-row">
-            <BookEditorToolRail
-              activeTab={leftDockTab}
-              onActiveTabChange={setLeftDockTab}
-              mediaLibraryEnabled={false}
-            />
-            <div
-              className={bookLeftDockContentColumnClass(
-                "border-s border-border/40",
-                {
-                  slideWidth,
-                  slideHeight,
-                },
-              )}
-            >
-              {leftDockTab === "page" ? (
-                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                  <BookPageSidebar
-                    fluid
-                    pageCount={pages.length}
-                    pageKeys={pageKeys}
-                    thumbnailsByKey={slideThumbnails}
-                    activeIndex={activePageIndex}
-                    pageLabels={pageLabels}
-                    onSelectPage={(i) => {
-                      setPageIndex(i);
-                      setSelectedIds([]);
-                    }}
-                    mode="edit"
-                    onReorderPages={reorderPages}
-                    onAddPage={addPage}
-                    onAddPageAtInsertIndex={addPageAtInsertIndex}
-                    onRemovePageAtIndex={requestRemovePageAt}
-                    onDuplicatePageAtIndex={duplicatePageAt}
-                    canRemovePage={pages.length > 1}
-                    slideWidth={slideWidth}
-                    slideHeight={slideHeight}
-                  />
-                </div>
-              ) : null}
-              {leftDockTab === "widgets" ? (
-                <BookWidgetPalette
-                  variant="docked"
-                  className="min-h-0 flex-1"
-                  onRequestFloat={() => persistWidgetFloatingOpen(true)}
-                  onQuickAdd={handlePaletteQuickAdd}
-                />
-              ) : null}
-              {leftDockTab === "templates" ? (
-                <BookSlideTemplatesPanel
-                  className="min-h-0 flex-1"
-                  onApplyTemplate={applySlideTemplate}
-                />
-              ) : null}
-              {leftDockTab === "elements" ? (
-                <BookElementsPanel
-                  className="min-h-0 flex-1"
-                  onAddShape={onAddShapeFromElementsPanel}
-                />
-              ) : null}
-              {leftDockTab === "drawing" ? (
-                <BookSlideDrawingPanel
-                  className="min-h-0 flex-1"
-                  strokeColor={drawingStrokeColor}
-                  strokeWidth={drawingStrokeWidth}
-                  onStrokeColorChange={setDrawingStrokeColor}
-                  onStrokeWidthChange={setDrawingStrokeWidth}
-                />
-              ) : null}
-            </div>
-          </div>
+          <BookEditorLeftDock
+            pages={{
+              count: pages.length,
+              keys: pageKeys,
+              labels: pageLabels,
+              thumbnailsByKey: slideThumbnails,
+              activeIndex: activePageIndex,
+              onReorder: reorderPages,
+              onAdd: addPage,
+              onAddAt: addPageAtInsertIndex,
+              onRemoveAt: requestRemovePageAt,
+              onDuplicateAt: duplicatePageAt,
+            }}
+            slideWidth={slideWidth}
+            slideHeight={slideHeight}
+            onApplyTemplate={applySlideTemplate}
+            onAddShape={onAddShapeFromElementsPanel}
+            widgets={{
+              onFloat: () => persistWidgetFloatingOpen(true),
+              onQuickAdd: handlePaletteQuickAdd,
+            }}
+          />
         }
         center={
           <>
