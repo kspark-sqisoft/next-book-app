@@ -1,18 +1,15 @@
 "use client";
 
 // 북 상세·편집: 서버 페이지 → 로컬 히스토리, 소유자는 BookDetailOwnerView / 비로그인·타인은 읽기 전용 게스트 뷰
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { MonitorPlay, Save, Share2, Trash2 } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Save, Share2, Trash2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import {
-  type Dispatch,
   type ReactNode,
-  type SetStateAction,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -27,6 +24,8 @@ import {
 import { BookCanvasToolbar } from "@/components/books/BookCanvasToolbar";
 import { BookEditorToolRail } from "@/components/books/BookEditorToolRail";
 import { BookMediaFileInputs } from "@/components/books/BookMediaFileInputs";
+import { BookSlidePreviewOpenButton } from "@/components/books/BookSlidePreviewOpenButton";
+import { BookDetailGuestBookView } from "@/page-components/BookDetailGuestBookView";
 
 /** Filerobot 편집기는 브라우저 전용 — SSR 제외하고 열 때만 로드 */
 const BookImageEditorDialog = dynamic(
@@ -94,7 +93,6 @@ import {
   pageIndexAfterReorder,
   reorderPagesArray,
   resolveEffectivePresentationTimingElementId,
-  toBookPagePayloads,
 } from "@/features/book/book-canvas";
 import { isBookEditorTypingTarget } from "@/features/book/book-editor-keyboard";
 import {
@@ -143,6 +141,7 @@ import {
 import { useBookDocumentHistory } from "@/features/book/use-book-document-history";
 import { useBookMediaUploads } from "@/features/book/use-book-media-uploads";
 import { useBookPageThumbnails } from "@/features/book/use-book-page-thumbnails";
+import { useBookSaveAndDelete } from "@/features/book/use-book-save-and-delete";
 import { useBookWidgetClipboard } from "@/features/book/use-book-widget-clipboard";
 import { useElementMutations } from "@/features/book/use-element-mutations";
 import { useMediaPlaylistPlayback } from "@/features/book/use-media-playlist-playback";
@@ -155,9 +154,7 @@ import {
   type BookCanvasElement,
   type BookDetail,
   type BookPageDto,
-  deleteBook,
   fetchBook,
-  updateBook,
   uploadBookMedia,
 } from "@/lib/api";
 import {
@@ -198,55 +195,6 @@ function mapServerPagesToLocal(pages: BookPageDto[]): BookEditorPageState[] {
 }
 
 // 헤더 액션: /preview 새 탭 — 처음부터 + (현재 인덱스가 있으면) 현재 페이지부터
-function BookSlidePreviewOpenButton({
-  bookId,
-  currentIndex,
-}: {
-  bookId: number;
-  currentIndex?: number;
-}) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <Button
-        type="button"
-        size="sm"
-        asChild
-        className="relative h-7 overflow-hidden border-0 bg-linear-to-br from-violet-600 via-fuchsia-600 to-rose-500 px-2.5 text-xs font-semibold leading-none text-white shadow-[0_2px_14px_-2px_rgba(124,58,237,0.55)] ring-1 ring-white/25 transition [text-shadow:0_1px_1px_rgba(0,0,0,0.2)] hover:brightness-110 hover:shadow-[0_4px_20px_-2px_rgba(168,85,247,0.55)] focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 dark:from-violet-500 dark:via-fuchsia-600 dark:to-rose-600 dark:shadow-[0_2px_18px_-4px_rgba(167,139,250,0.45)]"
-      >
-        <Link
-          href={`/books/${bookId}/preview`}
-          target="_blank"
-          rel="noreferrer"
-        >
-          <MonitorPlay
-            className="mr-1.5 size-3.5 shrink-0 drop-shadow-sm"
-            aria-hidden
-          />
-          미리보기
-        </Link>
-      </Button>
-      {currentIndex != null ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          asChild
-          className="h-7 px-2 text-xs"
-          title="현재 페이지부터 미리보기 (파워포인트의 '현재 슬라이드부터')"
-        >
-          <Link
-            href={`/books/${bookId}/preview?start=${currentIndex}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <MonitorPlay className="mr-1.5 size-3.5 shrink-0" aria-hidden />
-            현재부터
-          </Link>
-        </Button>
-      ) : null}
-    </div>
-  );
-}
 
 // 소유자·관리자 전용 편집 워크스페이스; 부모 key 는 book.id 만(리마운트로 상태 유실 방지)
 function BookDetailOwnerView({
@@ -287,7 +235,6 @@ function BookDetailOwnerView({
   // 안 하면 앞 북의 슬라이드 위치·선택이 다음 북에 그대로 이어진다.
   useEffect(() => resetEditorUi(), [bookId]);
 
-  const router = useRouter();
   const queryClient = useQueryClient();
   /** 업로드 결과를 서버 미디어 라이브러리에 기록(실패해도 편집 흐름은 계속) */
   const appendToMediaLibrary = useCallback(
@@ -330,7 +277,6 @@ function BookDetailOwnerView({
     canUndo,
     canRedo,
   } = useBookDocumentHistory(initialPages);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   /** 공유 다이얼로그 — 작성자·관리자만 열 수 있음(공유받은 편집자는 버튼 없음) */
   const [shareOpen, setShareOpen] = useState(false);
   const { user: authUser } = useAuth();
@@ -527,6 +473,30 @@ function BookDetailOwnerView({
     });
   }, [activePage]);
 
+  const {
+    saveMutation,
+    deleteMutation,
+    deleteConfirmOpen,
+    setDeleteConfirmOpen,
+  } = useBookSaveAndDelete({
+    bookId,
+    initialSnapshot: {
+      pages: initialPages,
+      title: serverBook.title,
+      slideWidth: serverBook.slideWidth ?? DEFAULT_SLIDE_WIDTH,
+      slideHeight: serverBook.slideHeight ?? DEFAULT_SLIDE_HEIGHT,
+      presentationLoop: serverBook.presentationLoop !== false,
+    },
+    current: {
+      pages: localPages,
+      title: bookTitle,
+      slideWidth,
+      slideHeight,
+      presentationLoop,
+    },
+    shortcutBlocked: editorOverlayOpen || widgetDeleteOpen || pageDeleteOpen,
+  });
+
   const { displayScale, zoomPercent, zoomIn, zoomOut, zoomReset, handleWheel } =
     useBookCanvasDisplayScale(canvasWrapRef, {
       slideWidth,
@@ -595,104 +565,6 @@ function BookDetailOwnerView({
     localPages.length,
     activePageIndex,
   ]);
-
-  /**
-   * 마지막 저장 시점 스냅샷(참조 비교) — beforeunload "미저장" 판정 기준.
-   * undo 스택(canUndo)은 저장 후에도 남아 있어 기준으로 쓰면 항상 경고가 뜬다.
-   */
-  const [initialSavedSnapshot] = useState(() => ({
-    pages: initialPages,
-    title: serverBook.title,
-    slideWidth: serverBook.slideWidth ?? DEFAULT_SLIDE_WIDTH,
-    slideHeight: serverBook.slideHeight ?? DEFAULT_SLIDE_HEIGHT,
-    presentationLoop: serverBook.presentationLoop !== false,
-  }));
-  const lastSavedRef = useRef(initialSavedSnapshot);
-  /**
-   * 저장 요청에 실린 값 — 저장 중 추가 편집이 있으면 성공해도 그 편집은 미저장으로 남는다.
-   * 처음에는 `lastSavedRef` 와 **같은 객체**를 가리킨다(참조 비교가 기준이라 중요하다).
-   */
-  const pendingSaveRef = useRef(initialSavedSnapshot);
-
-  const saveMutation = useMutation({
-    mutationFn: () => {
-      pendingSaveRef.current = {
-        pages: localPages,
-        title: bookTitle,
-        slideWidth,
-        slideHeight,
-        presentationLoop,
-      };
-      return updateBook(bookId, {
-        title: bookTitle.trim() || "제목 없음",
-        slideWidth,
-        slideHeight,
-        presentationLoop,
-        pages: toBookPagePayloads(localPages),
-      });
-    },
-    onSuccess: (res) => {
-      lastSavedRef.current = pendingSaveRef.current;
-      void queryClient.setQueryData(bookKeys.detail(bookId), res);
-      void queryClient.invalidateQueries({ queryKey: bookKeys.lists() });
-      toast.success("저장했습니다.");
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  // useMutation 반환 객체는 매 렌더 새 참조 — ref로 참조해 리스너 재등록 반복을 막는다
-  const saveMutationRef = useRef(saveMutation);
-  useLayoutEffect(() => {
-    saveMutationRef.current = saveMutation;
-  });
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (!((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s")) return;
-      if (isBookEditorTypingTarget(e.target)) return;
-      if (editorOverlayOpen) return;
-      if (widgetDeleteOpen || deleteConfirmOpen || pageDeleteOpen) return;
-      e.preventDefault();
-      if (saveMutationRef.current.isPending) return;
-      saveMutationRef.current.mutate();
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [widgetDeleteOpen, deleteConfirmOpen, pageDeleteOpen, editorOverlayOpen]);
-
-  // 미저장 편집이 있으면 탭 닫기·새로고침 전에 경고 — 마지막 저장 스냅샷과 비교(저장하면 경고 없음)
-  const unsavedCheckRef = useRef<() => boolean>(() => false);
-  useLayoutEffect(() => {
-    unsavedCheckRef.current = () => {
-      const saved = lastSavedRef.current;
-      return (
-        localPages !== saved.pages ||
-        bookTitle !== saved.title ||
-        slideWidth !== saved.slideWidth ||
-        slideHeight !== saved.slideHeight ||
-        presentationLoop !== saved.presentationLoop
-      );
-    };
-  });
-  useEffect(() => {
-    const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!unsavedCheckRef.current()) return;
-      e.preventDefault();
-    };
-    window.addEventListener("beforeunload", onBeforeUnload);
-    return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, []);
-
-  const deleteMutation = useMutation({
-    mutationFn: (bid: number) => deleteBook(bid),
-    onSuccess: (_data, deletedId) => {
-      setDeleteConfirmOpen(false);
-      void queryClient.removeQueries({ queryKey: bookKeys.detail(deletedId) });
-      void queryClient.invalidateQueries({ queryKey: bookKeys.lists() });
-      toast.success("북을 삭제했습니다.");
-      router.replace("/books");
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
   /** 승인 워크플로 배지·버튼 — 상태가 바뀌면 상세 캐시의 status만 갱신 */
   const bookStatusControls = (
@@ -2005,187 +1877,6 @@ function BookDetailOwnerView({
   );
 }
 
-// 편집 권한 없을 때: 캔버스·사이드바·레이어 패널은 읽기 전용
-function BookDetailGuestBookView({
-  data,
-  sortedPagesView,
-  pageIndex,
-  setPageIndex,
-  viewLocked,
-}: {
-  data: BookDetail;
-  sortedPagesView: NonNullable<BookDetail["pages"]>;
-  pageIndex: number;
-  setPageIndex: Dispatch<SetStateAction<number>>;
-  /** 모바일 보기 전용 — 좌·우 패널 잠금 + 캔버스 위 요소 클릭 차단 */
-  viewLocked?: boolean;
-}) {
-  const canvasWrapRef = useRef<HTMLDivElement>(null);
-  const guestSlideW = data.slideWidth ?? DEFAULT_SLIDE_WIDTH;
-  const guestSlideH = data.slideHeight ?? DEFAULT_SLIDE_HEIGHT;
-  const guestPageLabels = useMemo(
-    () => sortedPagesView.map((p) => p.name ?? ""),
-    [sortedPagesView],
-  );
-
-  const guestThumbSources = useMemo(
-    () =>
-      sortedPagesView.map((p) => ({
-        clientKey: `v-${p.id}`,
-        backgroundColor:
-          typeof p.backgroundColor === "string" && p.backgroundColor.trim()
-            ? p.backgroundColor.trim()
-            : DEFAULT_PAGE_BACKGROUND,
-        elements: p.elements,
-      })),
-    [sortedPagesView],
-  );
-  const guestThumbnails = useBookPageThumbnails(
-    guestThumbSources,
-    guestSlideW,
-    guestSlideH,
-  );
-
-  const guestCanvasScale = useBookCanvasDisplayScale(canvasWrapRef, {
-    slideWidth: guestSlideW,
-    slideHeight: guestSlideH,
-    ...BOOK_CANVAS_STAGE_DISPLAY_OPTS,
-  });
-
-  const safeIndex = Math.min(
-    pageIndex,
-    Math.max(0, sortedPagesView.length - 1),
-  );
-  const viewPage = sortedPagesView[safeIndex];
-
-  /** 다른 페이지의 공통(오버라이드) 위젯을 현재 페이지에 겹쳐 렌더 — 요소 key(id)가 유지되어 상태도 이어진다 */
-  const viewElements = useMemo(() => {
-    if (!viewPage) return [];
-    const overlays = collectBookOverlayElements(
-      sortedPagesView.map((p) => ({
-        sortOrder: p.sortOrder,
-        elements: p.elements,
-      })),
-      viewPage.sortOrder,
-    );
-    return overlays.length > 0
-      ? [...viewPage.elements, ...overlays]
-      : viewPage.elements;
-  }, [sortedPagesView, viewPage]);
-
-  const guestPresentationTimingId = useMemo(
-    () =>
-      viewPage
-        ? resolveEffectivePresentationTimingElementId(
-            viewPage.elements,
-            typeof viewPage.presentationTimingElementId === "string"
-              ? viewPage.presentationTimingElementId
-              : null,
-          )
-        : null,
-    [viewPage],
-  );
-
-  useEffect(() => {
-    warmBookCanvasImagesForNeighborPages(guestThumbSources, safeIndex);
-  }, [guestThumbSources, safeIndex]);
-
-  return (
-    <BookWorkspaceShell
-      panelsLocked={viewLocked}
-      titleArea={
-        <div className="min-w-0">
-          <h1 className="truncate text-base font-semibold leading-tight sm:text-lg">
-            {data.title}
-          </h1>
-          <p className="truncate text-xs text-muted-foreground">
-            {data.author.name} · {sortedPagesView.length}페이지 ·{" "}
-            {safeIndex + 1}번째 보는 중
-          </p>
-        </div>
-      }
-      actions={
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <BookSlidePreviewOpenButton
-            bookId={data.id}
-            currentIndex={safeIndex}
-          />
-        </div>
-      }
-      left={
-        <BookPageSidebar
-          pageCount={sortedPagesView.length}
-          pageKeys={sortedPagesView.map((p) => `v-${p.id}`)}
-          thumbnailsByKey={guestThumbnails}
-          activeIndex={safeIndex}
-          pageLabels={guestPageLabels}
-          onSelectPage={setPageIndex}
-          mode="view"
-          pageVisibles={sortedPagesView.map(
-            (p) => p.presentationVisible !== false,
-          )}
-          slideWidth={guestSlideW}
-          slideHeight={guestSlideH}
-        />
-      }
-      center={
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className={bookCanvasToolbarRowClass()}>
-            <BookCanvasToolbar
-              zoomPercent={guestCanvasScale.zoomPercent}
-              onZoomIn={guestCanvasScale.zoomIn}
-              onZoomOut={guestCanvasScale.zoomOut}
-              onZoomReset={guestCanvasScale.zoomReset}
-            />
-          </div>
-          <div
-            ref={canvasWrapRef}
-            className={bookCanvasStageMatClass(
-              "relative flex min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden p-2",
-            )}
-            onWheel={guestCanvasScale.handleWheel}
-          >
-            <BookSlideCanvas
-              pageWidth={guestSlideW}
-              pageHeight={guestSlideH}
-              pageBackgroundColor={
-                typeof viewPage.backgroundColor === "string" &&
-                viewPage.backgroundColor.trim()
-                  ? viewPage.backgroundColor.trim()
-                  : DEFAULT_PAGE_BACKGROUND
-              }
-              scale={guestCanvasScale.displayScale}
-              elements={viewElements}
-              mode="view"
-              selectedIds={[]}
-              onSelect={() => undefined}
-              onElementChange={() => undefined}
-            />
-            {viewLocked ? (
-              /* 모바일 보기 전용 — 위젯(동영상 컨트롤 등)까지 눌리지 않게 투명 방패로 덮는다.
-                 휠·핀치 줌은 부모(canvasWrap) 핸들러로 버블링되어 그대로 동작 */
-              <div className="absolute inset-0 z-50" aria-hidden />
-            ) : null}
-          </div>
-        </div>
-      }
-      right={
-        <aside className="flex h-full min-h-0 w-80 shrink-0 flex-col overflow-hidden border-l border-border bg-card/50">
-          <BookLayersPanel
-            expandVertical
-            elements={viewPage.elements}
-            selectedIds={[]}
-            onSelect={() => undefined}
-            readOnly
-            presentationTimingElementId={guestPresentationTimingId}
-          />
-        </aside>
-      }
-    />
-  );
-}
-
-// 데이터 로드 후 canEdit 에 따라 소유자 편집 UI 또는 게스트 뷰
 export function BookDetailPage() {
   const { id: idParam } = useParams();
   const id = Number(idParam);
