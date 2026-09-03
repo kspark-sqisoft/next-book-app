@@ -30,12 +30,16 @@ const el = (id: string, over: Partial<BookCanvasElement> = {}) =>
   }) as BookCanvasElement;
 
 let pageSeq = 0;
-const page = (elements: BookCanvasElement[]): BookEditorPageState => ({
+const page = (
+  elements: BookCanvasElement[],
+  over: Partial<BookEditorPageState> = {},
+): BookEditorPageState => ({
   clientKey: `p${++pageSeq}`,
   sortOrder: pageSeq,
   name: "",
   backgroundColor: "#ffffff",
   elements,
+  ...over,
 });
 
 const selectedIds = () => useBookEditorUiStore.getState().selectedIds;
@@ -136,5 +140,53 @@ describe("useElementMutations", () => {
     act(() => setSelectedIds([]));
     act(() => h.view.result.current.onLayerVisibilityChange("a", true));
     expect(selectedIds()).toEqual([]);
+  });
+
+  describe("요소 삭제", () => {
+    it("지운 요소를 선택에서도 뺀다", () => {
+      const h = harness([page([el("a"), el("b"), el("c")])]);
+      act(() => setSelectedIds(["a", "b"]));
+      act(() => h.view.result.current.removeElementsByIds(["a"]));
+
+      expect(h.pages[0].elements.map((e) => e.id)).toEqual(["b", "c"]);
+      expect(selectedIds()).toEqual(["b"]);
+    });
+
+    it("빈 목록이면 아무것도 하지 않는다", () => {
+      const h = harness([page([el("a")])]);
+      const before = h.pages;
+      act(() => h.view.result.current.removeElementsByIds([]));
+      expect(h.pages).toBe(before);
+    });
+
+    /**
+     * 재생 시간 기준으로 지정된 요소를 지우면 그 페이지의 슬라이드쇼 체류 시간이
+     * 사라진 id 를 가리킨 채 남는다. 지울 때마다 기준을 다시 골라야 한다.
+     */
+    it("재생 시간 기준이던 요소를 지우면 기준을 다시 고른다", () => {
+      const h = harness([
+        page([el("a"), el("b")], { presentationTimingElementId: "a" }),
+      ]);
+      act(() => h.view.result.current.removeElementsByIds(["a"]));
+      expect(h.pages[0].presentationTimingElementId).toBe("b");
+    });
+
+    it("기준이 아닌 요소를 지우면 기준은 그대로다", () => {
+      const h = harness([
+        page([el("a"), el("b")], { presentationTimingElementId: "b" }),
+      ]);
+      act(() => h.view.result.current.removeElementsByIds(["a"]));
+      expect(h.pages[0].presentationTimingElementId).toBe("b");
+    });
+  });
+
+  it("여러 요소를 현재 페이지 끝에 붙인다", () => {
+    const h = harness([page([el("a")]), page([])]);
+    act(() =>
+      h.view.result.current.appendElementsToActivePage([el("b"), el("c")]),
+    );
+
+    expect(h.pages[0].elements.map((e) => e.id)).toEqual(["a", "b", "c"]);
+    expect(h.pages[1].elements).toHaveLength(0);
   });
 });

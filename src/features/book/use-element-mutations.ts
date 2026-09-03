@@ -9,6 +9,7 @@ import {
   type ElementZOrderOp,
   reorderBookElementsByDisplayIndex,
   reorderElementsZ,
+  resolveEffectivePresentationTimingElementId,
 } from "@/features/book/book-canvas";
 import { setSelectedIds } from "@/features/book/editor-ui-store";
 
@@ -123,6 +124,37 @@ export function useElementMutations(opts: {
     [onElementChange],
   );
 
+  /**
+   * 지운 요소가 이 페이지의 재생 시간 기준이었으면 기준을 다시 고른다 — 안 하면
+   * 사라진 id 를 가리킨 채로 남아 슬라이드쇼 체류 시간이 기본값으로 되돌아간다.
+   */
+  const removeElementsByIds = useCallback(
+    (ids: string[]) => {
+      if (ids.length === 0) return;
+      const idSet = new Set(ids);
+      mutateActivePage((p) => {
+        p.elements = p.elements.filter((e) => !idSet.has(e.id));
+        p.presentationTimingElementId =
+          resolveEffectivePresentationTimingElementId(
+            p.elements,
+            p.presentationTimingElementId,
+          );
+      });
+      setSelectedIds((prev) => prev.filter((id) => !idSet.has(id)));
+    },
+    [mutateActivePage],
+  );
+
+  /** 여러 요소를 한 번에 붙인다(템플릿·AI·붙여넣기). 선택은 호출부가 정한다 */
+  const appendElementsToActivePage = useCallback(
+    (els: BookCanvasElement[]) => {
+      mutateActivePage((p) => {
+        p.elements.push(...els);
+      });
+    },
+    [mutateActivePage],
+  );
+
   return useMemo(
     () => ({
       mutateActivePage,
@@ -132,6 +164,8 @@ export function useElementMutations(opts: {
       onLayerDragReorder,
       onLayerVisibilityChange,
       onLayerLockChange,
+      removeElementsByIds,
+      appendElementsToActivePage,
     }),
     [
       mutateActivePage,
@@ -141,6 +175,8 @@ export function useElementMutations(opts: {
       onLayerDragReorder,
       onLayerVisibilityChange,
       onLayerLockChange,
+      removeElementsByIds,
+      appendElementsToActivePage,
     ],
   );
 }

@@ -194,6 +194,21 @@ export const setPageIndex: BookEditorUiActions["setPageIndex"] = (v) =>
   s().setPageIndex(v);
 export const setSelectedIds: BookEditorUiActions["setSelectedIds"] = (v) =>
   s().setSelectedIds(v);
+/**
+ * 선택 토글 — shift 면 기존 선택에 더하고 빼고, 아니면 그것 하나만 남긴다.
+ *
+ * 캔버스 클릭과 레이어 목록 클릭이 같은 규칙을 쓴다. 두 화면 × 두 곳, 즉 네 벌의
+ * 같은 코드가 있었다. 순수하게 선택 상태만 다루므로 스토어에 두는 것이 맞다.
+ */
+export const toggleSelectedId = (id: string, shiftKey?: boolean) =>
+  setSelectedIds((prev) => {
+    if (!shiftKey) return [id];
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    return Array.from(next);
+  });
+
 export const setLeftDockTab: BookEditorUiActions["setLeftDockTab"] = (v) =>
   s().setLeftDockTab(v);
 export const setDrawingStrokeColor: BookEditorUiActions["setDrawingStrokeColor"] =

@@ -138,6 +138,7 @@ import {
   setPageIndex,
   setSelectedIds,
   setVideoDuration as handleVideoDurationKnown,
+  toggleSelectedId,
   useBookEditorUiStore,
 } from "@/features/book/editor-ui-store";
 import {
@@ -548,32 +549,8 @@ function BookDetailOwnerView({
   }, [playlistInspectorSelectionKey]);
 
   const handleCanvasSelect = useCallback((d: BookCanvasSelectDetail) => {
-    if (d.id === null) {
-      setSelectedIds([]);
-      return;
-    }
-    const nextId = d.id;
-    setSelectedIds((prev) => {
-      if (d.shiftKey) {
-        const nex = new Set(prev);
-        if (nex.has(nextId)) nex.delete(nextId);
-        else nex.add(nextId);
-        return Array.from(nex);
-      }
-      return [nextId];
-    });
-  }, []);
-
-  const handleLayerSelect = useCallback((id: string, shiftKey?: boolean) => {
-    setSelectedIds((prev) => {
-      if (shiftKey) {
-        const nex = new Set(prev);
-        if (nex.has(id)) nex.delete(id);
-        else nex.add(id);
-        return Array.from(nex);
-      }
-      return [id];
-    });
+    if (d.id === null) setSelectedIds([]);
+    else toggleSelectedId(d.id, d.shiftKey);
   }, []);
 
   const libraryPickAcceptKind =
@@ -856,6 +833,8 @@ function BookDetailOwnerView({
     onLayerDragReorder,
     onLayerVisibilityChange,
     onLayerLockChange,
+    removeElementsByIds,
+    appendElementsToActivePage,
   } = useElementMutations({ activePageIndex, updatePages });
 
   const applySlideTemplate = useCallback(
@@ -1570,36 +1549,6 @@ function BookDetailOwnerView({
     confirmRemovePageAt,
     duplicatePageAt,
   } = usePageOperations({ activePageIndex, commitPages });
-
-  const removeElementsByIds = useCallback(
-    (ids: string[]) => {
-      if (ids.length === 0) return;
-      const idSet = new Set(ids);
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (!p) return;
-        p.elements = p.elements.filter((e) => !idSet.has(e.id));
-        p.presentationTimingElementId =
-          resolveEffectivePresentationTimingElementId(
-            p.elements,
-            p.presentationTimingElementId,
-          );
-      });
-      setSelectedIds((prev) => prev.filter((id) => !idSet.has(id)));
-    },
-    [activePageIndex, updatePages],
-  );
-
-  const appendElementsToActivePage = useCallback(
-    (els: BookCanvasElement[]) => {
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (!p) return;
-        p.elements.push(...els);
-      });
-    },
-    [activePageIndex, updatePages],
-  );
 
   const {
     hasClipboard: widgetClipboardHasContent,
@@ -2495,7 +2444,7 @@ function BookDetailOwnerView({
             <BookLayersPanel
               elements={activePage.elements}
               selectedIds={canvasSelectedIds}
-              onSelect={handleLayerSelect}
+              onSelect={toggleSelectedId}
               onReorderZ={onReorderZ}
               onLayerDragReorder={onLayerDragReorder}
               onVisibilityChange={onLayerVisibilityChange}
