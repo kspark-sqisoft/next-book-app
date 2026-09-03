@@ -227,7 +227,9 @@ export function parseShapeDropPayload(
 }
 
 /** 위젯 **중심**이 슬라이드 가로·세로 가운데에서 이 거리(논리 px) 안이면 기준선 표시 */
-export const DEFAULT_BOOK_SLIDE_CENTER_GUIDE_THRESHOLD_PX = 10;
+// 정의는 도메인 모듈에 있다(스토어 등 React 를 모르는 코드도 써야 하므로) — 여기서는 재수출만
+export { DEFAULT_BOOK_SLIDE_CENTER_GUIDE_THRESHOLD_PX } from "@/features/book/book-canvas";
+import { DEFAULT_BOOK_SLIDE_CENTER_GUIDE_THRESHOLD_PX } from "@/features/book/book-canvas";
 
 export type BookDropWidgetKind =
   | "text"

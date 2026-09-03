@@ -204,6 +204,9 @@ export function snapKonvaBookCenterPivotGroupToGrid(
 /** 드래그 시 저장 좌표(박스 왼쪽 위)를 이 간격(px)에 맞춥니다. */
 export const BOOK_CANVAS_DRAG_GRID_PX = 4;
 
+/** 드래그 중 가운데 기준선이 뜨는 거리(논리 px) */
+export const DEFAULT_BOOK_SLIDE_CENTER_GUIDE_THRESHOLD_PX = 10;
+
 export function snapBookElementTopLeftToGrid(
   topLeftX: number,
   topLeftY: number,

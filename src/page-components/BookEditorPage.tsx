@@ -31,7 +31,6 @@ import {
   type BookCanvasSelectDetail,
   type BookDropWidgetKind,
   BookSlideCanvas,
-  DEFAULT_BOOK_SLIDE_CENTER_GUIDE_THRESHOLD_PX,
 } from "@/components/books/BookSlideCanvas";
 import { BookSlideDrawingPanel } from "@/components/books/BookSlideDrawingPanel";
 import { BookSlideTemplatesPanel } from "@/components/books/BookSlideTemplatesPanel";
@@ -51,7 +50,6 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import {
   applyAutoSlideNamesByIndex,
-  BOOK_CANVAS_DRAG_GRID_PX,
   type BookShapeKind,
   createBookShapeElement,
   createEmptyEditorPage,
@@ -102,11 +100,7 @@ import {
   toBookPagePayloads,
 } from "@/features/book/book-canvas";
 import { isBookEditorTypingTarget } from "@/features/book/book-editor-keyboard";
-import type { BookEditorLeftTab } from "@/features/book/book-editor-panel-events";
-import {
-  readFloatingWidgetPaletteVisible,
-  writeFloatingWidgetPaletteVisible,
-} from "@/features/book/book-floating-ui-prefs";
+import {} from "@/features/book/book-floating-ui-prefs";
 import { warmBookCanvasImagesForNeighborPages } from "@/features/book/book-image-cache";
 import { computeSlidePresentationDurationSec } from "@/features/book/book-presentation";
 import {
@@ -126,6 +120,23 @@ import {
   bookRightDockInspectorShellClass,
 } from "@/features/book/book-workspace-ui";
 import {
+  closePageDelete,
+  closeWidgetDelete,
+  openPageDelete,
+  openWidgetDelete,
+  resetEditorUi,
+  setCenterGuideThresholdPx,
+  setDragGridPx,
+  setDrawingStrokeColor,
+  setDrawingStrokeWidth,
+  setFloatingWidgetPaletteOpen as persistWidgetFloatingOpen,
+  setLeftDockTab,
+  setPageIndex,
+  setSelectedIds,
+  setVideoDuration as handleVideoDurationKnown,
+  useBookEditorUiStore,
+} from "@/features/book/editor-ui-store";
+import {
   BOOK_CANVAS_STAGE_DISPLAY_OPTS,
   useBookCanvasDisplayScale,
 } from "@/features/book/use-book-canvas-display-scale";
@@ -137,6 +148,32 @@ import { bookKeys } from "@/lib/query-keys";
 
 /** `/books/new` — 저장 후 `/books/:id`로 이동해 동일 편집 UI를 씁니다. */
 export function BookEditorPage() {
+  // ── 에디터 UI·도구 상태 ─────────────────────────────────────────
+  // 같은 13개가 BookDetailPage 소유자 뷰에도 복사돼 있었다. 정의를 스토어 한 곳에 모아
+  // 두 화면이 조용히 벌어지지 않게 한다(features/book/editor-ui-store.ts).
+  const pageIndex = useBookEditorUiStore((s) => s.pageIndex);
+  const selectedIds = useBookEditorUiStore((s) => s.selectedIds);
+  const leftDockTab = useBookEditorUiStore((s) => s.leftDockTab);
+  const drawingStrokeColor = useBookEditorUiStore((s) => s.drawingStrokeColor);
+  const drawingStrokeWidth = useBookEditorUiStore((s) => s.drawingStrokeWidth);
+  const centerGuideThresholdPx = useBookEditorUiStore(
+    (s) => s.centerGuideThresholdPx,
+  );
+  const dragGridPx = useBookEditorUiStore((s) => s.dragGridPx);
+  const floatingWidgetPaletteOpen = useBookEditorUiStore(
+    (s) => s.floatingWidgetPaletteOpen,
+  );
+  const widgetDeleteOpen = useBookEditorUiStore((s) => s.widgetDeleteOpen);
+  const widgetDeleteIds = useBookEditorUiStore((s) => s.widgetDeleteIds);
+  const pageDeleteOpen = useBookEditorUiStore((s) => s.pageDeleteOpen);
+  const pageDeleteIndex = useBookEditorUiStore((s) => s.pageDeleteIndex);
+  const videoDurationByElementId = useBookEditorUiStore(
+    (s) => s.videoDurationByElementId,
+  );
+
+  // 새 북 편집을 시작할 때 이전 북에서 남은 슬라이드 위치·선택을 지운다
+  useEffect(() => resetEditorUi(), []);
+
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -153,19 +190,9 @@ export function BookEditorPage() {
   } = useBookDocumentHistory(
     applyAutoSlideNamesByIndex([createEmptyEditorPage(0)]),
   );
-  const [pageIndex, setPageIndex] = useState(0);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const canvasWrapRef = useRef<HTMLDivElement>(null);
   const [slideWidth, setSlideWidth] = useState(DEFAULT_SLIDE_WIDTH);
   const [slideHeight, setSlideHeight] = useState(DEFAULT_SLIDE_HEIGHT);
-  const [widgetDeleteOpen, setWidgetDeleteOpen] = useState(false);
-  const [widgetDeleteIds, setWidgetDeleteIds] = useState<string[]>([]);
-  const [pageDeleteOpen, setPageDeleteOpen] = useState(false);
-  const [pageDeleteIndex, setPageDeleteIndex] = useState<number | null>(null);
-  const [centerGuideThresholdPx, setCenterGuideThresholdPx] = useState(
-    DEFAULT_BOOK_SLIDE_CENTER_GUIDE_THRESHOLD_PX,
-  );
-  const [dragGridPx, setDragGridPx] = useState(BOOK_CANVAS_DRAG_GRID_PX);
   const [presentationLoop, setPresentationLoop] = useState(true);
   const [
     mediaPlaylistPlaybackByElementId,
@@ -178,16 +205,6 @@ export function BookEditorPage() {
   const playlistRemoteSeqRef = useRef(0);
   const [playlistRemoteCmd, setPlaylistRemoteCmd] =
     useState<BookMediaPlaylistRemoteCommand | null>(null);
-  const [leftDockTab, setLeftDockTab] = useState<BookEditorLeftTab>("page");
-  const [drawingStrokeColor, setDrawingStrokeColor] = useState("#0f172a");
-  const [drawingStrokeWidth, setDrawingStrokeWidth] = useState(4);
-  const [floatingWidgetPaletteOpen, setFloatingWidgetPaletteOpen] = useState(
-    readFloatingWidgetPaletteVisible,
-  );
-  const persistWidgetFloatingOpen = useCallback((open: boolean) => {
-    writeFloatingWidgetPaletteVisible(open);
-    setFloatingWidgetPaletteOpen(open);
-  }, []);
 
   const maxPageIdx = Math.max(0, pages.length - 1);
   const activePageIndex = Math.min(pageIndex, maxPageIdx);
@@ -333,18 +350,6 @@ export function BookEditorPage() {
   );
 
   // 상세 페이지와 동일 — 동영상 실제 길이를 반영해야 재생 시간 배지·타이밍 계산이 맞음
-  const [videoDurationByElementId, setVideoDurationByElementId] = useState<
-    Record<string, number>
-  >({});
-  const handleVideoDurationKnown = useCallback(
-    (elementId: string, durationSec: number) => {
-      setVideoDurationByElementId((prev) => {
-        if (prev[elementId] === durationSec) return prev;
-        return { ...prev, [elementId]: durationSec };
-      });
-    },
-    [],
-  );
 
   const handleMediaPlaylistRemoteControl = useCallback(
     (
@@ -400,15 +405,13 @@ export function BookEditorPage() {
         pages.length > 1
       ) {
         e.preventDefault();
-        setPageDeleteIndex(activePageIndex);
-        setPageDeleteOpen(true);
+        openPageDelete(activePageIndex);
       } else if (
         (e.key === "Delete" || e.key === "Backspace") &&
         canvasSelectedIds.length > 0
       ) {
         e.preventDefault();
-        setWidgetDeleteIds([...canvasSelectedIds]);
-        setWidgetDeleteOpen(true);
+        openWidgetDelete([...canvasSelectedIds]);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -576,14 +579,7 @@ export function BookEditorPage() {
       setSelectedIds([]);
       toast.success("슬라이드 내용을 비우고 템플릿을 적용했습니다.");
     },
-    [
-      activePageIndex,
-      currentPage,
-      slideHeight,
-      slideWidth,
-      setSelectedIds,
-      updatePages,
-    ],
+    [activePageIndex, currentPage, slideHeight, slideWidth, updatePages],
   );
 
   const onAppendDrawingElement = useCallback(
@@ -1370,14 +1366,12 @@ export function BookEditorPage() {
   }, [currentPage, videoDurationByElementId]);
 
   const requestRemoveWidget = useCallback((elementId: string) => {
-    setWidgetDeleteIds([elementId]);
-    setWidgetDeleteOpen(true);
+    openWidgetDelete([elementId]);
   }, []);
 
   const confirmRemoveWidget = useCallback(() => {
     if (widgetDeleteIds.length > 0) removeElementsByIds(widgetDeleteIds);
-    setWidgetDeleteOpen(false);
-    setWidgetDeleteIds([]);
+    closeWidgetDelete();
   }, [widgetDeleteIds, removeElementsByIds]);
 
   const removeSelected = useCallback(() => {
@@ -1387,8 +1381,7 @@ export function BookEditorPage() {
 
   const removeSelectedBulk = useCallback(() => {
     if (canvasSelectedIds.length === 0) return;
-    setWidgetDeleteIds([...canvasSelectedIds]);
-    setWidgetDeleteOpen(true);
+    openWidgetDelete([...canvasSelectedIds]);
   }, [canvasSelectedIds]);
 
   const addPage = () => {
@@ -1431,8 +1424,7 @@ export function BookEditorPage() {
   );
 
   const requestRemovePageAt = useCallback((index: number) => {
-    setPageDeleteIndex(index);
-    setPageDeleteOpen(true);
+    openPageDelete(index);
   }, []);
 
   const requestRemoveCurrentPageForAi = useCallback(() => {
@@ -1441,8 +1433,7 @@ export function BookEditorPage() {
 
   const confirmRemovePageAt = useCallback(() => {
     if (pageDeleteIndex != null) removePageAt(pageDeleteIndex);
-    setPageDeleteOpen(false);
-    setPageDeleteIndex(null);
+    closePageDelete();
   }, [pageDeleteIndex, removePageAt]);
 
   const duplicatePageAt = useCallback(
@@ -1910,8 +1901,7 @@ export function BookEditorPage() {
       <AlertDialog
         open={widgetDeleteOpen}
         onOpenChange={(open) => {
-          setWidgetDeleteOpen(open);
-          if (!open) setWidgetDeleteIds([]);
+          if (!open) closeWidgetDelete();
         }}
       >
         <AlertDialogContent>
@@ -1940,8 +1930,7 @@ export function BookEditorPage() {
       <AlertDialog
         open={pageDeleteOpen}
         onOpenChange={(open) => {
-          setPageDeleteOpen(open);
-          if (!open) setPageDeleteIndex(null);
+          if (!open) closePageDelete();
         }}
       >
         <AlertDialogContent>

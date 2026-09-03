@@ -441,6 +441,10 @@ function SortableSlideRow({
         <button
           type="button"
           onClick={() => onSelect(index)}
+          // 카드 안에 라벨과 번호 배지가 따로 있어 이름이 "슬라이드 2 2" 로 읽혔다 — 라벨로 고정
+          aria-label={label}
+          // 지금 편집 중인 슬라이드를 보조기술에도 알린다(색만으로 구분하지 않도록)
+          aria-current={index === activeIndex ? "true" : undefined}
           className={cn(
             slideRowClass(index === activeIndex, fluid),
             // 미리보기 제외 페이지 — "사용 안 함" 느낌으로 흐리게
