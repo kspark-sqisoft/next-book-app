@@ -37,7 +37,6 @@ import {
 } from "@/actions/creta";
 import {
   type BookListCoverPreview,
-  getAccessToken,
   humanizeServerActionError,
 } from "@/lib/api";
 
@@ -296,16 +295,10 @@ async function run<T>(call: () => Promise<T>): Promise<T> {
   }
 }
 
-function requireToken(): string {
-  const token = getAccessToken();
-  if (!token) throw new Error("로그인이 필요합니다.");
-  return token;
-}
-
 // 플레이리스트
 export async function fetchCretaPlaylists(): Promise<CretaPlaylistListItem[]> {
   return run(() =>
-    listCretaPlaylistsAction(requireToken()),
+    listCretaPlaylistsAction(),
   ) as unknown as CretaPlaylistListItem[];
 }
 
@@ -330,7 +323,7 @@ export async function fetchCretaPlaylist(
   id: number,
 ): Promise<CretaPlaylistDetail> {
   return run(() =>
-    getCretaPlaylistAction(requireToken(), id),
+    getCretaPlaylistAction(id),
   ) as unknown as CretaPlaylistDetail;
 }
 
@@ -341,12 +334,12 @@ export async function createCretaPlaylist(input: {
   visibility?: string;
 }): Promise<CretaPlaylistDetail> {
   return run(() =>
-    createCretaPlaylistAction(requireToken(), input),
+    createCretaPlaylistAction(input),
   ) as unknown as CretaPlaylistDetail;
 }
 
 export async function deleteCretaPlaylist(id: number): Promise<void> {
-  return run(() => deleteCretaPlaylistAction(requireToken(), id));
+  return run(() => deleteCretaPlaylistAction(id));
 }
 
 export async function addCretaPlaylistItem(
@@ -354,7 +347,7 @@ export async function addCretaPlaylistItem(
   bookId: number,
 ): Promise<CretaPlaylistDetail> {
   return run(() =>
-    addCretaPlaylistItemAction(requireToken(), playlistId, bookId),
+    addCretaPlaylistItemAction(playlistId, bookId),
   ) as unknown as CretaPlaylistDetail;
 }
 
@@ -363,7 +356,7 @@ export async function removeCretaPlaylistItem(
   itemId: number,
 ): Promise<CretaPlaylistDetail> {
   return run(() =>
-    removeCretaPlaylistItemAction(requireToken(), playlistId, itemId),
+    removeCretaPlaylistItemAction(playlistId, itemId),
   ) as unknown as CretaPlaylistDetail;
 }
 
@@ -373,16 +366,14 @@ export async function moveCretaPlaylistItem(
   direction: -1 | 1,
 ): Promise<CretaPlaylistDetail> {
   return run(() =>
-    moveCretaPlaylistItemAction(requireToken(), playlistId, itemId, direction),
+    moveCretaPlaylistItemAction(playlistId, itemId, direction),
   ) as unknown as CretaPlaylistDetail;
 }
 
 // 스케줄
 /** 크레타 > 계정 현황(로그인 필요) */
 export async function fetchMyCretaOverview(): Promise<CretaMyOverview> {
-  return run(() =>
-    getMyCretaOverviewAction(requireToken()),
-  ) as unknown as CretaMyOverview;
+  return run(() => getMyCretaOverviewAction()) as unknown as CretaMyOverview;
 }
 
 /** 플레이리스트 공유 추가/해제 — 갱신된 상세 반환 */
@@ -392,7 +383,7 @@ export async function setCretaPlaylistShare(
   shared: boolean,
 ): Promise<CretaPlaylistDetail> {
   return run(() =>
-    setCretaPlaylistShareAction(requireToken(), id, userId, shared),
+    setCretaPlaylistShareAction(id, userId, shared),
   ) as unknown as CretaPlaylistDetail;
 }
 
@@ -403,7 +394,7 @@ export async function setCretaScheduleShare(
   shared: boolean,
 ): Promise<CretaScheduleDetail> {
   return run(() =>
-    setCretaScheduleShareAction(requireToken(), id, userId, shared),
+    setCretaScheduleShareAction(id, userId, shared),
   ) as unknown as CretaScheduleDetail;
 }
 
@@ -413,7 +404,7 @@ export async function setCretaPlaylistShareAll(
   shared: boolean,
 ): Promise<CretaPlaylistDetail> {
   return run(() =>
-    setCretaPlaylistShareAllAction(requireToken(), id, shared),
+    setCretaPlaylistShareAllAction(id, shared),
   ) as unknown as CretaPlaylistDetail;
 }
 
@@ -423,13 +414,13 @@ export async function setCretaScheduleShareAll(
   shared: boolean,
 ): Promise<CretaScheduleDetail> {
   return run(() =>
-    setCretaScheduleShareAllAction(requireToken(), id, shared),
+    setCretaScheduleShareAllAction(id, shared),
   ) as unknown as CretaScheduleDetail;
 }
 
 export async function fetchCretaSchedules(): Promise<CretaScheduleListItem[]> {
   return run(() =>
-    listCretaSchedulesAction(requireToken()),
+    listCretaSchedulesAction(),
   ) as unknown as CretaScheduleListItem[];
 }
 
@@ -437,7 +428,7 @@ export async function fetchCretaSchedule(
   id: number,
 ): Promise<CretaScheduleDetail> {
   return run(() =>
-    getCretaScheduleAction(requireToken(), id),
+    getCretaScheduleAction(id),
   ) as unknown as CretaScheduleDetail;
 }
 
@@ -445,12 +436,12 @@ export async function createCretaSchedule(input: {
   name: string;
 }): Promise<CretaScheduleDetail> {
   return run(() =>
-    createCretaScheduleAction(requireToken(), input),
+    createCretaScheduleAction(input),
   ) as unknown as CretaScheduleDetail;
 }
 
 export async function deleteCretaSchedule(id: number): Promise<void> {
-  return run(() => deleteCretaScheduleAction(requireToken(), id));
+  return run(() => deleteCretaScheduleAction(id));
 }
 
 export async function updateCretaSchedule(
@@ -463,7 +454,7 @@ export async function updateCretaSchedule(
   },
 ): Promise<CretaScheduleDetail> {
   return run(() =>
-    updateCretaScheduleAction(requireToken(), id, patch),
+    updateCretaScheduleAction(id, patch),
   ) as unknown as CretaScheduleDetail;
 }
 
@@ -481,7 +472,7 @@ export async function addCretaScheduleSlot(
   },
 ): Promise<CretaScheduleDetail> {
   return run(() =>
-    addCretaScheduleSlotAction(requireToken(), scheduleId, body),
+    addCretaScheduleSlotAction(scheduleId, body),
   ) as unknown as CretaScheduleDetail;
 }
 
@@ -500,7 +491,7 @@ export async function updateCretaScheduleSlot(
   },
 ): Promise<CretaScheduleDetail> {
   return run(() =>
-    updateCretaScheduleSlotAction(requireToken(), scheduleId, slotId, body),
+    updateCretaScheduleSlotAction(scheduleId, slotId, body),
   ) as unknown as CretaScheduleDetail;
 }
 
@@ -509,21 +500,17 @@ export async function removeCretaScheduleSlot(
   slotId: number,
 ): Promise<CretaScheduleDetail> {
   return run(() =>
-    removeCretaScheduleSlotAction(requireToken(), scheduleId, slotId),
+    removeCretaScheduleSlotAction(scheduleId, slotId),
   ) as unknown as CretaScheduleDetail;
 }
 
 // 디바이스
 export async function fetchCretaDevices(): Promise<CretaDevice[]> {
-  return run(() =>
-    listCretaDevicesAction(requireToken()),
-  ) as unknown as CretaDevice[];
+  return run(() => listCretaDevicesAction()) as unknown as CretaDevice[];
 }
 
 export async function fetchCretaDevice(id: number): Promise<CretaDevice> {
-  return run(() =>
-    getCretaDeviceAction(requireToken(), id),
-  ) as unknown as CretaDevice;
+  return run(() => getCretaDeviceAction(id)) as unknown as CretaDevice;
 }
 
 export async function createCretaDevice(input: {
@@ -533,13 +520,11 @@ export async function createCretaDevice(input: {
   resolution?: string;
   orientation?: string;
 }): Promise<CretaDevice> {
-  return run(() =>
-    createCretaDeviceAction(requireToken(), input),
-  ) as unknown as CretaDevice;
+  return run(() => createCretaDeviceAction(input)) as unknown as CretaDevice;
 }
 
 export async function deleteCretaDevice(id: number): Promise<void> {
-  return run(() => deleteCretaDeviceAction(requireToken(), id));
+  return run(() => deleteCretaDeviceAction(id));
 }
 
 export async function updateCretaDeviceOnline(
@@ -547,7 +532,7 @@ export async function updateCretaDeviceOnline(
   online: boolean,
 ): Promise<CretaDevice> {
   return run(() =>
-    updateCretaDeviceOnlineAction(requireToken(), id, online),
+    updateCretaDeviceOnlineAction(id, online),
   ) as unknown as CretaDevice;
 }
 
@@ -556,7 +541,7 @@ export async function updateCretaDeviceHealth(
   health: "ok" | "error",
 ): Promise<CretaDevice> {
   return run(() =>
-    updateCretaDeviceHealthAction(requireToken(), id, health),
+    updateCretaDeviceHealthAction(id, health),
   ) as unknown as CretaDevice;
 }
 
@@ -565,7 +550,7 @@ export async function updateCretaDevicePower(
   body: CretaDevicePowerInput,
 ): Promise<CretaDevice> {
   return run(() =>
-    updateCretaDevicePowerAction(requireToken(), id, body),
+    updateCretaDevicePowerAction(id, body),
   ) as unknown as CretaDevice;
 }
 
@@ -577,7 +562,7 @@ export async function updateCretaDeviceSource(
   },
 ): Promise<CretaDevice> {
   return run(() =>
-    updateCretaDeviceSourceAction(requireToken(), id, body),
+    updateCretaDeviceSourceAction(id, body),
   ) as unknown as CretaDevice;
 }
 
@@ -590,7 +575,7 @@ export async function updateCretaDeviceControls(
   body: { volume?: number; brightness?: number },
 ): Promise<CretaDevice> {
   return run(() =>
-    updateCretaDeviceControlsAction(requireToken(), id, body),
+    updateCretaDeviceControlsAction(id, body),
   ) as unknown as CretaDevice;
 }
 
@@ -599,7 +584,7 @@ export async function upgradeCretaDevicePlayer(
   id: number,
 ): Promise<CretaDevice> {
   return run(() =>
-    upgradeCretaDevicePlayerAction(requireToken(), id),
+    upgradeCretaDevicePlayerAction(id),
   ) as unknown as CretaDevice;
 }
 
@@ -609,7 +594,7 @@ export async function updateCretaDeviceTags(
   tags: string[],
 ): Promise<CretaDevice> {
   return run(() =>
-    updateCretaDeviceTagsAction(requireToken(), id, tags),
+    updateCretaDeviceTagsAction(id, tags),
   ) as unknown as CretaDevice;
 }
 
@@ -618,7 +603,8 @@ export async function assignCretaSourceByTag(
   tag: string,
   body: { type: "book" | "playlist" | "schedule"; refId: number },
 ): Promise<{ count: number; devices: CretaDevice[] }> {
-  return run(() =>
-    assignCretaSourceByTagAction(requireToken(), tag, body),
-  ) as unknown as { count: number; devices: CretaDevice[] };
+  return run(() => assignCretaSourceByTagAction(tag, body)) as unknown as {
+    count: number;
+    devices: CretaDevice[];
+  };
 }

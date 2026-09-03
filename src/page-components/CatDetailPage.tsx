@@ -72,7 +72,7 @@ function CatDetailEditor({
     mutationFn: async (body: { name: string; age: number; breed: string }) => {
       const token = getAccessToken();
       if (!token) throw new Error("로그인이 필요합니다.");
-      return updateCatAction(token, id, body);
+      return updateCatAction(id, body);
     },
     onSuccess: () => {
       toast.success("정보를 저장했습니다.");
@@ -92,7 +92,7 @@ function CatDetailEditor({
       if (!token) throw new Error("로그인이 필요합니다.");
       const fd = new FormData();
       fd.append("image", file); // 액션이 기대하는 필드명
-      return uploadCatImageAction(token, id, fd);
+      return uploadCatImageAction(id, fd);
     },
     onSuccess: () => {
       toast.success("사진을 올렸습니다.");
@@ -280,7 +280,7 @@ export function CatDetailPage() {
     mutationFn: async () => {
       const token = getAccessToken();
       if (!token) throw new Error("로그인이 필요합니다.");
-      await deleteCatAction(token, id);
+      await deleteCatAction(id);
     },
     onSuccess: () => {
       toast.success("삭제되었습니다.");

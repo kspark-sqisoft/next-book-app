@@ -4,7 +4,7 @@ import {
   deactivateCretaAlertAction,
   getActiveCretaAlertAction,
 } from "@/actions/creta-alerts";
-import { getAccessToken, humanizeServerActionError } from "@/lib/api";
+import { humanizeServerActionError } from "@/lib/api";
 
 export const CRETA_ALERT_LEVELS = ["긴급", "주의", "안내"] as const;
 export type CretaAlertLevel = (typeof CRETA_ALERT_LEVELS)[number];
@@ -56,12 +56,6 @@ async function run<T>(call: () => Promise<T>): Promise<T> {
   }
 }
 
-function requireToken(): string {
-  const token = getAccessToken();
-  if (!token) throw new Error("로그인이 필요합니다.");
-  return token;
-}
-
 export async function fetchActiveCretaAlert(): Promise<CretaAlert | null> {
   return run(() =>
     getActiveCretaAlertAction(),
@@ -75,10 +69,10 @@ export async function activateCretaAlert(input: {
   deviceIds?: number[];
 }): Promise<CretaAlert> {
   return run(() =>
-    activateCretaAlertAction(requireToken(), input),
+    activateCretaAlertAction(input),
   ) as unknown as Promise<CretaAlert>;
 }
 
 export async function deactivateCretaAlert(): Promise<void> {
-  await run(() => deactivateCretaAlertAction(requireToken()));
+  await run(() => deactivateCretaAlertAction());
 }

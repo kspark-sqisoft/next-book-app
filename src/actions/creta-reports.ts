@@ -1,10 +1,8 @@
 "use server";
 
 // 재생 리포트(Proof-of-Play) 서버 액션 — 운영 지표라 로그인 필요(재생 경로만 비로그인 허용)
-import {
-  requireUserFromToken,
-  rethrowActionError,
-} from "@/actions/session-token";
+import { rethrowActionError } from "@/actions/action-guards";
+import { requireUser } from "@/server/auth/session";
 import {
   type CretaDeviceUptimePublic,
   CretaDeviceUptimeService,
@@ -17,11 +15,10 @@ import {
 const TAG = "creta-reports-actions";
 
 export async function getCretaPlayReportAction(
-  accessToken: string | null | undefined,
   rangeDays: number,
 ): Promise<CretaPlayReportPublic> {
   try {
-    await requireUserFromToken(accessToken);
+    await requireUser();
     return await new CretaPlayLogService().getReport(
       Math.floor(Number(rangeDays)),
     );
@@ -31,11 +28,10 @@ export async function getCretaPlayReportAction(
 }
 
 export async function getCretaDeviceUptimeAction(
-  accessToken: string | null | undefined,
   rangeDays: number,
 ): Promise<CretaDeviceUptimePublic> {
   try {
-    await requireUserFromToken(accessToken);
+    await requireUser();
     return await new CretaDeviceUptimeService().getReport(
       Math.floor(Number(rangeDays)),
     );

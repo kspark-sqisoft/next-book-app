@@ -1,11 +1,8 @@
 "use server";
 
 // 긴급 알림 서버 액션: 조회는 공개, 발송·해제는 로그인 필요(디바이스 관리와 동일 정책)
-import {
-  requireAdminFromToken,
-  requireUserFromToken,
-  rethrowActionError,
-} from "@/actions/session-token";
+import { rethrowActionError } from "@/actions/action-guards";
+import { requireAdmin, requireUser } from "@/server/auth/session";
 import {
   type CretaAlertPublic,
   CretaAlertsService,
@@ -22,12 +19,13 @@ export async function getActiveCretaAlertAction(): Promise<CretaAlertPublic | nu
 }
 
 /** 발송 — deviceIds가 비어 있으면 모든 디바이스 대상 */
-export async function activateCretaAlertAction(
-  accessToken: string | null | undefined,
-  input: { message: string; level?: string; deviceIds?: number[] | null },
-): Promise<CretaAlertPublic> {
+export async function activateCretaAlertAction(input: {
+  message: string;
+  level?: string;
+  deviceIds?: number[] | null;
+}): Promise<CretaAlertPublic> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     return await new CretaAlertsService().activate(
       { id: user.sub, role: user.role },
       {
@@ -41,12 +39,10 @@ export async function activateCretaAlertAction(
   }
 }
 
-export async function deactivateCretaAlertAction(
-  accessToken: string | null | undefined,
-): Promise<void> {
+export async function deactivateCretaAlertAction(): Promise<void> {
   try {
     // 전 화면 긴급 알림 해제 — 발송과 같은 급의 전역 조작
-    await requireAdminFromToken(accessToken);
+    await requireAdmin();
     await new CretaAlertsService().deactivate();
   } catch (e) {
     rethrowActionError(e, TAG);

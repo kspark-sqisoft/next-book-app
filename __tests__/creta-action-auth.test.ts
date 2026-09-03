@@ -8,6 +8,9 @@ import { describe, expect, it } from "vitest";
  * 크레타 도메인은 조회 액션 다수가 토큰을 받지 않아 화면 목록·광고 리포트·감사 로그가
  * 비로그인에 열려 있었다(2026-09-02 리뷰 P0-2). 같은 실수가 다시 들어오지 않게,
  * "인증을 부르지 않는 액션"은 아래 목록에 이유와 함께 등록해야만 통과하도록 고정한다.
+ *
+ * 신원은 이제 쿠키에서 읽는다(`@/server/auth/session`). 액션이 토큰을 인자로 받으면
+ * 호출자가 신원을 주장할 수 있게 되므로, 그 형태가 되살아나지 않는 것도 함께 고정한다.
  */
 
 const ACTIONS_DIR = join(process.cwd(), "src", "actions");
@@ -30,7 +33,10 @@ const INTENTIONALLY_PUBLIC = new Map<string, string>([
   ["getPublicCretaPlaylistAction", "전체 공개가 아니면 404"],
 ]);
 
-const AUTH_CALL = /require(?:User|Admin)FromToken|getUserFromTokenOptional/;
+const AUTH_CALL = /require(?:User|Admin)\(\)|getCurrentUser\(\)/;
+
+/** 되살아나면 안 되는 형태: 신원을 인자로 받는 액션 */
+const TOKEN_PARAM = /accessToken\s*:/;
 
 type ActionFn = { file: string; name: string; body: string };
 
@@ -74,6 +80,13 @@ describe("크레타 서버 액션 인증 표면", () => {
     const names = new Set(actions.map((a) => a.name));
     const stale = [...INTENTIONALLY_PUBLIC.keys()].filter((n) => !names.has(n));
     expect(stale).toEqual([]);
+  });
+
+  it("어떤 액션도 토큰을 인자로 받지 않는다 — 신원은 쿠키에서만 온다", () => {
+    const takesToken = actions
+      .filter((a) => TOKEN_PARAM.test(a.body))
+      .map((a) => `${a.file}: ${a.name}`);
+    expect(takesToken).toEqual([]);
   });
 
   it("허용 목록의 액션은 실제로 인증을 호출하지 않는다(목록이 낡지 않게)", () => {

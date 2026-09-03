@@ -9,11 +9,11 @@ import { headers } from "next/headers";
 // 세션 JWT 검증·에러 재던지기
 import {
   assertPositiveIntId,
-  requireUserFromToken,
   rethrowActionError,
-} from "@/actions/session-token";
+} from "@/actions/action-guards";
 // 클라이언트와 공유하는 Cat 타입(JSON 직렬화 날짜는 string)
 import type { Cat } from "@/lib/api";
+import { requireUser } from "@/server/auth/session";
 // 서버 전용 본문 파서
 import {
   parseCreateCatBody,
@@ -82,12 +82,13 @@ export async function getCatAction(catId: number): Promise<Cat> {
 }
 
 // 로그인 사용자만; ownerId에 JWT sub 저장
-export async function createCatAction(
-  accessToken: string | null | undefined,
-  input: { name: string; age?: number; breed?: string },
-): Promise<Cat> {
+export async function createCatAction(input: {
+  name: string;
+  age?: number;
+  breed?: string;
+}): Promise<Cat> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     const body = parseCreateCatBody(input);
     const cats = new CatsService();
     const created = await cats.create(body, user.sub);
@@ -99,12 +100,11 @@ export async function createCatAction(
 
 // 소유자 또는 관리자만 실제로 갱신됨(서비스에서 403)
 export async function updateCatAction(
-  accessToken: string | null | undefined,
   catId: number,
   body: { name?: string; age?: number; breed?: string },
 ): Promise<Cat> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     const id = assertPositiveIntId(catId);
     const dto = parseUpdateCatBody(body);
     const cats = new CatsService();
@@ -120,12 +120,11 @@ export async function updateCatAction(
 
 // FormData 필드명 `image`에 File 필요
 export async function uploadCatImageAction(
-  accessToken: string | null | undefined,
   catId: number,
   formData: FormData,
 ): Promise<Cat> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     const id = assertPositiveIntId(catId);
     const image = formData.get("image");
     if (!(image instanceof File) || image.size === 0) {
@@ -166,12 +165,9 @@ export async function uploadCatImageAction(
 }
 
 // 소유자·관리자만 성공
-export async function deleteCatAction(
-  accessToken: string | null | undefined,
-  catId: number,
-): Promise<void> {
+export async function deleteCatAction(catId: number): Promise<void> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     const id = assertPositiveIntId(catId);
     const cats = new CatsService();
     await cats.remove(id, { id: user.sub, role: user.role });

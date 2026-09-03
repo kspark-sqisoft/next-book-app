@@ -3,16 +3,15 @@
 // 글·댓글·좋아요 서버 액션 — 클라이언트는 주로 React Query와 함께 호출
 import {
   assertPositiveIntId,
-  getUserFromTokenOptional,
-  requireUserFromToken,
   rethrowActionError,
-} from "@/actions/session-token";
+} from "@/actions/action-guards";
 import type {
   Post,
   PostComment,
   PostLikeState,
   PostsPageResponse,
 } from "@/lib/api";
+import { getCurrentUser, requireUser } from "@/server/auth/session";
 import { HttpError } from "@/server/http/http-error";
 import { cleanupPostUploadedFiles } from "@/server/posts/cleanup-uploaded";
 import {
@@ -54,15 +53,12 @@ function parseMediaPlan(
 }
 
 // 커서 기반 페이지네이션; 토큰 있으면 좋아요 여부 등 개인화
-export async function listPostsAction(
-  accessToken: string | null | undefined,
-  params?: {
-    cursor?: string;
-    take?: number;
-    search?: string;
-    category?: string;
-  },
-): Promise<PostsPageResponse> {
+export async function listPostsAction(params?: {
+  cursor?: string;
+  take?: number;
+  search?: string;
+  category?: string;
+}): Promise<PostsPageResponse> {
   try {
     const takeRaw = Number(params?.take ?? 12);
     // NaN이면 min/max를 그대로 통과해 SQL 오류가 나므로 유한값 강제
@@ -72,7 +68,7 @@ export async function listPostsAction(
     const search = params?.search?.trim();
     const category = params?.category?.trim();
     const cursor = params?.cursor;
-    const user = await getUserFromTokenOptional(accessToken);
+    const user = await getCurrentUser();
     const posts = new PostsService();
     return (await posts.findPage(
       take,
@@ -86,13 +82,10 @@ export async function listPostsAction(
   }
 }
 
-export async function getPostAction(
-  accessToken: string | null | undefined,
-  postId: number,
-): Promise<Post> {
+export async function getPostAction(postId: number): Promise<Post> {
   try {
     const id = assertPositiveIntId(postId);
-    const user = await getUserFromTokenOptional(accessToken);
+    const user = await getCurrentUser();
     const posts = new PostsService();
     return (await posts.findOne(id, user?.sub)) as unknown as Post;
   } catch (e) {
@@ -114,12 +107,11 @@ export async function fetchPostCommentsAction(
 }
 
 export async function createPostCommentAction(
-  accessToken: string | null | undefined,
   postId: number,
   input: { content: string; parentId?: number },
 ): Promise<PostComment> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     const id = assertPositiveIntId(postId);
     const comments = new CommentsService();
     return (await comments.create(id, user.sub, {
@@ -132,12 +124,11 @@ export async function createPostCommentAction(
 }
 
 export async function deletePostCommentAction(
-  accessToken: string | null | undefined,
   postId: number,
   commentId: number,
 ): Promise<void> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     const pid = assertPositiveIntId(postId);
     const cid = assertPositiveIntId(commentId);
     const comments = new CommentsService();
@@ -147,12 +138,9 @@ export async function deletePostCommentAction(
   }
 }
 
-export async function likePostAction(
-  accessToken: string | null | undefined,
-  postId: number,
-): Promise<PostLikeState> {
+export async function likePostAction(postId: number): Promise<PostLikeState> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     const id = assertPositiveIntId(postId);
     const posts = new PostsService();
     return await posts.addLike(user.sub, id);
@@ -161,12 +149,9 @@ export async function likePostAction(
   }
 }
 
-export async function unlikePostAction(
-  accessToken: string | null | undefined,
-  postId: number,
-): Promise<PostLikeState> {
+export async function unlikePostAction(postId: number): Promise<PostLikeState> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     const id = assertPositiveIntId(postId);
     const posts = new PostsService();
     return await posts.removeLike(user.sub, id);
@@ -175,13 +160,10 @@ export async function unlikePostAction(
   }
 }
 
-export async function createPostAction(
-  accessToken: string | null | undefined,
-  formData: FormData,
-): Promise<Post> {
+export async function createPostAction(formData: FormData): Promise<Post> {
   let toClean: UploadedPostFile[] = []; // 실패 시 디스크 롤백 목록
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     const parsed = await parsePostCreateMultipart(formData);
     toClean = [...parsed.attachmentFiles, ...parsed.posterFiles];
     const posts = new PostsService();
@@ -200,13 +182,12 @@ export async function createPostAction(
 }
 
 export async function updatePostAction(
-  accessToken: string | null | undefined,
   postId: number,
   formData: FormData,
 ): Promise<Post> {
   let toClean: UploadedPostFile[] = [];
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     const id = assertPositiveIntId(postId);
     // 소유권 확인을 파일 저장(멀티파트 파싱) 앞에 — 타인 글 id로 디스크를 채우는 것 차단
     const posts = new PostsService();
@@ -236,12 +217,9 @@ export async function updatePostAction(
   }
 }
 
-export async function deletePostAction(
-  accessToken: string | null | undefined,
-  postId: number,
-): Promise<void> {
+export async function deletePostAction(postId: number): Promise<void> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     const id = assertPositiveIntId(postId);
     const posts = new PostsService();
     await posts.remove({ id: user.sub, role: user.role }, id);

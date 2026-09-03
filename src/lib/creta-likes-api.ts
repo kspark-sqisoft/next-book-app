@@ -22,7 +22,7 @@ export async function fetchCretaLikes(
   ids: number[],
 ): Promise<Record<number, CretaLikeState>> {
   if (ids.length === 0) return {};
-  return run(() => listCretaLikesAction(getAccessToken(), kind, ids));
+  return run(() => listCretaLikesAction(kind, ids));
 }
 
 export async function toggleCretaLike(
@@ -31,5 +31,5 @@ export async function toggleCretaLike(
 ): Promise<CretaLikeState> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  return run(() => toggleCretaLikeAction(token, kind, targetId));
+  return run(() => toggleCretaLikeAction(kind, targetId));
 }

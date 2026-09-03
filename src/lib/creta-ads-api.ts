@@ -24,7 +24,7 @@ import {
   updateCretaAdvertiserAction,
   uploadCretaAdMediaAction,
 } from "@/actions/creta-ads";
-import { getAccessToken, humanizeServerActionError } from "@/lib/api";
+import { humanizeServerActionError } from "@/lib/api";
 
 export const CRETA_AD_CAMPAIGN_STATUS_LABEL: Record<string, string> = {
   live: "라이브",
@@ -126,40 +126,34 @@ async function run<T>(call: () => Promise<T>): Promise<T> {
   }
 }
 
-function requireToken(): string {
-  const token = getAccessToken();
-  if (!token) throw new Error("로그인이 필요합니다.");
-  return token;
-}
-
 export async function fetchCretaAdvertisers(): Promise<CretaAdvertiser[]> {
-  return run(() =>
-    listCretaAdvertisersAction(requireToken()),
-  ) as unknown as Promise<CretaAdvertiser[]>;
+  return run(() => listCretaAdvertisersAction()) as unknown as Promise<
+    CretaAdvertiser[]
+  >;
 }
 
 export async function createCretaAdvertiser(input: {
   name: string;
   contact?: string;
 }): Promise<{ id: number }> {
-  return run(() => createCretaAdvertiserAction(requireToken(), input));
+  return run(() => createCretaAdvertiserAction(input));
 }
 
 export async function updateCretaAdvertiser(
   id: number,
   input: { name?: string; contact?: string },
 ): Promise<void> {
-  await run(() => updateCretaAdvertiserAction(requireToken(), id, input));
+  await run(() => updateCretaAdvertiserAction(id, input));
 }
 
 export async function deleteCretaAdvertiser(id: number): Promise<void> {
-  await run(() => deleteCretaAdvertiserAction(requireToken(), id));
+  await run(() => deleteCretaAdvertiserAction(id));
 }
 
 export async function fetchCretaAdCampaigns(): Promise<CretaAdCampaign[]> {
-  return run(() =>
-    listCretaAdCampaignsAction(requireToken()),
-  ) as unknown as Promise<CretaAdCampaign[]>;
+  return run(() => listCretaAdCampaignsAction()) as unknown as Promise<
+    CretaAdCampaign[]
+  >;
 }
 
 export async function createCretaAdCampaign(input: {
@@ -176,7 +170,7 @@ export async function createCretaAdCampaign(input: {
   /** 대상 화면(디바이스 태그). 비우면 전체 화면 대상 */
   targetTags?: string[];
 }): Promise<{ id: number }> {
-  return run(() => createCretaAdCampaignAction(requireToken(), input));
+  return run(() => createCretaAdCampaignAction(input));
 }
 
 export async function updateCretaAdCampaign(
@@ -196,11 +190,11 @@ export async function updateCretaAdCampaign(
     targetTags?: string[];
   },
 ): Promise<void> {
-  await run(() => updateCretaAdCampaignAction(requireToken(), id, input));
+  await run(() => updateCretaAdCampaignAction(id, input));
 }
 
 export async function deleteCretaAdCampaign(id: number): Promise<void> {
-  await run(() => deleteCretaAdCampaignAction(requireToken(), id));
+  await run(() => deleteCretaAdCampaignAction(id));
 }
 
 export async function addCretaAdCreative(input: {
@@ -209,11 +203,11 @@ export async function addCretaAdCreative(input: {
   kind: "image" | "video";
   src: string;
 }): Promise<{ id: number }> {
-  return run(() => addCretaAdCreativeAction(requireToken(), input));
+  return run(() => addCretaAdCreativeAction(input));
 }
 
 export async function deleteCretaAdCreative(id: number): Promise<void> {
-  await run(() => deleteCretaAdCreativeAction(requireToken(), id));
+  await run(() => deleteCretaAdCreativeAction(id));
 }
 
 /**
@@ -247,9 +241,9 @@ export async function logCretaAdPlay(input: {
 export async function fetchCretaAdCampaignReport(
   days = 30,
 ): Promise<CretaAdCampaignReportRow[]> {
-  return run(() =>
-    cretaAdCampaignReportAction(requireToken(), days),
-  ) as unknown as Promise<CretaAdCampaignReportRow[]>;
+  return run(() => cretaAdCampaignReportAction(days)) as unknown as Promise<
+    CretaAdCampaignReportRow[]
+  >;
 }
 
 export async function fetchCretaAdSetting(): Promise<CretaAdSetting> {
@@ -266,7 +260,7 @@ export async function updateCretaAdSetting(input: {
   houseSrc?: string;
 }): Promise<CretaAdSetting> {
   return run(() =>
-    updateCretaAdSettingAction(requireToken(), input),
+    updateCretaAdSettingAction(input),
   ) as unknown as Promise<CretaAdSetting>;
 }
 
@@ -281,17 +275,17 @@ export type CretaAdSlotRow = {
 export async function fetchCretaAdHourlyReport(
   days = 30,
 ): Promise<CretaAdHourlyRow[]> {
-  return run(() =>
-    cretaAdHourlyReportAction(requireToken(), days),
-  ) as unknown as Promise<CretaAdHourlyRow[]>;
+  return run(() => cretaAdHourlyReportAction(days)) as unknown as Promise<
+    CretaAdHourlyRow[]
+  >;
 }
 
 export async function fetchCretaAdSlotReport(
   days = 30,
 ): Promise<CretaAdSlotRow[]> {
-  return run(() =>
-    cretaAdSlotReportAction(requireToken(), days),
-  ) as unknown as Promise<CretaAdSlotRow[]>;
+  return run(() => cretaAdSlotReportAction(days)) as unknown as Promise<
+    CretaAdSlotRow[]
+  >;
 }
 
 export type CretaAdAuditRow = {
@@ -343,29 +337,29 @@ export async function reviewCretaAdCreative(
   id: number,
   decision: "approved" | "rejected",
 ): Promise<void> {
-  await run(() => reviewCretaAdCreativeAction(requireToken(), id, decision));
+  await run(() => reviewCretaAdCreativeAction(id, decision));
 }
 
 export async function fetchCretaAdAudit(): Promise<CretaAdAuditRow[]> {
-  return run(() =>
-    listCretaAdAuditAction(requireToken()),
-  ) as unknown as Promise<CretaAdAuditRow[]>;
+  return run(() => listCretaAdAuditAction()) as unknown as Promise<
+    CretaAdAuditRow[]
+  >;
 }
 
 export async function fetchCretaAdScreenInventory(): Promise<
   CretaAdScreenInventoryRow[]
 > {
-  return run(() =>
-    cretaAdScreenInventoryAction(requireToken()),
-  ) as unknown as Promise<CretaAdScreenInventoryRow[]>;
+  return run(() => cretaAdScreenInventoryAction()) as unknown as Promise<
+    CretaAdScreenInventoryRow[]
+  >;
 }
 
 export async function fetchCretaAdDeviceReport(
   days = 30,
 ): Promise<CretaAdDeviceReportRow[]> {
-  return run(() =>
-    cretaAdDeviceReportAction(requireToken(), days),
-  ) as unknown as Promise<CretaAdDeviceReportRow[]>;
+  return run(() => cretaAdDeviceReportAction(days)) as unknown as Promise<
+    CretaAdDeviceReportRow[]
+  >;
 }
 
 /** 소재 순서 이동 — 앞(-1)/뒤(1) */
@@ -373,7 +367,7 @@ export async function moveCretaAdCreative(
   id: number,
   direction: -1 | 1,
 ): Promise<void> {
-  await run(() => moveCretaAdCreativeAction(requireToken(), id, direction));
+  await run(() => moveCretaAdCreativeAction(id, direction));
 }
 
 /** 광고 미디어 업로드 — 성공 시 종류와 /uploads URL 반환 */
@@ -382,5 +376,5 @@ export async function uploadCretaAdMedia(
 ): Promise<{ kind: "image" | "video"; url: string }> {
   const fd = new FormData();
   fd.append("file", file);
-  return run(() => uploadCretaAdMediaAction(requireToken(), fd));
+  return run(() => uploadCretaAdMediaAction(fd));
 }

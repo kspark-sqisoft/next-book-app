@@ -3,9 +3,9 @@
 // 서버측 비디오 렌더 — 시작(잡 생성)·진행 상태 조회. 실제 렌더는 헤드리스 Chromium에서 수행된다.
 import {
   assertPositiveIntId,
-  requireUserFromToken,
   rethrowActionError,
-} from "@/actions/session-token";
+} from "@/actions/action-guards";
+import { requireUser } from "@/server/auth/session";
 import { HttpError } from "@/server/http/http-error";
 import { BooksService } from "@/server/services/books.service";
 import {
@@ -21,13 +21,12 @@ import type {
 } from "@/server/video/twick-render";
 
 export async function startBookVideoRenderAction(
-  accessToken: string | null | undefined,
   bookId: number,
   input: TwickRenderInput,
   settings: TwickRenderSettings,
 ): Promise<{ jobId: string }> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     const id = assertPositiveIntId(bookId);
     await new BooksService().assertBookOwner(id, {
       id: user.sub,
@@ -45,12 +44,11 @@ export async function startBookVideoRenderAction(
 
 /** 업로드된 비디오들을 순서대로 이어붙이는 잡 시작 — 진행 조회는 렌더 잡과 공용 */
 export async function startBookVideoConcatAction(
-  accessToken: string | null | undefined,
   bookId: number,
   urls: string[],
 ): Promise<{ jobId: string }> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     const id = assertPositiveIntId(bookId);
     await new BooksService().assertBookOwner(id, {
       id: user.sub,
@@ -72,11 +70,10 @@ export async function startBookVideoConcatAction(
 }
 
 export async function getBookVideoRenderJobAction(
-  accessToken: string | null | undefined,
   jobId: string,
 ): Promise<RenderJobView> {
   try {
-    await requireUserFromToken(accessToken);
+    await requireUser();
     const job = getRenderJob(jobId);
     if (!job) throw new HttpError(404, "렌더 작업을 찾을 수 없습니다.");
     return toRenderJobView(job);

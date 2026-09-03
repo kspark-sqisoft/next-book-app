@@ -121,7 +121,7 @@ export function CatsPage() {
     mutationFn: async (id: number) => {
       const token = getAccessToken(); // 쿠키/스토리지에서 JWT
       if (!token) throw new Error("로그인이 필요합니다.");
-      await deleteCatAction(token, id);
+      await deleteCatAction(id);
     },
     onSuccess: (_data, deletedId) => {
       toast.success("삭제되었습니다.");
@@ -143,7 +143,7 @@ export function CatsPage() {
     }) => {
       const token = getAccessToken();
       if (!token) throw new Error("로그인이 필요합니다.");
-      const cat = await createCatAction(token, {
+      const cat = await createCatAction({
         name: input.name,
         ...(input.age !== undefined ? { age: input.age } : {}),
         ...(input.breed !== undefined && input.breed !== ""
@@ -153,7 +153,7 @@ export function CatsPage() {
       if (input.image && input.image.size > 0) {
         const fd = new FormData();
         fd.append("image", input.image);
-        return uploadCatImageAction(token, cat.id, fd); // 생성 직후 사진 연결
+        return uploadCatImageAction(cat.id, fd); // 생성 직후 사진 연결
       }
       return cat;
     },

@@ -552,7 +552,7 @@ export async function fetchPostsPage(params?: {
   const search = params?.search?.trim();
   const category = params?.category?.trim();
   return runAction(() =>
-    listPostsAction(getAccessToken(), {
+    listPostsAction({
       take: params?.take ?? POST_PAGE_DEFAULT,
       ...(params?.cursor ? { cursor: params.cursor } : {}),
       ...(search ? { search } : {}),
@@ -565,7 +565,7 @@ export { POST_PAGE_DEFAULT };
 
 /** 단일 글 상세(공개) */
 export async function fetchPost(id: number): Promise<Post> {
-  return runAction(() => getPostAction(getAccessToken(), id));
+  return runAction(() => getPostAction(id));
 }
 
 /** 글 댓글 트리(공개) */
@@ -582,7 +582,7 @@ export async function createPostComment(
 ): Promise<PostComment> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  return runAction(() => createPostCommentAction(token, postId, input));
+  return runAction(() => createPostCommentAction(postId, input));
 }
 
 /** JWT·작성자만 */
@@ -592,21 +592,21 @@ export async function deletePostComment(
 ): Promise<void> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  await runAction(() => deletePostCommentAction(token, postId, commentId));
+  await runAction(() => deletePostCommentAction(postId, commentId));
 }
 
 /** JWT 필요; 응답으로 최종 좋아요 수·내 좋아요 여부 */
 export async function likePost(id: number): Promise<PostLikeState> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  return runAction(() => likePostAction(token, id));
+  return runAction(() => likePostAction(id));
 }
 
 /** JWT 필요 */
 export async function unlikePost(id: number): Promise<PostLikeState> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  return runAction(() => unlikePostAction(token, id));
+  return runAction(() => unlikePostAction(id));
 }
 
 /** JWT 필요; 첨부 순서 = attachmentFiles 순서, posterFiles = 동영상 개수와 동일 */
@@ -631,7 +631,7 @@ export async function createPost(input: {
   }
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  return runAction(() => createPostAction(token, fd));
+  return runAction(() => createPostAction(fd));
 }
 
 /** JWT·작성자만; mediaPlan 없으면 첨부 유지 */
@@ -665,14 +665,14 @@ export async function updatePost(
   }
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  return runAction(() => updatePostAction(token, id, fd));
+  return runAction(() => updatePostAction(id, fd));
 }
 
 /** JWT·작성자만 */
 export async function deletePost(id: number): Promise<void> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  await runAction(() => deletePostAction(token, id));
+  await runAction(() => deletePostAction(id));
 }
 
 // --- Weather (OpenWeatherMap, 서울 — API 키는 백엔드) ---
@@ -924,7 +924,7 @@ export async function createBook(input: {
 }): Promise<BookDetail> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  return runAction(() => createBookAction(token, input as CreateBookDto));
+  return runAction(() => createBookAction(input as CreateBookDto));
 }
 
 export type BookLayoutAiAddWidgetDto = {
@@ -1025,7 +1025,7 @@ export async function fetchBookAiChat(
 ): Promise<BookAiChatLineDto[]> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  const lines = await runAction(() => fetchBookAiChatAction(token, bookId));
+  const lines = await runAction(() => fetchBookAiChatAction(bookId));
   return Array.isArray(lines) ? lines : [];
 }
 
@@ -1043,7 +1043,7 @@ export async function requestBookLayoutAi(body: {
 }): Promise<BookLayoutAiResponse> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  return runAction(() => requestBookLayoutAiAction(token, body));
+  return runAction(() => requestBookLayoutAiAction(body));
 }
 
 export async function updateBook(
@@ -1058,14 +1058,14 @@ export async function updateBook(
 ): Promise<BookDetail> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  return runAction(() => updateBookAction(token, id, input as UpdateBookDto));
+  return runAction(() => updateBookAction(id, input as UpdateBookDto));
 }
 
 /** 공유 대상 회원 목록(로그인 필요) */
 export async function fetchBookShareUsers(): Promise<BookShareUser[]> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  return runAction(() => listBookShareUsersAction(token));
+  return runAction(() => listBookShareUsersAction());
 }
 
 /** 북 공유 추가/해제 — 갱신된 북(sharedUserIds 포함) 반환 */
@@ -1076,7 +1076,7 @@ export async function setBookShare(
 ): Promise<BookDetail> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  return runAction(() => setBookShareAction(token, bookId, userId, shared));
+  return runAction(() => setBookShareAction(bookId, userId, shared));
 }
 
 /** 승인 워크플로 상태 전환 — 갱신된 북 반환 */
@@ -1086,7 +1086,7 @@ export async function setBookStatus(
 ): Promise<BookDetail> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  return runAction(() => setBookStatusAction(token, bookId, status));
+  return runAction(() => setBookStatusAction(bookId, status));
 }
 
 // --- 북 감사 로그(누가 언제 무엇을) ---
@@ -1114,18 +1114,18 @@ export const BOOK_AUDIT_ACTION_LABEL: Record<BookAuditLog["action"], string> = {
 export async function fetchBookAudit(bookId: number): Promise<BookAuditLog[]> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  return runAction(() =>
-    listBookAuditAction(token, bookId),
-  ) as unknown as Promise<BookAuditLog[]>;
+  return runAction(() => listBookAuditAction(bookId)) as unknown as Promise<
+    BookAuditLog[]
+  >;
 }
 
 /** 전체 최근 활동(대시보드, 로그인 필요) */
 export async function fetchRecentBookAudit(): Promise<BookAuditLog[]> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  return runAction(() =>
-    listRecentBookAuditAction(token),
-  ) as unknown as Promise<BookAuditLog[]>;
+  return runAction(() => listRecentBookAuditAction()) as unknown as Promise<
+    BookAuditLog[]
+  >;
 }
 
 /** 북 모든 사용자 공유 켜기/끄기 — 작성자·관리자만 */
@@ -1135,7 +1135,7 @@ export async function setBookShareAll(
 ): Promise<BookDetail> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  return runAction(() => setBookShareAllAction(token, bookId, shared));
+  return runAction(() => setBookShareAllAction(bookId, shared));
 }
 
 // --- 북 미디어 라이브러리(서버 보관 목록 + 파일별 공유) ---
@@ -1163,7 +1163,7 @@ export async function fetchBookMediaLibrary(
 ): Promise<BookMediaLibraryDto> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  return runAction(() => listBookMediaLibraryAction(token, bookId));
+  return runAction(() => listBookMediaLibraryAction(bookId));
 }
 
 /** 업로드 결과를 서버 라이브러리에 기록 — 갱신된 목록 반환 */
@@ -1173,7 +1173,7 @@ export async function addBookMediaLibraryItem(
 ): Promise<BookMediaLibraryDto> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  return runAction(() => addBookMediaLibraryItemAction(token, bookId, input));
+  return runAction(() => addBookMediaLibraryItemAction(bookId, input));
 }
 
 /** 라이브러리 목록에서 제거 — 업로드한 사용자·관리자만 */
@@ -1182,7 +1182,7 @@ export async function removeBookMediaLibraryItem(
 ): Promise<void> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  await runAction(() => removeBookMediaLibraryItemAction(token, mediaId));
+  await runAction(() => removeBookMediaLibraryItemAction(mediaId));
 }
 
 /** 미디어 파일 특정 회원 공유 추가/해제 */
@@ -1193,9 +1193,7 @@ export async function setBookMediaShare(
 ): Promise<void> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  await runAction(() =>
-    setBookMediaShareAction(token, mediaId, userId, shared),
-  );
+  await runAction(() => setBookMediaShareAction(mediaId, userId, shared));
 }
 
 /** 미디어 파일 모든 사용자 공유 켜기/끄기 */
@@ -1205,13 +1203,13 @@ export async function setBookMediaShareAll(
 ): Promise<void> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  await runAction(() => setBookMediaShareAllAction(token, mediaId, shared));
+  await runAction(() => setBookMediaShareAllAction(mediaId, shared));
 }
 
 export async function deleteBook(id: number): Promise<void> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  await runAction(() => deleteBookAction(token, id));
+  await runAction(() => deleteBookAction(id));
 }
 
 export type BookUploadResult = {
@@ -1230,7 +1228,7 @@ export async function uploadBookMedia(
   const fd = new FormData();
   fd.append("file", file);
   if (poster) fd.append("poster", poster);
-  return runAction(() => uploadBookMediaAction(token, bookId, fd));
+  return runAction(() => uploadBookMediaAction(bookId, fd));
 }
 
 // --- 서버측 비디오 렌더(헤드리스 Chromium) ---
@@ -1243,9 +1241,7 @@ export async function startBookVideoRender(
 ): Promise<{ jobId: string }> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  return runAction(() =>
-    startBookVideoRenderAction(token, bookId, input, settings),
-  );
+  return runAction(() => startBookVideoRenderAction(bookId, input, settings));
 }
 
 /** 업로드된 비디오들을 순서대로 이어붙이는 잡 시작 — 진행 조회는 getBookVideoRenderJob 공용 */
@@ -1255,7 +1251,7 @@ export async function startBookVideoConcat(
 ): Promise<{ jobId: string }> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  return runAction(() => startBookVideoConcatAction(token, bookId, urls));
+  return runAction(() => startBookVideoConcatAction(bookId, urls));
 }
 
 /** 렌더 잡 상태·진행률·결과 조회 */
@@ -1264,5 +1260,5 @@ export async function getBookVideoRenderJob(
 ): Promise<RenderJobView> {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-  return runAction(() => getBookVideoRenderJobAction(token, jobId));
+  return runAction(() => getBookVideoRenderJobAction(jobId));
 }

@@ -3,9 +3,9 @@
 // 커뮤니티 댓글 서버 액션 — 조회·수는 공개, 작성·삭제는 로그인
 import {
   assertPositiveIntId,
-  requireUserFromToken,
   rethrowActionError,
-} from "@/actions/session-token";
+} from "@/actions/action-guards";
+import { requireUser } from "@/server/auth/session";
 import {
   assertCretaCommentTargetKind,
   type CretaCommentPublic,
@@ -47,13 +47,12 @@ export async function listCretaCommentCountsAction(
 }
 
 export async function createCretaCommentAction(
-  accessToken: string | null | undefined,
   kind: string,
   targetId: number,
   body: { content: string; parentId?: number | null },
 ): Promise<CretaCommentPublic[]> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     return await new CretaCommentsService().create({
       kind: assertCretaCommentTargetKind(kind),
       targetId: assertPositiveIntId(targetId),
@@ -68,11 +67,10 @@ export async function createCretaCommentAction(
 }
 
 export async function deleteCretaCommentAction(
-  accessToken: string | null | undefined,
   commentId: number,
 ): Promise<{ kind: "book" | "playlist"; targetId: number }> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     return await new CretaCommentsService().remove(
       assertPositiveIntId(commentId),
       { id: user.sub, role: user.role },

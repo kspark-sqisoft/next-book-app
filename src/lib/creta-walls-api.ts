@@ -7,7 +7,7 @@ import {
   setCretaWallMembersAction,
   updateCretaWallAction,
 } from "@/actions/creta-walls";
-import { getAccessToken, humanizeServerActionError } from "@/lib/api";
+import { humanizeServerActionError } from "@/lib/api";
 
 export const CRETA_WALL_MODES = ["tile", "mirror", "multi"] as const;
 export type CretaWallMode = (typeof CRETA_WALL_MODES)[number];
@@ -59,21 +59,15 @@ async function run<T>(call: () => Promise<T>): Promise<T> {
   }
 }
 
-function requireToken(): string {
-  const token = getAccessToken();
-  if (!token) throw new Error("로그인이 필요합니다.");
-  return token;
-}
-
 export async function fetchCretaWalls(): Promise<CretaVideoWall[]> {
-  return run(() => listCretaWallsAction(requireToken())) as unknown as Promise<
+  return run(() => listCretaWallsAction()) as unknown as Promise<
     CretaVideoWall[]
   >;
 }
 
 export async function fetchCretaWall(id: number): Promise<CretaVideoWall> {
   return run(() =>
-    getCretaWallAction(requireToken(), id),
+    getCretaWallAction(id),
   ) as unknown as Promise<CretaVideoWall>;
 }
 
@@ -81,7 +75,7 @@ export async function createCretaWall(input: {
   name: string;
 }): Promise<CretaVideoWall> {
   return run(() =>
-    createCretaWallAction(requireToken(), input),
+    createCretaWallAction(input),
   ) as unknown as Promise<CretaVideoWall>;
 }
 
@@ -97,7 +91,7 @@ export async function updateCretaWall(
   },
 ): Promise<CretaVideoWall> {
   return run(() =>
-    updateCretaWallAction(requireToken(), id, input),
+    updateCretaWallAction(id, input),
   ) as unknown as Promise<CretaVideoWall>;
 }
 
@@ -107,10 +101,10 @@ export async function setCretaWallMembers(
   members: { deviceId: number; isMaster?: boolean; bookId?: number | null }[],
 ): Promise<CretaVideoWall> {
   return run(() =>
-    setCretaWallMembersAction(requireToken(), id, members),
+    setCretaWallMembersAction(id, members),
   ) as unknown as Promise<CretaVideoWall>;
 }
 
 export async function deleteCretaWall(id: number): Promise<void> {
-  await run(() => deleteCretaWallAction(requireToken(), id));
+  await run(() => deleteCretaWallAction(id));
 }

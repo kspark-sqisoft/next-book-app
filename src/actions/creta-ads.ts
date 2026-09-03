@@ -4,9 +4,9 @@
 // 재생 로그(logAdPlay)는 보기 화면에서 익명으로도 쌓여야 해 토큰을 요구하지 않는다.
 import {
   assertPositiveIntId,
-  requireUserFromToken,
   rethrowActionError,
-} from "@/actions/session-token";
+} from "@/actions/action-guards";
+import { requireUser } from "@/server/auth/session";
 import { saveBookMainAndPoster } from "@/server/books/save-book-media";
 import { HttpError } from "@/server/http/http-error";
 import { BooksService } from "@/server/services/books.service";
@@ -33,23 +33,23 @@ function toActor(u: {
 
 const TAG = "creta-ads-actions";
 
-export async function listCretaAdvertisersAction(
-  accessToken: string | null | undefined,
-): Promise<CretaAdvertiserPublic[]> {
+export async function listCretaAdvertisersAction(): Promise<
+  CretaAdvertiserPublic[]
+> {
   try {
-    await requireUserFromToken(accessToken);
+    await requireUser();
     return await new CretaAdsService().listAdvertisers();
   } catch (e) {
     rethrowActionError(e, TAG);
   }
 }
 
-export async function createCretaAdvertiserAction(
-  accessToken: string | null | undefined,
-  input: { name: string; contact?: string },
-): Promise<{ id: number }> {
+export async function createCretaAdvertiserAction(input: {
+  name: string;
+  contact?: string;
+}): Promise<{ id: number }> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     return await new CretaAdsService().createAdvertiser(
       { name: String(input?.name ?? ""), contact: input?.contact },
       toActor(user),
@@ -60,12 +60,11 @@ export async function createCretaAdvertiserAction(
 }
 
 export async function updateCretaAdvertiserAction(
-  accessToken: string | null | undefined,
   advertiserId: number,
   input: { name?: string; contact?: string },
 ): Promise<void> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     await new CretaAdsService().updateAdvertiser(
       assertPositiveIntId(advertiserId),
       input ?? {},
@@ -77,11 +76,10 @@ export async function updateCretaAdvertiserAction(
 }
 
 export async function deleteCretaAdvertiserAction(
-  accessToken: string | null | undefined,
   advertiserId: number,
 ): Promise<void> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     await new CretaAdsService().removeAdvertiser(
       assertPositiveIntId(advertiserId),
       toActor(user),
@@ -91,35 +89,32 @@ export async function deleteCretaAdvertiserAction(
   }
 }
 
-export async function listCretaAdCampaignsAction(
-  accessToken: string | null | undefined,
-): Promise<CretaAdCampaignPublic[]> {
+export async function listCretaAdCampaignsAction(): Promise<
+  CretaAdCampaignPublic[]
+> {
   try {
-    await requireUserFromToken(accessToken);
+    await requireUser();
     return await new CretaAdsService().listCampaigns();
   } catch (e) {
     rethrowActionError(e, TAG);
   }
 }
 
-export async function createCretaAdCampaignAction(
-  accessToken: string | null | undefined,
-  input: {
-    advertiserId: number;
-    name: string;
-    startDate: string;
-    endDate: string;
-    weight?: number;
-    cpm?: number;
-    dayTarget?: string;
-    startMin?: number | null;
-    endMin?: number | null;
-    maxPerHour?: number | null;
-    targetTags?: string[];
-  },
-): Promise<{ id: number }> {
+export async function createCretaAdCampaignAction(input: {
+  advertiserId: number;
+  name: string;
+  startDate: string;
+  endDate: string;
+  weight?: number;
+  cpm?: number;
+  dayTarget?: string;
+  startMin?: number | null;
+  endMin?: number | null;
+  maxPerHour?: number | null;
+  targetTags?: string[];
+}): Promise<{ id: number }> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     return await new CretaAdsService().createCampaign(
       input ?? ({} as never),
       toActor(user),
@@ -130,7 +125,6 @@ export async function createCretaAdCampaignAction(
 }
 
 export async function updateCretaAdCampaignAction(
-  accessToken: string | null | undefined,
   campaignId: number,
   input: {
     name?: string;
@@ -147,7 +141,7 @@ export async function updateCretaAdCampaignAction(
   },
 ): Promise<void> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     await new CretaAdsService().updateCampaign(
       assertPositiveIntId(campaignId),
       input ?? {},
@@ -159,11 +153,10 @@ export async function updateCretaAdCampaignAction(
 }
 
 export async function deleteCretaAdCampaignAction(
-  accessToken: string | null | undefined,
   campaignId: number,
 ): Promise<void> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     await new CretaAdsService().removeCampaign(
       assertPositiveIntId(campaignId),
       toActor(user),
@@ -173,12 +166,14 @@ export async function deleteCretaAdCampaignAction(
   }
 }
 
-export async function addCretaAdCreativeAction(
-  accessToken: string | null | undefined,
-  input: { campaignId: number; name: string; kind: string; src: string },
-): Promise<{ id: number }> {
+export async function addCretaAdCreativeAction(input: {
+  campaignId: number;
+  name: string;
+  kind: string;
+  src: string;
+}): Promise<{ id: number }> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     return await new CretaAdsService().addCreative(
       input ?? ({} as never),
       toActor(user),
@@ -189,11 +184,10 @@ export async function addCretaAdCreativeAction(
 }
 
 export async function deleteCretaAdCreativeAction(
-  accessToken: string | null | undefined,
   creativeId: number,
 ): Promise<void> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     await new CretaAdsService().removeCreative(
       assertPositiveIntId(creativeId),
       toActor(user),
@@ -233,11 +227,10 @@ export async function logCretaAdPlayAction(input: {
 }
 
 export async function cretaAdCampaignReportAction(
-  accessToken: string | null | undefined,
   days?: number,
 ): Promise<Awaited<ReturnType<CretaAdsService["campaignReport"]>>> {
   try {
-    await requireUserFromToken(accessToken);
+    await requireUser();
     return await new CretaAdsService().campaignReport(days ?? 30);
   } catch (e) {
     rethrowActionError(e, TAG);
@@ -253,18 +246,15 @@ export async function getCretaAdSettingAction(): Promise<CretaAdSettingPublic> {
   }
 }
 
-export async function updateCretaAdSettingAction(
-  accessToken: string | null | undefined,
-  input: {
-    loopEveryN?: number;
-    spotSec?: number;
-    houseName?: string;
-    houseKind?: string;
-    houseSrc?: string;
-  },
-): Promise<CretaAdSettingPublic> {
+export async function updateCretaAdSettingAction(input: {
+  loopEveryN?: number;
+  spotSec?: number;
+  houseName?: string;
+  houseKind?: string;
+  houseSrc?: string;
+}): Promise<CretaAdSettingPublic> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     return await new CretaAdsService().updateSetting(
       input ?? {},
       toActor(user),
@@ -275,11 +265,10 @@ export async function updateCretaAdSettingAction(
 }
 
 export async function cretaAdHourlyReportAction(
-  accessToken: string | null | undefined,
   days?: number,
 ): Promise<Awaited<ReturnType<CretaAdsService["hourlyReport"]>>> {
   try {
-    await requireUserFromToken(accessToken);
+    await requireUser();
     return await new CretaAdsService().hourlyReport(days ?? 30);
   } catch (e) {
     rethrowActionError(e, TAG);
@@ -287,11 +276,10 @@ export async function cretaAdHourlyReportAction(
 }
 
 export async function cretaAdSlotReportAction(
-  accessToken: string | null | undefined,
   days?: number,
 ): Promise<Awaited<ReturnType<CretaAdsService["slotReport"]>>> {
   try {
-    await requireUserFromToken(accessToken);
+    await requireUser();
     return await new CretaAdsService().slotReport(days ?? 30);
   } catch (e) {
     rethrowActionError(e, TAG);
@@ -300,12 +288,11 @@ export async function cretaAdSlotReportAction(
 
 /** 소재 심의(관리자 전용) — 승인/반려 */
 export async function reviewCretaAdCreativeAction(
-  accessToken: string | null | undefined,
   creativeId: number,
   decision: "approved" | "rejected",
 ): Promise<void> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     await new CretaAdsService().reviewCreative(
       assertPositiveIntId(creativeId),
       decision,
@@ -317,11 +304,9 @@ export async function reviewCretaAdCreativeAction(
 }
 
 /** 광고 변경 이력(감사 로그) — 최근 30건 */
-export async function listCretaAdAuditAction(
-  accessToken: string | null | undefined,
-): Promise<CretaAdAuditPublic[]> {
+export async function listCretaAdAuditAction(): Promise<CretaAdAuditPublic[]> {
   try {
-    await requireUserFromToken(accessToken);
+    await requireUser();
     return await new CretaAdsService().listAudit(30);
   } catch (e) {
     rethrowActionError(e, TAG);
@@ -329,11 +314,11 @@ export async function listCretaAdAuditAction(
 }
 
 /** 화면 인벤토리(판매 가능량) — 디바이스 × 시간당 노출 능력 */
-export async function cretaAdScreenInventoryAction(
-  accessToken: string | null | undefined,
-): Promise<CretaAdScreenInventory[]> {
+export async function cretaAdScreenInventoryAction(): Promise<
+  CretaAdScreenInventory[]
+> {
   try {
-    await requireUserFromToken(accessToken);
+    await requireUser();
     return await new CretaAdsService().screenInventory();
   } catch (e) {
     rethrowActionError(e, TAG);
@@ -342,11 +327,10 @@ export async function cretaAdScreenInventoryAction(
 
 /** 디바이스별 광고 노출 리포트 */
 export async function cretaAdDeviceReportAction(
-  accessToken: string | null | undefined,
   days?: number,
 ): Promise<Awaited<ReturnType<CretaAdsService["deviceReport"]>>> {
   try {
-    await requireUserFromToken(accessToken);
+    await requireUser();
     return await new CretaAdsService().deviceReport(days ?? 30);
   } catch (e) {
     rethrowActionError(e, TAG);
@@ -355,12 +339,11 @@ export async function cretaAdDeviceReportAction(
 
 /** 소재 순서 이동 — 같은 캠페인 안에서 앞(-1)/뒤(1) */
 export async function moveCretaAdCreativeAction(
-  accessToken: string | null | undefined,
   creativeId: number,
   direction: -1 | 1,
 ): Promise<void> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     await new CretaAdsService().moveCreative(
       assertPositiveIntId(creativeId),
       direction === -1 ? -1 : 1,
@@ -373,11 +356,10 @@ export async function moveCretaAdCreativeAction(
 
 /** 광고 소재·하우스 광고 미디어 업로드 — 북 업로드 저장소를 재사용(로그인 필요) */
 export async function uploadCretaAdMediaAction(
-  accessToken: string | null | undefined,
   formData: FormData,
 ): Promise<{ kind: "image" | "video"; url: string }> {
   try {
-    await requireUserFromToken(accessToken);
+    await requireUser();
     const file = formData.get("file");
     if (!(file instanceof File) || file.size === 0) {
       throw new HttpError(400, "file 필드가 필요합니다.");

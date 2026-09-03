@@ -5,7 +5,7 @@ import {
   listCretaCommentCountsAction,
   listCretaCommentsAction,
 } from "@/actions/creta-comments";
-import { getAccessToken, humanizeServerActionError } from "@/lib/api";
+import { humanizeServerActionError } from "@/lib/api";
 
 export type CretaCommentTargetKind = "book" | "playlist";
 
@@ -23,12 +23,6 @@ async function run<T>(call: () => Promise<T>): Promise<T> {
   } catch (e) {
     throw humanizeServerActionError(e);
   }
-}
-
-function requireToken(): string {
-  const token = getAccessToken();
-  if (!token) throw new Error("로그인이 필요합니다.");
-  return token;
 }
 
 export async function fetchCretaComments(
@@ -54,14 +48,14 @@ export async function createCretaComment(
   body: { content: string; parentId?: number | null },
 ): Promise<CretaComment[]> {
   return run(() =>
-    createCretaCommentAction(requireToken(), kind, targetId, body),
+    createCretaCommentAction(kind, targetId, body),
   ) as unknown as CretaComment[];
 }
 
 export async function deleteCretaComment(
   commentId: number,
 ): Promise<{ kind: CretaCommentTargetKind; targetId: number }> {
-  return run(() => deleteCretaCommentAction(requireToken(), commentId));
+  return run(() => deleteCretaCommentAction(commentId));
 }
 
 /** 전체 댓글 수(답글 포함) */

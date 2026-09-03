@@ -3,9 +3,8 @@
 // 북 CRUD·미디어 업로드·레이아웃 AI 관련 서버 액션
 import {
   assertPositiveIntId,
-  requireUserFromToken,
   rethrowActionError,
-} from "@/actions/session-token";
+} from "@/actions/action-guards";
 import type {
   BookAiChatLineDto,
   BookDetail,
@@ -13,6 +12,7 @@ import type {
   BooksPageResponse,
   BookUploadResult,
 } from "@/lib/api";
+import { requireUser } from "@/server/auth/session";
 import { saveBookMainAndPoster } from "@/server/books/save-book-media";
 import { HttpError } from "@/server/http/http-error";
 import { BookAiService } from "@/server/services/book-ai.service";
@@ -68,11 +68,10 @@ export async function getBookAction(bookId: number): Promise<BookDetail> {
 }
 
 export async function createBookAction(
-  accessToken: string | null | undefined,
   body: CreateBookDto,
 ): Promise<BookDetail> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     const books = new BooksService();
     return (await books.create(user.sub, body)) as unknown as BookDetail;
   } catch (e) {
@@ -81,12 +80,11 @@ export async function createBookAction(
 }
 
 export async function updateBookAction(
-  accessToken: string | null | undefined,
   bookId: number,
   body: UpdateBookDto,
 ): Promise<BookDetail> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     const id = assertPositiveIntId(bookId);
     const books = new BooksService();
     return (await books.update(
@@ -100,11 +98,11 @@ export async function updateBookAction(
 }
 
 /** 공유 대상 회원 목록(로그인 필요) */
-export async function listBookShareUsersAction(
-  accessToken: string | null | undefined,
-): Promise<BookShareUserPublic[]> {
+export async function listBookShareUsersAction(): Promise<
+  BookShareUserPublic[]
+> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     return await new BooksService().listShareableUsers(user.email);
   } catch (e) {
     rethrowActionError(e, "books-actions");
@@ -113,13 +111,12 @@ export async function listBookShareUsersAction(
 
 /** 북 공유 추가/해제 — 작성자·관리자만 */
 export async function setBookShareAction(
-  accessToken: string | null | undefined,
   bookId: number,
   userId: number,
   shared: boolean,
 ): Promise<BookDetail> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     const id = assertPositiveIntId(bookId);
     const target = assertPositiveIntId(userId);
     return (await new BooksService().setShare(
@@ -135,12 +132,11 @@ export async function setBookShareAction(
 
 /** 북 모든 사용자 공유 켜기/끄기 — 작성자·관리자만 */
 export async function setBookShareAllAction(
-  accessToken: string | null | undefined,
   bookId: number,
   shared: boolean,
 ): Promise<BookDetail> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     const id = assertPositiveIntId(bookId);
     return (await new BooksService().setShareAll(
       id,
@@ -154,12 +150,11 @@ export async function setBookShareAllAction(
 
 /** 승인 워크플로 상태 전환(권한 검증은 서비스에서) */
 export async function setBookStatusAction(
-  accessToken: string | null | undefined,
   bookId: number,
   status: "draft" | "review" | "published",
 ): Promise<BookDetail> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     const id = assertPositiveIntId(bookId);
     return (await new BooksService().setStatus(
       id,
@@ -173,11 +168,10 @@ export async function setBookStatusAction(
 
 /** 한 북의 감사 로그(로그인 필요) */
 export async function listBookAuditAction(
-  accessToken: string | null | undefined,
   bookId: number,
 ): Promise<BookAuditLogPublic[]> {
   try {
-    await requireUserFromToken(accessToken);
+    await requireUser();
     return await new BookAuditService().listForBook(
       assertPositiveIntId(bookId),
     );
@@ -187,23 +181,20 @@ export async function listBookAuditAction(
 }
 
 /** 전체 최근 활동(대시보드, 로그인 필요) */
-export async function listRecentBookAuditAction(
-  accessToken: string | null | undefined,
-): Promise<BookAuditLogPublic[]> {
+export async function listRecentBookAuditAction(): Promise<
+  BookAuditLogPublic[]
+> {
   try {
-    await requireUserFromToken(accessToken);
+    await requireUser();
     return await new BookAuditService().listRecent(20);
   } catch (e) {
     rethrowActionError(e, "books-actions");
   }
 }
 
-export async function deleteBookAction(
-  accessToken: string | null | undefined,
-  bookId: number,
-): Promise<void> {
+export async function deleteBookAction(bookId: number): Promise<void> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     const id = assertPositiveIntId(bookId);
     const books = new BooksService();
     await books.remove(id, { id: user.sub, role: user.role });
@@ -214,12 +205,11 @@ export async function deleteBookAction(
 
 // 슬라이드에 넣을 이미지/동영상 + 동영상일 때 포스터 파일
 export async function uploadBookMediaAction(
-  accessToken: string | null | undefined,
   bookId: number,
   formData: FormData,
 ): Promise<BookUploadResult> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     const id = assertPositiveIntId(bookId);
     const books = new BooksService();
     await books.assertBookOwner(id, { id: user.sub, role: user.role });
@@ -250,11 +240,10 @@ export async function uploadBookMediaAction(
 
 // 북별 레이아웃 AI 대화 기록
 export async function fetchBookAiChatAction(
-  accessToken: string | null | undefined,
   bookId: number,
 ): Promise<BookAiChatLineDto[]> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     const id = assertPositiveIntId(bookId);
     const ai = new BookAiService();
     const lines = await ai.listLayoutChat(id, {
@@ -268,20 +257,17 @@ export async function fetchBookAiChatAction(
 }
 
 // 자연어 → 배치 JSON 등; bookId 있으면 턴을 DB에 남김
-export async function requestBookLayoutAiAction(
-  accessToken: string | null | undefined,
-  body: {
-    message: string;
-    slideWidth: number;
-    slideHeight: number;
-    pageCount: number;
-    activeSlideIndex: number;
-    selection?: { elementId: string; kind: "image" | "video" };
-    bookId?: number;
-  },
-): Promise<BookLayoutAiResponse> {
+export async function requestBookLayoutAiAction(body: {
+  message: string;
+  slideWidth: number;
+  slideHeight: number;
+  pageCount: number;
+  activeSlideIndex: number;
+  selection?: { elementId: string; kind: "image" | "video" };
+  bookId?: number;
+}): Promise<BookLayoutAiResponse> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     const ai = new BookAiService();
     const result = await ai.interpretLayoutIntent({
       message: body.message ?? "",

@@ -3,9 +3,9 @@
 // 비디오월 서버 액션 — 조회 공개, 변경 로그인(다른 크레타 도메인과 동일 정책)
 import {
   assertPositiveIntId,
-  requireUserFromToken,
   rethrowActionError,
-} from "@/actions/session-token";
+} from "@/actions/action-guards";
+import { requireUser } from "@/server/auth/session";
 import {
   type CretaVideoWallPublic,
   CretaWallsService,
@@ -13,11 +13,9 @@ import {
 
 const TAG = "creta-walls-actions";
 
-export async function listCretaWallsAction(
-  accessToken: string | null | undefined,
-): Promise<CretaVideoWallPublic[]> {
+export async function listCretaWallsAction(): Promise<CretaVideoWallPublic[]> {
   try {
-    await requireUserFromToken(accessToken);
+    await requireUser();
     return await new CretaWallsService().list();
   } catch (e) {
     rethrowActionError(e, TAG);
@@ -25,23 +23,21 @@ export async function listCretaWallsAction(
 }
 
 export async function getCretaWallAction(
-  accessToken: string | null | undefined,
   wallId: number,
 ): Promise<CretaVideoWallPublic> {
   try {
-    await requireUserFromToken(accessToken);
+    await requireUser();
     return await new CretaWallsService().get(assertPositiveIntId(wallId));
   } catch (e) {
     rethrowActionError(e, TAG);
   }
 }
 
-export async function createCretaWallAction(
-  accessToken: string | null | undefined,
-  input: { name: string },
-): Promise<CretaVideoWallPublic> {
+export async function createCretaWallAction(input: {
+  name: string;
+}): Promise<CretaVideoWallPublic> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     return await new CretaWallsService().create(
       { name: String(input?.name ?? "") },
       user.sub,
@@ -52,7 +48,6 @@ export async function createCretaWallAction(
 }
 
 export async function updateCretaWallAction(
-  accessToken: string | null | undefined,
   wallId: number,
   input: {
     name?: string;
@@ -64,7 +59,7 @@ export async function updateCretaWallAction(
   },
 ): Promise<CretaVideoWallPublic> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     return await new CretaWallsService().update(
       assertPositiveIntId(wallId),
       input ?? {},
@@ -77,12 +72,11 @@ export async function updateCretaWallAction(
 
 /** 멤버 전체 교체 — 배열 순서 = 타일 위치 */
 export async function setCretaWallMembersAction(
-  accessToken: string | null | undefined,
   wallId: number,
   members: { deviceId: number; isMaster?: boolean; bookId?: number | null }[],
 ): Promise<CretaVideoWallPublic> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     return await new CretaWallsService().setMembers(
       assertPositiveIntId(wallId),
       Array.isArray(members) ? members : [],
@@ -93,12 +87,9 @@ export async function setCretaWallMembersAction(
   }
 }
 
-export async function deleteCretaWallAction(
-  accessToken: string | null | undefined,
-  wallId: number,
-): Promise<void> {
+export async function deleteCretaWallAction(wallId: number): Promise<void> {
   try {
-    const user = await requireUserFromToken(accessToken);
+    const user = await requireUser();
     await new CretaWallsService().remove(assertPositiveIntId(wallId), {
       id: user.sub,
       role: user.role,
