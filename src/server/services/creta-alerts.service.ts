@@ -1,3 +1,5 @@
+import "server-only";
+
 // 긴급 알림 서비스: 대상 디바이스의 현재 재생을 덮어쓰는 공지.
 // 한 번에 하나만 활성 — 새 알림을 발송하면 기존 활성 알림은 자동 종료된다.
 import { desc, eq, inArray } from "drizzle-orm";

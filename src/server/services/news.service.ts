@@ -1,3 +1,5 @@
+import "server-only";
+
 // NewsAPI 프록시: 국가·카테고리별 헤드라인
 import { HttpError } from "@/server/http/http-error";
 

@@ -1,3 +1,5 @@
+import "server-only";
+
 // Pexels API: 사진·동영상 검색 URL 반환
 type PexelsSearchJson = {
   photos?: {

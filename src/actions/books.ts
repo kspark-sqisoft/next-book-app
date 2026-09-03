@@ -1,5 +1,7 @@
 "use server";
 
+import "server-only";
+
 // 북 CRUD·미디어 업로드·레이아웃 AI 관련 서버 액션
 import {
   assertPositiveIntId,

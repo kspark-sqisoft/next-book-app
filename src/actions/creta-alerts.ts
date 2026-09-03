@@ -1,5 +1,7 @@
 "use server";
 
+import "server-only";
+
 // 긴급 알림 서버 액션: 조회는 공개, 발송·해제는 로그인 필요(디바이스 관리와 동일 정책)
 import { rethrowActionError } from "@/actions/action-guards";
 import { requireAdmin, requireUser } from "@/server/auth/session";

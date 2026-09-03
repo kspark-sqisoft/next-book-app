@@ -1,3 +1,5 @@
+import "server-only";
+
 // 커뮤니티 좋아요: 북·플레이리스트 대상 토글, 대상별 개수 + 내가 눌렀는지
 import { and, count, eq, inArray } from "drizzle-orm";
 

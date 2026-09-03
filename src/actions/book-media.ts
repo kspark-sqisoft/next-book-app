@@ -1,5 +1,7 @@
 "use server";
 
+import "server-only";
+
 // 북 미디어 라이브러리 서버 액션: 목록·추가·삭제·파일별 공유(특정 회원/모든 사용자)
 import {
   assertPositiveIntId,

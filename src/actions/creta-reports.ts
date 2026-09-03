@@ -1,5 +1,7 @@
 "use server";
 
+import "server-only";
+
 // 재생 리포트(Proof-of-Play) 서버 액션 — 운영 지표라 로그인 필요(재생 경로만 비로그인 허용)
 import { rethrowActionError } from "@/actions/action-guards";
 import { requireUser } from "@/server/auth/session";

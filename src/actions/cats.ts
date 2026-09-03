@@ -1,6 +1,8 @@
 // Next.js 서버 액션 모듈로 표시(클라이언트 번들에 포함되지 않게)
 "use server";
 
+import "server-only";
+
 import { join } from "node:path";
 
 // 요청 헤더에서 IP·UA 등 읽기

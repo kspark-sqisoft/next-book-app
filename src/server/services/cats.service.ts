@@ -1,3 +1,5 @@
+import "server-only";
+
 // node:fs — 디스크에 저장된 고양이 이미지 파일 삭제용
 import { unlink } from "node:fs/promises";
 // 업로드 디렉터리와 DB의 파일명을 합칠 때 사용

@@ -1,3 +1,5 @@
+import "server-only";
+
 // 비디오월(시뮬레이션) 서비스 — 디바이스 묶음·모드(tile/mirror/multi)·마스터 관리.
 // 실제 플레이어가 없어 재생 동기는 월 상세 미리보기가 공통 클록으로 시뮬레이션한다.
 import { asc, eq, inArray } from "drizzle-orm";

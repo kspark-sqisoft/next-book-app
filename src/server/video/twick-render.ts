@@ -1,3 +1,5 @@
+import "server-only";
+
 // 서버측 Twick 렌더 — 헤드리스 Chromium(Playwright)으로 앱 내부 /internal/render 페이지를
 // secure context(127.0.0.1)에서 열어 WebCodecs 렌더를 실행하고 MP4 바이트를 회수한다.
 //

@@ -1,3 +1,5 @@
+import "server-only";
+
 // 사용자 프로필·관리자 목록·부트스트랩 admin 이메일
 import { existsSync } from "node:fs";
 import { unlink } from "node:fs/promises";

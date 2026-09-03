@@ -1,3 +1,5 @@
+import "server-only";
+
 // 서버 액션 공통 가드 — 입력 정규화와 오류 변환.
 // 신원 확인은 여기 없다. 호출자가 넘긴 토큰이 아니라 쿠키에서 읽어야 하므로
 // `@/server/auth/session` 의 requireUser·requireAdmin·getCurrentUser 를 쓴다.

@@ -1,5 +1,7 @@
 "use server";
 
+import "server-only";
+
 // 비디오월 서버 액션 — 조회 공개, 변경 로그인(다른 크레타 도메인과 동일 정책)
 import {
   assertPositiveIntId,

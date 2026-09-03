@@ -1,5 +1,7 @@
 "use server";
 
+import "server-only";
+
 // 커뮤니티 댓글 서버 액션 — 조회·수는 공개, 작성·삭제는 로그인
 import {
   assertPositiveIntId,

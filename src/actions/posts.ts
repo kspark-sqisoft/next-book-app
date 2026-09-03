@@ -1,5 +1,7 @@
 "use server";
 
+import "server-only";
+
 // 글·댓글·좋아요 서버 액션 — 클라이언트는 주로 React Query와 함께 호출
 import {
   assertPositiveIntId,

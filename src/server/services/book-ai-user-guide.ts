@@ -1,3 +1,5 @@
+import "server-only";
+
 /**
  * 북 레이아웃 AI 시스템 프롬프트에 넣는 **사실 기반** 사용자 가이드.
  * 제품 동작과 어긋나면 안 되므로 스키마·한도·MIME는 코드(book-upload.options, books.service 등)와 맞출 것.

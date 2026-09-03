@@ -1,3 +1,5 @@
+import "server-only";
+
 // Drizzle + postgres-js 드라이버
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";

@@ -1,5 +1,7 @@
 "use server";
 
+import "server-only";
+
 // 커뮤니티 좋아요 서버 액션 — 개수 조회는 공개(토큰 있으면 내가 눌렀는지 포함), 토글은 로그인
 import {
   assertPositiveIntId,

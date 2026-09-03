@@ -1,3 +1,5 @@
+import "server-only";
+
 // 크레타 사이니지 도메인 서비스: 플레이리스트·스케줄·디바이스 CRUD와
 // 썸네일(북 첫 페이지 커버) 해석. 디바이스의 IP·플레이어 버전 등은 시뮬레이션 파생값.
 import { and, asc, count, desc, eq, inArray } from "drizzle-orm";

@@ -1,3 +1,5 @@
+import "server-only";
+
 // 북 편집용 OpenAI 채팅·툴(Pexels)·히스토리 영속
 import { desc, eq } from "drizzle-orm";
 

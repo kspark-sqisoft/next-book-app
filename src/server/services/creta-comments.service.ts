@@ -1,3 +1,5 @@
+import "server-only";
+
 // 커뮤니티 댓글: 북·플레이리스트에 대한 2단 댓글(루트 + 답글). 작성은 로그인, 삭제는 작성자·관리자.
 import { and, asc, count, eq, inArray, isNull } from "drizzle-orm";
 

@@ -1,3 +1,5 @@
+import "server-only";
+
 // 북 미디어 라이브러리 서비스: 업로드 파일 목록을 서버에 보관하고
 // 파일별로 특정 회원·모든 사용자에게 공유한다. 파일 실체는 디스크(/uploads)·행 삭제는 목록 제거만.
 import { and, desc, eq, inArray, ne, or } from "drizzle-orm";

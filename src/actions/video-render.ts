@@ -1,5 +1,7 @@
 "use server";
 
+import "server-only";
+
 // 서버측 비디오 렌더 — 시작(잡 생성)·진행 상태 조회. 실제 렌더는 헤드리스 Chromium에서 수행된다.
 import {
   assertPositiveIntId,

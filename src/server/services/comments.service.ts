@@ -1,3 +1,5 @@
+import "server-only";
+
 // 글 댓글 트리·작성/삭제 권한
 import { and, asc, eq, sql } from "drizzle-orm";
 

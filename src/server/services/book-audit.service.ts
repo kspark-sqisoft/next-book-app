@@ -1,3 +1,5 @@
+import "server-only";
+
 // 북 감사 로그 서비스 — 생성·저장·공유·상태 변경·삭제 이력을 기록하고 조회한다.
 // 기록 실패가 본 작업을 막지 않도록 log()는 오류를 삼킨다.
 import { desc, eq, inArray } from "drizzle-orm";
