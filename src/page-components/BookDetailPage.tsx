@@ -2255,43 +2255,37 @@ function BookDetailOwnerView({
                   onElementChange={onElementChange}
                   onElementsChange={onElementsChange}
                   keyboardShortcutsDisabled={editorOverlayOpen || readOnly}
-                  onDropWidget={onDropWidget}
-                  onDropShape={onDropShape}
-                  onDropLibraryMedia={onDropLibraryMedia}
                   onReorderZ={onReorderZ}
                   onDeleteElement={requestRemoveWidget}
                   centerGuideThresholdPx={centerGuideThresholdPx}
                   dragGridPx={dragGridPx}
-                  editInteractionTool={
-                    leftDockTab === "drawing" ? "draw" : "default"
-                  }
-                  drawingStrokeColor={drawingStrokeColor}
-                  drawingStrokeWidth={drawingStrokeWidth}
-                  onAppendElement={onAppendDrawingElement}
-                  onRequestReplaceMediaFromFile={onRequestReplaceMediaFromFile}
-                  onRequestPickLibraryMediaForReplace={
-                    onRequestPickLibraryMediaForReplace
-                  }
-                  onRequestPlaylistAppendFromFile={
-                    onRequestPlaylistAppendFromFile
-                  }
-                  onRequestPlaylistAppendFromLibrary={
-                    onRequestPlaylistAppendFromLibrary
-                  }
-                  mediaLibraryReplaceEnabled
-                  onMediaPlaylistPlaybackIndexChange={
-                    handleMediaPlaylistPlaybackIndex
-                  }
-                  onMediaPlaylistPlaybackUiReport={
-                    handleMediaPlaylistPlaybackUiReport
-                  }
-                  mediaPlaylistRemoteCommand={playlistRemoteCmd}
-                  onMediaPlaylistRemoteCommandConsumed={clearPlaylistRemoteCmd}
-                  onVideoDurationKnown={handleVideoDurationKnown}
-                  onCopyElement={copyElementOrSelection}
-                  onCutElement={cutElementOrSelection}
-                  onPasteFromClipboard={pasteWidgetClipboard}
-                  widgetClipboardHasContent={widgetClipboardHasContent}
+                  drop={{ onDropWidget, onDropShape, onDropLibraryMedia }}
+                  drawing={{
+                    tool: leftDockTab === "drawing" ? "draw" : "default",
+                    strokeColor: drawingStrokeColor,
+                    strokeWidth: drawingStrokeWidth,
+                    onAppendElement: onAppendDrawingElement,
+                  }}
+                  media={{
+                    onRequestReplaceMediaFromFile,
+                    onRequestPickLibraryMediaForReplace,
+                    onRequestPlaylistAppendFromFile,
+                    onRequestPlaylistAppendFromLibrary,
+                    libraryReplaceEnabled: true,
+                    onPlaylistPlaybackIndexChange:
+                      handleMediaPlaylistPlaybackIndex,
+                    onPlaylistPlaybackUiReport:
+                      handleMediaPlaylistPlaybackUiReport,
+                    playlistRemoteCommand: playlistRemoteCmd,
+                    onPlaylistRemoteCommandConsumed: clearPlaylistRemoteCmd,
+                    onVideoDurationKnown: handleVideoDurationKnown,
+                  }}
+                  clipboard={{
+                    onCopyElement: copyElementOrSelection,
+                    onCutElement: cutElementOrSelection,
+                    onPaste: pasteWidgetClipboard,
+                    hasContent: widgetClipboardHasContent,
+                  }}
                 />
                 {/* 다른 페이지의 공통 위젯 고스트 — 위치 참고용(반투명·클릭 불가) */}
                 {editorOverlayGhosts.length > 0 ? (

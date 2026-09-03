@@ -1054,33 +1054,32 @@ export function BookEditorPage() {
                     onSelect={handleCanvasSelect}
                     onElementChange={onElementChange}
                     onElementsChange={onElementsChange}
-                    onDropWidget={onDropWidget}
-                    onDropShape={onDropShape}
                     onReorderZ={onReorderZ}
                     onDeleteElement={requestRemoveWidget}
                     centerGuideThresholdPx={centerGuideThresholdPx}
                     dragGridPx={dragGridPx}
-                    editInteractionTool={
-                      leftDockTab === "drawing" ? "draw" : "default"
-                    }
-                    drawingStrokeColor={drawingStrokeColor}
-                    drawingStrokeWidth={drawingStrokeWidth}
-                    onAppendElement={onAppendDrawingElement}
-                    onMediaPlaylistPlaybackIndexChange={
-                      handleMediaPlaylistPlaybackIndex
-                    }
-                    onMediaPlaylistPlaybackUiReport={
-                      handleMediaPlaylistPlaybackUiReport
-                    }
-                    mediaPlaylistRemoteCommand={playlistRemoteCmd}
-                    onMediaPlaylistRemoteCommandConsumed={
-                      clearPlaylistRemoteCmd
-                    }
-                    onCopyElement={copyElementOrSelection}
-                    onCutElement={cutElementOrSelection}
-                    onPasteFromClipboard={pasteWidgetClipboard}
-                    widgetClipboardHasContent={widgetClipboardHasContent}
-                    onVideoDurationKnown={handleVideoDurationKnown}
+                    drop={{ onDropWidget, onDropShape }}
+                    drawing={{
+                      tool: leftDockTab === "drawing" ? "draw" : "default",
+                      strokeColor: drawingStrokeColor,
+                      strokeWidth: drawingStrokeWidth,
+                      onAppendElement: onAppendDrawingElement,
+                    }}
+                    media={{
+                      onPlaylistPlaybackIndexChange:
+                        handleMediaPlaylistPlaybackIndex,
+                      onPlaylistPlaybackUiReport:
+                        handleMediaPlaylistPlaybackUiReport,
+                      playlistRemoteCommand: playlistRemoteCmd,
+                      onPlaylistRemoteCommandConsumed: clearPlaylistRemoteCmd,
+                      onVideoDurationKnown: handleVideoDurationKnown,
+                    }}
+                    clipboard={{
+                      onCopyElement: copyElementOrSelection,
+                      onCutElement: cutElementOrSelection,
+                      onPaste: pasteWidgetClipboard,
+                      hasContent: widgetClipboardHasContent,
+                    }}
                   />
                 ) : null}
               </div>

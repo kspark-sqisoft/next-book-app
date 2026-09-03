@@ -554,7 +554,7 @@ function BookPresentationInner({
           selectedIds={[]}
           onSelect={() => undefined}
           onElementChange={() => undefined}
-          onVideoDurationKnown={onVideoDurationKnown}
+          media={{ onVideoDurationKnown }}
           viewModeHideMediaChrome={isBrowserFullscreen && hideCursorAfterIdle}
         />
       </div>

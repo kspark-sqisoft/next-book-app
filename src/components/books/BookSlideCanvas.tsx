@@ -238,6 +238,79 @@ import type { BookDropWidgetKind } from "@/features/book/book-canvas";
 /** `id: null` = 선택 해제. `shiftKey` = 기존 선택에 토글 추가 */
 export type BookCanvasSelectDetail = { id: string | null; shiftKey?: boolean };
 
+/**
+ * 캔버스가 받던 41개 props 중 성격이 같은 22개를 네 묶음으로 나눴다.
+ *
+ * 호출부(북 상세·새 북·프레젠테이션)가 이 컴포넌트를 부를 때 이름 35개를 늘어놓고 있었고,
+ * 어느 것이 함께 다녀야 하는지 읽어낼 방법이 없었다. 묶음은 **화면마다 통째로 있고 없는**
+ * 단위이기도 하다 — 예를 들어 새 북 화면은 저장 전이라 `media` 전체가 없다.
+ *
+ * 컴포넌트 안에서는 파라미터에서 중첩 구조분해로 풀어 쓰므로 본문 코드는 그대로다.
+ */
+export type BookSlideCanvasMediaProps = {
+  /** 이미지·동영상: 우클릭 → 탐색기로 파일 선택 후 업로드·교체 */
+  onRequestReplaceMediaFromFile?: (
+    req: BookReplaceMediaFromFileRequest,
+  ) => void;
+  /** 이미지·동영상: 우클릭 → 미디어 라이브러리에서 선택해 교체 */
+  onRequestPickLibraryMediaForReplace?: (req: { elementId: string }) => void;
+  /** 미디어 플레이리스트: 우클릭 → 파일 선택 후 목록 끝에 추가 */
+  onRequestPlaylistAppendFromFile?: (elementId: string) => void;
+  /** 미디어 플레이리스트: 우클릭 → 라이브러리에서 선택해 목록 끝에 추가 */
+  onRequestPlaylistAppendFromLibrary?: (elementId: string) => void;
+  /** `false`면 라이브러리 교체 메뉴 숨김(예: `/books/new`) */
+  libraryReplaceEnabled?: boolean;
+  /** 미디어 플레이리스트 재생 중 항목 인덱스(속성 패널 하이라이트) */
+  onPlaylistPlaybackIndexChange?: (elementId: string, index: number) => void;
+  /** 선택된 플레이리스트 위젯 재생 UI(속성 패널 미니 컨트롤) */
+  onPlaylistPlaybackUiReport?: (
+    elementId: string,
+    payload: BookMediaPlaylistPlaybackUiSnapshot,
+  ) => void;
+  playlistRemoteCommand?: BookMediaPlaylistRemoteCommand | null;
+  onPlaylistRemoteCommandConsumed?: () => void;
+  /** 동영상 위젯 메타데이터 로드 후 재생 길이(초) — 속성 패널 표시용 */
+  onVideoDurationKnown?: (elementId: string, durationSec: number) => void;
+};
+
+export type BookSlideCanvasClipboardProps = {
+  /** 클릭한 위젯(선택에 포함돼 있으면 선택 전체) */
+  onCopyElement?: (elementId: string) => void;
+  /** 확인 없이 즉시 제거(undo 가능) */
+  onCutElement?: (elementId: string) => void;
+  /** 페이지 규칙(같은 페이지 오프셋·다른 페이지 같은 좌표)은 페이지가 처리 */
+  onPaste?: () => void;
+  /** 붙여넣기 메뉴 활성화 여부(내부 클립보드에 내용 있음) */
+  hasContent?: boolean;
+};
+
+export type BookSlideCanvasDrawingProps = {
+  /** `draw`: 슬라이드에서 자유 곡선(그 외는 선택·드래그) */
+  tool?: "default" | "draw";
+  strokeColor?: string;
+  strokeWidth?: number;
+  /** 새 요소 추가(자유 그리기 확정 시) */
+  onAppendElement?: (el: BookCanvasElement) => void;
+};
+
+export type BookSlideCanvasDropProps = {
+  /** 팔레트 위젯 */
+  onDropWidget?: (
+    point: { x: number; y: number },
+    kind: BookDropWidgetKind,
+  ) => void;
+  /** Elements 도형 */
+  onDropShape?: (
+    point: { x: number; y: number },
+    shapeKind: BookShapeKind,
+  ) => void;
+  /** 미디어 라이브러리에서 업로드된 URL */
+  onDropLibraryMedia?: (
+    point: { x: number; y: number },
+    payload: BookLibraryDragPayload,
+  ) => void;
+};
+
 type BookSlideCanvasProps = {
   pageWidth: number;
   pageHeight: number;
@@ -263,21 +336,8 @@ type BookSlideCanvasProps = {
   onElementsChange?: (
     patches: { id: string; patch: Partial<BookCanvasElement> }[],
   ) => void;
-  /** 편집 모드에서 팔레트 위젯을 캔버스로 드롭 */
-  onDropWidget?: (
-    point: { x: number; y: number },
-    kind: BookDropWidgetKind,
-  ) => void;
-  /** 편집 모드에서 Elements 도형을 캔버스로 드롭 */
-  onDropShape?: (
-    point: { x: number; y: number },
-    shapeKind: BookShapeKind,
-  ) => void;
-  /** 편집 모드: 미디어 라이브러리에서 업로드된 URL을 슬라이드에 배치 */
-  onDropLibraryMedia?: (
-    point: { x: number; y: number },
-    payload: BookLibraryDragPayload,
-  ) => void;
+  /** 팔레트·도형·라이브러리 미디어를 캔버스에 떨어뜨렸을 때 */
+  drop?: BookSlideCanvasDropProps;
   /** 편집 모드: 요소 배열 순서(앞=아래, 뒤=위) 조정 — 저장됨 */
   onReorderZ?: (elementId: string, op: ElementZOrderOp) => void;
   /** 편집 모드: 요소 우클릭 메뉴에서 삭제 */
@@ -286,46 +346,12 @@ type BookSlideCanvasProps = {
   centerGuideThresholdPx?: number;
   /** 드래그 스냅 그리드 간격(논리 px). 미지정 시 `BOOK_CANVAS_DRAG_GRID_PX` */
   dragGridPx?: number;
-  /** `draw`: 슬라이드에서 자유 곡선(그 외는 선택·드래그) */
-  editInteractionTool?: "default" | "draw";
-  drawingStrokeColor?: string;
-  drawingStrokeWidth?: number;
-  /** 새 요소 추가(자유 그리기 확정 시) */
-  onAppendElement?: (el: BookCanvasElement) => void;
-  /** 이미지·동영상: 우클릭 → 탐색기로 파일 선택 후 업로드·교체 */
-  onRequestReplaceMediaFromFile?: (
-    req: BookReplaceMediaFromFileRequest,
-  ) => void;
-  /** 이미지·동영상: 우클릭 → 미디어 라이브러리에서 선택해 교체 */
-  onRequestPickLibraryMediaForReplace?: (req: { elementId: string }) => void;
-  /** 미디어 플레이리스트: 우클릭 → 파일 선택 후 목록 끝에 추가 */
-  onRequestPlaylistAppendFromFile?: (elementId: string) => void;
-  /** 미디어 플레이리스트: 우클릭 → 라이브러리에서 선택해 목록 끝에 추가 */
-  onRequestPlaylistAppendFromLibrary?: (elementId: string) => void;
-  /** `false`면 라이브러리 교체 메뉴 숨김(예: `/books/new`) */
-  mediaLibraryReplaceEnabled?: boolean;
-  /** 미디어 플레이리스트 재생 중 항목 인덱스(속성 패널 하이라이트) */
-  onMediaPlaylistPlaybackIndexChange?: (
-    elementId: string,
-    index: number,
-  ) => void;
-  /** 선택된 플레이리스트 위젯 재생 UI(속성 패널 미니 컨트롤) */
-  onMediaPlaylistPlaybackUiReport?: (
-    elementId: string,
-    payload: BookMediaPlaylistPlaybackUiSnapshot,
-  ) => void;
-  mediaPlaylistRemoteCommand?: BookMediaPlaylistRemoteCommand | null;
-  onMediaPlaylistRemoteCommandConsumed?: () => void;
-  /** 동영상 위젯 메타데이터 로드 후 재생 길이(초) — 속성 패널 표시용 */
-  onVideoDurationKnown?: (elementId: string, durationSec: number) => void;
-  /** 우클릭 메뉴 복사 — 클릭한 위젯(선택에 포함돼 있으면 선택 전체) */
-  onCopyElement?: (elementId: string) => void;
-  /** 우클릭 메뉴 잘라내기 — 확인 없이 즉시 제거(undo 가능) */
-  onCutElement?: (elementId: string) => void;
-  /** 우클릭 메뉴 붙여넣기 — 페이지 규칙(같은 페이지 오프셋·다른 페이지 같은 좌표)은 페이지가 처리 */
-  onPasteFromClipboard?: () => void;
-  /** 붙여넣기 메뉴 활성화 여부(내부 클립보드에 내용 있음) */
-  widgetClipboardHasContent?: boolean;
+  /** 자유 그리기 도구 */
+  drawing?: BookSlideCanvasDrawingProps;
+  /** 미디어(이미지·동영상·플레이리스트) 연동 — 화면마다 다루는 정도가 다르다 */
+  media?: BookSlideCanvasMediaProps;
+  /** 우클릭 메뉴의 복사·잘라내기·붙여넣기 */
+  clipboard?: BookSlideCanvasClipboardProps;
   /**
    * 보기 모드 전용: `true`이면 비디오·미디어 플레이리스트 하단 컨트롤 바를 표시하지 않음
    * (예: 전체 화면에서 커서 유휴 시 오버레이와 같이 숨김).
@@ -1006,32 +1032,37 @@ export function BookSlideCanvas({
   onElementChange,
   keyboardShortcutsDisabled = false,
   onElementsChange,
-  onDropWidget,
-  onDropShape,
-  onDropLibraryMedia,
   onReorderZ,
   onDeleteElement,
   centerGuideThresholdPx = DEFAULT_BOOK_SLIDE_CENTER_GUIDE_THRESHOLD_PX,
   dragGridPx = BOOK_CANVAS_DRAG_GRID_PX,
-  editInteractionTool = "default",
-  drawingStrokeColor = "#0f172a",
-  drawingStrokeWidth = 4,
-  onAppendElement,
-  onRequestReplaceMediaFromFile,
-  onRequestPickLibraryMediaForReplace,
-  onRequestPlaylistAppendFromFile,
-  onRequestPlaylistAppendFromLibrary,
-  mediaLibraryReplaceEnabled = false,
-  onMediaPlaylistPlaybackIndexChange,
-  onMediaPlaylistPlaybackUiReport,
-  mediaPlaylistRemoteCommand,
-  onMediaPlaylistRemoteCommandConsumed,
-  onVideoDurationKnown,
   viewModeHideMediaChrome = false,
-  onCopyElement,
-  onCutElement,
-  onPasteFromClipboard,
-  widgetClipboardHasContent = false,
+  // 묶음은 파라미터에서 풀어 쓴다 — 본문은 예전 이름 그대로라 내부 코드가 바뀌지 않는다
+  drop: { onDropWidget, onDropShape, onDropLibraryMedia } = {},
+  drawing: {
+    tool: editInteractionTool = "default",
+    strokeColor: drawingStrokeColor = "#0f172a",
+    strokeWidth: drawingStrokeWidth = 4,
+    onAppendElement,
+  } = {},
+  media: {
+    onRequestReplaceMediaFromFile,
+    onRequestPickLibraryMediaForReplace,
+    onRequestPlaylistAppendFromFile,
+    onRequestPlaylistAppendFromLibrary,
+    libraryReplaceEnabled: mediaLibraryReplaceEnabled = false,
+    onPlaylistPlaybackIndexChange: onMediaPlaylistPlaybackIndexChange,
+    onPlaylistPlaybackUiReport: onMediaPlaylistPlaybackUiReport,
+    playlistRemoteCommand: mediaPlaylistRemoteCommand,
+    onPlaylistRemoteCommandConsumed: onMediaPlaylistRemoteCommandConsumed,
+    onVideoDurationKnown,
+  } = {},
+  clipboard: {
+    onCopyElement,
+    onCutElement,
+    onPaste: onPasteFromClipboard,
+    hasContent: widgetClipboardHasContent = false,
+  } = {},
 }: BookSlideCanvasProps) {
   const trRef = useRef<Konva.Transformer>(null);
   const konvaNodeByIdRef = useRef<Map<string, Konva.Node>>(new Map());
