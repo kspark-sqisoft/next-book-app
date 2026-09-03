@@ -86,6 +86,14 @@ export const JWT_ACCESS_EXPIRES_IN = process.env.JWT_ACCESS_EXPIRES_IN ?? "15m";
 export const JWT_REFRESH_EXPIRES_IN =
   process.env.JWT_REFRESH_EXPIRES_IN ?? "7d";
 
+/**
+ * 액세스 JWT를 담는 httpOnly 쿠키. 서버 액션·서버 컴포넌트가 세션을 읽는 유일한 경로다
+ * (`server/auth/session.ts`). REST 라우트는 계속 Authorization 헤더만 본다 — 쿠키를
+ * REST 인증에 쓰면 CSRF 표면이 생기지만, 서버 액션은 Next가 Origin/Host를 대조한다.
+ */
+export const ACCESS_TOKEN_COOKIE =
+  process.env.ACCESS_TOKEN_COOKIE ?? "access_token";
+
 export const REFRESH_TOKEN_COOKIE =
   process.env.REFRESH_TOKEN_COOKIE ?? "refresh_token";
 export const REFRESH_TOKEN_MAX_AGE_MS = positiveInt(

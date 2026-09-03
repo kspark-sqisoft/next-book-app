@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { REFRESH_TOKEN_COOKIE } from "@/server/env";
 import { handleRouteError } from "@/server/http/api-response";
 import {
+  accessTokenCookieHeader,
   getRequestCookie,
   refreshTokenCookieHeader,
 } from "@/server/http/cookies";
@@ -23,6 +24,8 @@ export async function POST(request: Request) {
     const auth = new AuthService();
     const { access_token, refresh_token } = await auth.refresh(token);
     const res = NextResponse.json({ access_token });
+    // 액세스 쿠키도 같이 회전 — 서버 액션이 보는 세션과 클라이언트가 보내는 Bearer 가 어긋나지 않게
+    res.headers.append("Set-Cookie", accessTokenCookieHeader(access_token));
     res.headers.append("Set-Cookie", refreshTokenCookieHeader(refresh_token));
     return res;
   } catch (e) {
