@@ -37,17 +37,27 @@ import { bookKeys, cretaKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/stores/auth-store";
 
+/**
+ * 슬라이드쇼 iframe. 안쪽 문서가 첫 페인트를 마칠 때까지 투명하게 두고 검은 바탕만 보인다 —
+ * iframe 은 문서를 받는 순간 빈 흰 화면부터 그리므로, 그 한 박자가 눈에 띈다.
+ * 미리보기 라우트 자체도 어둡게 시작하지만(`app/(bare)`), 이쪽은 그와 무관하게 막는다.
+ */
 function PreviewFrame({ bookId, title }: { bookId: number; title: string }) {
+  const [loaded, setLoaded] = useState(false);
   return (
     <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black ring-1 ring-border">
       <iframe
         key={bookId}
         src={`/books/${bookId}/preview?embed=1`}
         title={`${title} 슬라이드쇼`}
-        className="absolute inset-0 size-full border-0"
+        className={cn(
+          "absolute inset-0 size-full border-0 transition-opacity duration-200",
+          loaded ? "opacity-100" : "opacity-0",
+        )}
         allow="autoplay; fullscreen"
         allowFullScreen
         data-testid="community-player"
+        onLoad={() => setLoaded(true)}
       />
     </div>
   );
