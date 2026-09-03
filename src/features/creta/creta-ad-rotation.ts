@@ -1,5 +1,5 @@
 // 광고 로테이션 — 구좌 위젯과 디바이스 광고 전용 루프가 같은 규칙으로 순환하도록 공유한다.
-import type { CretaAdActiveCreative } from "@/lib/creta-ads-api";
+import type { CretaAdActiveCreative } from "@/features/creta/creta-ads-api";
 
 /**
  * 가중 로테이션 순서 — 캠페인별 큐에서 라운드로빈으로 하나씩 뽑아

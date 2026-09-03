@@ -46,18 +46,18 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  createCretaWall,
+  CRETA_WALL_MODE_LABEL,
+  deleteCretaWall,
+  fetchCretaWalls,
+} from "@/features/creta/creta-walls-api";
 import { canManageOwned } from "@/lib/authz";
 import {
   CARD_GRID_COLUMNS,
   GRID_CARD_HOVER,
   LIST_ROW_HOVER,
 } from "@/lib/card-hover";
-import {
-  createCretaWall,
-  CRETA_WALL_MODE_LABEL,
-  deleteCretaWall,
-  fetchCretaWalls,
-} from "@/lib/creta-walls-api";
 import { cretaKeys } from "@/lib/query-keys";
 import { useAuth } from "@/stores/auth-store";
 

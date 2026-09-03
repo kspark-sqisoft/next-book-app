@@ -28,7 +28,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { BookEditorLeftTab } from "@/lib/book-editor-panel-events";
+import type { BookEditorLeftTab } from "@/features/book/book-editor-panel-events";
 import { cn } from "@/lib/utils";
 
 const COLLAPSED_KEY = "book.editor.rail.collapsed";

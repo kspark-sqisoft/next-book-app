@@ -1,5 +1,8 @@
 // 섹션(메뉴) 아이콘 — 사이드바와 같은 아이콘·같은 포인트 컬러를 페이지 안에서도 쓴다.
-import { CRETA_SECTIONS, type CretaSectionKey } from "@/lib/creta-sections";
+import {
+  CRETA_SECTIONS,
+  type CretaSectionKey,
+} from "@/features/creta/creta-sections";
 import { cn } from "@/lib/utils";
 
 /** 페이지 제목 옆에 놓는 크기 */

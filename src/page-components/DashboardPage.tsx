@@ -27,19 +27,19 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BOOK_AUDIT_ACTION_LABEL, fetchRecentBookAudit } from "@/lib/api";
 import {
   type CretaDevice,
   cretaDeviceStatus,
   fetchCretaDevices,
   PLAY_SOURCE_LABEL,
-} from "@/lib/creta-api";
+} from "@/features/creta/creta-api";
 import {
   type DeviceUptimeRange,
   fetchCretaDeviceUptime,
   fetchCretaPlayReport,
   formatPlayDuration,
-} from "@/lib/creta-reports-api";
+} from "@/features/creta/creta-reports-api";
+import { BOOK_AUDIT_ACTION_LABEL, fetchRecentBookAudit } from "@/lib/api";
 import { formatDateMediumShort } from "@/lib/format-date";
 import { bookKeys, cretaKeys } from "@/lib/query-keys";
 import { useAuth } from "@/stores/auth-store";

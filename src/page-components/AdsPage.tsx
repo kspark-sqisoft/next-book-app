@@ -53,8 +53,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
-import { publicAssetUrl } from "@/lib/api";
-import { canManageOwned, isAdminUser } from "@/lib/authz";
 import {
   addCretaAdCreative,
   createCretaAdCampaign,
@@ -78,7 +76,9 @@ import {
   updateCretaAdCampaign,
   updateCretaAdSetting,
   uploadCretaAdMedia,
-} from "@/lib/creta-ads-api";
+} from "@/features/creta/creta-ads-api";
+import { publicAssetUrl } from "@/lib/api";
+import { canManageOwned, isAdminUser } from "@/lib/authz";
 import { formatDateMediumShort } from "@/lib/format-date";
 import { cretaKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";

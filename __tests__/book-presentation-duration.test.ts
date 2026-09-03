@@ -1,11 +1,11 @@
 import { expect, test } from "vitest";
 
-import type { BookCanvasElement } from "@/lib/book-canvas";
+import type { BookCanvasElement } from "@/features/book/book-canvas";
 import {
   computeSlidePresentationDurationSec,
   DEFAULT_PRESENTATION_SLIDE_SEC,
   DEFAULT_WIDGET_PRESENTATION_SEC,
-} from "@/lib/book-presentation";
+} from "@/features/book/book-presentation";
 
 test("타이밍 레이어 없으면 슬라이드 기본 초", () => {
   expect(

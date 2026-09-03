@@ -17,13 +17,13 @@ import {
   fetchCretaAdDeviceReport,
   fetchCretaAdHourlyReport,
   fetchCretaAdSlotReport,
-} from "@/lib/creta-ads-api";
-import { PLAY_SOURCE_LABEL } from "@/lib/creta-api";
+} from "@/features/creta/creta-ads-api";
+import { PLAY_SOURCE_LABEL } from "@/features/creta/creta-api";
 import {
   fetchCretaPlayReport,
   formatPlayDuration,
   type PlayReportRange,
-} from "@/lib/creta-reports-api";
+} from "@/features/creta/creta-reports-api";
 import { formatDateMediumShort } from "@/lib/format-date";
 import { cretaKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";

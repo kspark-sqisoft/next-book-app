@@ -29,7 +29,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
-import { canEditOwnedOrShared, canManageOwned } from "@/lib/authz";
 import {
   addCretaPlaylistItem,
   type CretaPlaylistDetail,
@@ -40,7 +39,8 @@ import {
   setCretaPlaylistShareAll,
   sharedWithSummary,
   updateCretaDeviceSource,
-} from "@/lib/creta-api";
+} from "@/features/creta/creta-api";
+import { canEditOwnedOrShared, canManageOwned } from "@/lib/authz";
 import { goBackOrPush } from "@/lib/navigate-back";
 import { cretaKeys } from "@/lib/query-keys";
 import { useAuth } from "@/stores/auth-store";

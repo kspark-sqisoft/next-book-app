@@ -8,12 +8,18 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSyncExternalStore } from "react";
 
+import {
+  cretaDeviceStatus,
+  fetchCretaDevices,
+} from "@/features/creta/creta-api";
+import {
+  CRETA_SECTIONS,
+  type CretaSection,
+} from "@/features/creta/creta-sections";
+import { useDeviceOfflineNotifier } from "@/features/creta/use-device-offline-notifier";
 import { fetchBooksPage } from "@/lib/api";
 import { isAdminUser } from "@/lib/authz";
-import { cretaDeviceStatus, fetchCretaDevices } from "@/lib/creta-api";
-import { CRETA_SECTIONS, type CretaSection } from "@/lib/creta-sections";
 import { bookKeys, cretaKeys } from "@/lib/query-keys";
-import { useDeviceOfflineNotifier } from "@/lib/use-device-offline-notifier";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/stores/auth-store";
 

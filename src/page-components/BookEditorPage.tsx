@@ -49,7 +49,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { type BookCanvasElement, createBook } from "@/lib/api";
 import {
   applyAutoSlideNamesByIndex,
   BOOK_CANVAS_DRAG_GRID_PX,
@@ -101,39 +100,40 @@ import {
   reorderPagesArray,
   resolveEffectivePresentationTimingElementId,
   toBookPagePayloads,
-} from "@/lib/book-canvas";
-import { isBookEditorTypingTarget } from "@/lib/book-editor-keyboard";
-import type { BookEditorLeftTab } from "@/lib/book-editor-panel-events";
+} from "@/features/book/book-canvas";
+import { isBookEditorTypingTarget } from "@/features/book/book-editor-keyboard";
+import type { BookEditorLeftTab } from "@/features/book/book-editor-panel-events";
 import {
   readFloatingWidgetPaletteVisible,
   writeFloatingWidgetPaletteVisible,
-} from "@/lib/book-floating-ui-prefs";
-import { warmBookCanvasImagesForNeighborPages } from "@/lib/book-image-cache";
-import { computeSlidePresentationDurationSec } from "@/lib/book-presentation";
+} from "@/features/book/book-floating-ui-prefs";
+import { warmBookCanvasImagesForNeighborPages } from "@/features/book/book-image-cache";
+import { computeSlidePresentationDurationSec } from "@/features/book/book-presentation";
 import {
   type BookPresentationTransitionId,
   clampBookPresentationTransitionMs,
   normalizeBookPresentationTransition,
-} from "@/lib/book-presentation-transition";
+} from "@/features/book/book-presentation-transition";
 import {
   type BookSlideTemplateId,
   instantiateBookSlideTemplate,
-} from "@/lib/book-slide-templates";
-import { defaultTextWidgetBoxHeight } from "@/lib/book-text-widget";
+} from "@/features/book/book-slide-templates";
+import { defaultTextWidgetBoxHeight } from "@/features/book/book-text-widget";
 import {
   bookCanvasStageMatClass,
   bookCanvasToolbarRowClass,
   bookLeftDockContentColumnClass,
   bookRightDockInspectorShellClass,
-} from "@/lib/book-workspace-ui";
-import { bookKeys } from "@/lib/query-keys";
+} from "@/features/book/book-workspace-ui";
 import {
   BOOK_CANVAS_STAGE_DISPLAY_OPTS,
   useBookCanvasDisplayScale,
-} from "@/lib/use-book-canvas-display-scale";
-import { useBookDocumentHistory } from "@/lib/use-book-document-history";
-import { useBookPageThumbnails } from "@/lib/use-book-page-thumbnails";
-import { useBookWidgetClipboard } from "@/lib/use-book-widget-clipboard";
+} from "@/features/book/use-book-canvas-display-scale";
+import { useBookDocumentHistory } from "@/features/book/use-book-document-history";
+import { useBookPageThumbnails } from "@/features/book/use-book-page-thumbnails";
+import { useBookWidgetClipboard } from "@/features/book/use-book-widget-clipboard";
+import { type BookCanvasElement, createBook } from "@/lib/api";
+import { bookKeys } from "@/lib/query-keys";
 
 /** `/books/new` — 저장 후 `/books/:id`로 이동해 동일 편집 UI를 씁니다. */
 export function BookEditorPage() {

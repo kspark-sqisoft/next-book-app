@@ -7,7 +7,7 @@ import {
   BOOK_WEATHER_LAYOUT_VALUES,
   resolveBookWeatherBlockOrder,
   resolveBookWeatherLayout,
-} from "@/lib/book-canvas";
+} from "@/features/book/book-canvas";
 
 describe("resolveBookWeatherLayout", () => {
   it("columns·single·row는 그대로, 나머지는 auto", () => {

@@ -5,7 +5,7 @@ import {
   type BookCanvasElement,
   collectBookOverlayElements,
   resolveBookElementOverlayPages,
-} from "@/lib/book-canvas";
+} from "@/features/book/book-canvas";
 
 function textEl(
   id: string,

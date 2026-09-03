@@ -5,7 +5,7 @@ import {
   DEFAULT_BOOK_PRESENTATION_TRANSITION_MS,
   isBookPresentationTransitionId,
   normalizeBookPresentationTransition,
-} from "@/lib/book-presentation-transition";
+} from "@/features/book/book-presentation-transition";
 
 test("normalizeBookPresentationTransition 가 알 수 없는 값을 none 으로 만든다", () => {
   expect(normalizeBookPresentationTransition(undefined)).toBe("none");

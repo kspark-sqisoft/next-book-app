@@ -5,7 +5,7 @@
 
 import DOMPurify from "dompurify";
 
-import type { BookCanvasElement } from "@/lib/book-canvas";
+import type { BookCanvasElement } from "@/features/book/book-canvas";
 
 const BOOK_TEXT_RICH_ALLOWED_TAGS = [
   "p",

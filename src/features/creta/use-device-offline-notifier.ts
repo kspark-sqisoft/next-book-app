@@ -5,7 +5,7 @@
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 
-import type { CretaDevice } from "@/lib/creta-api";
+import type { CretaDevice } from "@/features/creta/creta-api";
 
 export function useDeviceOfflineNotifier(
   devices: CretaDevice[] | undefined,

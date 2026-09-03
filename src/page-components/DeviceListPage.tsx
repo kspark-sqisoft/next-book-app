@@ -59,9 +59,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Spinner } from "@/components/ui/spinner";
-import { isAdminUser } from "@/lib/authz";
-import { GRID_CARD_HOVER, LIST_ROW_INSIDE_CARD_HOVER } from "@/lib/card-hover";
-import { cretaAlertCoversDevice } from "@/lib/creta-alerts-api";
+import { cretaAlertCoversDevice } from "@/features/creta/creta-alerts-api";
 import {
   createCretaDevice,
   type CretaDevice,
@@ -69,7 +67,9 @@ import {
   deleteCretaDevice,
   fetchCretaDevices,
   PLAY_SOURCE_LABEL,
-} from "@/lib/creta-api";
+} from "@/features/creta/creta-api";
+import { isAdminUser } from "@/lib/authz";
+import { GRID_CARD_HOVER, LIST_ROW_INSIDE_CARD_HOVER } from "@/lib/card-hover";
 import { cretaKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/stores/auth-store";

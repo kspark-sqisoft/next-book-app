@@ -45,12 +45,12 @@ import {
   bookDockedPanelHeaderRowClass,
   bookDockedPanelHeadingClass,
   bookDockedPanelRootClass,
-} from "@/lib/book-workspace-ui";
+} from "@/features/book/book-workspace-ui";
 import {
   type FloatingPanelSize,
   normalizeFloatingPanelSize,
   useFloatingPanelResize,
-} from "@/lib/use-floating-panel-resize";
+} from "@/hooks/use-floating-panel-resize";
 import { cn } from "@/lib/utils";
 
 /** 텍스트·이미지·동영상은 항상 맨 앞 순서, 그 외 위젯은 뒤에 둡니다. */

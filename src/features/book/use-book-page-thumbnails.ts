@@ -4,12 +4,12 @@ import {
   type BookSlideSnapshotPage,
   captureBookSlideToDataURL,
   pageSnapshotSignature,
-} from "@/lib/book-slide-snapshot";
+} from "@/features/book/book-slide-snapshot";
 import {
   bookSlideThumbnailCacheKey,
   getBookSlideThumbnailCached,
   setBookSlideThumbnailCache,
-} from "@/lib/book-slide-thumbnail-cache";
+} from "@/features/book/book-slide-thumbnail-cache";
 
 const DEBOUNCE_MS = 320;
 

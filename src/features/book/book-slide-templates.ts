@@ -1,4 +1,4 @@
-import { type BookCanvasElement } from "@/lib/book-canvas";
+import { type BookCanvasElement } from "@/features/book/book-canvas";
 
 /**
  * `public/cards/` 샘플 사진 — `BOOK_TEMPLATE_STOCK_IMAGE_PATHS` 경로와 파일명이 맞아야 합니다.

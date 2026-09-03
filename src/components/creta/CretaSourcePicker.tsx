@@ -12,14 +12,14 @@ import {
 } from "@/components/creta/CretaCoverThumb";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { type BookListCoverPreview, fetchBooksPage } from "@/lib/api";
 import {
   CRETA_DEVICE_STATUS_LABEL,
   cretaDeviceStatus,
   fetchCretaDevices,
   fetchCretaPlaylists,
   fetchCretaSchedules,
-} from "@/lib/creta-api";
+} from "@/features/creta/creta-api";
+import { type BookListCoverPreview, fetchBooksPage } from "@/lib/api";
 import { cretaKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 

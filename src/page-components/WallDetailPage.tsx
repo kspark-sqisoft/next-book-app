@@ -32,13 +32,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Spinner } from "@/components/ui/spinner";
-import { type BookDetail, fetchBook } from "@/lib/api";
 import {
   DEFAULT_PAGE_BACKGROUND,
   DEFAULT_SLIDE_HEIGHT,
   DEFAULT_SLIDE_WIDTH,
-} from "@/lib/book-canvas";
-import { type CretaDevice, fetchCretaDevices } from "@/lib/creta-api";
+} from "@/features/book/book-canvas";
+import { useBookPageThumbnails } from "@/features/book/use-book-page-thumbnails";
+import {
+  type CretaDevice,
+  fetchCretaDevices,
+} from "@/features/creta/creta-api";
 import {
   CRETA_WALL_MODE_DESC,
   CRETA_WALL_MODE_LABEL,
@@ -47,10 +50,10 @@ import {
   fetchCretaWall,
   setCretaWallMembers,
   updateCretaWall,
-} from "@/lib/creta-walls-api";
+} from "@/features/creta/creta-walls-api";
+import { type BookDetail, fetchBook } from "@/lib/api";
 import { goBackOrPush } from "@/lib/navigate-back";
 import { bookKeys, cretaKeys } from "@/lib/query-keys";
-import { useBookPageThumbnails } from "@/lib/use-book-page-thumbnails";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/stores/auth-store";
 

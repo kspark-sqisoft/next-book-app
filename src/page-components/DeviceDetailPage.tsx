@@ -49,18 +49,17 @@ import { Slider } from "@/components/ui/slider";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { publicAssetUrl } from "@/lib/api";
 import {
   buildCretaAdRotation,
   cretaAdRotationIndex,
-} from "@/lib/creta-ad-rotation";
+} from "@/features/creta/creta-ad-rotation";
 import {
   fetchCretaAdActiveCreatives,
   fetchCretaAdScreenInventory,
   fetchCretaAdSetting,
   logCretaAdPlay,
-} from "@/lib/creta-ads-api";
-import { cretaAlertCoversDevice } from "@/lib/creta-alerts-api";
+} from "@/features/creta/creta-ads-api";
+import { cretaAlertCoversDevice } from "@/features/creta/creta-alerts-api";
 import {
   CRETA_PLAYER_LATEST,
   type CretaDevice,
@@ -74,7 +73,8 @@ import {
   updateCretaDevicePower,
   updateCretaDeviceSource,
   upgradeCretaDevicePlayer,
-} from "@/lib/creta-api";
+} from "@/features/creta/creta-api";
+import { publicAssetUrl } from "@/lib/api";
 import { formatDateMediumShort } from "@/lib/format-date";
 import { goBackOrPush } from "@/lib/navigate-back";
 import { cretaKeys } from "@/lib/query-keys";

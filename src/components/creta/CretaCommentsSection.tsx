@@ -10,7 +10,6 @@ import { AuthorAvatarInline } from "@/components/posts/AuthorAvatarInline";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
-import { canEditAsOwnerOrAdmin } from "@/lib/authz";
 import {
   countCretaComments,
   createCretaComment,
@@ -18,7 +17,8 @@ import {
   type CretaCommentTargetKind,
   deleteCretaComment,
   fetchCretaComments,
-} from "@/lib/creta-comments-api";
+} from "@/features/creta/creta-comments-api";
+import { canEditAsOwnerOrAdmin } from "@/lib/authz";
 import { formatDateMediumShort } from "@/lib/format-date";
 import { cretaKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";

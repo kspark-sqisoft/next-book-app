@@ -23,7 +23,7 @@ import {
   Video,
 } from "lucide-react";
 
-import type { BookCanvasElement } from "@/lib/book-canvas";
+import type { BookCanvasElement } from "@/features/book/book-canvas";
 
 const ICON: Record<BookCanvasElement["type"], LucideIcon> = {
   text: Type,

@@ -3,7 +3,7 @@ import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { BookTextWidgetOverlay } from "@/components/books/BookTextWidgetOverlay";
-import type { BookCanvasElement } from "@/lib/book-canvas";
+import type { BookCanvasElement } from "@/features/book/book-canvas";
 
 const textEl = (
   over: Partial<Extract<BookCanvasElement, { type: "text" }>> = {},

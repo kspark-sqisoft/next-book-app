@@ -18,18 +18,18 @@ import {
   DEFAULT_PAGE_BACKGROUND,
   resolveEffectivePresentationTimingElementId,
   slideDisplayLabel,
-} from "@/lib/book-canvas";
-import { BOOK_HEX_COLOR_PRESETS } from "@/lib/book-color-presets";
+} from "@/features/book/book-canvas";
+import { BOOK_HEX_COLOR_PRESETS } from "@/features/book/book-color-presets";
 import {
   BOOK_PRESENTATION_TRANSITION_OPTIONS,
   type BookPresentationTransitionId,
-} from "@/lib/book-presentation-transition";
+} from "@/features/book/book-presentation-transition";
 import {
   bookDockedPanelHeaderIconClass,
   bookDockedPanelHeaderRowClass,
   bookDockedPanelHeadingClass,
   bookDockedPanelRootClass,
-} from "@/lib/book-workspace-ui";
+} from "@/features/book/book-workspace-ui";
 import { cn } from "@/lib/utils";
 
 type BookPagePropertiesPanelProps = {

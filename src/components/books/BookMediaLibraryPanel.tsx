@@ -36,6 +36,21 @@ import {
 } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import {
+  clearBookMediaLibrary,
+  loadBookMediaLibrary,
+} from "@/features/book/book-media-library";
+import {
+  bookDockedPanelHeaderIconClass,
+  bookDockedPanelHeaderRowClass,
+  bookDockedPanelHeadingClass,
+  bookDockedPanelRootClass,
+} from "@/features/book/book-workspace-ui";
+import {
+  type FloatingPanelSize,
+  normalizeFloatingPanelSize,
+  useFloatingPanelResize,
+} from "@/hooks/use-floating-panel-resize";
+import {
   addBookMediaLibraryItem,
   type BookMediaLibraryDto,
   type BookMediaLibraryItemDto,
@@ -49,22 +64,7 @@ import {
   uploadBookMedia,
 } from "@/lib/api";
 import { isAdminUser } from "@/lib/authz";
-import {
-  clearBookMediaLibrary,
-  loadBookMediaLibrary,
-} from "@/lib/book-media-library";
-import {
-  bookDockedPanelHeaderIconClass,
-  bookDockedPanelHeaderRowClass,
-  bookDockedPanelHeadingClass,
-  bookDockedPanelRootClass,
-} from "@/lib/book-workspace-ui";
 import { bookKeys } from "@/lib/query-keys";
-import {
-  type FloatingPanelSize,
-  normalizeFloatingPanelSize,
-  useFloatingPanelResize,
-} from "@/lib/use-floating-panel-resize";
 import { cn } from "@/lib/utils";
 import { captureVideoPosterJpeg } from "@/lib/video-poster";
 import { useAuth } from "@/stores/auth-store";

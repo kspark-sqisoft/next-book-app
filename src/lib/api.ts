@@ -42,8 +42,8 @@ import {
   startBookVideoConcatAction,
   startBookVideoRenderAction,
 } from "@/actions/video-render";
+import type { BookCanvasElement } from "@/features/book/book-canvas";
 import { appLog } from "@/lib/app-log";
-import type { BookCanvasElement } from "@/lib/book-canvas";
 import type { BookListCoverPreviewPublic } from "@/server/services/books.service";
 import type {
   BookListItemPublic,
@@ -738,7 +738,7 @@ export type Cat = {
 
 // --- Books (슬라이드 / Konva) ---
 
-export type { BookCanvasElement } from "@/lib/book-canvas";
+export type { BookCanvasElement } from "@/features/book/book-canvas";
 
 export type BookPageDto = {
   id: number;

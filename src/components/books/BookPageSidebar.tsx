@@ -39,13 +39,13 @@ import {
   DEFAULT_SLIDE_HEIGHT,
   DEFAULT_SLIDE_WIDTH,
   slideDisplayLabel,
-} from "@/lib/book-canvas";
+} from "@/features/book/book-canvas";
 import {
   bookDockedPanelFooterClass,
   bookDockedPanelHeaderIconClass,
   bookDockedPanelHeaderRowClass,
   bookDockedPanelHeadingClass,
-} from "@/lib/book-workspace-ui";
+} from "@/features/book/book-workspace-ui";
 import { cn } from "@/lib/utils";
 
 type BookPageSidebarProps = {

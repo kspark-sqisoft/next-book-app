@@ -10,8 +10,8 @@ import {
   clampBookPresentationTransitionMs,
   DEFAULT_BOOK_PRESENTATION_TRANSITION_MS,
   normalizeBookPresentationTransition,
-} from "@/lib/book-presentation-transition";
-import type { BookTextAnimationId } from "@/lib/book-text-animation";
+} from "@/features/book/book-presentation-transition";
+import type { BookTextAnimationId } from "@/features/book/book-text-animation";
 
 export const BOOK_MEDIA_OBJECT_FIT_VALUES = [
   "cover",

@@ -59,13 +59,13 @@ import {
   isBookElementLocked,
   isBookElementVisible,
   resolveBookElementOverlayPages,
-} from "@/lib/book-canvas";
-import { displayLayerPresentationSec } from "@/lib/book-presentation";
+} from "@/features/book/book-canvas";
+import { displayLayerPresentationSec } from "@/features/book/book-presentation";
 import {
   bookDockedPanelHeaderIconClass,
   bookDockedPanelHeaderRowClass,
   bookDockedPanelHeadingClass,
-} from "@/lib/book-workspace-ui";
+} from "@/features/book/book-workspace-ui";
 import { cn } from "@/lib/utils";
 
 function bookElementLayerLabel(el: BookCanvasElement): string {

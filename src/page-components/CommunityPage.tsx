@@ -27,11 +27,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  fetchPublicCretaPlaylists,
+  sharedWithSummary,
+} from "@/features/creta/creta-api";
+import { fetchCretaCommentCounts } from "@/features/creta/creta-comments-api";
+import { fetchCretaLikes } from "@/features/creta/creta-likes-api";
 import { type BookListCoverPreview, fetchBooksPage } from "@/lib/api";
 import { CARD_GRID_COLUMNS, GRID_CARD_HOVER } from "@/lib/card-hover";
-import { fetchPublicCretaPlaylists, sharedWithSummary } from "@/lib/creta-api";
-import { fetchCretaCommentCounts } from "@/lib/creta-comments-api";
-import { fetchCretaLikes } from "@/lib/creta-likes-api";
 import {
   type DateLike,
   formatDateMediumShort,

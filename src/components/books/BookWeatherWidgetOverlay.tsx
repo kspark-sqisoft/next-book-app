@@ -23,7 +23,6 @@ import {
 } from "react";
 
 import type { BookTextOverlayLiveFrame } from "@/components/books/BookTextWidgetOverlay";
-import { fetchWeatherCurrent, type SeoulWeatherPayload } from "@/lib/api";
 import {
   type BookCanvasElement,
   bookElementOverlayTopLeftFromPivot,
@@ -44,7 +43,8 @@ import {
   resolveBookWeatherDisplay,
   resolveBookWeatherLayout,
   resolveBookWeatherRightBlocks,
-} from "@/lib/book-canvas";
+} from "@/features/book/book-canvas";
+import { fetchWeatherCurrent, type SeoulWeatherPayload } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 type Props = {

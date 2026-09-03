@@ -1,5 +1,5 @@
-import type { BookMediaObjectFit } from "@/lib/book-canvas";
-import { resolveBookMediaObjectFit } from "@/lib/book-canvas";
+import type { BookMediaObjectFit } from "@/features/book/book-canvas";
+import { resolveBookMediaObjectFit } from "@/features/book/book-canvas";
 
 export type KonvaFittedImageLayout = {
   x: number;

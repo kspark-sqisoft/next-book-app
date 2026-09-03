@@ -10,11 +10,11 @@ export {
   BOOK_TEXT_ANIMATION_IDS,
   type BookTextAnimationId,
   isBookTextAnimationId,
-} from "@/lib/book-text-animation-ids";
+} from "@/features/book/book-text-animation-ids";
 import {
   type BookTextAnimationId,
   isBookTextAnimationId,
-} from "@/lib/book-text-animation-ids";
+} from "@/features/book/book-text-animation-ids";
 
 /** block = 위젯 전체, char = 글자(자소) 단위, word = 공백 기준 단어 단위 */
 export type BookTextAnimationUnit = "block" | "char" | "word";

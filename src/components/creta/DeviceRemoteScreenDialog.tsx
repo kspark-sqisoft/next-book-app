@@ -25,12 +25,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
-import type { CretaAlert } from "@/lib/creta-alerts-api";
+import type { CretaAlert } from "@/features/creta/creta-alerts-api";
 import {
   type CretaDevice,
   deviceSimMeta,
   PLAY_SOURCE_LABEL,
-} from "@/lib/creta-api";
+} from "@/features/creta/creta-api";
 import { cn } from "@/lib/utils";
 
 /** 접속 연출 시간(ms) */

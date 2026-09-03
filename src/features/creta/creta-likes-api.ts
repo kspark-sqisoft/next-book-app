@@ -3,8 +3,8 @@ import {
   listCretaLikesAction,
   toggleCretaLikeAction,
 } from "@/actions/creta-likes";
+import type { CretaCommentTargetKind } from "@/features/creta/creta-comments-api";
 import { getAccessToken, humanizeServerActionError } from "@/lib/api";
-import type { CretaCommentTargetKind } from "@/lib/creta-comments-api";
 
 export type CretaLikeState = { count: number; likedByMe: boolean };
 

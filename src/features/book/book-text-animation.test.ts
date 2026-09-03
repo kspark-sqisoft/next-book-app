@@ -10,7 +10,7 @@ import {
   normalizeBookTextAnimation,
   resolveBookTextAnimation,
   textAnimationCssVars,
-} from "@/lib/book-text-animation";
+} from "@/features/book/book-text-animation";
 
 describe("normalizeBookTextAnimation", () => {
   it("알 수 없는 값·빈 값은 none", () => {

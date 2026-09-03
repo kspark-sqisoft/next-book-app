@@ -15,8 +15,6 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { fetchBookAiChat, requestBookLayoutAi } from "@/lib/api";
-import { appLog } from "@/lib/app-log";
 import {
   addPagesTotalCount,
   type BookLayoutAiAction,
@@ -25,8 +23,10 @@ import {
   pageTitleActions,
   slideDimensionsFromActions,
   widgetPlacementsFromLayoutAiActions,
-} from "@/lib/book-ai-placement";
-import type { BookCanvasElement } from "@/lib/book-canvas";
+} from "@/features/book/book-ai-placement";
+import type { BookCanvasElement } from "@/features/book/book-canvas";
+import { fetchBookAiChat, requestBookLayoutAi } from "@/lib/api";
+import { appLog } from "@/lib/app-log";
 import {
   floatingDockAiInsetStartClass,
   floatingDockBottomInsetClass,

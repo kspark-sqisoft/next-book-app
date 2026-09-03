@@ -4,7 +4,6 @@ import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { BookTextOverlayLiveFrame } from "@/components/books/BookTextWidgetOverlay";
-import { fetchNewsHeadlines, type NewsArticlePayload } from "@/lib/api";
 import {
   type BookCanvasElement,
   bookElementOverlayTopLeftFromPivot,
@@ -20,13 +19,14 @@ import {
   resolveBookElementOutlineWidth,
   resolveBookElementReadability,
   resolveBookElementRotation,
-} from "@/lib/book-canvas";
+} from "@/features/book/book-canvas";
 import {
   computeNewsHeadlinesRefetchIntervalMs,
   newsHeadlinesGcTimeMs,
   newsHeadlinesStaleTimeMs,
   useTabVisibleForNewsPolling,
-} from "@/lib/book-news-headlines-query-policy";
+} from "@/features/book/book-news-headlines-query-policy";
+import { fetchNewsHeadlines, type NewsArticlePayload } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 type Props = {

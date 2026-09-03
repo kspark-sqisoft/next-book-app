@@ -1,7 +1,7 @@
 import {
   type BookSlideSnapshotPage,
   pageSnapshotSignature,
-} from "@/lib/book-slide-snapshot";
+} from "@/features/book/book-slide-snapshot";
 
 /** PNG data URL은 커서 항목 수를 제한합니다. */
 const MAX_ENTRIES = 96;

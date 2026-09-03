@@ -6,7 +6,7 @@ import {
   bookDockedPanelHeaderRowClass,
   bookDockedPanelHeadingClass,
   bookDockedPanelRootClass,
-} from "@/lib/book-workspace-ui";
+} from "@/features/book/book-workspace-ui";
 import { cn } from "@/lib/utils";
 
 const PRESET_COLORS = [

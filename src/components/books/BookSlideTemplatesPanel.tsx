@@ -6,13 +6,13 @@ import {
   BOOK_SLIDE_TEMPLATE_CATEGORIES,
   type BookSlideTemplateId,
   bookSlideTemplatesInCategory,
-} from "@/lib/book-slide-templates";
+} from "@/features/book/book-slide-templates";
 import {
   bookDockedPanelHeaderIconClass,
   bookDockedPanelHeaderRowClass,
   bookDockedPanelHeadingClass,
   bookDockedPanelRootClass,
-} from "@/lib/book-workspace-ui";
+} from "@/features/book/book-workspace-ui";
 import { cn } from "@/lib/utils";
 
 export function BookSlideTemplatesPanel({

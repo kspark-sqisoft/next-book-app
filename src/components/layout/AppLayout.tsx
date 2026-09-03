@@ -14,8 +14,11 @@ import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import { SafeImage } from "@/components/ui/safe-image";
 import { Toaster } from "@/components/ui/sonner";
+import {
+  CRETA_SECTIONS,
+  type CretaSection,
+} from "@/features/creta/creta-sections";
 import { SITE_APP_MAIN_SCROLL_ID } from "@/lib/app-layout-scroll";
-import { CRETA_SECTIONS, type CretaSection } from "@/lib/creta-sections";
 import {
   floatingDockBookSiteChromeToggleClass,
   floatingDockBookSiteFooterCollapsedStripClass,

@@ -10,7 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { type CretaDevice, updateCretaDeviceTags } from "@/lib/creta-api";
+import {
+  type CretaDevice,
+  updateCretaDeviceTags,
+} from "@/features/creta/creta-api";
 import { cretaKeys } from "@/lib/query-keys";
 
 const TAG_MAX_LEN = 40;

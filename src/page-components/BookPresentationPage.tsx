@@ -22,38 +22,38 @@ import { BookSlideCanvas } from "@/components/books/BookSlideCanvas";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { useReducedMotion } from "@/hooks/use-reduced-motion";
-import { type BookDetail, fetchBook, publicAssetUrl } from "@/lib/api";
 import {
   collectBookOverlayElements,
   DEFAULT_PAGE_BACKGROUND,
   DEFAULT_SLIDE_HEIGHT,
   DEFAULT_SLIDE_WIDTH,
   slideDisplayLabel,
-} from "@/lib/book-canvas";
+} from "@/features/book/book-canvas";
 import {
   computeSlidePresentationDurationSec,
   DEFAULT_PRESENTATION_SLIDE_SEC,
-} from "@/lib/book-presentation";
+} from "@/features/book/book-presentation";
 import {
   type BookPresentationTransitionId,
   clampBookPresentationTransitionMs,
   normalizeBookPresentationTransition,
-} from "@/lib/book-presentation-transition";
-import { bookCanvasStageMatClass } from "@/lib/book-workspace-ui";
+} from "@/features/book/book-presentation-transition";
+import { bookCanvasStageMatClass } from "@/features/book/book-workspace-ui";
+import {
+  BOOK_CANVAS_PRESENTATION_DISPLAY_OPTS,
+  type BookCanvasDisplayFitMode,
+  useBookCanvasDisplayScale,
+} from "@/features/book/use-book-canvas-display-scale";
 import {
   type CretaAdActiveCreative,
   fetchCretaAdActiveCreatives,
   fetchCretaAdSetting,
   logCretaAdPlay,
-} from "@/lib/creta-ads-api";
+} from "@/features/creta/creta-ads-api";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { type BookDetail, fetchBook, publicAssetUrl } from "@/lib/api";
 import { goBackOrPush } from "@/lib/navigate-back";
 import { bookKeys, cretaKeys } from "@/lib/query-keys";
-import {
-  BOOK_CANVAS_PRESENTATION_DISPLAY_OPTS,
-  type BookCanvasDisplayFitMode,
-  useBookCanvasDisplayScale,
-} from "@/lib/use-book-canvas-display-scale";
 import { cn } from "@/lib/utils";
 
 function requestPresentationFullscreen(el: HTMLElement) {

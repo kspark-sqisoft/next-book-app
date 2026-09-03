@@ -1,4 +1,7 @@
-import { DEFAULT_SLIDE_HEIGHT, DEFAULT_SLIDE_WIDTH } from "@/lib/book-canvas";
+import {
+  DEFAULT_SLIDE_HEIGHT,
+  DEFAULT_SLIDE_WIDTH,
+} from "@/features/book/book-canvas";
 import { cn } from "@/lib/utils";
 
 export type BookLeftDockSlideDims = {

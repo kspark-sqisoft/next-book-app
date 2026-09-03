@@ -1,13 +1,13 @@
 // 위젯 클립보드 순수 함수 검증 — id 재발급·오프셋 규칙·클램프
 import { describe, expect, it } from "vitest";
 
-import type { BookCanvasElement } from "@/lib/book-canvas";
+import type { BookCanvasElement } from "@/features/book/book-canvas";
 import {
   BOOK_WIDGET_PASTE_OFFSET_PX,
   nextBookWidgetPasteStepPx,
   placeBookWidgetPaste,
   regenerateBookElementIds,
-} from "@/lib/use-book-widget-clipboard";
+} from "@/features/book/use-book-widget-clipboard";
 
 const imageEl = (
   over: Partial<Extract<BookCanvasElement, { type: "image" }>> = {},

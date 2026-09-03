@@ -17,7 +17,6 @@ import {
 
 import type { BookTextOverlayLiveFrame } from "@/components/books/BookTextWidgetOverlay";
 import { BookVideoSubtitleCaption } from "@/components/books/BookVideoSubtitleCaption";
-import { publicAssetUrl } from "@/lib/api";
 import {
   type BookCanvasElement,
   bookElementOverlayTopLeftFromPivot,
@@ -32,8 +31,9 @@ import {
   resolveMediaPlaylistImageDurationSec,
   resolveMediaPlaylistLoop,
   resolveMediaPlaylistShowControls,
-} from "@/lib/book-canvas";
-import { subtitleFontPx } from "@/lib/book-video-subtitles";
+} from "@/features/book/book-canvas";
+import { subtitleFontPx } from "@/features/book/book-video-subtitles";
+import { publicAssetUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 export type BookMediaPlaylistPlaybackUiSnapshot = {

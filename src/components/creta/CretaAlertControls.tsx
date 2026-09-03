@@ -21,7 +21,6 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { isAdminUser } from "@/lib/authz";
 import {
   activateCretaAlert,
   CRETA_ALERT_LEVEL_CLASS,
@@ -30,7 +29,8 @@ import {
   type CretaAlertLevel,
   deactivateCretaAlert,
   fetchActiveCretaAlert,
-} from "@/lib/creta-alerts-api";
+} from "@/features/creta/creta-alerts-api";
+import { isAdminUser } from "@/lib/authz";
 import { formatDateMediumShort } from "@/lib/format-date";
 import { cretaKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";

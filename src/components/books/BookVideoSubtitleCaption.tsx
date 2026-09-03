@@ -5,7 +5,7 @@
 import {
   bookSubtitleLangLabel,
   simulatedSubtitleLine,
-} from "@/lib/book-video-subtitles";
+} from "@/features/book/book-video-subtitles";
 
 export function BookVideoSubtitleCaption({
   lang,

@@ -25,13 +25,13 @@ import { type DragEvent, useCallback, useRef } from "react";
 
 import { setShapeDragData } from "@/components/books/BookSlideCanvas";
 import { Label } from "@/components/ui/label";
-import type { BookShapeKind } from "@/lib/book-canvas";
+import type { BookShapeKind } from "@/features/book/book-canvas";
 import {
   bookDockedPanelHeaderIconClass,
   bookDockedPanelHeaderRowClass,
   bookDockedPanelHeadingClass,
   bookDockedPanelRootClass,
-} from "@/lib/book-workspace-ui";
+} from "@/features/book/book-workspace-ui";
 import { cn } from "@/lib/utils";
 
 const ITEMS: {

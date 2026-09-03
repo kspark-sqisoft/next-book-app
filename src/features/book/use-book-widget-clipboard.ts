@@ -1,7 +1,7 @@
 // 위젯 복사/잘라내기/붙여넣기 — 앱 내부 클립보드(OS 클립보드 미사용, 입력창 텍스트 복사와 충돌 방지)
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
-import type { BookCanvasElement } from "@/lib/book-canvas";
+import type { BookCanvasElement } from "@/features/book/book-canvas";
 
 /** 같은 페이지 연속 붙여넣기 시 계단식으로 밀어내는 간격(논리 px) */
 export const BOOK_WIDGET_PASTE_OFFSET_PX = 16;

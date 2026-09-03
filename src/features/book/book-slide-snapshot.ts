@@ -1,8 +1,7 @@
 import Konva from "konva";
 import type { SceneContext } from "konva/lib/Context";
 
-import { publicAssetUrl } from "@/lib/api";
-import type { BookCanvasElement } from "@/lib/book-canvas";
+import type { BookCanvasElement } from "@/features/book/book-canvas";
 import {
   BOOK_MEDIA_PLACEHOLDER_FILL,
   bookElementPivotKonva,
@@ -18,14 +17,15 @@ import {
   resolveBookElementOpacity,
   resolveBookElementOutlineColor,
   resolveBookElementOutlineWidth,
-} from "@/lib/book-canvas";
-import { computeKonvaFittedImageLayout } from "@/lib/book-media-layout";
+} from "@/features/book/book-canvas";
+import { computeKonvaFittedImageLayout } from "@/features/book/book-media-layout";
 import {
   getTextWidgetDisplayHtml,
   richHtmlToPlainText,
   textWidgetHitHeight,
-} from "@/lib/book-text-widget";
-import { fetchCretaAdActiveCreatives } from "@/lib/creta-ads-api";
+} from "@/features/book/book-text-widget";
+import { fetchCretaAdActiveCreatives } from "@/features/creta/creta-ads-api";
+import { publicAssetUrl } from "@/lib/api";
 
 export type BookSlideSnapshotPage = {
   backgroundColor: string;

@@ -50,18 +50,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
+import {
+  createCretaPlaylist,
+  deleteCretaPlaylist,
+  fetchCretaPlaylists,
+  sharedWithSummary,
+} from "@/features/creta/creta-api";
 import { canManageOwned } from "@/lib/authz";
 import {
   CARD_GRID_COLUMNS,
   GRID_CARD_HOVER,
   LIST_ROW_HOVER,
 } from "@/lib/card-hover";
-import {
-  createCretaPlaylist,
-  deleteCretaPlaylist,
-  fetchCretaPlaylists,
-  sharedWithSummary,
-} from "@/lib/creta-api";
 import { cretaKeys } from "@/lib/query-keys";
 import { useAuth } from "@/stores/auth-store";
 

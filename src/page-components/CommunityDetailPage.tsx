@@ -25,9 +25,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  fetchPublicCretaPlaylist,
+  sharedWithSummary,
+} from "@/features/creta/creta-api";
+import { fetchCretaLikes } from "@/features/creta/creta-likes-api";
 import { fetchBook } from "@/lib/api";
-import { fetchPublicCretaPlaylist, sharedWithSummary } from "@/lib/creta-api";
-import { fetchCretaLikes } from "@/lib/creta-likes-api";
 import { formatDateMediumShort } from "@/lib/format-date";
 import { goBackOrPush } from "@/lib/navigate-back";
 import { bookKeys, cretaKeys } from "@/lib/query-keys";

@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
-import type { BookWeatherBlockKey } from "@/lib/book-canvas";
+import type { BookWeatherBlockKey } from "@/features/book/book-canvas";
 import { cn } from "@/lib/utils";
 
 type CommitPayload = {

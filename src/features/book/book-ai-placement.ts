@@ -8,8 +8,8 @@ import {
   DEFAULT_BOOK_WEATHER_WIDGET_HEIGHT,
   DEFAULT_BOOK_WEATHER_WIDGET_WIDTH,
   snapBookElementTopLeftToGrid,
-} from "@/lib/book-canvas";
-import { defaultTextWidgetBoxHeight } from "@/lib/book-text-widget";
+} from "@/features/book/book-canvas";
+import { defaultTextWidgetBoxHeight } from "@/features/book/book-text-widget";
 
 export type BookLayoutAiAddWidgetAction = {
   type: "add_widget";

@@ -47,18 +47,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SafeImage } from "@/components/ui/safe-image";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  createCretaSchedule,
+  deleteCretaSchedule,
+  fetchCretaSchedules,
+  sharedWithSummary,
+} from "@/features/creta/creta-api";
 import { canManageOwned } from "@/lib/authz";
 import {
   CARD_GRID_COLUMNS,
   GRID_CARD_HOVER,
   LIST_ROW_HOVER,
 } from "@/lib/card-hover";
-import {
-  createCretaSchedule,
-  deleteCretaSchedule,
-  fetchCretaSchedules,
-  sharedWithSummary,
-} from "@/lib/creta-api";
 import { cretaKeys } from "@/lib/query-keys";
 import { useAuth } from "@/stores/auth-store";
 

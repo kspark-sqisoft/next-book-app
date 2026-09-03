@@ -9,7 +9,7 @@ import { Spinner } from "@/components/ui/spinner";
 import {
   type CretaDevicePowerInput,
   WEEKDAY_SHORT_LABEL,
-} from "@/lib/creta-api";
+} from "@/features/creta/creta-api";
 import { cn } from "@/lib/utils";
 
 const HHMM_RE = /^([01]\d|2[0-3]):[0-5]\d$/;

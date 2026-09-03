@@ -21,7 +21,7 @@ import {
   minutesToTime,
   SLOT_REPEAT_LABEL,
   timeToMinutes,
-} from "@/lib/creta-api";
+} from "@/features/creta/creta-api";
 import { cn } from "@/lib/utils";
 
 export type CretaSlotDraft = {

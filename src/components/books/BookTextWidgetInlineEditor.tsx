@@ -16,13 +16,13 @@ import {
   resolveBookElementOutlineColor,
   resolveBookElementOutlineWidth,
   resolveBookElementRotation,
-} from "@/lib/book-canvas";
+} from "@/features/book/book-canvas";
 import {
   bookRichHtmlFromContentEditable,
   mergeTextWidgetHeightAfterMeasure,
   richHtmlToPlainText,
   textWidgetHitHeight,
-} from "@/lib/book-text-widget";
+} from "@/features/book/book-text-widget";
 import { cn } from "@/lib/utils";
 
 export type BookTextWidgetInlineEditorHandle = {

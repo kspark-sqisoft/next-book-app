@@ -1,5 +1,5 @@
+import type { BookCanvasElement } from "@/features/book/book-canvas";
 import { publicAssetUrl } from "@/lib/api";
-import type { BookCanvasElement } from "@/lib/book-canvas";
 
 /** Konva용 이미지 URL (에셋 베이스 적용) */
 export function resolveBookImageUrl(src: string): string {

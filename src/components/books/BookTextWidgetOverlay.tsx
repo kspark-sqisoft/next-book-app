@@ -12,12 +12,12 @@ import {
   resolveBookElementOutlineWidth,
   resolveBookElementReadability,
   resolveBookElementRotation,
-} from "@/lib/book-canvas";
-import { resolveBookTextAnimation } from "@/lib/book-text-animation";
+} from "@/features/book/book-canvas";
+import { resolveBookTextAnimation } from "@/features/book/book-text-animation";
 import {
   getTextWidgetDisplayHtml,
   textWidgetHitHeight,
-} from "@/lib/book-text-widget";
+} from "@/features/book/book-text-widget";
 import { cn } from "@/lib/utils";
 
 /** 드래그·트랜스폼 중 Konva와 동일(논리 좌표: 회전 전 박스 왼쪽 위·크기·도) */

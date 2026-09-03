@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildCretaAdRotation,
   cretaAdRotationIndex,
-} from "@/lib/creta-ad-rotation";
-import type { CretaAdActiveCreative } from "@/lib/creta-ads-api";
+} from "@/features/creta/creta-ad-rotation";
+import type { CretaAdActiveCreative } from "@/features/creta/creta-ads-api";
 
 function creative(
   id: number,

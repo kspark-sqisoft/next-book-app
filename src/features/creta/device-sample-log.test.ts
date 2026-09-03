@@ -5,7 +5,7 @@ import {
   buildDeviceSampleLog,
   deviceLogDateKey,
   recentDeviceLogDateKeys,
-} from "@/lib/device-sample-log";
+} from "@/features/creta/device-sample-log";
 
 describe("buildDeviceSampleLog", () => {
   it("같은 디바이스·같은 날이면 같은 로그(결정적), 시간순 정렬", () => {

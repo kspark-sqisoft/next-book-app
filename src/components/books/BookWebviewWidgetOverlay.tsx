@@ -11,7 +11,7 @@ import {
   resolveBookElementOutlineColor,
   resolveBookElementOutlineWidth,
   resolveBookElementRotation,
-} from "@/lib/book-canvas";
+} from "@/features/book/book-canvas";
 import { cn } from "@/lib/utils";
 
 type Props = {

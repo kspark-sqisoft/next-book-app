@@ -5,7 +5,7 @@ import {
   CRETA_DEVICE_STATUS_LABEL,
   type CretaDevice,
   cretaDeviceStatus,
-} from "@/lib/creta-api";
+} from "@/features/creta/creta-api";
 
 /** 디바이스 상태 배지 — 온라인(초록)·비정상(빨강+아이콘)·오프라인(회색). 색만이 아니라 글자·아이콘으로도 구분 */
 export function DeviceStatusBadge({

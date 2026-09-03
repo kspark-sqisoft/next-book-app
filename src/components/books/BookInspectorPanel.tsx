@@ -37,7 +37,6 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
-import { publicAssetUrl } from "@/lib/api";
 import {
   BOOK_CHART_DATA_MAX,
   BOOK_MEDIA_OBJECT_FIT_VALUES,
@@ -85,13 +84,13 @@ import {
   resolveMediaPlaylistLoop,
   resolveMediaPlaylistShowControls,
   slideDisplayLabel,
-} from "@/lib/book-canvas";
-import { BOOK_HEX_COLOR_PRESETS } from "@/lib/book-color-presets";
+} from "@/features/book/book-canvas";
+import { BOOK_HEX_COLOR_PRESETS } from "@/features/book/book-color-presets";
 import {
   computeMediaPlaylistPresentationDurationSec,
   DEFAULT_PRESENTATION_PLAYLIST_VIDEO_ESTIMATE_SEC,
   DEFAULT_WIDGET_PRESENTATION_SEC,
-} from "@/lib/book-presentation";
+} from "@/features/book/book-presentation";
 import {
   BOOK_TEXT_ANIMATION_MAX_SEC,
   BOOK_TEXT_ANIMATION_META,
@@ -99,23 +98,24 @@ import {
   BOOK_TEXT_ANIMATION_OPTIONS,
   normalizeBookTextAnimation,
   resolveBookTextAnimation,
-} from "@/lib/book-text-animation";
+} from "@/features/book/book-text-animation";
 import {
   defaultTextWidgetBoxHeight,
   getTextWidgetDisplayHtml,
-} from "@/lib/book-text-widget";
+} from "@/features/book/book-text-widget";
 import {
   BOOK_SUBTITLE_LANGS,
   BOOK_SUBTITLE_SIZES,
   normalizeBookSubtitleLang,
   normalizeBookSubtitleSize,
-} from "@/lib/book-video-subtitles";
+} from "@/features/book/book-video-subtitles";
 import {
   bookDockedPanelHeaderIconClass,
   bookDockedPanelHeaderRowClass,
   bookDockedPanelHeadingClass,
   bookDockedPanelRootClass,
-} from "@/lib/book-workspace-ui";
+} from "@/features/book/book-workspace-ui";
+import { publicAssetUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 type BookInspectorPanelProps = {

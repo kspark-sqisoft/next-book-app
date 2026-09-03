@@ -22,7 +22,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { SafeImage } from "@/components/ui/safe-image";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
-import { canEditOwnedOrShared, canManageOwned } from "@/lib/authz";
 import {
   addCretaScheduleSlot,
   type CretaScheduleDetail,
@@ -37,7 +36,8 @@ import {
   updateCretaDeviceSource,
   updateCretaSchedule,
   updateCretaScheduleSlot,
-} from "@/lib/creta-api";
+} from "@/features/creta/creta-api";
+import { canEditOwnedOrShared, canManageOwned } from "@/lib/authz";
 import { goBackOrPush } from "@/lib/navigate-back";
 import { cretaKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";

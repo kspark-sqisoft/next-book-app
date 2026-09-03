@@ -5,8 +5,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Heart } from "lucide-react";
 import { toast } from "sonner";
 
-import type { CretaCommentTargetKind } from "@/lib/creta-comments-api";
-import { type CretaLikeState, toggleCretaLike } from "@/lib/creta-likes-api";
+import type { CretaCommentTargetKind } from "@/features/creta/creta-comments-api";
+import {
+  type CretaLikeState,
+  toggleCretaLike,
+} from "@/features/creta/creta-likes-api";
 import { cretaKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/stores/auth-store";

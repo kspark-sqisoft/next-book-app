@@ -8,7 +8,6 @@ import { BadgeDollarSign } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { BookTextOverlayLiveFrame } from "@/components/books/BookTextWidgetOverlay";
-import { publicAssetUrl } from "@/lib/api";
 import {
   type BookCanvasElement,
   bookElementOverlayTopLeftFromPivot,
@@ -20,16 +19,17 @@ import {
   resolveBookElementOutlineColor,
   resolveBookElementOutlineWidth,
   resolveBookElementRotation,
-} from "@/lib/book-canvas";
+} from "@/features/book/book-canvas";
 import {
   buildCretaAdRotation,
   cretaAdRotationIndex,
-} from "@/lib/creta-ad-rotation";
+} from "@/features/creta/creta-ad-rotation";
 import {
   fetchCretaAdActiveCreatives,
   fetchCretaAdSetting,
   logCretaAdPlay,
-} from "@/lib/creta-ads-api";
+} from "@/features/creta/creta-ads-api";
+import { publicAssetUrl } from "@/lib/api";
 import { cretaKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 

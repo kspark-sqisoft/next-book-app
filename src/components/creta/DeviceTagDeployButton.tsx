@@ -22,8 +22,11 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
+import {
+  assignCretaSourceByTag,
+  type CretaDevice,
+} from "@/features/creta/creta-api";
 import { isAdminUser } from "@/lib/authz";
-import { assignCretaSourceByTag, type CretaDevice } from "@/lib/creta-api";
 import { cretaKeys } from "@/lib/query-keys";
 import { useAuth } from "@/stores/auth-store";
 

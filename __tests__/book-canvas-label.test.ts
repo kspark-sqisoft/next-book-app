@@ -5,7 +5,7 @@ import {
   DEFAULT_PAGE_BACKGROUND,
   sanitizePageBackgroundColor,
   slideDisplayLabel,
-} from "@/lib/book-canvas";
+} from "@/features/book/book-canvas";
 
 test("slideDisplayLabel", () => {
   expect(slideDisplayLabel("  제목  ", 0)).toBe("제목");

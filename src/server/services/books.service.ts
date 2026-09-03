@@ -5,8 +5,8 @@ import { join } from "node:path";
 
 import { and, asc, count, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 
-import type { BookCanvasElement } from "@/lib/book-canvas";
-import { BOOK_TEXT_ANIMATION_IDS } from "@/lib/book-text-animation-ids";
+import type { BookCanvasElement } from "@/features/book/book-canvas";
+import { BOOK_TEXT_ANIMATION_IDS } from "@/features/book/book-text-animation-ids";
 import {
   type AuthActor,
   canMutateOwnedResource,
@@ -105,8 +105,8 @@ export type BookAuthorPublic = {
  * 알려주지 않는다). 타입 전용 import 는 런타임에 지워지므로 서버 번들에 아무것도
  * 들어가지 않는다.
  *
- * NOTE: 스키마가 `lib/` 에 있어 의존 방향이 뒤집혀 보인다 — 4번(`lib` 해체)에서
- * 도메인 타입을 중립 위치로 옮기면 해소된다.
+ * 스키마는 `features/book/` 에 있다 — 서버·클라이언트 어느 쪽에도 속하지 않는
+ * 도메인 정의라, 양쪽이 같은 곳을 바라본다.
  */
 export type BookCanvasElementPublic = BookCanvasElement;
 

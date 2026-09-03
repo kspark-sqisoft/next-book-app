@@ -5,9 +5,12 @@
 import { useMemo } from "react";
 
 import { SafeImage } from "@/components/ui/safe-image";
+import {
+  DEFAULT_SLIDE_HEIGHT,
+  DEFAULT_SLIDE_WIDTH,
+} from "@/features/book/book-canvas";
+import { useBookPageThumbnails } from "@/features/book/use-book-page-thumbnails";
 import type { BookListCoverPreview } from "@/lib/api";
-import { DEFAULT_SLIDE_HEIGHT, DEFAULT_SLIDE_WIDTH } from "@/lib/book-canvas";
-import { useBookPageThumbnails } from "@/lib/use-book-page-thumbnails";
 import { cn } from "@/lib/utils";
 
 /** 목록 단위로 커버 → 데이터 URL 썸네일을 일괄 생성(clientKey → dataUrl) */

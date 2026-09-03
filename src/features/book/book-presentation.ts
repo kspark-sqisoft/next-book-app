@@ -1,8 +1,11 @@
-import type { BookCanvasElement, BookEditorPageState } from "@/lib/book-canvas";
+import type {
+  BookCanvasElement,
+  BookEditorPageState,
+} from "@/features/book/book-canvas";
 import {
   resolveEffectivePresentationTimingElementId,
   resolveMediaPlaylistImageDurationSec,
-} from "@/lib/book-canvas";
+} from "@/features/book/book-canvas";
 
 /** 미디어(플레이리스트) 위젯 제외 위젯·페이지 기본 체류 초(표시 시간 미지정 시) */
 export const DEFAULT_WIDGET_PRESENTATION_SEC = 10;

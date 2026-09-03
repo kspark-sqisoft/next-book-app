@@ -4,7 +4,7 @@ import { useState } from "react";
 import { BookTextAnimatedContent } from "@/components/books/BookTextAnimatedContent";
 import { BOOK_TEXT_WIDGET_CONTENT_CLASS } from "@/components/books/BookTextWidgetOverlay";
 import { Button } from "@/components/ui/button";
-import type { BookTextAnimationId } from "@/lib/book-text-animation";
+import type { BookTextAnimationId } from "@/features/book/book-text-animation";
 import { cn } from "@/lib/utils";
 
 const PREVIEW_HEIGHT_PX = 96;

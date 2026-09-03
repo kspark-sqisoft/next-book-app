@@ -72,8 +72,6 @@ import {
   ContextMenuFloatingItem,
   ContextMenuFloatingPanel,
 } from "@/components/ui/context-menu";
-import { publicAssetUrl } from "@/lib/api";
-import { appLog } from "@/lib/app-log";
 import {
   BOOK_CANVAS_DRAG_GRID_PX,
   BOOK_MEDIA_PLACEHOLDER_FILL,
@@ -98,16 +96,21 @@ import {
   resolveBookElementRotation,
   resolveMediaPlaylistShowControls,
   snapKonvaBookNodePositionToGrid,
-} from "@/lib/book-canvas";
-import { isBookEditorTypingTarget } from "@/lib/book-editor-keyboard";
-import { getBookImageIfReady, loadBookImage } from "@/lib/book-image-cache";
-import { computeKonvaFittedImageLayout } from "@/lib/book-media-layout";
+} from "@/features/book/book-canvas";
+import { isBookEditorTypingTarget } from "@/features/book/book-editor-keyboard";
+import {
+  getBookImageIfReady,
+  loadBookImage,
+} from "@/features/book/book-image-cache";
+import { computeKonvaFittedImageLayout } from "@/features/book/book-media-layout";
 import {
   getTextWidgetDisplayHtml,
   nextTextWidgetHeightGrowOnly,
   textWidgetHitHeight,
-} from "@/lib/book-text-widget";
-import { subtitleFontPx } from "@/lib/book-video-subtitles";
+} from "@/features/book/book-text-widget";
+import { subtitleFontPx } from "@/features/book/book-video-subtitles";
+import { publicAssetUrl } from "@/lib/api";
+import { appLog } from "@/lib/app-log";
 import { cn } from "@/lib/utils";
 
 function useBookImage(src: string) {

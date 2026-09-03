@@ -1,7 +1,7 @@
 import { type Draft, produce } from "immer";
 import { useCallback, useState } from "react";
 
-import type { BookEditorPageState } from "@/lib/book-canvas";
+import type { BookEditorPageState } from "@/features/book/book-canvas";
 
 const MAX_HISTORY = 80;
 

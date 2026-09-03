@@ -5,7 +5,7 @@ import {
   type BookSlideTemplateId,
   type BookSlideTemplatePreviewLayer,
   getBookSlideTemplatePreviewLayers,
-} from "@/lib/book-slide-templates";
+} from "@/features/book/book-slide-templates";
 import { cn } from "@/lib/utils";
 
 function stockUrl(stockIndex: number): string {

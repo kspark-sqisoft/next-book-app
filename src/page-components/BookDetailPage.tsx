@@ -87,21 +87,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { useIsMobile } from "@/hooks/use-mobile";
-import {
-  addBookMediaLibraryItem,
-  type BookCanvasElement,
-  type BookDetail,
-  type BookPageDto,
-  deleteBook,
-  fetchBook,
-  updateBook,
-  uploadBookMedia,
-} from "@/lib/api";
-import {
-  canEditAsOwnerOrAdmin,
-  canEditBookAsOwnerAdminOrShared,
-} from "@/lib/authz";
 import {
   applyAutoSlideNamesByIndex,
   BOOK_CANVAS_DRAG_GRID_PX,
@@ -156,42 +141,57 @@ import {
   reorderPagesArray,
   resolveEffectivePresentationTimingElementId,
   toBookPagePayloads,
-} from "@/lib/book-canvas";
-import { isBookEditorTypingTarget } from "@/lib/book-editor-keyboard";
-import type { BookEditorLeftTab } from "@/lib/book-editor-panel-events";
+} from "@/features/book/book-canvas";
+import { isBookEditorTypingTarget } from "@/features/book/book-editor-keyboard";
+import type { BookEditorLeftTab } from "@/features/book/book-editor-panel-events";
 import {
   readFloatingMediaLibraryVisible,
   readFloatingWidgetPaletteVisible,
   writeFloatingMediaLibraryVisible,
   writeFloatingWidgetPaletteVisible,
-} from "@/lib/book-floating-ui-prefs";
-import { warmBookCanvasImagesForNeighborPages } from "@/lib/book-image-cache";
-import { renderPdfFileToPageImages } from "@/lib/book-pdf-import";
-import { computeSlidePresentationDurationSec } from "@/lib/book-presentation";
+} from "@/features/book/book-floating-ui-prefs";
+import { warmBookCanvasImagesForNeighborPages } from "@/features/book/book-image-cache";
+import { renderPdfFileToPageImages } from "@/features/book/book-pdf-import";
+import { computeSlidePresentationDurationSec } from "@/features/book/book-presentation";
 import {
   type BookPresentationTransitionId,
   clampBookPresentationTransitionMs,
   normalizeBookPresentationTransition,
-} from "@/lib/book-presentation-transition";
+} from "@/features/book/book-presentation-transition";
 import {
   type BookSlideTemplateId,
   instantiateBookSlideTemplate,
-} from "@/lib/book-slide-templates";
-import { defaultTextWidgetBoxHeight } from "@/lib/book-text-widget";
+} from "@/features/book/book-slide-templates";
+import { defaultTextWidgetBoxHeight } from "@/features/book/book-text-widget";
 import {
   bookCanvasStageMatClass,
   bookCanvasToolbarRowClass,
   bookLeftDockContentColumnClass,
   bookRightDockInspectorShellClass,
-} from "@/lib/book-workspace-ui";
-import { bookKeys } from "@/lib/query-keys";
+} from "@/features/book/book-workspace-ui";
 import {
   BOOK_CANVAS_STAGE_DISPLAY_OPTS,
   useBookCanvasDisplayScale,
-} from "@/lib/use-book-canvas-display-scale";
-import { useBookDocumentHistory } from "@/lib/use-book-document-history";
-import { useBookPageThumbnails } from "@/lib/use-book-page-thumbnails";
-import { useBookWidgetClipboard } from "@/lib/use-book-widget-clipboard";
+} from "@/features/book/use-book-canvas-display-scale";
+import { useBookDocumentHistory } from "@/features/book/use-book-document-history";
+import { useBookPageThumbnails } from "@/features/book/use-book-page-thumbnails";
+import { useBookWidgetClipboard } from "@/features/book/use-book-widget-clipboard";
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  addBookMediaLibraryItem,
+  type BookCanvasElement,
+  type BookDetail,
+  type BookPageDto,
+  deleteBook,
+  fetchBook,
+  updateBook,
+  uploadBookMedia,
+} from "@/lib/api";
+import {
+  canEditAsOwnerOrAdmin,
+  canEditBookAsOwnerAdminOrShared,
+} from "@/lib/authz";
+import { bookKeys } from "@/lib/query-keys";
 import { useAuth } from "@/stores/auth-store";
 
 // API 페이지 DTO 를 편집기 로컬 페이지 배열로 정렬·정규화

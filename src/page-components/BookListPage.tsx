@@ -44,6 +44,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import {
+  DEFAULT_SLIDE_HEIGHT,
+  DEFAULT_SLIDE_WIDTH,
+} from "@/features/book/book-canvas";
+import { useBookPageThumbnails } from "@/features/book/use-book-page-thumbnails";
+import {
   BOOK_PAGE_DEFAULT,
   type BookListItem as BookListItemModel,
   createBook,
@@ -53,10 +58,8 @@ import {
 import { SITE_APP_MAIN_SCROLL_ID } from "@/lib/app-layout-scroll";
 import { appLog } from "@/lib/app-log";
 import { canEditAsOwnerOrAdmin } from "@/lib/authz";
-import { DEFAULT_SLIDE_HEIGHT, DEFAULT_SLIDE_WIDTH } from "@/lib/book-canvas";
 import { CARD_GRID_COLUMNS } from "@/lib/card-hover";
 import { bookKeys } from "@/lib/query-keys";
-import { useBookPageThumbnails } from "@/lib/use-book-page-thumbnails";
 import { useAuth } from "@/stores/auth-store";
 
 /** 뷰포트 하단에서 이 픽셀 안이면 “다음 페이지”로 간주 */

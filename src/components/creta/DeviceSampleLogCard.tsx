@@ -8,13 +8,16 @@ import { useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { type CretaDevice, WEEKDAY_SHORT_LABEL } from "@/lib/creta-api";
+import {
+  type CretaDevice,
+  WEEKDAY_SHORT_LABEL,
+} from "@/features/creta/creta-api";
 import {
   buildDeviceSampleLog,
   DEVICE_SAMPLE_LOG_LEVEL_LABEL,
   type DeviceSampleLogLevel,
   recentDeviceLogDateKeys,
-} from "@/lib/device-sample-log";
+} from "@/features/creta/device-sample-log";
 import { cn } from "@/lib/utils";
 
 const LEVEL_STYLE: Record<

@@ -5,7 +5,7 @@ import {
   type BookTextAnimationId,
   buildAnimatedTextHtml,
   textAnimationCssVars,
-} from "@/lib/book-text-animation";
+} from "@/features/book/book-text-animation";
 import { cn } from "@/lib/utils";
 
 type Props = {

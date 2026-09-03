@@ -19,7 +19,7 @@ import {
   type CretaDevice,
   cretaDeviceStatus,
   fetchCretaDevices,
-} from "@/lib/creta-api";
+} from "@/features/creta/creta-api";
 import { cretaKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/stores/auth-store";

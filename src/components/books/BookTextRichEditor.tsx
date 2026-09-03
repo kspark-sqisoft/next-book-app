@@ -29,11 +29,11 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { LinkUrlDialog } from "@/components/forms/LinkUrlDialog";
 import { Button } from "@/components/ui/button";
-import { BOOK_HEX_COLOR_PRESETS } from "@/lib/book-color-presets";
+import { BOOK_HEX_COLOR_PRESETS } from "@/features/book/book-color-presets";
 import {
   richHtmlToPlainText,
   sanitizeBookRichHtml,
-} from "@/lib/book-text-widget";
+} from "@/features/book/book-text-widget";
 import { cn } from "@/lib/utils";
 
 /** 위젯 기본 글자 크기(`fontSize`) 대비. `em`이라 슬라이드 배율과 맞습니다. */

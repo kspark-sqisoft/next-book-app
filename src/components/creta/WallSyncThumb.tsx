@@ -6,15 +6,15 @@
 import { useQueries } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
-import { type BookDetail, fetchBook } from "@/lib/api";
 import {
   DEFAULT_PAGE_BACKGROUND,
   DEFAULT_SLIDE_HEIGHT,
   DEFAULT_SLIDE_WIDTH,
-} from "@/lib/book-canvas";
-import { type CretaVideoWall } from "@/lib/creta-walls-api";
+} from "@/features/book/book-canvas";
+import { useBookPageThumbnails } from "@/features/book/use-book-page-thumbnails";
+import { type CretaVideoWall } from "@/features/creta/creta-walls-api";
+import { type BookDetail, fetchBook } from "@/lib/api";
 import { bookKeys } from "@/lib/query-keys";
-import { useBookPageThumbnails } from "@/lib/use-book-page-thumbnails";
 
 export function WallSyncThumb({ wall }: { wall: CretaVideoWall }) {
   const bookIds = useMemo(() => {

@@ -16,8 +16,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  type CretaOverviewItem,
+  fetchMyCretaOverview,
+} from "@/features/creta/creta-api";
 import { publicAssetUrl } from "@/lib/api";
-import { type CretaOverviewItem, fetchMyCretaOverview } from "@/lib/creta-api";
 import { formatDateMediumShort } from "@/lib/format-date";
 import { cretaKeys } from "@/lib/query-keys";
 import { useAuth } from "@/stores/auth-store";
