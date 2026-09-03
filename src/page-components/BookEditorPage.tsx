@@ -21,10 +21,8 @@ import {
 } from "@/components/books/BookCanvasStageOverlays";
 import { BookCanvasToolbar } from "@/components/books/BookCanvasToolbar";
 import { BookEditorLeftDock } from "@/components/books/BookEditorLeftDock";
+import { BookEditorRightDock } from "@/components/books/BookEditorRightDock";
 import { BookHeaderSlideDimensions } from "@/components/books/BookHeaderSlideDimensions";
-import { BookInspectorPanel } from "@/components/books/BookInspectorPanel";
-import { BookLayersPanel } from "@/components/books/BookLayersPanel";
-import { BookPagePropertiesPanel } from "@/components/books/BookPagePropertiesPanel";
 import {
   type BookCanvasSelectDetail,
   type BookDropWidgetKind,
@@ -62,10 +60,7 @@ import { isBookEditorTypingTarget } from "@/features/book/book-editor-keyboard";
 import {} from "@/features/book/book-floating-ui-prefs";
 import { warmBookCanvasImagesForNeighborPages } from "@/features/book/book-image-cache";
 import { computeSlidePresentationDurationSec } from "@/features/book/book-presentation";
-import {
-  clampBookPresentationTransitionMs,
-  normalizeBookPresentationTransition,
-} from "@/features/book/book-presentation-transition";
+import {} from "@/features/book/book-presentation-transition";
 import {
   type BookSlideTemplateId,
   instantiateBookSlideTemplate,
@@ -73,7 +68,6 @@ import {
 import {
   bookCanvasStageMatClass,
   bookCanvasToolbarRowClass,
-  bookRightDockInspectorShellClass,
 } from "@/features/book/book-workspace-ui";
 import {
   closePageDelete,
@@ -834,99 +828,40 @@ export function BookEditorPage() {
         }
         right={
           currentPage ? (
-            <aside className="flex h-full min-h-0 w-96 shrink-0 flex-col overflow-hidden border-l border-border bg-card/50">
-              <BookLayersPanel
-                elements={currentPage.elements}
-                selectedIds={canvasSelectedIds}
-                onSelect={toggleSelectedId}
-                onReorderZ={onReorderZ}
-                onLayerDragReorder={onLayerDragReorder}
-                onVisibilityChange={onLayerVisibilityChange}
-                onLockChange={onLayerLockChange}
-                onRequestDelete={requestRemoveWidget}
-                presentationTimingElementId={
-                  currentPage.presentationTimingElementId
-                }
-                onPresentationTimingElementIdChange={
-                  updatePresentationTimingElementId
-                }
-                onPresentationHoldSecChange={(eid, sec) =>
-                  onElementChange(eid, { presentationHoldSec: sec })
-                }
-                videoDurationSecByElementId={videoDurationByElementId}
-              />
-              <div className={bookRightDockInspectorShellClass()}>
-                {canvasSelectedIds.length >= 2 ? (
-                  <BookInspectorPanel
-                    embedded
-                    selected={null}
-                    multiSelectionCount={canvasSelectedIds.length}
-                    slideWidth={slideWidth}
-                    slideHeight={slideHeight}
-                    onChange={onElementChange}
-                    onDelete={removeSelectedBulk}
-                    mediaHint={mediaHint}
-                  />
-                ) : canvasSelectedIds.length === 1 ? (
-                  <BookInspectorPanel
-                    embedded
-                    selected={selectedEl}
-                    slideWidth={slideWidth}
-                    slideHeight={slideHeight}
-                    onChange={onElementChange}
-                    onDelete={removeSelected}
-                    mediaHint={mediaHint}
-                    mediaPlaylistPlaybackByElementId={
-                      mediaPlaylistPlaybackByElementId
-                    }
-                    mediaPlaylistPlaybackUiByElementId={
-                      mediaPlaylistPlaybackUiByElementId
-                    }
-                    onMediaPlaylistRemoteControl={
-                      handleMediaPlaylistRemoteControl
-                    }
-                    videoDurationSecByElementId={videoDurationByElementId}
-                    pagePresentationTimingElementId={
-                      currentPage.presentationTimingElementId
-                    }
-                  />
-                ) : (
-                  <BookPagePropertiesPanel
-                    embedded
-                    pageIndex={activePageIndex}
-                    totalPages={pages.length}
-                    name={currentPage.name}
-                    onChangeName={updateCurrentPageName}
-                    backgroundColor={
-                      currentPage.backgroundColor?.trim() ||
-                      DEFAULT_PAGE_BACKGROUND
-                    }
-                    onChangeBackgroundColor={updateCurrentPageBackground}
-                    elements={currentPage.elements}
-                    presentationTimingElementId={
-                      currentPage.presentationTimingElementId
-                    }
-                    onChangePresentationTimingElementId={
-                      updatePresentationTimingElementId
-                    }
-                    presentationLoop={presentationLoop}
-                    onChangePresentationLoop={setPresentationLoop}
-                    presentationTransition={normalizeBookPresentationTransition(
-                      currentPage.presentationTransition,
-                    )}
-                    onChangePresentationTransition={
-                      updatePresentationTransition
-                    }
-                    presentationTransitionMs={clampBookPresentationTransitionMs(
-                      currentPage.presentationTransitionMs,
-                    )}
-                    onChangePresentationTransitionMs={
-                      updatePresentationTransitionMs
-                    }
-                  />
-                )}
-              </div>
-            </aside>
+            <BookEditorRightDock
+              page={currentPage}
+              pageIndex={activePageIndex}
+              pageCount={pages.length}
+              selectedIds={canvasSelectedIds}
+              selectedElement={selectedEl}
+              slideWidth={slideWidth}
+              slideHeight={slideHeight}
+              elements={{
+                onChange: onElementChange,
+                onReorderZ,
+                onDragReorder: onLayerDragReorder,
+                onVisibilityChange: onLayerVisibilityChange,
+                onLockChange: onLayerLockChange,
+                onRequestDelete: requestRemoveWidget,
+                onDeleteSelected: removeSelected,
+                onDeleteSelectedBulk: removeSelectedBulk,
+              }}
+              pageActions={{
+                onChangeName: updateCurrentPageName,
+                onChangeBackground: updateCurrentPageBackground,
+                onChangeTimingElementId: updatePresentationTimingElementId,
+                onChangeTransition: updatePresentationTransition,
+                onChangeTransitionMs: updatePresentationTransitionMs,
+              }}
+              presentationLoop={presentationLoop}
+              onChangePresentationLoop={setPresentationLoop}
+              playlist={{
+                playbackByElementId: mediaPlaylistPlaybackByElementId,
+                playbackUiByElementId: mediaPlaylistPlaybackUiByElementId,
+                onRemoteControl: handleMediaPlaylistRemoteControl,
+              }}
+              mediaHint={mediaHint}
+            />
           ) : null
         }
       />

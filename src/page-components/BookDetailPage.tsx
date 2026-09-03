@@ -23,6 +23,7 @@ import {
 } from "@/components/books/BookCanvasStageOverlays";
 import { BookCanvasToolbar } from "@/components/books/BookCanvasToolbar";
 import { BookEditorLeftDock } from "@/components/books/BookEditorLeftDock";
+import { BookEditorRightDock } from "@/components/books/BookEditorRightDock";
 import { BookEditorToolRail } from "@/components/books/BookEditorToolRail";
 import { BookMediaFileInputs } from "@/components/books/BookMediaFileInputs";
 import { BookSlidePreviewOpenButton } from "@/components/books/BookSlidePreviewOpenButton";
@@ -47,11 +48,8 @@ const BookVideoEditorDialog = dynamic(
 );
 import { BookElementsPanel } from "@/components/books/BookElementsPanel";
 import { BookHeaderSlideDimensions } from "@/components/books/BookHeaderSlideDimensions";
-import { BookInspectorPanel } from "@/components/books/BookInspectorPanel";
-import { BookLayersPanel } from "@/components/books/BookLayersPanel";
 import { BookMediaLibraryPanel } from "@/components/books/BookMediaLibraryPanel";
 import { BookMediaLibraryPickDialog } from "@/components/books/BookMediaLibraryPickDialog";
-import { BookPagePropertiesPanel } from "@/components/books/BookPagePropertiesPanel";
 import { BookPageSidebar } from "@/components/books/BookPageSidebar";
 import { BookSharePopover } from "@/components/books/BookShareDialog";
 import {
@@ -114,7 +112,6 @@ import {
   bookCanvasStageMatClass,
   bookCanvasToolbarRowClass,
   bookLeftDockContentColumnClass,
-  bookRightDockInspectorShellClass,
 } from "@/features/book/book-workspace-ui";
 import {
   closePageDelete,
@@ -1659,108 +1656,47 @@ function BookDetailOwnerView({
           </>
         }
         right={
-          <aside className="flex h-full min-h-0 w-96 shrink-0 flex-col overflow-hidden border-l border-border bg-card/50">
-            <BookLayersPanel
-              elements={activePage.elements}
-              selectedIds={canvasSelectedIds}
-              onSelect={toggleSelectedId}
-              onReorderZ={onReorderZ}
-              onLayerDragReorder={onLayerDragReorder}
-              onVisibilityChange={onLayerVisibilityChange}
-              onLockChange={onLayerLockChange}
-              onRequestDelete={requestRemoveWidget}
-              presentationTimingElementId={
-                activePage.presentationTimingElementId
-              }
-              onPresentationTimingElementIdChange={
-                updatePresentationTimingElementId
-              }
-              onPresentationHoldSecChange={(eid, sec) =>
-                onElementChange(eid, { presentationHoldSec: sec })
-              }
-              videoDurationSecByElementId={videoDurationByElementId}
-            />
-            <div className={bookRightDockInspectorShellClass()}>
-              {canvasSelectedIds.length >= 2 ? (
-                <BookInspectorPanel
-                  embedded
-                  selected={null}
-                  multiSelectionCount={canvasSelectedIds.length}
-                  slideWidth={slideWidth}
-                  slideHeight={slideHeight}
-                  onChange={onElementChange}
-                  onDelete={removeSelectedBulk}
-                  mediaHint={mediaHint}
-                />
-              ) : canvasSelectedIds.length === 1 ? (
-                <BookInspectorPanel
-                  embedded
-                  selected={selectedEl}
-                  slideWidth={slideWidth}
-                  slideHeight={slideHeight}
-                  onChange={onElementChange}
-                  onDelete={removeSelected}
-                  mediaHint={mediaHint}
-                  onReplaceMediaFromFile={onInspectorReplaceMediaFromFile}
-                  onPickMediaFromLibrary={onInspectorPickMediaFromLibrary}
-                  onRequestAppendPlaylistMediaFromFile={
-                    onRequestPlaylistAppendFromFile
-                  }
-                  onRequestAppendPlaylistMediaFromLibrary={
-                    onRequestPlaylistAppendFromLibrary
-                  }
-                  mediaLibraryReplaceEnabled
-                  mediaPlaylistPlaybackByElementId={
-                    mediaPlaylistPlaybackByElementId
-                  }
-                  mediaPlaylistPlaybackUiByElementId={
-                    mediaPlaylistPlaybackUiByElementId
-                  }
-                  onMediaPlaylistRemoteControl={
-                    handleMediaPlaylistRemoteControl
-                  }
-                  videoDurationSecByElementId={videoDurationByElementId}
-                  pagePresentationTimingElementId={
-                    activePage.presentationTimingElementId
-                  }
-                  pageNames={localPages.map((p) => p.name)}
-                  activePageIndex={activePageIndex}
-                />
-              ) : (
-                <BookPagePropertiesPanel
-                  embedded
-                  pageIndex={activePageIndex}
-                  totalPages={localPages.length}
-                  name={activePage.name}
-                  onChangeName={updateCurrentPageName}
-                  backgroundColor={
-                    activePage.backgroundColor?.trim() ||
-                    DEFAULT_PAGE_BACKGROUND
-                  }
-                  onChangeBackgroundColor={updateCurrentPageBackground}
-                  elements={activePage.elements}
-                  presentationTimingElementId={
-                    activePage.presentationTimingElementId
-                  }
-                  onChangePresentationTimingElementId={
-                    updatePresentationTimingElementId
-                  }
-                  presentationLoop={presentationLoop}
-                  onChangePresentationLoop={setPresentationLoop}
-                  presentationTransition={normalizeBookPresentationTransition(
-                    activePage.presentationTransition,
-                  )}
-                  onChangePresentationTransition={updatePresentationTransition}
-                  presentationTransitionMs={clampBookPresentationTransitionMs(
-                    activePage.presentationTransitionMs,
-                  )}
-                  onChangePresentationTransitionMs={
-                    updatePresentationTransitionMs
-                  }
-                />
-              )}
-            </div>
-          </aside>
+          <BookEditorRightDock
+            page={activePage}
+            pageIndex={activePageIndex}
+            pageCount={localPages.length}
+            pageNames={pageLabels}
+            selectedIds={canvasSelectedIds}
+            selectedElement={selectedEl}
+            slideWidth={slideWidth}
+            slideHeight={slideHeight}
+            elements={{
+              onChange: onElementChange,
+              onReorderZ,
+              onDragReorder: onLayerDragReorder,
+              onVisibilityChange: onLayerVisibilityChange,
+              onLockChange: onLayerLockChange,
+              onRequestDelete: requestRemoveWidget,
+              onDeleteSelected: removeSelected,
+              onDeleteSelectedBulk: removeSelectedBulk,
+            }}
+            pageActions={{
+              onChangeName: updateCurrentPageName,
+              onChangeBackground: updateCurrentPageBackground,
+              onChangeTimingElementId: updatePresentationTimingElementId,
+              onChangeTransition: updatePresentationTransition,
+              onChangeTransitionMs: updatePresentationTransitionMs,
+            }}
+            presentationLoop={presentationLoop}
+            onChangePresentationLoop={setPresentationLoop}
+            playlist={{
+              playbackByElementId: mediaPlaylistPlaybackByElementId,
+              playbackUiByElementId: mediaPlaylistPlaybackUiByElementId,
+              onRemoteControl: handleMediaPlaylistRemoteControl,
+            }}
+            mediaHint={mediaHint}
+            media={{
+              onReplaceFromFile: onInspectorReplaceMediaFromFile,
+              onPickFromLibrary: onInspectorPickMediaFromLibrary,
+              onAppendPlaylistFromFile: onRequestPlaylistAppendFromFile,
+              onAppendPlaylistFromLibrary: onRequestPlaylistAppendFromLibrary,
+            }}
+          />
         }
       />
       {deleteBookDialog}
