@@ -26,6 +26,7 @@ import {
 } from "@/components/books/BookCanvasStageOverlays";
 import { BookCanvasToolbar } from "@/components/books/BookCanvasToolbar";
 import { BookEditorToolRail } from "@/components/books/BookEditorToolRail";
+import { BookMediaFileInputs } from "@/components/books/BookMediaFileInputs";
 
 /** Filerobot 편집기는 브라우저 전용 — SSR 제외하고 열 때만 로드 */
 const BookImageEditorDialog = dynamic(
@@ -61,7 +62,6 @@ import {
   type BookCanvasSelectDetail,
   type BookDropWidgetKind,
   type BookLibraryDragPayload,
-  type BookReplaceMediaFromFileRequest,
   BookSlideCanvas,
 } from "@/components/books/BookSlideCanvas";
 import { BookSlideDrawingPanel } from "@/components/books/BookSlideDrawingPanel";
@@ -106,7 +106,6 @@ import {
   writeFloatingMediaLibraryVisible,
 } from "@/features/book/book-floating-ui-prefs";
 import { warmBookCanvasImagesForNeighborPages } from "@/features/book/book-image-cache";
-import { renderPdfFileToPageImages } from "@/features/book/book-pdf-import";
 import { computeSlidePresentationDurationSec } from "@/features/book/book-presentation";
 import {
   type BookPresentationTransitionId,
@@ -146,6 +145,7 @@ import {
   useBookCanvasDisplayScale,
 } from "@/features/book/use-book-canvas-display-scale";
 import { useBookDocumentHistory } from "@/features/book/use-book-document-history";
+import { useBookMediaUploads } from "@/features/book/use-book-media-uploads";
 import { useBookPageThumbnails } from "@/features/book/use-book-page-thumbnails";
 import { useBookWidgetClipboard } from "@/features/book/use-book-widget-clipboard";
 import { useElementMutations } from "@/features/book/use-element-mutations";
@@ -316,11 +316,16 @@ function BookDetailOwnerView({
   );
   const [bookTitle, setBookTitle] = useState(serverBook.title);
   const canvasWrapRef = useRef<HTMLDivElement>(null);
-  // 마운트 시 1회만 쓰이는 초기값 — 매 렌더 전체 페이지 재계산(정렬·정규화)을 막는다
-  const initialPagesRef = useRef<BookEditorPageState[] | null>(null);
-  if (initialPagesRef.current === null) {
-    initialPagesRef.current = mapServerPagesToLocal(serverBook.pages);
-  }
+  /**
+   * 마운트 시 1회만 쓰이는 초기값 — 매 렌더 전체 페이지 재계산(정렬·정규화)을 막는다.
+   *
+   * 예전에는 `useRef` + "비어 있으면 채운다" 였는데, 그건 렌더 중에 ref 를 읽는 것이라
+   * 컴파일러가 값의 안정성을 보장하지 못한다(`react-hooks/refs`). 게으른 `useState`
+   * 초기화가 같은 일을 하면서 렌더에서 읽어도 되는 값이다.
+   */
+  const [initialPages] = useState(() =>
+    mapServerPagesToLocal(serverBook.pages),
+  );
   const {
     pages: localPages,
     updatePages,
@@ -330,20 +335,7 @@ function BookDetailOwnerView({
     redo,
     canUndo,
     canRedo,
-  } = useBookDocumentHistory(initialPagesRef.current);
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const videoInputRef = useRef<HTMLInputElement>(null);
-  const playlistMediaInputRef = useRef<HTMLInputElement>(null);
-  const playlistAppendElementIdRef = useRef<string | null>(null);
-  const pendingMediaKindRef = useRef<"image" | "video" | null>(null);
-  const pendingPlacementRef = useRef<{ x: number; y: number } | null>(null);
-  const replaceMediaElementIdRef = useRef<string | null>(null);
-  const [libraryPick, setLibraryPick] = useState<
-    | { mode: "replace"; elementId: string; kind: "image" | "video" }
-    | { mode: "playlistAppend"; elementId: string }
-    | null
-  >(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  } = useBookDocumentHistory(initialPages);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   /** 공유 다이얼로그 — 작성자·관리자만 열 수 있음(공유받은 편집자는 버튼 없음) */
   const [shareOpen, setShareOpen] = useState(false);
@@ -388,10 +380,6 @@ function BookDetailOwnerView({
   /** 전체 화면 편집기가 떠 있는 동안 북 에디터 단축키(Delete·Ctrl+S 등)가 가로채지 않게 */
   const editorOverlayOpen = imageEditorOpen || videoEditorOpen;
   /** PDF 가져오기(팔레트) — 변환·업로드 진행 중 여부와 숨김 파일 입력 */
-  const [pdfImportBusy, setPdfImportBusy] = useState(false);
-  const pdfImportInputRef = useRef<HTMLInputElement>(null);
-  /** 드래그 드롭으로 시작한 경우 위젯을 놓을 지점(더블 클릭·버튼은 null → 중앙) */
-  const pdfImportPlacementRef = useRef<{ x: number; y: number } | null>(null);
   const raiseFloatingWidgetStack = useCallback(() => {
     setFloatingPanelZ((prev) => {
       const top = Math.max(prev.widget, prev.media, prev.ai) + 1;
@@ -434,6 +422,29 @@ function BookDetailOwnerView({
         : "동영상 자리를 놓았습니다 — 우클릭해서 파일이나 라이브러리에서 채우세요.",
   });
   const activePage = localPages[activePageIndex];
+
+  const {
+    uploadError,
+    pdfImportBusy,
+    libraryPick,
+    setLibraryPick,
+    libraryPickAcceptKind,
+    onRequestReplaceMediaFromFile,
+    onRequestPickLibraryMediaForReplace,
+    onRequestPlaylistAppendFromFile,
+    onRequestPlaylistAppendFromLibrary,
+    requestImportPdf,
+    fileInputs: mediaFileInputs,
+  } = useBookMediaUploads({
+    bookId,
+    activePageIndex,
+    activePage,
+    slideWidth,
+    slideHeight,
+    updatePages,
+    appendToMediaLibrary,
+    raiseFloatingMediaStack,
+  });
 
   /** 다른 페이지의 공통(오버라이드) 위젯 중 현재 페이지에 겹쳐 보일 것 — 편집 캔버스 고스트 */
   const editorOverlayGhosts = useMemo(
@@ -559,29 +570,6 @@ function BookDetailOwnerView({
     else toggleSelectedId(d.id, d.shiftKey);
   }, []);
 
-  const libraryPickAcceptKind =
-    libraryPick == null
-      ? null
-      : libraryPick.mode === "replace"
-        ? libraryPick.kind
-        : ("both" as const);
-
-  useEffect(() => {
-    if (!libraryPick || !activePage) return;
-    const el = activePage.elements.find((e) => e.id === libraryPick.elementId);
-    if (!el) {
-      setLibraryPick(null);
-      return;
-    }
-    if (libraryPick.mode === "replace" && el.type !== libraryPick.kind) {
-      setLibraryPick(null);
-      return;
-    }
-    if (libraryPick.mode === "playlistAppend" && el.type !== "mediaPlaylist") {
-      setLibraryPick(null);
-    }
-  }, [libraryPick, activePage]);
-
   useEffect(() => {
     if (!activePage) return;
     const onPage = new Set(activePage.elements.map((e) => e.id));
@@ -671,15 +659,19 @@ function BookDetailOwnerView({
    * 마지막 저장 시점 스냅샷(참조 비교) — beforeunload "미저장" 판정 기준.
    * undo 스택(canUndo)은 저장 후에도 남아 있어 기준으로 쓰면 항상 경고가 뜬다.
    */
-  const lastSavedRef = useRef({
-    pages: initialPagesRef.current,
+  const [initialSavedSnapshot] = useState(() => ({
+    pages: initialPages,
     title: serverBook.title,
     slideWidth: serverBook.slideWidth ?? DEFAULT_SLIDE_WIDTH,
     slideHeight: serverBook.slideHeight ?? DEFAULT_SLIDE_HEIGHT,
     presentationLoop: serverBook.presentationLoop !== false,
-  });
-  /** 저장 요청에 실린 값 — 저장 중 추가 편집이 있으면 성공해도 그 편집은 미저장으로 남는다 */
-  const pendingSaveRef = useRef(lastSavedRef.current);
+  }));
+  const lastSavedRef = useRef(initialSavedSnapshot);
+  /**
+   * 저장 요청에 실린 값 — 저장 중 추가 편집이 있으면 성공해도 그 편집은 미저장으로 남는다.
+   * 처음에는 `lastSavedRef` 와 **같은 객체**를 가리킨다(참조 비교가 기준이라 중요하다).
+   */
+  const pendingSaveRef = useRef(initialSavedSnapshot);
 
   const saveMutation = useMutation({
     mutationFn: () => {
@@ -980,311 +972,6 @@ function BookDetailOwnerView({
     [localPages],
   );
 
-  const handleMediaFile = async (file: File, kind: "image" | "video") => {
-    setUploadError(null);
-    const replaceElementId = replaceMediaElementIdRef.current;
-    replaceMediaElementIdRef.current = null;
-    const pos = pendingPlacementRef.current ?? { x: 100, y: 100 };
-    const idx = activePageIndex;
-    pendingPlacementRef.current = null;
-    pendingMediaKindRef.current = null;
-    try {
-      const res = await uploadBookMedia(bookId, file, null);
-      if (kind === "image" && res.kind !== "image") {
-        throw new Error("이미지 파일이 아닙니다.");
-      }
-      if (kind === "video" && res.kind !== "video") {
-        throw new Error("동영상 파일이 아닙니다.");
-      }
-      if (replaceElementId) {
-        updatePages((draft) => {
-          const p = draft[idx];
-          if (!p) return;
-          const el = p.elements.find((e) => e.id === replaceElementId);
-          if (!el) return;
-          if (el.type === "image" && res.kind === "image") {
-            Object.assign(el, { src: res.url });
-          } else if (el.type === "video" && res.kind === "video") {
-            Object.assign(el, {
-              src: res.url,
-              posterSrc: res.posterUrl ?? null,
-            });
-          }
-        });
-        appendToMediaLibrary({
-          kind: res.kind,
-          src: res.url,
-          posterUrl: res.posterUrl,
-        });
-        toast.success("미디어를 바꿨습니다.");
-        return;
-      }
-      const id = crypto.randomUUID();
-      const w = kind === "image" ? 400 : 480;
-      const h = kind === "image" ? 260 : 270;
-      const el: BookCanvasElement =
-        res.kind === "image"
-          ? {
-              id,
-              type: "image",
-              x: pos.x,
-              y: pos.y,
-              width: w,
-              height: h,
-              src: res.url,
-            }
-          : {
-              id,
-              type: "video",
-              x: pos.x,
-              y: pos.y,
-              width: w,
-              height: h,
-              src: res.url,
-              posterSrc: res.posterUrl,
-            };
-      updatePages((draft) => {
-        const p = draft[idx];
-        if (p) p.elements.push(el);
-      });
-      setSelectedIds([id]);
-      appendToMediaLibrary({
-        kind: res.kind,
-        src: res.url,
-        posterUrl: res.posterUrl,
-      });
-      toast.success(
-        kind === "image" ? "이미지를 넣었습니다." : "동영상을 넣었습니다.",
-      );
-    } catch (e) {
-      setUploadError((e as Error).message);
-    }
-  };
-
-  const onRequestReplaceMediaFromFile = useCallback(
-    (req: BookReplaceMediaFromFileRequest) => {
-      replaceMediaElementIdRef.current = req.elementId;
-      pendingMediaKindRef.current = req.kind;
-      if (req.kind === "image") {
-        imageInputRef.current?.click();
-      } else {
-        videoInputRef.current?.click();
-      }
-    },
-    [],
-  );
-
-  const onRequestPickLibraryMediaForReplace = useCallback(
-    (req: { elementId: string }) => {
-      const el = activePage?.elements.find((e) => e.id === req.elementId);
-      if (!el || (el.type !== "image" && el.type !== "video")) return;
-      setLibraryPick({
-        mode: "replace",
-        elementId: req.elementId,
-        kind: el.type,
-      });
-      raiseFloatingMediaStack();
-    },
-    [activePage, raiseFloatingMediaStack],
-  );
-
-  const handlePlaylistMediaFile = useCallback(
-    async (file: File) => {
-      setUploadError(null);
-      const elementId = playlistAppendElementIdRef.current;
-      playlistAppendElementIdRef.current = null;
-      if (!elementId) return;
-      const idx = activePageIndex;
-      try {
-        const res = await uploadBookMedia(bookId, file, null);
-        let blockedFull = false;
-        let applied = false;
-        updatePages((draft) => {
-          const p = draft[idx];
-          if (!p) return;
-          const el = p.elements.find((e) => e.id === elementId);
-          if (!el || el.type !== "mediaPlaylist") return;
-          const cur = el.mediaPlaylistItems ?? [];
-          if (cur.length >= MEDIA_PLAYLIST_MAX_ITEMS) {
-            blockedFull = true;
-            return;
-          }
-          if (res.kind === "image") {
-            el.mediaPlaylistItems = [
-              ...cur,
-              { id: crypto.randomUUID(), kind: "image", src: res.url },
-            ];
-          } else {
-            el.mediaPlaylistItems = [
-              ...cur,
-              {
-                id: crypto.randomUUID(),
-                kind: "video",
-                src: res.url,
-                posterSrc: res.posterUrl ?? null,
-              },
-            ];
-          }
-          applied = true;
-        });
-        if (blockedFull) {
-          toast.error(
-            `미디어 목록은 최대 ${MEDIA_PLAYLIST_MAX_ITEMS}개입니다.`,
-          );
-          return;
-        }
-        if (!applied) return;
-        appendToMediaLibrary({
-          kind: res.kind,
-          src: res.url,
-          posterUrl: res.posterUrl,
-        });
-        toast.success("목록 끝에 미디어를 추가했습니다.");
-      } catch (e) {
-        setUploadError((e as Error).message);
-      }
-    },
-    [activePageIndex, appendToMediaLibrary, bookId, updatePages],
-  );
-
-  /** PDF 가져오기 — 각 페이지를 PNG로 변환·업로드해 미디어 재생목록 위젯으로 추가 */
-  const handleImportPdfFile = useCallback(
-    async (file: File) => {
-      const idx = activePageIndex;
-      setPdfImportBusy(true);
-      const toastId = toast.loading("PDF 페이지 변환 중…");
-      try {
-        const { pages, totalPageCount } = await renderPdfFileToPageImages(
-          file,
-          {
-            maxPages: MEDIA_PLAYLIST_MAX_ITEMS,
-            onProgress: (done, total) =>
-              toast.loading(`PDF 페이지 변환 중… (${done}/${total})`, {
-                id: toastId,
-              }),
-          },
-        );
-        if (pages.length === 0) {
-          throw new Error("PDF에서 페이지를 찾지 못했습니다.");
-        }
-        const baseName = file.name.replace(/\.pdf$/i, "").trim() || "pdf";
-        const items: { id: string; kind: "image"; src: string }[] = [];
-        for (let i = 0; i < pages.length; i++) {
-          toast.loading(`페이지 업로드 중… (${i + 1}/${pages.length})`, {
-            id: toastId,
-          });
-          const pageFile = new File(
-            [pages[i]!.blob],
-            `${baseName}-p${i + 1}.png`,
-            { type: "image/png" },
-          );
-          const res = await uploadBookMedia(bookId, pageFile, null);
-          items.push({ id: crypto.randomUUID(), kind: "image", src: res.url });
-        }
-        // 위젯 프레임: 첫 페이지 비율로 슬라이드의 ~70%, 중앙 배치
-        const first = pages[0]!;
-        const aspect = first.height / Math.max(1, first.width);
-        let w = Math.max(80, Math.min(slideWidth * 0.7, slideWidth - 40));
-        let h = w * aspect;
-        const maxH = Math.max(80, slideHeight - 40);
-        if (h > maxH) {
-          h = maxH;
-          w = h / Math.max(0.01, aspect);
-        }
-        w = Math.round(w);
-        h = Math.round(h);
-        const at = pdfImportPlacementRef.current;
-        pdfImportPlacementRef.current = null;
-        const px = at
-          ? Math.round(Math.min(Math.max(0, at.x), Math.max(0, slideWidth - w)))
-          : Math.round((slideWidth - w) / 2);
-        const py = at
-          ? Math.round(
-              Math.min(Math.max(0, at.y), Math.max(0, slideHeight - h)),
-            )
-          : Math.round((slideHeight - h) / 2);
-        const el: BookCanvasElement = {
-          id: crypto.randomUUID(),
-          type: "mediaPlaylist",
-          x: px,
-          y: py,
-          width: w,
-          height: h,
-          mediaPlaylistItems: items,
-        };
-        updatePages((draft) => {
-          const p = draft[idx];
-          if (!p) return;
-          p.elements.push(el);
-        });
-        setSelectedIds([el.id]);
-        toast.success(
-          `PDF ${pages.length}페이지를 미디어 위젯으로 추가했습니다. 페이지별 표시 시간은 속성 패널에서 바꿀 수 있어요.`,
-          { id: toastId },
-        );
-        if (totalPageCount > pages.length) {
-          toast.warning(
-            `PDF가 ${totalPageCount}페이지라 앞 ${pages.length}페이지만 가져왔습니다(위젯 항목 최대 ${MEDIA_PLAYLIST_MAX_ITEMS}개).`,
-          );
-        }
-      } catch (e) {
-        toast.error(`PDF 가져오기 실패: ${(e as Error).message}`, {
-          id: toastId,
-        });
-      } finally {
-        setPdfImportBusy(false);
-      }
-    },
-    [activePageIndex, bookId, slideHeight, slideWidth, updatePages],
-  );
-
-  const onRequestImportPdf = useCallback(() => {
-    pdfImportInputRef.current?.click();
-  }, []);
-
-  const onRequestPlaylistAppendFromFile = useCallback(
-    (elementId: string) => {
-      const el = activePage?.elements.find((e) => e.id === elementId);
-      if (!el || el.type !== "mediaPlaylist") return;
-      if ((el.mediaPlaylistItems ?? []).length >= MEDIA_PLAYLIST_MAX_ITEMS) {
-        toast.error(`미디어 목록은 최대 ${MEDIA_PLAYLIST_MAX_ITEMS}개입니다.`);
-        return;
-      }
-      playlistAppendElementIdRef.current = elementId;
-      playlistMediaInputRef.current?.click();
-    },
-    [activePage],
-  );
-
-  const onRequestPlaylistAppendFromLibrary = useCallback(
-    (elementId: string) => {
-      setLibraryPick({ mode: "playlistAppend", elementId });
-      raiseFloatingMediaStack();
-    },
-    [raiseFloatingMediaStack],
-  );
-
-  useEffect(() => {
-    const onImgVidCancel = () => {
-      replaceMediaElementIdRef.current = null;
-      pendingMediaKindRef.current = null;
-    };
-    const onPlaylistCancel = () => {
-      playlistAppendElementIdRef.current = null;
-    };
-    const img = imageInputRef.current;
-    const vid = videoInputRef.current;
-    const pl = playlistMediaInputRef.current;
-    img?.addEventListener("cancel", onImgVidCancel);
-    vid?.addEventListener("cancel", onImgVidCancel);
-    pl?.addEventListener("cancel", onPlaylistCancel);
-    return () => {
-      img?.removeEventListener("cancel", onImgVidCancel);
-      vid?.removeEventListener("cancel", onImgVidCancel);
-      pl?.removeEventListener("cancel", onPlaylistCancel);
-    };
-  }, []);
-
   const onDropWidget = useCallback(
     (point: { x: number; y: number }, kind: BookDropWidgetKind) => {
       if (addByKind(kind, point.x, point.y)) return;
@@ -1293,10 +980,7 @@ function BookDetailOwnerView({
         return;
       }
       if (kind === "pdfImport") {
-        if (!pdfImportBusy) {
-          pdfImportPlacementRef.current = point;
-          pdfImportInputRef.current?.click();
-        }
+        requestImportPdf(point);
         return;
       }
       // 미디어 위젯과 같은 흐름 — 빈 자리를 먼저 놓는다
@@ -1306,7 +990,7 @@ function BookDetailOwnerView({
       }
       toast.error("지원하지 않는 위젯 종류입니다.");
     },
-    [addByKind, addEmptyMediaAt, addMediaPlaylistAt, pdfImportBusy],
+    [addByKind, addEmptyMediaAt, addMediaPlaylistAt, requestImportPdf],
   );
 
   /** 이미지 편집기 내보내기 — 업로드 후 미디어 라이브러리에 등록 */
@@ -1362,10 +1046,7 @@ function BookDetailOwnerView({
         return;
       }
       if (kind === "pdfImport") {
-        if (!pdfImportBusy) {
-          pdfImportPlacementRef.current = null;
-          pdfImportInputRef.current?.click();
-        }
+        requestImportPdf(null);
         return;
       }
       // 이미지·동영상: 가운데에 빈 자리를 놓고 나중에 채운다
@@ -1379,7 +1060,7 @@ function BookDetailOwnerView({
       addByKindCentered,
       addEmptyMediaAt,
       addMediaPlaylistAt,
-      pdfImportBusy,
+      requestImportPdf,
       slideHeight,
       slideWidth,
     ],
@@ -1890,7 +1571,7 @@ function BookDetailOwnerView({
                     variant="docked"
                     className="min-h-0 flex-1"
                     onRequestFloat={() => persistWidgetFloatingOpen(true)}
-                    onRequestImportPdf={onRequestImportPdf}
+                    onRequestImportPdf={() => requestImportPdf(null)}
                     pdfImportBusy={pdfImportBusy}
                     onQuickAdd={handlePaletteQuickAdd}
                   />
@@ -1943,7 +1624,7 @@ function BookDetailOwnerView({
                   floatingStackZIndex={floatingPanelZ.widget}
                   onRaiseFloatingStack={raiseFloatingWidgetStack}
                   onClose={() => persistWidgetFloatingOpen(false)}
-                  onRequestImportPdf={onRequestImportPdf}
+                  onRequestImportPdf={() => requestImportPdf(null)}
                   pdfImportBusy={pdfImportBusy}
                   onQuickAdd={handlePaletteQuickAdd}
                 />
@@ -2108,7 +1789,7 @@ function BookDetailOwnerView({
                   variant="docked"
                   className="min-h-0 flex-1"
                   onRequestFloat={() => persistWidgetFloatingOpen(true)}
-                  onRequestImportPdf={onRequestImportPdf}
+                  onRequestImportPdf={() => requestImportPdf(null)}
                   pdfImportBusy={pdfImportBusy}
                   onQuickAdd={handlePaletteQuickAdd}
                 />
@@ -2273,7 +1954,7 @@ function BookDetailOwnerView({
                 floatingStackZIndex={floatingPanelZ.widget}
                 onRaiseFloatingStack={raiseFloatingWidgetStack}
                 onClose={() => persistWidgetFloatingOpen(false)}
-                onRequestImportPdf={onRequestImportPdf}
+                onRequestImportPdf={() => requestImportPdf(null)}
                 pdfImportBusy={pdfImportBusy}
                 onQuickAdd={handlePaletteQuickAdd}
               />
@@ -2307,67 +1988,7 @@ function BookDetailOwnerView({
               layoutAiMediaSelection={layoutAiMediaSelection}
               onPatchBookElement={onElementChange}
             />
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/gif,image/webp"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                e.target.value = "";
-                if (pendingMediaKindRef.current !== "image") return;
-                if (!f) {
-                  replaceMediaElementIdRef.current = null;
-                  pendingMediaKindRef.current = null;
-                  return;
-                }
-                void handleMediaFile(f, "image");
-              }}
-            />
-            <input
-              ref={videoInputRef}
-              type="file"
-              accept="video/mp4,video/webm,video/quicktime"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                e.target.value = "";
-                if (pendingMediaKindRef.current !== "video") return;
-                if (!f) {
-                  replaceMediaElementIdRef.current = null;
-                  pendingMediaKindRef.current = null;
-                  return;
-                }
-                void handleMediaFile(f, "video");
-              }}
-            />
-            <input
-              ref={playlistMediaInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                e.target.value = "";
-                if (!f) {
-                  playlistAppendElementIdRef.current = null;
-                  return;
-                }
-                void handlePlaylistMediaFile(f);
-              }}
-            />
-            <input
-              ref={pdfImportInputRef}
-              type="file"
-              accept="application/pdf"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                e.target.value = "";
-                if (!f) return;
-                void handleImportPdfFile(f);
-              }}
-            />
+            <BookMediaFileInputs inputs={mediaFileInputs} />
             {imageEditorOpen ? (
               <BookImageEditorDialog
                 onClose={() => setImageEditorOpen(false)}
