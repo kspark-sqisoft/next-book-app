@@ -1955,154 +1955,26 @@ export function duplicateBookEditorPage(
 ): BookEditorPageState {
   const oldTiming = page.presentationTimingElementId?.trim() ?? "";
   let mappedTimingId: string | null = null;
+
   const elements = page.elements.map((el) => {
     const id = crypto.randomUUID();
     if (oldTiming !== "" && el.id === oldTiming) mappedTimingId = id;
-    if (el.type === "text") {
-      return { ...el, id };
+
+    // 깊은 복사 — 복제본이 원본과 배열·객체를 공유하면 한쪽을 고칠 때 다른 쪽도 바뀐다.
+    // 이전에는 타입마다 중첩 값을 손으로 복사했는데 weather 의 두 배열이 빠져 있었고,
+    // 화면이 배열을 제자리에서 바꾸지 않는다는 규율 하나로만 버티고 있었다.
+    const copy = { ...structuredClone(el), id };
+
+    // 미디어 위젯의 항목 id 는 새로 발급한다(복사가 아니라 실제 동작이라 여기 남긴다)
+    if (copy.type === "mediaPlaylist" && copy.mediaPlaylistItems) {
+      copy.mediaPlaylistItems = copy.mediaPlaylistItems.map((it) => ({
+        ...it,
+        id: crypto.randomUUID(),
+      }));
     }
-    if (el.type === "image") {
-      return { ...el, id };
-    }
-    if (el.type === "weather") {
-      return {
-        ...el,
-        id,
-        ...(el.cityQuery !== undefined ? { cityQuery: el.cityQuery } : {}),
-        ...(el.weatherDisplay !== undefined
-          ? { weatherDisplay: { ...el.weatherDisplay } }
-          : {}),
-        ...(el.weatherBackground !== undefined
-          ? { weatherBackground: el.weatherBackground }
-          : {}),
-        ...(el.weatherTextColor !== undefined
-          ? { weatherTextColor: el.weatherTextColor }
-          : {}),
-        ...(el.borderRadius !== undefined
-          ? { borderRadius: el.borderRadius }
-          : {}),
-        ...(el.outlineWidth !== undefined
-          ? { outlineWidth: el.outlineWidth }
-          : {}),
-        ...(el.outlineColor !== undefined
-          ? { outlineColor: el.outlineColor }
-          : {}),
-      };
-    }
-    if (el.type === "digitalClock") {
-      return {
-        ...el,
-        id,
-        ...(el.clockDisplay !== undefined
-          ? { clockDisplay: { ...el.clockDisplay } }
-          : {}),
-        ...(el.clockBackground !== undefined
-          ? { clockBackground: el.clockBackground }
-          : {}),
-        ...(el.clockTextColor !== undefined
-          ? { clockTextColor: el.clockTextColor }
-          : {}),
-        ...(el.borderRadius !== undefined
-          ? { borderRadius: el.borderRadius }
-          : {}),
-        ...(el.outlineWidth !== undefined
-          ? { outlineWidth: el.outlineWidth }
-          : {}),
-        ...(el.outlineColor !== undefined
-          ? { outlineColor: el.outlineColor }
-          : {}),
-      };
-    }
-    if (el.type === "news") {
-      return {
-        ...el,
-        id,
-        ...(el.newsCountry !== undefined
-          ? { newsCountry: el.newsCountry }
-          : {}),
-        ...(el.newsCategory !== undefined
-          ? { newsCategory: el.newsCategory }
-          : {}),
-        ...(el.newsPageSize !== undefined
-          ? { newsPageSize: el.newsPageSize }
-          : {}),
-        ...(el.newsDisplayMode !== undefined
-          ? { newsDisplayMode: el.newsDisplayMode }
-          : {}),
-        ...(el.newsCarouselIntervalSec !== undefined
-          ? { newsCarouselIntervalSec: el.newsCarouselIntervalSec }
-          : {}),
-        ...(el.newsBackground !== undefined
-          ? { newsBackground: el.newsBackground }
-          : {}),
-        ...(el.newsTextColor !== undefined
-          ? { newsTextColor: el.newsTextColor }
-          : {}),
-        ...(el.newsMetaColor !== undefined
-          ? { newsMetaColor: el.newsMetaColor }
-          : {}),
-        ...(el.newsTitleFontSize !== undefined
-          ? { newsTitleFontSize: el.newsTitleFontSize }
-          : {}),
-        ...(el.newsMetaFontSize !== undefined
-          ? { newsMetaFontSize: el.newsMetaFontSize }
-          : {}),
-        ...(el.newsSectionTitle !== undefined
-          ? { newsSectionTitle: el.newsSectionTitle }
-          : {}),
-        ...(el.newsTitleLineClamp !== undefined
-          ? { newsTitleLineClamp: el.newsTitleLineClamp }
-          : {}),
-        ...(el.newsContentPaddingPx !== undefined
-          ? { newsContentPaddingPx: el.newsContentPaddingPx }
-          : {}),
-        ...(typeof el.newsShowHeader === "boolean"
-          ? { newsShowHeader: el.newsShowHeader }
-          : {}),
-        ...(typeof el.newsShowSource === "boolean"
-          ? { newsShowSource: el.newsShowSource }
-          : {}),
-        ...(typeof el.newsLinksEnabled === "boolean"
-          ? { newsLinksEnabled: el.newsLinksEnabled }
-          : {}),
-        ...(el.borderRadius !== undefined
-          ? { borderRadius: el.borderRadius }
-          : {}),
-        ...(el.outlineWidth !== undefined
-          ? { outlineWidth: el.outlineWidth }
-          : {}),
-        ...(el.outlineColor !== undefined
-          ? { outlineColor: el.outlineColor }
-          : {}),
-      };
-    }
-    if (el.type === "mediaPlaylist") {
-      return {
-        ...el,
-        id,
-        mediaPlaylistItems: (el.mediaPlaylistItems ?? []).map((it) => ({
-          ...it,
-          id: crypto.randomUUID(),
-        })),
-        ...(el.borderRadius !== undefined
-          ? { borderRadius: el.borderRadius }
-          : {}),
-        ...(el.outlineWidth !== undefined
-          ? { outlineWidth: el.outlineWidth }
-          : {}),
-        ...(el.outlineColor !== undefined
-          ? { outlineColor: el.outlineColor }
-          : {}),
-      };
-    }
-    if (el.type === "drawing") {
-      return { ...el, id, points: [...el.points] };
-    }
-    if (el.type === "shape") {
-      return { ...el, id };
-    }
-    return { ...el, id };
+    return copy;
   });
+
   return {
     clientKey: crypto.randomUUID(),
     sortOrder: page.sortOrder,
