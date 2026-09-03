@@ -421,11 +421,17 @@ function BookDetailOwnerView({
     addByKindCentered,
     addShapeAt,
     addFromElementsPanel: onAddShapeFromElementsPanel,
+    addMediaPlaylistAt,
+    addEmptyMediaAt,
   } = useWidgetInserters({
     activePageIndex,
     updatePages,
     slideWidth,
     slideHeight,
+    emptyMediaHint: (kind) =>
+      kind === "image"
+        ? "이미지 자리를 놓았습니다 — 우클릭해서 파일이나 라이브러리에서 채우세요."
+        : "동영상 자리를 놓았습니다 — 우클릭해서 파일이나 라이브러리에서 채우세요.",
   });
   const activePage = localPages[activePageIndex];
 
@@ -972,62 +978,6 @@ function BookDetailOwnerView({
   const pageVisibles = useMemo(
     () => localPages.map((p) => p.presentationVisible !== false),
     [localPages],
-  );
-
-  const addMediaPlaylistAt = useCallback(
-    (x: number, y: number) => {
-      const id = crypto.randomUUID();
-      const el: BookCanvasElement = {
-        id,
-        type: "mediaPlaylist",
-        x,
-        y,
-        width: DEFAULT_BOOK_MEDIA_PLAYLIST_WIDTH,
-        height: DEFAULT_BOOK_MEDIA_PLAYLIST_HEIGHT,
-        mediaPlaylistItems: [],
-      };
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (p) p.elements.push(el);
-      });
-      setSelectedIds([id]);
-    },
-    [activePageIndex, updatePages],
-  );
-
-  /**
-   * 이미지·동영상은 미디어 위젯과 같은 흐름 — 빈 자리를 먼저 놓고 나중에 채운다.
-   * (드롭 이벤트 안에서 파일 선택창을 열면 브라우저가 드래그 세션을 정리하는 중이라
-   *  창이 열리지 않는 일이 있었다. 배치해 두고 우클릭·인스펙터로 채우면 그 문제가 없다)
-   */
-  const addEmptyMediaAt = useCallback(
-    (x: number, y: number, kind: "image" | "video") => {
-      const id = crypto.randomUUID();
-      const el: BookCanvasElement =
-        kind === "image"
-          ? { id, type: "image", x, y, width: 400, height: 260, src: "" }
-          : {
-              id,
-              type: "video",
-              x,
-              y,
-              width: 480,
-              height: 270,
-              src: "",
-              posterSrc: null,
-            };
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (p) p.elements.push(el);
-      });
-      setSelectedIds([id]);
-      toast.info(
-        kind === "image"
-          ? "이미지 자리를 놓았습니다 — 우클릭해서 파일이나 라이브러리에서 채우세요."
-          : "동영상 자리를 놓았습니다 — 우클릭해서 파일이나 라이브러리에서 채우세요.",
-      );
-    },
-    [activePageIndex, updatePages],
   );
 
   const handleMediaFile = async (file: File, kind: "image" | "video") => {

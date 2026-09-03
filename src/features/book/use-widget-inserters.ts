@@ -2,6 +2,7 @@
 
 import type { Draft } from "immer";
 import { useCallback, useMemo } from "react";
+import { toast } from "sonner";
 
 import {
   type BookCanvasElement,
@@ -9,6 +10,8 @@ import {
   type BookEditorPageState,
   type BookShapeKind,
   createBookShapeElement,
+  DEFAULT_BOOK_MEDIA_PLAYLIST_HEIGHT,
+  DEFAULT_BOOK_MEDIA_PLAYLIST_WIDTH,
   placeBookShapeElementAtPointer,
 } from "@/features/book/book-canvas";
 import { setSelectedIds } from "@/features/book/editor-ui-store";
@@ -31,8 +34,19 @@ export function useWidgetInserters(opts: {
   updatePages: UpdatePages;
   slideWidth: number;
   slideHeight: number;
+  /**
+   * 빈 이미지·동영상 자리를 놓은 뒤 띄우는 안내. 화면마다 다음 할 일이 달라서 받는다 —
+   * 저장된 북은 바로 우클릭으로 채울 수 있고, 새 북은 저장해야 업로드가 열린다.
+   */
+  emptyMediaHint: (kind: "image" | "video") => string;
 }) {
-  const { activePageIndex, updatePages, slideWidth, slideHeight } = opts;
+  const {
+    activePageIndex,
+    updatePages,
+    slideWidth,
+    slideHeight,
+    emptyMediaHint,
+  } = opts;
 
   /** 현재 슬라이드 맨 위에 올리고 선택 — 모든 삽입이 거쳐 가는 유일한 지점 */
   const appendElement = useCallback(
@@ -100,6 +114,48 @@ export function useWidgetInserters(opts: {
     [appendElement, slideHeight, slideWidth],
   );
 
+  const addMediaPlaylistAt = useCallback(
+    (x: number, y: number) => {
+      appendElement({
+        id: crypto.randomUUID(),
+        type: "mediaPlaylist",
+        x,
+        y,
+        width: DEFAULT_BOOK_MEDIA_PLAYLIST_WIDTH,
+        height: DEFAULT_BOOK_MEDIA_PLAYLIST_HEIGHT,
+        mediaPlaylistItems: [],
+      });
+    },
+    [appendElement],
+  );
+
+  /**
+   * 이미지·동영상은 미디어 위젯과 같은 흐름 — 빈 자리를 먼저 놓고 나중에 채운다.
+   * (드롭 이벤트 안에서 파일 선택창을 열면 브라우저가 드래그 세션을 정리하는 중이라
+   *  창이 열리지 않는 일이 있었다. 배치해 두고 우클릭·인스펙터로 채우면 그 문제가 없다)
+   */
+  const addEmptyMediaAt = useCallback(
+    (x: number, y: number, kind: "image" | "video") => {
+      const id = crypto.randomUUID();
+      appendElement(
+        kind === "image"
+          ? { id, type: "image", x, y, width: 400, height: 260, src: "" }
+          : {
+              id,
+              type: "video",
+              x,
+              y,
+              width: 480,
+              height: 270,
+              src: "",
+              posterSrc: null,
+            },
+      );
+      toast.info(emptyMediaHint(kind));
+    },
+    [appendElement, emptyMediaHint],
+  );
+
   return useMemo(
     () => ({
       appendElement,
@@ -107,6 +163,8 @@ export function useWidgetInserters(opts: {
       addByKindCentered,
       addShapeAt,
       addFromElementsPanel,
+      addMediaPlaylistAt,
+      addEmptyMediaAt,
     }),
     [
       appendElement,
@@ -114,6 +172,8 @@ export function useWidgetInserters(opts: {
       addByKindCentered,
       addShapeAt,
       addFromElementsPanel,
+      addMediaPlaylistAt,
+      addEmptyMediaAt,
     ],
   );
 }

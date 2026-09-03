@@ -186,11 +186,15 @@ export function BookEditorPage() {
     addByKindCentered,
     addShapeAt,
     addFromElementsPanel: onAddShapeFromElementsPanel,
+    addMediaPlaylistAt,
+    addEmptyMediaAt,
   } = useWidgetInserters({
     activePageIndex,
     updatePages,
     slideWidth,
     slideHeight,
+    emptyMediaHint: () =>
+      "자리를 놓았습니다 — 북을 저장한 뒤 파일을 채울 수 있습니다.",
   });
 
   const currentPage = pages[activePageIndex] ?? pages[0];
@@ -563,53 +567,6 @@ export function BookEditorPage() {
         const p = draft[activePageIndex];
         if (p) p.presentationTransitionMs = ms;
       });
-    },
-    [activePageIndex, updatePages],
-  );
-
-  const addMediaPlaylistAt = useCallback(
-    (x: number, y: number) => {
-      const id = crypto.randomUUID();
-      const el: BookCanvasElement = {
-        id,
-        type: "mediaPlaylist",
-        x,
-        y,
-        width: DEFAULT_BOOK_MEDIA_PLAYLIST_WIDTH,
-        height: DEFAULT_BOOK_MEDIA_PLAYLIST_HEIGHT,
-        mediaPlaylistItems: [],
-      };
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (p) p.elements.push(el);
-      });
-      setSelectedIds([id]);
-    },
-    [activePageIndex, updatePages],
-  );
-
-  const addEmptyMediaAt = useCallback(
-    (x: number, y: number, kind: "image" | "video") => {
-      const id = crypto.randomUUID();
-      const el: BookCanvasElement =
-        kind === "image"
-          ? { id, type: "image", x, y, width: 400, height: 260, src: "" }
-          : {
-              id,
-              type: "video",
-              x,
-              y,
-              width: 480,
-              height: 270,
-              src: "",
-              posterSrc: null,
-            };
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (p) p.elements.push(el);
-      });
-      setSelectedIds([id]);
-      toast.info("자리를 놓았습니다 — 북을 저장한 뒤 파일을 채울 수 있습니다.");
     },
     [activePageIndex, updatePages],
   );
