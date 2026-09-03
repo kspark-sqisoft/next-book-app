@@ -25,10 +25,6 @@ import { BookElementsPanel } from "@/components/books/BookElementsPanel";
 import { BookHeaderSlideDimensions } from "@/components/books/BookHeaderSlideDimensions";
 import { BookInspectorPanel } from "@/components/books/BookInspectorPanel";
 import { BookLayersPanel } from "@/components/books/BookLayersPanel";
-import type {
-  BookMediaPlaylistPlaybackUiSnapshot,
-  BookMediaPlaylistRemoteCommand,
-} from "@/components/books/BookMediaPlaylistWidgetOverlay";
 import { BookPagePropertiesPanel } from "@/components/books/BookPagePropertiesPanel";
 import { BookPageSidebar } from "@/components/books/BookPageSidebar";
 import {
@@ -111,6 +107,7 @@ import { useBookDocumentHistory } from "@/features/book/use-book-document-histor
 import { useBookPageThumbnails } from "@/features/book/use-book-page-thumbnails";
 import { useBookWidgetClipboard } from "@/features/book/use-book-widget-clipboard";
 import { useElementMutations } from "@/features/book/use-element-mutations";
+import { useMediaPlaylistPlayback } from "@/features/book/use-media-playlist-playback";
 import { usePageOperations } from "@/features/book/use-page-operations";
 import { useWidgetInserters } from "@/features/book/use-widget-inserters";
 import { type BookCanvasElement, createBook } from "@/lib/api";
@@ -164,17 +161,6 @@ export function BookEditorPage() {
   const [slideWidth, setSlideWidth] = useState(DEFAULT_SLIDE_WIDTH);
   const [slideHeight, setSlideHeight] = useState(DEFAULT_SLIDE_HEIGHT);
   const [presentationLoop, setPresentationLoop] = useState(true);
-  const [
-    mediaPlaylistPlaybackByElementId,
-    setMediaPlaylistPlaybackByElementId,
-  ] = useState<Record<string, number>>({});
-  const [
-    mediaPlaylistPlaybackUiByElementId,
-    setMediaPlaylistPlaybackUiByElementId,
-  ] = useState<Record<string, BookMediaPlaylistPlaybackUiSnapshot>>({});
-  const playlistRemoteSeqRef = useRef(0);
-  const [playlistRemoteCmd, setPlaylistRemoteCmd] =
-    useState<BookMediaPlaylistRemoteCommand | null>(null);
 
   const maxPageIdx = Math.max(0, pages.length - 1);
   const activePageIndex = Math.min(pageIndex, maxPageIdx);
@@ -271,67 +257,25 @@ export function BookEditorPage() {
     warmBookCanvasImagesForNeighborPages(pages, activePageIndex);
   }, [pages, activePageIndex]);
 
-  useEffect(() => {
-    queueMicrotask(() => {
-      setMediaPlaylistPlaybackByElementId({});
-      setMediaPlaylistPlaybackUiByElementId({});
-    });
-  }, [activePageIndex]);
-
   const playlistInspectorSelectionKey = useMemo(
     () => (canvasSelectedIds.length === 1 ? (canvasSelectedIds[0] ?? "") : ""),
     [canvasSelectedIds],
   );
 
-  useEffect(() => {
-    queueMicrotask(() => {
-      setPlaylistRemoteCmd(null);
-    });
-  }, [playlistInspectorSelectionKey]);
-
-  const handleMediaPlaylistPlaybackIndex = useCallback(
-    (elementId: string, index: number) => {
-      setMediaPlaylistPlaybackByElementId((prev) => {
-        if (prev[elementId] === index) return prev;
-        return { ...prev, [elementId]: index };
-      });
-    },
-    [],
-  );
-
-  const handleMediaPlaylistPlaybackUiReport = useCallback(
-    (elementId: string, payload: BookMediaPlaylistPlaybackUiSnapshot) => {
-      setMediaPlaylistPlaybackUiByElementId((prev) => ({
-        ...prev,
-        [elementId]: payload,
-      }));
-    },
-    [],
-  );
-
-  const clearPlaylistRemoteCmd = useCallback(
-    () => setPlaylistRemoteCmd(null),
-    [],
-  );
+  const {
+    playbackIndexByElementId: mediaPlaylistPlaybackByElementId,
+    playbackUiByElementId: mediaPlaylistPlaybackUiByElementId,
+    remoteCommand: playlistRemoteCmd,
+    handlePlaybackIndex: handleMediaPlaylistPlaybackIndex,
+    handlePlaybackUiReport: handleMediaPlaylistPlaybackUiReport,
+    clearRemoteCommand: clearPlaylistRemoteCmd,
+    sendRemoteControl: handleMediaPlaylistRemoteControl,
+  } = useMediaPlaylistPlayback({
+    activePageIndex,
+    inspectorSelectionKey: playlistInspectorSelectionKey,
+  });
 
   // 상세 페이지와 동일 — 동영상 실제 길이를 반영해야 재생 시간 배지·타이밍 계산이 맞음
-
-  const handleMediaPlaylistRemoteControl = useCallback(
-    (
-      elementId: string,
-      kind: "prev" | "next" | "togglePause" | "jumpTo",
-      index?: number,
-    ) => {
-      playlistRemoteSeqRef.current += 1;
-      setPlaylistRemoteCmd({
-        targetId: elementId,
-        kind,
-        seq: playlistRemoteSeqRef.current,
-        ...(index !== undefined ? { index } : {}),
-      });
-    },
-    [],
-  );
 
   const { displayScale, zoomPercent, zoomIn, zoomOut, zoomReset, handleWheel } =
     useBookCanvasDisplayScale(canvasWrapRef, {

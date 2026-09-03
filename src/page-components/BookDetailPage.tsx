@@ -51,10 +51,6 @@ import { BookInspectorPanel } from "@/components/books/BookInspectorPanel";
 import { BookLayersPanel } from "@/components/books/BookLayersPanel";
 import { BookMediaLibraryPanel } from "@/components/books/BookMediaLibraryPanel";
 import { BookMediaLibraryPickDialog } from "@/components/books/BookMediaLibraryPickDialog";
-import type {
-  BookMediaPlaylistPlaybackUiSnapshot,
-  BookMediaPlaylistRemoteCommand,
-} from "@/components/books/BookMediaPlaylistWidgetOverlay";
 import { BookPagePropertiesPanel } from "@/components/books/BookPagePropertiesPanel";
 import { BookPageSidebar } from "@/components/books/BookPageSidebar";
 import { BookSharePopover } from "@/components/books/BookShareDialog";
@@ -149,6 +145,7 @@ import { useBookMediaUploads } from "@/features/book/use-book-media-uploads";
 import { useBookPageThumbnails } from "@/features/book/use-book-page-thumbnails";
 import { useBookWidgetClipboard } from "@/features/book/use-book-widget-clipboard";
 import { useElementMutations } from "@/features/book/use-element-mutations";
+import { useMediaPlaylistPlayback } from "@/features/book/use-media-playlist-playback";
 import { usePageOperations } from "@/features/book/use-page-operations";
 import { useWidgetInserters } from "@/features/book/use-widget-inserters";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -363,17 +360,6 @@ function BookDetailOwnerView({
     ai: 288,
   }));
   /** 캔버스 플레이리스트별 재생 중 항목 인덱스 → 속성 목록 하이라이트 */
-  const [
-    mediaPlaylistPlaybackByElementId,
-    setMediaPlaylistPlaybackByElementId,
-  ] = useState<Record<string, number>>({});
-  const [
-    mediaPlaylistPlaybackUiByElementId,
-    setMediaPlaylistPlaybackUiByElementId,
-  ] = useState<Record<string, BookMediaPlaylistPlaybackUiSnapshot>>({});
-  const playlistRemoteSeqRef = useRef(0);
-  const [playlistRemoteCmd, setPlaylistRemoteCmd] =
-    useState<BookMediaPlaylistRemoteCommand | null>(null);
   /** 이미지·비디오 편집기(레일 메뉴) — 전체 화면 편집 창 */
   const [imageEditorOpen, setImageEditorOpen] = useState(false);
   const [videoEditorOpen, setVideoEditorOpen] = useState(false);
@@ -499,55 +485,6 @@ function BookDetailOwnerView({
     updatePagesSilent,
   ]);
 
-  useEffect(() => {
-    queueMicrotask(() => {
-      setMediaPlaylistPlaybackByElementId({});
-      setMediaPlaylistPlaybackUiByElementId({});
-    });
-  }, [activePageIndex]);
-
-  const handleMediaPlaylistPlaybackIndex = useCallback(
-    (elementId: string, index: number) => {
-      setMediaPlaylistPlaybackByElementId((prev) => {
-        if (prev[elementId] === index) return prev;
-        return { ...prev, [elementId]: index };
-      });
-    },
-    [],
-  );
-
-  const handleMediaPlaylistPlaybackUiReport = useCallback(
-    (elementId: string, payload: BookMediaPlaylistPlaybackUiSnapshot) => {
-      setMediaPlaylistPlaybackUiByElementId((prev) => ({
-        ...prev,
-        [elementId]: payload,
-      }));
-    },
-    [],
-  );
-
-  const clearPlaylistRemoteCmd = useCallback(
-    () => setPlaylistRemoteCmd(null),
-    [],
-  );
-
-  const handleMediaPlaylistRemoteControl = useCallback(
-    (
-      elementId: string,
-      kind: "prev" | "next" | "togglePause" | "jumpTo",
-      index?: number,
-    ) => {
-      playlistRemoteSeqRef.current += 1;
-      setPlaylistRemoteCmd({
-        targetId: elementId,
-        kind,
-        seq: playlistRemoteSeqRef.current,
-        ...(index !== undefined ? { index } : {}),
-      });
-    },
-    [],
-  );
-
   const canvasSelectedIds = useMemo(() => {
     if (!activePage) return [];
     const onPage = new Set(activePage.elements.map((e) => e.id));
@@ -559,11 +496,18 @@ function BookDetailOwnerView({
     [canvasSelectedIds],
   );
 
-  useEffect(() => {
-    queueMicrotask(() => {
-      setPlaylistRemoteCmd(null);
-    });
-  }, [playlistInspectorSelectionKey]);
+  const {
+    playbackIndexByElementId: mediaPlaylistPlaybackByElementId,
+    playbackUiByElementId: mediaPlaylistPlaybackUiByElementId,
+    remoteCommand: playlistRemoteCmd,
+    handlePlaybackIndex: handleMediaPlaylistPlaybackIndex,
+    handlePlaybackUiReport: handleMediaPlaylistPlaybackUiReport,
+    clearRemoteCommand: clearPlaylistRemoteCmd,
+    sendRemoteControl: handleMediaPlaylistRemoteControl,
+  } = useMediaPlaylistPlayback({
+    activePageIndex,
+    inspectorSelectionKey: playlistInspectorSelectionKey,
+  });
 
   const handleCanvasSelect = useCallback((d: BookCanvasSelectDetail) => {
     if (d.id === null) setSelectedIds([]);
