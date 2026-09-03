@@ -51,31 +51,22 @@ import { Spinner } from "@/components/ui/spinner";
 import {
   applyAutoSlideNamesByIndex,
   type BookShapeKind,
-  createBookShapeElement,
   createEmptyEditorPage,
   DEFAULT_BOOK_AD_SLOT_HEIGHT,
   DEFAULT_BOOK_AD_SLOT_WIDTH,
   DEFAULT_BOOK_CALENDAR_HEIGHT,
   DEFAULT_BOOK_CALENDAR_WIDTH,
-  DEFAULT_BOOK_CHART_DATA,
   DEFAULT_BOOK_CHART_HEIGHT,
-  DEFAULT_BOOK_CHART_TYPE,
   DEFAULT_BOOK_CHART_WIDTH,
   DEFAULT_BOOK_DIGITAL_CLOCK_HEIGHT,
   DEFAULT_BOOK_DIGITAL_CLOCK_WIDTH,
-  DEFAULT_BOOK_MAP_BBOX,
   DEFAULT_BOOK_MAP_HEIGHT,
-  DEFAULT_BOOK_MAP_LAT,
-  DEFAULT_BOOK_MAP_LON,
-  DEFAULT_BOOK_MAP_QUERY,
   DEFAULT_BOOK_MAP_WIDTH,
-  DEFAULT_BOOK_MAP_ZOOM_PCT,
   DEFAULT_BOOK_MEDIA_PLAYLIST_HEIGHT,
   DEFAULT_BOOK_MEDIA_PLAYLIST_WIDTH,
   DEFAULT_BOOK_NEWS_WIDGET_HEIGHT,
   DEFAULT_BOOK_NEWS_WIDGET_WIDTH,
   DEFAULT_BOOK_QR_HEIGHT,
-  DEFAULT_BOOK_QR_VALUE,
   DEFAULT_BOOK_QR_WIDTH,
   DEFAULT_BOOK_TICKER_HEIGHT,
   DEFAULT_BOOK_TICKER_WIDTH,
@@ -92,7 +83,6 @@ import {
   type ElementZOrderOp,
   pageIndexAfterRemove,
   pageIndexAfterReorder,
-  placeBookShapeElementAtPointer,
   reorderBookElementsByDisplayIndex,
   reorderElementsZ,
   reorderPagesArray,
@@ -143,6 +133,7 @@ import {
 import { useBookDocumentHistory } from "@/features/book/use-book-document-history";
 import { useBookPageThumbnails } from "@/features/book/use-book-page-thumbnails";
 import { useBookWidgetClipboard } from "@/features/book/use-book-widget-clipboard";
+import { useWidgetInserters } from "@/features/book/use-widget-inserters";
 import { type BookCanvasElement, createBook } from "@/lib/api";
 import { bookKeys } from "@/lib/query-keys";
 
@@ -208,6 +199,31 @@ export function BookEditorPage() {
 
   const maxPageIdx = Math.max(0, pages.length - 1);
   const activePageIndex = Math.min(pageIndex, maxPageIdx);
+
+  // 위젯 삽입 — 종류별 핸들러 13개가 두 화면에 복사돼 있던 것을 공용 훅 하나로 모았다
+  const {
+    appendElement: onAppendDrawingElement,
+    addShapeAt,
+    addFromElementsPanel: onAddShapeFromElementsPanel,
+    addTextAt,
+    addWeatherAt,
+    addDigitalClockAt,
+    addNewsAt,
+    addTickerAt,
+    addQrAt,
+    addWebviewAt,
+    addYoutubeAt,
+    addMapAt,
+    addChartAt,
+    addCalendarAt,
+    addAdSlotAt,
+  } = useWidgetInserters({
+    activePageIndex,
+    updatePages,
+    slideWidth,
+    slideHeight,
+  });
+
   const currentPage = pages[activePageIndex] ?? pages[0];
   const canvasSelectedIds = useMemo(() => {
     if (!currentPage) return [];
@@ -582,45 +598,6 @@ export function BookEditorPage() {
     [activePageIndex, currentPage, slideHeight, slideWidth, updatePages],
   );
 
-  const onAppendDrawingElement = useCallback(
-    (el: BookCanvasElement) => {
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (!p) return;
-        p.elements.push(el);
-      });
-      setSelectedIds([el.id]);
-    },
-    [activePageIndex, updatePages],
-  );
-
-  const onAddShapeFromElementsPanel = useCallback(
-    (kind: BookShapeKind) => {
-      const el = createBookShapeElement(kind, slideWidth, slideHeight);
-      onAppendDrawingElement(el);
-    },
-    [onAppendDrawingElement, slideHeight, slideWidth],
-  );
-
-  const addShapeAt = useCallback(
-    (x: number, y: number, kind: BookShapeKind) => {
-      const base = createBookShapeElement(kind, slideWidth, slideHeight);
-      const placed = placeBookShapeElementAtPointer(
-        base,
-        x,
-        y,
-        slideWidth,
-        slideHeight,
-      );
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (p) p.elements.push(placed);
-      });
-      setSelectedIds([placed.id]);
-    },
-    [activePageIndex, slideHeight, slideWidth, updatePages],
-  );
-
   const onDropShape = useCallback(
     (point: { x: number; y: number }, kind: BookShapeKind) => {
       addShapeAt(point.x, point.y, kind);
@@ -715,70 +692,6 @@ export function BookEditorPage() {
     [activePageIndex, updatePages],
   );
 
-  const addTextAt = useCallback(
-    (x: number, y: number) => {
-      const id = crypto.randomUUID();
-      const el: BookCanvasElement = {
-        id,
-        type: "text",
-        x,
-        y,
-        text: "텍스트를 입력하세요",
-        richHtml: "<p>텍스트를 입력하세요</p>",
-        fontSize: 28,
-        fill: "#111827",
-        width: 480,
-        height: defaultTextWidgetBoxHeight(28),
-      };
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (p) p.elements.push(el);
-      });
-      setSelectedIds([id]);
-    },
-    [activePageIndex, updatePages],
-  );
-
-  const addWeatherAt = useCallback(
-    (x: number, y: number) => {
-      const id = crypto.randomUUID();
-      const el: BookCanvasElement = {
-        id,
-        type: "weather",
-        x,
-        y,
-        width: DEFAULT_BOOK_WEATHER_WIDGET_WIDTH,
-        height: DEFAULT_BOOK_WEATHER_WIDGET_HEIGHT,
-      };
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (p) p.elements.push(el);
-      });
-      setSelectedIds([id]);
-    },
-    [activePageIndex, updatePages],
-  );
-
-  const addNewsAt = useCallback(
-    (x: number, y: number) => {
-      const id = crypto.randomUUID();
-      const el: BookCanvasElement = {
-        id,
-        type: "news",
-        x,
-        y,
-        width: DEFAULT_BOOK_NEWS_WIDGET_WIDTH,
-        height: DEFAULT_BOOK_NEWS_WIDGET_HEIGHT,
-      };
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (p) p.elements.push(el);
-      });
-      setSelectedIds([id]);
-    },
-    [activePageIndex, updatePages],
-  );
-
   const addMediaPlaylistAt = useCallback(
     (x: number, y: number) => {
       const id = crypto.randomUUID();
@@ -800,195 +713,6 @@ export function BookEditorPage() {
     [activePageIndex, updatePages],
   );
 
-  const addDigitalClockAt = useCallback(
-    (x: number, y: number) => {
-      const id = crypto.randomUUID();
-      const el: BookCanvasElement = {
-        id,
-        type: "digitalClock",
-        x,
-        y,
-        width: DEFAULT_BOOK_DIGITAL_CLOCK_WIDTH,
-        height: DEFAULT_BOOK_DIGITAL_CLOCK_HEIGHT,
-      };
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (p) p.elements.push(el);
-      });
-      setSelectedIds([id]);
-    },
-    [activePageIndex, updatePages],
-  );
-
-  const addWebviewAt = useCallback(
-    (x: number, y: number) => {
-      const id = crypto.randomUUID();
-      const el: BookCanvasElement = {
-        id,
-        type: "webview",
-        x,
-        y,
-        width: DEFAULT_BOOK_WEBVIEW_WIDTH,
-        height: DEFAULT_BOOK_WEBVIEW_HEIGHT,
-      };
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (p) p.elements.push(el);
-      });
-      setSelectedIds([id]);
-    },
-    [activePageIndex, updatePages],
-  );
-
-  const addMapAt = useCallback(
-    (x: number, y: number) => {
-      const id = crypto.randomUUID();
-      const el: BookCanvasElement = {
-        id,
-        type: "map",
-        x,
-        y,
-        width: DEFAULT_BOOK_MAP_WIDTH,
-        height: DEFAULT_BOOK_MAP_HEIGHT,
-        mapQuery: DEFAULT_BOOK_MAP_QUERY,
-        mapLat: DEFAULT_BOOK_MAP_LAT,
-        mapLon: DEFAULT_BOOK_MAP_LON,
-        mapBbox: DEFAULT_BOOK_MAP_BBOX,
-        mapZoomPct: DEFAULT_BOOK_MAP_ZOOM_PCT,
-      };
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (p) p.elements.push(el);
-      });
-      setSelectedIds([id]);
-    },
-    [activePageIndex, updatePages],
-  );
-
-  const addCalendarAt = useCallback(
-    (x: number, y: number) => {
-      const id = crypto.randomUUID();
-      const el: BookCanvasElement = {
-        id,
-        type: "calendar",
-        x,
-        y,
-        width: DEFAULT_BOOK_CALENDAR_WIDTH,
-        height: DEFAULT_BOOK_CALENDAR_HEIGHT,
-      };
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (p) p.elements.push(el);
-      });
-      setSelectedIds([id]);
-    },
-    [activePageIndex, updatePages],
-  );
-
-  const addQrAt = useCallback(
-    (x: number, y: number) => {
-      const id = crypto.randomUUID();
-      const el: BookCanvasElement = {
-        id,
-        type: "qr",
-        x,
-        y,
-        width: DEFAULT_BOOK_QR_WIDTH,
-        height: DEFAULT_BOOK_QR_HEIGHT,
-        qrValue: DEFAULT_BOOK_QR_VALUE,
-      };
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (p) p.elements.push(el);
-      });
-      setSelectedIds([id]);
-    },
-    [activePageIndex, updatePages],
-  );
-
-  const addChartAt = useCallback(
-    (x: number, y: number) => {
-      const id = crypto.randomUUID();
-      const el: BookCanvasElement = {
-        id,
-        type: "chart",
-        x,
-        y,
-        width: DEFAULT_BOOK_CHART_WIDTH,
-        height: DEFAULT_BOOK_CHART_HEIGHT,
-        chartType: DEFAULT_BOOK_CHART_TYPE,
-        chartData: [...DEFAULT_BOOK_CHART_DATA],
-      };
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (p) p.elements.push(el);
-      });
-      setSelectedIds([id]);
-    },
-    [activePageIndex, updatePages],
-  );
-
-  const addTickerAt = useCallback(
-    (x: number, y: number) => {
-      const id = crypto.randomUUID();
-      const el: BookCanvasElement = {
-        id,
-        type: "ticker",
-        x,
-        y,
-        width: DEFAULT_BOOK_TICKER_WIDTH,
-        height: DEFAULT_BOOK_TICKER_HEIGHT,
-      };
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (p) p.elements.push(el);
-      });
-      setSelectedIds([id]);
-    },
-    [activePageIndex, updatePages],
-  );
-
-  const addYoutubeAt = useCallback(
-    (x: number, y: number) => {
-      const id = crypto.randomUUID();
-      const el: BookCanvasElement = {
-        id,
-        type: "youtube",
-        x,
-        y,
-        width: DEFAULT_BOOK_YOUTUBE_WIDTH,
-        height: DEFAULT_BOOK_YOUTUBE_HEIGHT,
-      };
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (p) p.elements.push(el);
-      });
-      setSelectedIds([id]);
-    },
-    [activePageIndex, updatePages],
-  );
-
-  const addAdSlotAt = useCallback(
-    (x: number, y: number) => {
-      const id = crypto.randomUUID();
-      const el: BookCanvasElement = {
-        id,
-        type: "adSlot",
-        x,
-        y,
-        width: DEFAULT_BOOK_AD_SLOT_WIDTH,
-        height: DEFAULT_BOOK_AD_SLOT_HEIGHT,
-      };
-      updatePages((draft) => {
-        const p = draft[activePageIndex];
-        if (p) p.elements.push(el);
-      });
-      setSelectedIds([id]);
-    },
-    [activePageIndex, updatePages],
-  );
-
-  /** 이미지·동영상 빈 자리 — 저장 전에도 배치는 되고, 파일은 저장 후 채운다 */
   const addEmptyMediaAt = useCallback(
     (x: number, y: number, kind: "image" | "video") => {
       const id = crypto.randomUUID();
