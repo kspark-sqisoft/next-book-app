@@ -30,6 +30,10 @@ import {
   slideDisplayLabel,
 } from "@/features/book/book-canvas";
 import {
+  preloadBookCanvasImages,
+  warmBookCanvasImagesForNeighborPages,
+} from "@/features/book/book-image-cache";
+import {
   computeSlidePresentationDurationSec,
   DEFAULT_PRESENTATION_SLIDE_SEC,
 } from "@/features/book/book-presentation";
@@ -170,6 +174,36 @@ function BookPresentationInner({
   const runSlideEnterAnimation =
     slideNavEpoch > 0 && incomingTransition !== "none" && !reduceMotion;
 
+  /**
+   * 첫 슬라이드는 이미지가 다 디코드된 뒤 한 번에 나타난다.
+   *
+   * 캔버스는 캐시된 이미지를 첫 렌더에서 바로 그리지만, 캐시가 비어 있으면 요소가 하나씩
+   * 튀어나온다 — 커뮤니티 iframe 에서 "빈 배경 → 내용" 으로 보이던 순간이다. 상한(1.2초)을
+   * 두어 느린 이미지 하나가 슬라이드쇼 전체를 막지 않게 한다. 이후 슬라이드는 이웃 예열이
+   * 맡으므로 이 게이트는 처음 한 번만 닫힌다.
+   */
+  const [firstSlideReady, setFirstSlideReady] = useState(false);
+  useEffect(() => {
+    if (!page) {
+      queueMicrotask(() => setFirstSlideReady(true));
+      return;
+    }
+    let cancelled = false;
+    void preloadBookCanvasImages(page.elements).then(() => {
+      if (!cancelled) setFirstSlideReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // 최초 마운트의 페이지만 — 이후 이동은 게이트를 다시 닫지 않는다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** 이전·다음 슬라이드 이미지를 미리 받아 전환 시 튀어나오지 않게 — 편집 화면과 같은 규칙 */
+  useEffect(() => {
+    warmBookCanvasImagesForNeighborPages(sortedPages, safeIdx);
+  }, [sortedPages, safeIdx]);
+
   /** 창 미리보기·전체 화면 공통 표시 모드(contain·cover·fill) */
   const [presentationFitMode, setPresentationFitMode] =
     useState<BookCanvasDisplayFitMode>("contain");
@@ -193,6 +227,13 @@ function BookPresentationInner({
     handleWheel,
     layoutAvail,
   } = useBookCanvasDisplayScale(canvasWrapRef, displayScaleOpts);
+
+  /**
+   * 표시 배율은 매트를 **잰 뒤**에야 맞는 값이 된다. 재기 전 기본값(0.55)으로 한 번 그려지면
+   * 텍스트 위젯이 작았다가 커지며 자리 잡는 것처럼 보인다 — 광고가 없는 북에서도 보이던
+   * 현상이다. 이미지 준비와 함께 측정 완료까지 기다렸다가 한 번에 보여 준다.
+   */
+  const stageReady = firstSlideReady && layoutAvail.w > 0 && layoutAvail.h > 0;
 
   const enterPresentationFullscreen = useCallback(() => {
     queueMicrotask(() => {
@@ -521,7 +562,8 @@ function BookPresentationInner({
       <div
         key={slideNavEpoch}
         className={cn(
-          "flex items-center justify-center",
+          "flex items-center justify-center transition-opacity duration-200",
+          !stageReady && "opacity-0",
           /* fill은 transform 스케일 후 레이아웃 박스가 max-*에 막히면 가장자리 여백이 생길 수 있음 */
           presentationFitMode === "fill"
             ? "min-h-0 min-w-0"

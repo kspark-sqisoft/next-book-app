@@ -60,6 +60,26 @@ function collectImageSrcs(elements: BookCanvasElement[]): string[] {
 }
 
 /**
+ * 한 슬라이드의 이미지 위젯을 전부 디코드까지 마친 뒤 resolve — 첫 화면을 열 때 이미지가
+ * 하나씩 튀어나오지 않게 "다 준비되면 한 번에" 보여 주기 위한 것.
+ *
+ * `timeoutMs` 를 넘기면 그냥 resolve 한다. 느린 이미지 하나 때문에 슬라이드쇼 전체가
+ * 검은 화면으로 기다리는 것보다, 늦은 것만 뒤에 나타나는 편이 낫다.
+ */
+export function preloadBookCanvasImages(
+  elements: BookCanvasElement[],
+  timeoutMs = 1200,
+): Promise<void> {
+  const srcs = Array.from(new Set(collectImageSrcs(elements).filter(Boolean)));
+  if (srcs.length === 0) return Promise.resolve();
+  const all = Promise.all(srcs.map((s) => loadBookImage(s))).then(
+    () => undefined,
+  );
+  const cap = new Promise<void>((r) => setTimeout(r, timeoutMs));
+  return Promise.race([all, cap]);
+}
+
+/**
  * 현재 슬라이드와 이전·다음 슬라이드의 이미지 위젯을 미리 로드해 페이지 전환 시 플래시를 줄입니다.
  */
 export function warmBookCanvasImagesForNeighborPages(

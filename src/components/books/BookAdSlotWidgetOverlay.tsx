@@ -135,6 +135,21 @@ export function BookAdSlotWidgetOverlay({
       : "";
 
   const emptyAndHidden = mode === "view" && !current && fill === "hide";
+  /**
+   * 보기 모드에서 보여 줄 것이 아직 없으면 바탕을 칠하지 않는다. 소재 목록·설정을 받고
+   * 이미지를 디코드하기까지 짙은 회색 네모가 먼저 떠서, 커뮤니티 미리보기에서 "회색 →
+   * 내용" 으로 튀어 보였다. 그동안은 슬라이드 배경이 그대로 비치는 편이 자연스럽다.
+   */
+  const hasContent =
+    mode === "edit" ||
+    current != null ||
+    (fill === "house" && adSetting != null);
+  /**
+   * 소재 이미지는 디코드가 끝난 뒤 나타나게 — 바탕에서 이미지로 부드럽게.
+   * "어느 소재가 로드됐는지"를 기억하면 소재가 바뀔 때 되돌리는 이펙트가 필요 없다.
+   */
+  const [loadedCreativeId, setLoadedCreativeId] = useState<number | null>(null);
+  const creativeLoaded = current != null && loadedCreativeId === current.id;
 
   const src = current ? (publicAssetUrl(current.src) ?? current.src) : "";
   const labelPx = Math.max(9, Math.min(13, fh * scale * 0.045));
@@ -142,7 +157,8 @@ export function BookAdSlotWidgetOverlay({
   return (
     <div
       className={cn(
-        "pointer-events-none absolute overflow-hidden bg-zinc-900",
+        "pointer-events-none absolute overflow-hidden",
+        hasContent && "bg-zinc-900",
         isSelected && mode === "edit" && "ring-2 ring-primary ring-offset-0",
         emptyAndHidden && "invisible",
       )}
@@ -191,7 +207,11 @@ export function BookAdSlotWidgetOverlay({
               alt=""
               src={src}
               draggable={false}
-              className="absolute inset-0 size-full select-none object-cover"
+              className={cn(
+                "absolute inset-0 size-full select-none object-cover transition-opacity duration-200",
+                creativeLoaded ? "opacity-100" : "opacity-0",
+              )}
+              onLoad={() => setLoadedCreativeId(current.id)}
             />
           ) : (
             <video
