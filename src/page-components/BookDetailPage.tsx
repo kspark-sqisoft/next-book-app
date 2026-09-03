@@ -94,9 +94,7 @@ import {
   DEFAULT_PAGE_BACKGROUND,
   DEFAULT_SLIDE_HEIGHT,
   DEFAULT_SLIDE_WIDTH,
-  duplicateBookEditorPage,
   MEDIA_PLAYLIST_MAX_ITEMS,
-  pageIndexAfterRemove,
   pageIndexAfterReorder,
   reorderPagesArray,
   resolveEffectivePresentationTimingElementId,
@@ -150,6 +148,7 @@ import { useBookDocumentHistory } from "@/features/book/use-book-document-histor
 import { useBookPageThumbnails } from "@/features/book/use-book-page-thumbnails";
 import { useBookWidgetClipboard } from "@/features/book/use-book-widget-clipboard";
 import { useElementMutations } from "@/features/book/use-element-mutations";
+import { usePageOperations } from "@/features/book/use-page-operations";
 import { useWidgetInserters } from "@/features/book/use-widget-inserters";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -1564,69 +1563,13 @@ function BookDetailOwnerView({
     setSelectedIds([]);
   }, [commitPages, localPages.length]);
 
-  const addPageAtInsertIndex = useCallback(
-    (insertIndex: number) => {
-      commitPages((prev) => {
-        const idx = Math.max(0, Math.min(insertIndex, prev.length));
-        const newPage = createEmptyEditorPage(0);
-        const next = [...prev.slice(0, idx), newPage, ...prev.slice(idx)];
-        return applyAutoSlideNamesByIndex(
-          next.map((p, i) => ({ ...p, sortOrder: i })),
-        );
-      });
-      setPageIndex(insertIndex);
-      setSelectedIds([]);
-    },
-    [commitPages],
-  );
-
-  const removePageAt = useCallback(
-    (index: number) => {
-      let nextIdx = activePageIndex;
-      commitPages((prev) => {
-        if (prev.length <= 1 || index < 0 || index >= prev.length) return prev;
-        const next = prev.filter((_, i) => i !== index);
-        nextIdx = pageIndexAfterRemove(activePageIndex, index, prev.length);
-        return applyAutoSlideNamesByIndex(next);
-      });
-      setPageIndex(nextIdx);
-      setSelectedIds([]);
-    },
-    [activePageIndex, commitPages],
-  );
-
-  const requestRemovePageAt = useCallback((index: number) => {
-    openPageDelete(index);
-  }, []);
-
-  const requestRemoveCurrentPageForAi = useCallback(() => {
-    requestRemovePageAt(activePageIndex);
-  }, [activePageIndex, requestRemovePageAt]);
-
-  const confirmRemovePageAt = useCallback(() => {
-    if (pageDeleteIndex != null) removePageAt(pageDeleteIndex);
-    closePageDelete();
-  }, [pageDeleteIndex, removePageAt]);
-
-  const duplicatePageAt = useCallback(
-    (index: number) => {
-      commitPages((prev) => {
-        if (index < 0 || index >= prev.length) return prev;
-        const dup = duplicateBookEditorPage(prev[index]);
-        const next = [
-          ...prev.slice(0, index + 1),
-          dup,
-          ...prev.slice(index + 1),
-        ];
-        return applyAutoSlideNamesByIndex(
-          next.map((p, i) => ({ ...p, sortOrder: i })),
-        );
-      });
-      setPageIndex(index + 1);
-      setSelectedIds([]);
-    },
-    [commitPages],
-  );
+  const {
+    addPageAtInsertIndex,
+    requestRemovePageAt,
+    requestRemoveCurrentPageForAi,
+    confirmRemovePageAt,
+    duplicatePageAt,
+  } = usePageOperations({ activePageIndex, commitPages });
 
   const removeElementsByIds = useCallback(
     (ids: string[]) => {
