@@ -75,11 +75,17 @@ export function BookPageThumbnailStrip({
             aria-selected={active}
             aria-label={`${i + 1}번째 페이지로 이동`}
             data-strip-index={i}
-            onClick={() => onSelectPage(i)}
+            onClick={(e) => {
+              onSelectPage(i);
+              // iOS 는 탭한 버튼에 포커스가 남아 선택 표시처럼 보일 수 있다
+              e.currentTarget.blur();
+            }}
             className={cn(
-              // 3~4장이 보이는 폭 — 다음 장이 살짝 걸쳐 보여 옆으로 넘길 수 있음을 알린다
-              "w-[27%] shrink-0 snap-center rounded-lg text-left transition-opacity touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
-              active ? "ring-2 ring-primary" : "opacity-70",
+              // 3~4장이 보이는 폭 — 다음 장이 살짝 걸쳐 보여 옆으로 넘길 수 있음을 알린다.
+              // 선택 표시는 ring(box-shadow) 대신 outline — iOS Safari 가 스크롤 스냅 컨테이너
+              // 안에서 box-shadow 를 지울 때 다시 그리지 않아 탭한 장마다 테두리가 남았다.
+              "w-[27%] shrink-0 snap-center rounded-lg text-left outline-2 outline-offset-1 transition-opacity touch-manipulation select-none [-webkit-tap-highlight-color:transparent] focus-visible:outline-ring/60",
+              active ? "outline-primary" : "outline-transparent opacity-70",
             )}
           >
             <SlideCardPreview

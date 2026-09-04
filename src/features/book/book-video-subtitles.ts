@@ -42,9 +42,13 @@ export function normalizeBookSubtitleSize(v: unknown): BookSubtitleSize {
  * 크기 옵션 → 자막 글자 크기(화면 px).
  *
  * 위젯 높이는 **슬라이드 단위**로 받고 마지막에 배율을 곱한다 — 텍스트 위젯과 같은 규칙.
- * 예전엔 화면 px 로 하한·상한을 두어(10~46px) 배율이 작은 모바일에서 하한이 걸려
- * 자막만 다른 글자보다 두 배 넘게 커 보였다. 상·하한은 배율 0.5(데스크톱 편집 화면)
- * 에서 예전 화면 크기와 같도록 슬라이드 단위로 옮겼다.
+ *
+ * 예전 공식은 표시 높이의 8·11.5·15% 에 화면 px 상한(24·34·46)을 걸었다. 기본 슬라이드
+ * (960×540)를 배율 1 로 보는 데스크톱 편집 화면에선 늘 상한에 걸려 실제 비율은
+ * 4.4·6.3·8.5% 였는데, 배율 0.39 인 폰에선 상한에 못 미쳐 15% 가 그대로 적용돼 자막이
+ * 두 배 가까이 커 보였다. 그래서 데스크톱에서 실제로 보이던 비율을 그대로 규칙으로 삼고
+ * 상한을 없앤다. 작은 위젯에서 글자가 사라지지 않게 슬라이드 단위 하한(16·22·28)만 둔다
+ * — 540 높이 위젯은 24·34·46, 200 높이 위젯은 16·22·28 로 예전 데스크톱과 같다.
  */
 export function subtitleFontPx(
   size: unknown,
@@ -58,18 +62,18 @@ export function subtitleFontPx(
   let slidePx: number;
   switch (normalizeBookSubtitleSize(size)) {
     case "lg":
-      slidePx = Math.min(92, Math.max(30, h * 0.15));
+      slidePx = Math.max(28, h * 0.085);
       break;
     case "md":
-      slidePx = Math.min(68, Math.max(24, h * 0.115));
+      slidePx = Math.max(22, h * 0.063);
       break;
     default:
-      slidePx = Math.min(48, Math.max(20, h * 0.08));
+      slidePx = Math.max(16, h * 0.044);
   }
   return Math.max(1, Math.round(slidePx * s));
 }
 
-/** 자막이 위젯 하단에서 띄우는 간격(화면 px) — 높이의 7%, 슬라이드 단위 최소 32px, 배율 반영 */
+/** 자막이 위젯 하단에서 띄우는 간격(화면 px) — 높이의 7%, 슬라이드 단위 최소 16px, 배율 반영 */
 export function subtitleBottomGapPx(
   widgetHeightSlidePx: number,
   scale: number,
@@ -78,7 +82,7 @@ export function subtitleBottomGapPx(
     ? Math.max(0, widgetHeightSlidePx)
     : 0;
   const s = Number.isFinite(scale) ? Math.max(0, scale) : 0;
-  return Math.round(Math.max(32, h * 0.07) * s);
+  return Math.round(Math.max(16, h * 0.07) * s);
 }
 
 /** 한 줄이 화면에 머무는 시간(초) */

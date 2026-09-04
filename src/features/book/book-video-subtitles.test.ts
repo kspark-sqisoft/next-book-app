@@ -7,39 +7,48 @@ import {
 } from "@/features/book/book-video-subtitles";
 
 describe("subtitleFontPx", () => {
-  it("데스크톱 배율(0.5)에서는 기존 화면 크기를 유지한다", () => {
-    // 1080 높이 위젯: sm 24 / md 34 / lg 46 (기존 상한)
+  it("기본 슬라이드(960×540)를 배율 1 로 보는 데스크톱에서 예전 크기를 유지한다", () => {
+    // 전체 화면 위젯(540): 예전 상한 24 / 34 / 46
+    expect(subtitleFontPx("sm", 540, 1)).toBe(24);
+    expect(subtitleFontPx("md", 540, 1)).toBe(34);
+    expect(subtitleFontPx("lg", 540, 1)).toBe(46);
+    // 작은 위젯(200): 예전 비율 구간 16 / 23 / 30 과 거의 같다
+    expect(subtitleFontPx("sm", 200, 1)).toBe(16);
+    expect(subtitleFontPx("md", 200, 1)).toBe(22);
+    expect(subtitleFontPx("lg", 200, 1)).toBe(28);
+    // FHD 슬라이드(1080)를 배율 0.5 로 보는 경우도 예전 상한과 같다
     expect(subtitleFontPx("sm", 1080, 0.5)).toBe(24);
     expect(subtitleFontPx("md", 1080, 0.5)).toBe(34);
     expect(subtitleFontPx("lg", 1080, 0.5)).toBe(46);
-    // 400 높이 위젯: 비율 구간 — 0.08·0.115·0.15 × 200
-    expect(subtitleFontPx("sm", 400, 0.5)).toBe(16);
-    expect(subtitleFontPx("md", 400, 0.5)).toBe(23);
-    expect(subtitleFontPx("lg", 400, 0.5)).toBe(30);
+  });
+
+  it("폰(배율 0.39)에서 전체 화면 위젯의 '크게'가 예전 32px 보다 확실히 작다", () => {
+    expect(subtitleFontPx("lg", 540, 0.39)).toBe(18);
+    expect(subtitleFontPx("md", 540, 0.39)).toBe(13);
+    expect(subtitleFontPx("sm", 540, 0.39)).toBe(9);
   });
 
   it("배율이 줄면 글자도 같은 비율로 줄어 위젯 대비 크기가 유지된다", () => {
     for (const size of ["sm", "md", "lg"] as const) {
-      const desktop = subtitleFontPx(size, 1080, 0.5);
-      const mobile = subtitleFontPx(size, 1080, 0.2);
-      expect(mobile).toBe(Math.round((desktop / 0.5) * 0.2));
+      const desktop = subtitleFontPx(size, 540, 1);
+      const mobile = subtitleFontPx(size, 540, 0.25);
+      // 반올림 순서 차이로 1px 까지 어긋날 수 있다
+      expect(Math.abs(mobile - desktop * 0.25)).toBeLessThanOrEqual(1);
     }
-    // 예전 공식은 화면 px 하한(15px)이 걸려 작은 위젯에서도 커졌다 — 이제는 배율을 따른다
-    expect(subtitleFontPx("lg", 400, 0.2)).toBeLessThan(15);
   });
 
   it("모르는 값·비정상 입력은 sm 으로, 크기는 1px 이상", () => {
-    expect(subtitleFontPx(undefined, 1080, 0.5)).toBe(24);
-    expect(subtitleFontPx("xl", 1080, 0.5)).toBe(24);
-    expect(subtitleFontPx("sm", Number.NaN, 0.5)).toBeGreaterThanOrEqual(1);
-    expect(subtitleFontPx("sm", 1080, 0)).toBe(1);
+    expect(subtitleFontPx(undefined, 540, 1)).toBe(24);
+    expect(subtitleFontPx("xl", 540, 1)).toBe(24);
+    expect(subtitleFontPx("sm", Number.NaN, 1)).toBe(16);
+    expect(subtitleFontPx("sm", 540, 0)).toBe(1);
   });
 });
 
 describe("subtitleBottomGapPx", () => {
-  it("위젯 높이의 7%, 슬라이드 단위 최소 32px 에 배율을 곱한다", () => {
-    expect(subtitleBottomGapPx(1080, 0.5)).toBe(38);
-    expect(subtitleBottomGapPx(200, 0.5)).toBe(16);
-    expect(subtitleBottomGapPx(200, 0.2)).toBe(6);
+  it("위젯 높이의 7%, 슬라이드 단위 최소 16px 에 배율을 곱한다", () => {
+    expect(subtitleBottomGapPx(540, 1)).toBe(38);
+    expect(subtitleBottomGapPx(200, 1)).toBe(16);
+    expect(subtitleBottomGapPx(540, 0.39)).toBe(15);
   });
 });
