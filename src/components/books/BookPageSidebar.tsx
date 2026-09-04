@@ -218,7 +218,7 @@ function slideRowClass(active: boolean, fluid?: boolean) {
 }
 
 /** 가로는 목록 행(카드) 안을 꽉 채우고, 세로만 슬라이드 비율 반영 */
-function SlideCardPreview({
+export function SlideCardPreview({
   thumbUrl,
   index,
   label,

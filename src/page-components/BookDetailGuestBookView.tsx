@@ -8,11 +8,17 @@ import {
   useRef,
 } from "react";
 
+import { BookCanvasPageNavBadge } from "@/components/books/BookCanvasStageOverlays";
 import { BookCanvasToolbar } from "@/components/books/BookCanvasToolbar";
 import { BookLayersPanel } from "@/components/books/BookLayersPanel";
 import { BookPageSidebar } from "@/components/books/BookPageSidebar";
+import { BookPageThumbnailStrip } from "@/components/books/BookPageThumbnailStrip";
 import { BookSlideCanvas } from "@/components/books/BookSlideCanvas";
 import { BookSlidePreviewOpenButton } from "@/components/books/BookSlidePreviewOpenButton";
+import {
+  BookViewOnlyShield,
+  stepPageIndex,
+} from "@/components/books/BookViewOnlyShield";
 import { BookWorkspaceShell } from "@/components/books/BookWorkspaceShell";
 import {
   collectBookOverlayElements,
@@ -178,6 +184,12 @@ export function BookDetailGuestBookView({
             )}
             onWheel={guestCanvasScale.handleWheel}
           >
+            <BookCanvasPageNavBadge
+              pageCount={sortedPagesView.length}
+              activePageIndex={safeIndex}
+              pageName={viewPage.name}
+              onChangeIndex={setPageIndex}
+            />
             <BookSlideCanvas
               pageWidth={guestSlideW}
               pageHeight={guestSlideH}
@@ -195,11 +207,25 @@ export function BookDetailGuestBookView({
               onElementChange={() => undefined}
             />
             {viewLocked ? (
-              /* 모바일 보기 전용 — 위젯(동영상 컨트롤 등)까지 눌리지 않게 투명 방패로 덮는다.
-                 휠·핀치 줌은 부모(canvasWrap) 핸들러로 버블링되어 그대로 동작 */
-              <div className="absolute inset-0 z-50" aria-hidden />
+              <BookViewOnlyShield
+                onSwipe={(dir) =>
+                  setPageIndex(stepPageIndex(dir, sortedPagesView.length))
+                }
+              />
             ) : null}
           </div>
+          {viewLocked ? (
+            <BookPageThumbnailStrip
+              pageCount={sortedPagesView.length}
+              pageKeys={sortedPagesView.map((p) => `v-${p.id}`)}
+              thumbnailsByKey={guestThumbnails}
+              activeIndex={safeIndex}
+              pageLabels={guestPageLabels}
+              onSelectPage={setPageIndex}
+              slideWidth={guestSlideW}
+              slideHeight={guestSlideH}
+            />
+          ) : null}
         </div>
       }
       right={

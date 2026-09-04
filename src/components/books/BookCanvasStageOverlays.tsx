@@ -2,6 +2,7 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+import { stepPageIndex } from "@/components/books/BookViewOnlyShield";
 import { setPageIndex } from "@/features/book/editor-ui-store";
 
 /**
@@ -11,12 +12,13 @@ import { setPageIndex } from "@/features/book/editor-ui-store";
  * (변수 이름만 `activePage`/`currentPage` 로 달랐다). 위젯 삽입과 같은 종류의 중복이라
  * 같은 방식으로 한 곳에 모은다.
  *
- * 페이지 이동은 `setPageIndex` 스토어 액션을 직접 부른다 — 두 화면 모두 그렇게 하고
- * 있었으므로 콜백을 prop 으로 받을 이유가 없다.
+ * 페이지 이동은 기본으로 `setPageIndex` 스토어 액션을 부른다 — 편집 화면 둘은 그렇게
+ * 쓴다. 게스트 뷰는 페이지 인덱스가 로컬 state 라 `onChangeIndex` 로 넘긴다.
  */
 
+/** 모바일 보기 전용 방패(`BookViewOnlyShield`, z-50)보다 위 — 아니면 좌우 버튼이 눌리지 않는다 */
 const badgeBaseClass =
-  "absolute top-2 z-10 rounded-md bg-black/60 text-[11px] text-white shadow-sm backdrop-blur-sm";
+  "absolute top-2 z-[60] rounded-md bg-black/60 text-[11px] text-white shadow-sm backdrop-blur-sm";
 
 const navButtonClass =
   "flex size-5 shrink-0 items-center justify-center rounded hover:bg-white/20 disabled:opacity-30";
@@ -26,11 +28,14 @@ export function BookCanvasPageNavBadge({
   pageCount,
   activePageIndex,
   pageName,
+  onChangeIndex = setPageIndex,
 }: {
   pageCount: number;
   activePageIndex: number;
   /** 비어 있으면 `슬라이드 N` 로 대체한다 */
   pageName?: string;
+  /** 기본은 편집 UI 스토어의 `setPageIndex` */
+  onChangeIndex?: (update: (i: number) => number) => void;
 }) {
   const hasSiblings = pageCount > 1;
   return (
@@ -45,7 +50,7 @@ export function BookCanvasPageNavBadge({
           aria-label="이전 페이지"
           disabled={activePageIndex <= 0}
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
+          onClick={() => onChangeIndex(stepPageIndex("prev", pageCount))}
         >
           <ChevronLeft className="size-3.5" aria-hidden />
         </button>
@@ -65,7 +70,7 @@ export function BookCanvasPageNavBadge({
             aria-label="다음 페이지"
             disabled={activePageIndex >= pageCount - 1}
             onPointerDown={(e) => e.stopPropagation()}
-            onClick={() => setPageIndex((i) => Math.min(pageCount - 1, i + 1))}
+            onClick={() => onChangeIndex(stepPageIndex("next", pageCount))}
           >
             <ChevronRight className="size-3.5" aria-hidden />
           </button>

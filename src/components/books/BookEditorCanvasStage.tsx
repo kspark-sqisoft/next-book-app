@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { type ReactNode, useRef } from "react";
 
 import {
   BookCanvasPageNavBadge,
@@ -11,6 +11,10 @@ import {
   BookSlideCanvas,
   type BookSlideCanvasProps,
 } from "@/components/books/BookSlideCanvas";
+import {
+  BookViewOnlyShield,
+  stepPageIndex,
+} from "@/components/books/BookViewOnlyShield";
 import {
   type BookCanvasElement,
   type BookEditorPageState,
@@ -23,6 +27,7 @@ import {
 import {
   setCenterGuideThresholdPx,
   setDragGridPx,
+  setPageIndex,
   setSelectedIds,
   useBookEditorUiStore,
 } from "@/features/book/editor-ui-store";
@@ -64,6 +69,7 @@ export function BookEditorCanvasStage({
   history,
   canvas,
   ghosts,
+  footer,
 }: {
   slideWidth: number;
   slideHeight: number;
@@ -83,6 +89,8 @@ export function BookEditorCanvasStage({
   canvas: BookEditorCanvasStageCanvasProps;
   /** 다른 페이지의 공통 위젯을 반투명으로 겹쳐 보인다 — 위치 참고용, 클릭 불가 */
   ghosts?: BookCanvasElement[];
+  /** 캔버스 매트 아래 — 모바일 보기 전용의 썸네일 스트립 등 */
+  footer?: ReactNode;
 }) {
   const canvasWrapRef = useRef<HTMLDivElement>(null);
   const centerGuideThresholdPx = useBookEditorUiStore(
@@ -173,11 +181,12 @@ export function BookEditorCanvasStage({
           </div>
         ) : null}
         {readOnly ? (
-          /* 게스트 뷰와 같은 규칙 — 위젯(동영상 컨트롤 등)까지 눌리지 않게 투명 방패로 덮는다.
-             휠·핀치 줌은 부모(canvasWrap) 핸들러로 버블링되어 그대로 동작 */
-          <div className="absolute inset-0 z-50" aria-hidden />
+          <BookViewOnlyShield
+            onSwipe={(dir) => setPageIndex(stepPageIndex(dir, pageCount))}
+          />
         ) : null}
       </div>
+      {footer}
     </div>
   );
 }

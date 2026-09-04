@@ -26,6 +26,7 @@ import { BookEditorLeftDock } from "@/components/books/BookEditorLeftDock";
 import { BookEditorRightDock } from "@/components/books/BookEditorRightDock";
 import { BookEditorToolRail } from "@/components/books/BookEditorToolRail";
 import { BookMediaFileInputs } from "@/components/books/BookMediaFileInputs";
+import { BookPageThumbnailStrip } from "@/components/books/BookPageThumbnailStrip";
 import { BookSlidePreviewOpenButton } from "@/components/books/BookSlidePreviewOpenButton";
 import { BookDetailGuestBookView } from "@/page-components/BookDetailGuestBookView";
 
@@ -1362,6 +1363,23 @@ function BookDetailOwnerView({
               readOnly={readOnly}
               history={{ canUndo, canRedo, undo, redo }}
               ghosts={editorOverlayGhosts}
+              footer={
+                readOnly ? (
+                  <BookPageThumbnailStrip
+                    pageCount={localPages.length}
+                    pageKeys={pageKeys}
+                    thumbnailsByKey={slideThumbnails}
+                    activeIndex={activePageIndex}
+                    pageLabels={pageLabels}
+                    onSelectPage={(i) => {
+                      setPageIndex(i);
+                      setSelectedIds([]);
+                    }}
+                    slideWidth={slideWidth}
+                    slideHeight={slideHeight}
+                  />
+                ) : null
+              }
               canvas={{
                 selectedIds: canvasSelectedIds,
                 onSelect: handleCanvasSelect,
