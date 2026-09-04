@@ -38,17 +38,47 @@ export function normalizeBookSubtitleSize(v: unknown): BookSubtitleSize {
     : "sm";
 }
 
-/** 크기 옵션 → 위젯 표시 높이(px) 기준 자막 글자 크기(px) */
-export function subtitleFontPx(size: unknown, widgetHeightPx: number): number {
-  const h = Number.isFinite(widgetHeightPx) ? Math.max(0, widgetHeightPx) : 0;
+/**
+ * 크기 옵션 → 자막 글자 크기(화면 px).
+ *
+ * 위젯 높이는 **슬라이드 단위**로 받고 마지막에 배율을 곱한다 — 텍스트 위젯과 같은 규칙.
+ * 예전엔 화면 px 로 하한·상한을 두어(10~46px) 배율이 작은 모바일에서 하한이 걸려
+ * 자막만 다른 글자보다 두 배 넘게 커 보였다. 상·하한은 배율 0.5(데스크톱 편집 화면)
+ * 에서 예전 화면 크기와 같도록 슬라이드 단위로 옮겼다.
+ */
+export function subtitleFontPx(
+  size: unknown,
+  widgetHeightSlidePx: number,
+  scale: number,
+): number {
+  const h = Number.isFinite(widgetHeightSlidePx)
+    ? Math.max(0, widgetHeightSlidePx)
+    : 0;
+  const s = Number.isFinite(scale) ? Math.max(0, scale) : 0;
+  let slidePx: number;
   switch (normalizeBookSubtitleSize(size)) {
     case "lg":
-      return Math.round(Math.min(46, Math.max(15, h * 0.15)));
+      slidePx = Math.min(92, Math.max(30, h * 0.15));
+      break;
     case "md":
-      return Math.round(Math.min(34, Math.max(12, h * 0.115)));
+      slidePx = Math.min(68, Math.max(24, h * 0.115));
+      break;
     default:
-      return Math.round(Math.min(24, Math.max(10, h * 0.08)));
+      slidePx = Math.min(48, Math.max(20, h * 0.08));
   }
+  return Math.max(1, Math.round(slidePx * s));
+}
+
+/** 자막이 위젯 하단에서 띄우는 간격(화면 px) — 높이의 7%, 슬라이드 단위 최소 32px, 배율 반영 */
+export function subtitleBottomGapPx(
+  widgetHeightSlidePx: number,
+  scale: number,
+): number {
+  const h = Number.isFinite(widgetHeightSlidePx)
+    ? Math.max(0, widgetHeightSlidePx)
+    : 0;
+  const s = Number.isFinite(scale) ? Math.max(0, scale) : 0;
+  return Math.round(Math.max(32, h * 0.07) * s);
 }
 
 /** 한 줄이 화면에 머무는 시간(초) */

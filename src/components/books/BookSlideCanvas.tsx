@@ -108,7 +108,10 @@ import {
   nextTextWidgetHeightGrowOnly,
   textWidgetHitHeight,
 } from "@/features/book/book-text-widget";
-import { subtitleFontPx } from "@/features/book/book-video-subtitles";
+import {
+  subtitleBottomGapPx,
+  subtitleFontPx,
+} from "@/features/book/book-video-subtitles";
 import { publicAssetUrl } from "@/lib/api";
 import { appLog } from "@/lib/app-log";
 import { cn } from "@/lib/utils";
@@ -921,15 +924,15 @@ function BookSlideVideoOverlay({
           />
         ) : null}
         {el.subtitlesEnabled === true ? (
-          /* 하단 간격: 위젯 높이의 7%(최소 16px) + 컨트롤 바가 보이면 바 높이(36px) */
+          /* 하단 간격: 위젯 높이 기준(배율 반영) + 컨트롤 바가 보이면 바 높이(36px, 배율 무관) */
           <BookVideoSubtitleCaption
             lang={el.subtitleLang}
             currentTimeSec={currentTime}
             bottomPx={
               (barVisible && !videoEmpty ? 36 : 0) +
-              Math.max(16, Math.round(vh * scale * 0.07))
+              subtitleBottomGapPx(vh, scale)
             }
-            fontSizePx={subtitleFontPx(el.subtitleSize, vh * scale)}
+            fontSizePx={subtitleFontPx(el.subtitleSize, vh, scale)}
           />
         ) : null}
         {/* 재생할 파일이 없으면 컨트롤 바도 없다 — 빈 자리에 조작 UI가 뜨면 고장으로 읽힌다 */}

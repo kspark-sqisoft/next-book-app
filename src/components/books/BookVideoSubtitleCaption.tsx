@@ -25,7 +25,13 @@ export function BookVideoSubtitleCaption({
       className="pointer-events-none absolute inset-x-0 z-[5] flex flex-col items-center gap-0.5 px-2 text-center transition-[bottom] duration-200"
       style={{ bottom: bottomPx }}
     >
-      <span className="rounded bg-black/55 px-1.5 py-px text-[9px] font-medium tracking-wide text-emerald-300">
+      {/* 언어 라벨은 본문에 비례하되 6~9px — 데스크톱은 예전 9px 그대로, 모바일에선 같이 줄어든다 */}
+      <span
+        className="rounded bg-black/55 px-1.5 py-px font-medium tracking-wide text-emerald-300"
+        style={{
+          fontSize: Math.min(9, Math.max(6, Math.round(fontSizePx * 0.42))),
+        }}
+      >
         AI 자막 · {bookSubtitleLangLabel(lang)}
       </span>
       <span

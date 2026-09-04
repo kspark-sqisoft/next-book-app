@@ -32,7 +32,10 @@ import {
   resolveMediaPlaylistLoop,
   resolveMediaPlaylistShowControls,
 } from "@/features/book/book-canvas";
-import { subtitleFontPx } from "@/features/book/book-video-subtitles";
+import {
+  subtitleBottomGapPx,
+  subtitleFontPx,
+} from "@/features/book/book-video-subtitles";
 import { publicAssetUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -529,15 +532,15 @@ export function BookMediaPlaylistWidgetOverlay({
         ) : null}
 
         {el.subtitlesEnabled === true && current?.kind === "video" ? (
-          /* AI 자막(시뮬레이션) — 하단 간격: 위젯 높이의 7%(최소 16px) + 컨트롤 바 높이 */
+          /* AI 자막(시뮬레이션) — 하단 간격: 위젯 높이 기준(배율 반영) + 컨트롤 바 높이(배율 무관) */
           <BookVideoSubtitleCaption
             lang={el.subtitleLang}
             currentTimeSec={timeUi.current}
             bottomPx={
               (showControls && barVisible ? 36 : 0) +
-              Math.max(16, Math.round(fh * scale * 0.07))
+              subtitleBottomGapPx(fh, scale)
             }
-            fontSizePx={subtitleFontPx(el.subtitleSize, fh * scale)}
+            fontSizePx={subtitleFontPx(el.subtitleSize, fh, scale)}
           />
         ) : null}
 
