@@ -31,6 +31,24 @@ describe("BookPageThumbnailStrip", () => {
     expect(onSelectPage).toHaveBeenCalledWith(3);
   });
 
+  it("선택 테두리는 별도 요소로 현재 장에만 붙고, 이동하면 옮겨간다", () => {
+    const props = {
+      pageCount: 3,
+      onSelectPage: () => undefined,
+      slideWidth: 960,
+      slideHeight: 540,
+    };
+    const { container, rerender, getAllByRole } = render(
+      <BookPageThumbnailStrip {...props} activeIndex={0} />,
+    );
+    const marker = () => container.querySelectorAll("[data-strip-selected]");
+    expect(marker()).toHaveLength(1);
+    expect(getAllByRole("tab")[0].contains(marker()[0])).toBe(true);
+    rerender(<BookPageThumbnailStrip {...props} activeIndex={2} />);
+    expect(marker()).toHaveLength(1);
+    expect(getAllByRole("tab")[2].contains(marker()[0])).toBe(true);
+  });
+
   it("페이지가 1장이면 렌더하지 않는다", () => {
     const { container } = render(
       <BookPageThumbnailStrip

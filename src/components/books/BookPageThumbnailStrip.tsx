@@ -69,7 +69,8 @@ export function BookPageThumbnailStrip({
         const active = i === activeIndex;
         return (
           <button
-            key={key ?? `strip-${i}`}
+            // 선택 여부가 바뀌면 버튼을 새로 만든다 — 스타일 잔상이 남을 여지를 없앤다
+            key={`${key ?? `strip-${i}`}:${active ? "on" : "off"}`}
             type="button"
             role="tab"
             aria-selected={active}
@@ -82,10 +83,12 @@ export function BookPageThumbnailStrip({
             }}
             className={cn(
               // 3~4장이 보이는 폭 — 다음 장이 살짝 걸쳐 보여 옆으로 넘길 수 있음을 알린다.
-              // 선택 표시는 ring(box-shadow) 대신 outline — iOS Safari 가 스크롤 스냅 컨테이너
-              // 안에서 box-shadow 를 지울 때 다시 그리지 않아 탭한 장마다 테두리가 남았다.
-              "w-[27%] shrink-0 snap-center rounded-lg text-left outline-2 outline-offset-1 transition-opacity touch-manipulation select-none [-webkit-tap-highlight-color:transparent] focus-visible:outline-ring/60",
-              active ? "outline-primary" : "outline-transparent opacity-70",
+              // 선택 표시는 ring/outline 이 아니라 버튼 박스 **안쪽**에 그리는 별도 요소 —
+              // iOS Safari 는 박스 바깥으로 나간 장식(ring·outline·바깥 테두리)을 없앨 때 새
+              // 스타일 기준으로 다시 그릴 영역을 잡아 바깥 부분을 지우지 않는다. 그래서 탭한
+              // 장마다 흰 테두리가 남았다. 같은 이유로 opacity 전환도 두지 않는다.
+              "relative w-[27%] shrink-0 snap-center rounded-lg text-left outline-none touch-manipulation select-none [-webkit-tap-highlight-color:transparent] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring/60",
+              active ? "" : "opacity-70",
             )}
           >
             <SlideCardPreview
@@ -95,6 +98,13 @@ export function BookPageThumbnailStrip({
               slideWidth={slideWidth}
               slideHeight={slideHeight}
             />
+            {active ? (
+              <span
+                data-strip-selected
+                aria-hidden
+                className="pointer-events-none absolute inset-0 rounded-md border-2 border-primary"
+              />
+            ) : null}
           </button>
         );
       })}
