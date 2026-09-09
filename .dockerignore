@@ -12,3 +12,12 @@ __tests__
 e2e
 *.tsbuildinfo
 *.bak
+demo-usb
+test-results
+docs
+package-lock.json.bak
+docker-compose*.yml
+Dockerfile
+.github
+.vscode
+.idea

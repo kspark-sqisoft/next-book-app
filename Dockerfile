@@ -43,15 +43,16 @@ ENV CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
 RUN groupadd --system --gid 1001 nodejs \
   && useradd --system --uid 1001 --gid nodejs nextjs
 
+# Chromium(+openh264) 설치 — 헤드리스 서버 렌더의 H.264 인코딩 지원. apt가 런타임 의존성도 함께 설치.
+# npm ci 보다 앞에 둔다 — 의존성(package.json/patches)이 바뀌어도 이 레이어는 캐시에서 재사용된다.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends chromium \
+  && rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder /app/package.json /app/package-lock.json ./
 # runner의 npm ci 시점에도 patches/ 가 있어야 서버측 node_modules에 패치가 적용됨(빌더와 동일 코드 보장)
 COPY --from=builder /app/patches ./patches
 RUN npm ci --omit=dev && npx patch-package --error-on-fail && npm cache clean --force
-
-# Chromium(+openh264) 설치 — 헤드리스 서버 렌더의 H.264 인코딩 지원. apt가 런타임 의존성도 함께 설치.
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends chromium \
-  && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
