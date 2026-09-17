@@ -28,12 +28,12 @@ import {
   updateCretaDeviceControlsAction,
   updateCretaDeviceHealthAction,
   updateCretaDeviceOnlineAction,
+  updateCretaDevicePlayerVersionAction,
   updateCretaDevicePowerAction,
   updateCretaDeviceSourceAction,
   updateCretaDeviceTagsAction,
   updateCretaScheduleAction,
   updateCretaScheduleSlotAction,
-  upgradeCretaDevicePlayerAction,
 } from "@/actions/creta";
 import { humanizeServerActionError } from "@/lib/api";
 // 서버 DTO를 단일 출처로 삼는다. 타입 전용 import 라 런타임에는 지워지므로
@@ -416,8 +416,13 @@ export async function updateCretaDeviceSource(
   return run(() => updateCretaDeviceSourceAction(id, body));
 }
 
-/** 플레이어 최신 버전(시뮬레이션) — 서버 상수와 동일하게 유지 */
-export const CRETA_PLAYER_LATEST = "v1.2.0";
+// 플레이어 버전 목록·최신 버전은 서버 검증과 같은 순수 모듈에서 가져온다
+export {
+  comparePlayerVersion,
+  CRETA_PLAYER_LATEST,
+  CRETA_PLAYER_VERSIONS,
+  isCretaPlayerVersion,
+} from "@/features/creta/creta-player-versions";
 
 /** 원격 제어(시뮬레이션): 볼륨·밝기 저장 */
 export async function updateCretaDeviceControls(
@@ -427,11 +432,12 @@ export async function updateCretaDeviceControls(
   return run(() => updateCretaDeviceControlsAction(id, body));
 }
 
-/** 원격 제어(시뮬레이션): 플레이어 최신 버전 업데이트 */
-export async function upgradeCretaDevicePlayer(
+/** 원격 제어(시뮬레이션): 플레이어 버전 지정 — 최신·과거 버전 모두 선택 가능 */
+export async function updateCretaDevicePlayerVersion(
   id: number,
+  version: string,
 ): Promise<CretaDevice> {
-  return run(() => upgradeCretaDevicePlayerAction(id));
+  return run(() => updateCretaDevicePlayerVersionAction(id, version));
 }
 
 /** 디바이스 태그 설정(전체 교체) — 각 1~40자, 최대 10개 */

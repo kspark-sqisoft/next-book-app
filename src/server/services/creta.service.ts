@@ -4,6 +4,7 @@ import "server-only";
 // 썸네일(북 첫 페이지 커버) 해석. 디바이스의 IP·플레이어 버전 등은 시뮬레이션 파생값.
 import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
+import { isCretaPlayerVersion } from "@/features/creta/creta-player-versions";
 import {
   type AuthActor,
   canMutateOwnedResource,
@@ -34,9 +35,6 @@ import { CretaCommentsService } from "@/server/services/creta-comments.service";
 import { CretaLikesService } from "@/server/services/creta-likes.service";
 
 export type CretaCoverPublic = BookListCoverPreviewPublic | null;
-
-/** 플레이어 최신 버전(시뮬레이션) — 이보다 낮으면 상세에 "업데이트" 버튼 표시 */
-export const CRETA_PLAYER_LATEST = "v1.2.0";
 
 /** 북/플레이리스트/스케줄/광고 전용을 가리키는 공통 참조(썸네일 포함) */
 export type CretaContentRefPublic = {
@@ -1912,11 +1910,17 @@ export class CretaService {
     return this.getDevice(id);
   }
 
-  /** 원격 제어(시뮬레이션): 플레이어를 최신 버전으로 업데이트 */
-  async upgradeDevicePlayer(id: number): Promise<CretaDevicePublic> {
+  /** 원격 제어(시뮬레이션): 플레이어 버전 지정 — 목록에 있는 버전만 허용(최신·과거 모두 가능) */
+  async updateDevicePlayerVersion(
+    id: number,
+    version: unknown,
+  ): Promise<CretaDevicePublic> {
+    if (!isCretaPlayerVersion(version)) {
+      throw new HttpError(400, "선택할 수 없는 플레이어 버전입니다.");
+    }
     const updated = await this.db()
       .update(cretaDevice)
-      .set({ playerVersion: CRETA_PLAYER_LATEST, updatedAt: new Date() })
+      .set({ playerVersion: version, updatedAt: new Date() })
       .where(eq(cretaDevice.id, id))
       .returning({ id: cretaDevice.id });
     if (updated.length === 0)

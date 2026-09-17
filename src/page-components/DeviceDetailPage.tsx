@@ -45,6 +45,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
@@ -61,18 +68,21 @@ import {
 } from "@/features/creta/creta-ads-api";
 import { cretaAlertCoversDevice } from "@/features/creta/creta-alerts-api";
 import {
+  comparePlayerVersion,
   CRETA_PLAYER_LATEST,
+  CRETA_PLAYER_VERSIONS,
   type CretaDevice,
   type CretaDevicePowerInput,
   deviceSimMeta,
   fetchCretaDevice,
+  isCretaPlayerVersion,
   PLAY_SOURCE_LABEL,
   updateCretaDeviceControls,
   updateCretaDeviceHealth,
   updateCretaDeviceOnline,
+  updateCretaDevicePlayerVersion,
   updateCretaDevicePower,
   updateCretaDeviceSource,
-  upgradeCretaDevicePlayer,
 } from "@/features/creta/creta-api";
 import { publicAssetUrl } from "@/lib/api";
 import { formatDateMediumShort } from "@/lib/format-date";
@@ -223,12 +233,18 @@ export function DeviceDetailPage() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
-  const playerUpgradeMutation = useMutation({
-    mutationFn: () => upgradeCretaDevicePlayer(deviceId),
-    onSuccess: (res) => {
+  /** 플레이어 버전 지정(시뮬레이션) — 콤보박스에서 최신·과거 버전을 고른다 */
+  const playerVersionMutation = useMutation({
+    mutationFn: (input: { version: string; prev: string }) =>
+      updateCretaDevicePlayerVersion(deviceId, input.version),
+    onSuccess: (res, input) => {
       applyDevice(res);
+      const dir =
+        comparePlayerVersion(res.playerVersion, input.prev) >= 0
+          ? "업데이트"
+          : "다운그레이드";
       toast.success(
-        `플레이어를 Creta Player ${res.playerVersion}(으)로 업데이트했습니다.`,
+        `플레이어를 Creta Player ${res.playerVersion}(으)로 ${dir}했습니다.`,
       );
     },
     onError: (e: Error) => toast.error(e.message),
@@ -316,7 +332,16 @@ export function DeviceDetailPage() {
   };
   const volumeVal = volumeDraft ?? device.volume;
   const brightnessVal = brightnessDraft ?? device.brightness;
-  const playerOutdated = device.playerVersion !== CRETA_PLAYER_LATEST;
+  const playerOutdated =
+    comparePlayerVersion(device.playerVersion, CRETA_PLAYER_LATEST) < 0;
+  /** 콤보박스 항목 — 목록 밖의 버전을 가진 단말도 현재값이 보이도록 합친다(조기 return 뒤라 훅 없이 계산) */
+  const playerVersionOptions: string[] = isCretaPlayerVersion(
+    device.playerVersion,
+  )
+    ? [...CRETA_PLAYER_VERSIONS]
+    : [...CRETA_PLAYER_VERSIONS, device.playerVersion].sort(
+        (a, b) => -comparePlayerVersion(a, b),
+      );
 
   return (
     <div className="space-y-5">
@@ -653,25 +678,41 @@ export function DeviceDetailPage() {
                     플레이어
                   </span>
                   <span className="flex min-w-0 items-center gap-1.5">
-                    <span className="truncate text-right font-medium">
-                      {meta.player}
-                    </span>
-                    {playerOutdated ? (
-                      <Button
-                        type="button"
+                    {/* 시뮬레이션: 목록의 최신·과거 버전 중 하나를 골라 지정한다 */}
+                    <Select
+                      value={device.playerVersion}
+                      onValueChange={(v) => {
+                        if (v === device.playerVersion) return;
+                        if (!requireLogin()) return;
+                        playerVersionMutation.mutate({
+                          version: v,
+                          prev: device.playerVersion,
+                        });
+                      }}
+                      disabled={playerVersionMutation.isPending}
+                    >
+                      <SelectTrigger
                         size="sm"
-                        variant="outline"
-                        className="h-6 shrink-0 px-2 text-[11px]"
-                        disabled={playerUpgradeMutation.isPending}
-                        onClick={() => {
-                          if (!requireLogin()) return;
-                          playerUpgradeMutation.mutate();
-                        }}
+                        className="font-medium"
+                        aria-label="플레이어 버전"
                       >
-                        {playerUpgradeMutation.isPending
-                          ? "업데이트 중…"
-                          : `${CRETA_PLAYER_LATEST} 업데이트`}
-                      </Button>
+                        <SelectValue placeholder="버전 선택">
+                          {meta.player}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent align="end">
+                        {playerVersionOptions.map((v) => (
+                          <SelectItem key={v} value={v}>
+                            {`Creta Player ${v}`}
+                            {v === CRETA_PLAYER_LATEST ? " (최신)" : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {playerOutdated ? (
+                      <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                        구버전
+                      </span>
                     ) : (
                       <span className="shrink-0 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
                         최신

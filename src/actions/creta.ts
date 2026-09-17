@@ -509,14 +509,16 @@ export async function updateCretaDeviceControlsAction(
   }
 }
 
-/** 원격 제어(시뮬레이션): 플레이어 최신 버전 업데이트 */
-export async function upgradeCretaDevicePlayerAction(
+/** 원격 제어(시뮬레이션): 플레이어 버전 지정(최신·과거 버전 모두) */
+export async function updateCretaDevicePlayerVersionAction(
   deviceId: number,
+  version: string,
 ): Promise<CretaDevicePublic> {
   try {
     await requireUser();
-    return await new CretaService().upgradeDevicePlayer(
+    return await new CretaService().updateDevicePlayerVersion(
       assertPositiveIntId(deviceId),
+      version,
     );
   } catch (e) {
     rethrowActionError(e, TAG);
